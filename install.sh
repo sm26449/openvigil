@@ -121,7 +121,11 @@ gata "date in $DATA_DIR, modele in $MODELS_DIR (ale lui uid ${PUID:-$PUID_IMPLIC
 # ---------------------------------------------------------------- 4. build + pornire
 spune "4/5 Construire si pornire"
 if [ "$UPDATE" = 1 ] && [ -d .git ]; then
-  sudo -u "$UTILIZATOR" git pull --ff-only
+  # fara acces la depozit (privat, fara credentiale pentru acest utilizator) nu ne oprim:
+  # construim din codul local si spunem clar ce s-a intamplat
+  if ! sudo -u "$UTILIZATOR" git pull --ff-only; then
+    avert "git pull a esuat (depozit inaccesibil sau modificari locale): construiesc din codul de pe disc"
+  fi
 fi
 docker compose "${FISIERE_COMPOSE[@]}" up -d --build --remove-orphans
 printf 'COMPOSE_FILE=%s\n' "$(IFS=:; echo "${FISIERE_COMPOSE[*]//-f /}")" > .compose-files
