@@ -6,7 +6,7 @@
 #   docker compose up -d --build      # fara GPU
 #   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build   # cu NVIDIA
 #   docker compose logs -f web        # jurnal
-#   docker compose run --rm web test  # pytest
+#   docker compose run --rm --no-deps web test  # pytest
 
 name: openvigil
 

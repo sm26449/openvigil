@@ -95,7 +95,7 @@ Day-to-day:
 ```bash
 docker compose logs -f web            # add -f docker-compose.gpu.yml on GPU hosts
 sudo ./install.sh --update            # git pull, rebuild, restart
-docker compose run --rm web test      # pytest (350+ tests)
+docker compose run --rm --no-deps web test      # pytest (350+ tests)
 ```
 
 ## Reverse proxy and remote access
@@ -150,7 +150,7 @@ Day-to-day operations (logs, updates, backups, ports, uninstall): [docs/operare.
 
 ## Tests
 
-- `tests/test_*.py`: unit and API tests. Run inside the image with `docker compose run --rm web test`,
+- `tests/test_*.py`: unit and API tests. Run inside the image with `docker compose run --rm --no-deps web test`,
   or on a plain machine with `pip install -r requirements-ci.txt && python -m pytest -q tests`
   (the AI-dependent tests skip themselves). This is what CI runs on every push.
 - `tests/ui-test.js`: a Playwright walk through the real UI (needs a running stack and

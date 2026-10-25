@@ -20,7 +20,7 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 ### Schimbat
 - Lanțul de custodie memorează căi relative la rădăcina proiectului (rândurile vechi se migrează).
 - Imaginea Docker se construiește într-o singură etapă, cu lock-ul instalat `--no-deps`; testele
-  sunt în imagine (`docker compose run --rm web test`).
+  sunt în imagine (`docker compose run --rm --no-deps web test`).
 - Numele sistemului e o setare (`NVR_NAME`), nu un text fix.
 - Criptarea pe disc nu mai e gestionată din aplicație: se face la nivelul gazdei (LUKS /
   fscrypt). Aplicația doar sesizează și așteaptă când directorul de înregistrări nu e scriibil.

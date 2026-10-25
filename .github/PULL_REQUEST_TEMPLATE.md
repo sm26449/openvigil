@@ -5,7 +5,7 @@
 
 
 **Cum am testat**
-- [ ] `python -m pytest -q tests` (sau `docker compose run --rm web test`)
+- [ ] `python -m pytest -q tests` (sau `docker compose run --rm --no-deps web test`)
 - [ ] `python scripts/module_check.py` (dacă am atins interfața)
 - [ ] pe o instalare reală: ce hardware, ce camere
 

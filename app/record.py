@@ -441,7 +441,8 @@ def _prune_arhiva(now=None):
     if not ad or not os.path.isdir(ad):
         return 0
     now = now or time.time()
-    zile = int(settings.get("arhiva_zile") or 180)
+    v_zile = settings.get("arhiva_zile")
+    zile = 180 if v_zile is None else int(v_zile)
     toate = []
     try:
         cams = [int(n[3:]) for n in os.listdir(ad) if n.startswith("cam") and n[3:].isdigit()]
@@ -460,7 +461,8 @@ def _prune_arhiva(now=None):
                 toate.append((t, p))
     toate.sort()
     try:
-        min_free = float(settings.get("arhiva_min_free_gb") or 20) * 2**30
+        v = settings.get("arhiva_min_free_gb")            # 0 inseamna „fara garda”, nu „implicit”
+        min_free = (20.0 if v is None else float(v)) * 2**30
         while toate and shutil.disk_usage(ad).free < min_free:
             os.remove(toate.pop(0)[1])
             sterse += 1

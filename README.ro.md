@@ -52,7 +52,7 @@ ajunge în `data/settings.json`.
 ```bash
 docker compose logs -f web            # pe gazde cu GPU adaugă -f docker-compose.gpu.yml
 sudo ./install.sh --update            # git pull, rebuild, repornire
-docker compose run --rm web test      # pytest
+docker compose run --rm --no-deps web test      # pytest
 ```
 
 ## Acces din afară
