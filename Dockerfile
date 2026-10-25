@@ -18,7 +18,7 @@ WORKDIR /opt/openvigil
 # ffmpeg din Ubuntu are h264_nvenc/hevc_nvenc si -hwaccel cuda: bibliotecile driverului vin
 # de la nvidia-container-toolkit la rulare. Fara GPU raman libx264 si decodarea pe CPU.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        python3 python3-venv ffmpeg curl ca-certificates tzdata libglib2.0-0 libgomp1 smartmontools \
+        python3 python3-venv ffmpeg curl ca-certificates tzdata libglib2.0-0 libgomp1 smartmontools procps \
     && rm -rf /var/lib/apt/lists/* \
     && curl -fsSL -o /usr/local/bin/go2rtc \
         "https://github.com/AlexxIT/go2rtc/releases/download/v${GO2RTC_VERSION}/go2rtc_linux_amd64" \
