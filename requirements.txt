@@ -1,0 +1,36 @@
+# Dependente directe (venv-ul se reconstruieste cu: python3.12 -m venv venv && venv/bin/pip install -r requirements.txt)
+# Snapshot complet al mediului: requirements.lock (pip freeze)
+Flask==3.1.3
+waitress==3.0.2
+requests==2.34.2
+ultralytics==8.4.115
+opencv-python-headless==5.0.0.93
+# recunoastere persoane (Face ID): SCRFD + ArcFace pe ONNX Runtime; modelul buffalo_l
+# se descarca singur la prima folosire in data/faces/insightface/
+insightface==1.0.1
+onnxruntime-gpu==1.28.0
+# citire numere de inmatriculare (LPR): detector YOLOv9 + OCR CCT pe ONNX; modelele
+# (~10 MB) se descarca singure la prima folosire in ~/.cache
+fast-alpr==0.4.0
+# cautare semantica in alarme: SigLIP base multilingual (~1.4 GB, se descarca singur
+# la prima folosire in ~/.cache/huggingface)
+transformers==5.15.0
+sentencepiece==0.2.2
+# puntea MQTT (evenimente publicate + actiunea "mqtt" din reguli)
+paho-mqtt==2.1.0
+# anti-spoofing Face ID: MiniFASNet V1SE+V2 pe ONNX (modelele ~4 MB se descarca
+# singure la prima folosire in data/faces/uniface/)
+uniface==3.7.1
+# torch: build-ul CUDA de pe PyPI (2.13.0+cu130) — toata inferenta ruleaza pe GPU.
+# Pe o masina fara NVIDIA, inlocuieste cu build-ul CPU:
+#   venv/bin/pip install torch==2.13.0+cpu --index-url https://download.pytorch.org/whl/cpu
+# si onnxruntime in loc de onnxruntime-gpu; codul cade singur pe CPU.
+torch==2.13.0
+torchvision==0.28.0
+# notificari push (Web Push cu VAPID) catre PWA; cheile se genereaza singure in
+# data/push_vapid.json. Fara pachet, butonul din „Contul meu" spune ca lipseste.
+pywebpush==2.5.0
+# codul QR (SVG) pentru autentificarea in doi pasi; TOTP-ul in sine e in totp.py, fara dependente
+segno==1.6.6
+# doar pentru dezvoltare/teste
+pytest==9.1.1

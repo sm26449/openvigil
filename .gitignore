@@ -1,0 +1,18 @@
+# configurarea instalatiei si tot ce e generat la rulare — NU intra in git
+.env
+.compose-files
+data/
+models/
+venv/
+__pycache__/
+*.pyc
+*.log
+nohup.out
+
+# teste in browser
+tests/node_modules/
+tests/package-lock.json
+tests/*.png
+
+# instalare clasica (fara Docker)
+go2rtc/

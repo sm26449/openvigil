@@ -1,0 +1,25 @@
+# Suprapunere pentru gazde cu placa NVIDIA (cere nvidia-container-toolkit; install.sh il pune).
+# go2rtc si web transcodeaza cu NVENC/NVDEC, ai face inferenta pe CUDA. record nu are nevoie.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
+
+x-gpu: &gpu
+  environment:
+    TZ: ${TZ:-UTC}
+    NVIDIA_VISIBLE_DEVICES: all
+    NVIDIA_DRIVER_CAPABILITIES: compute,utility,video
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: all
+            capabilities: [gpu]
+
+services:
+  go2rtc:
+    <<: *gpu
+  web:
+    <<: *gpu
+  ai:
+    <<: *gpu

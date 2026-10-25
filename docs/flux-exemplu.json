@@ -1,0 +1,206 @@
+[
+  {
+    "id": "tab1",
+    "type": "tab",
+    "label": "OpenVigil",
+    "disabled": false,
+    "info": ""
+  },
+  {
+    "id": "in1",
+    "type": "http in",
+    "z": "tab1",
+    "name": "evenimente NVR",
+    "url": "/nvr",
+    "method": "post",
+    "swaggerDoc": "",
+    "x": 130,
+    "y": 200,
+    "wires": [
+      [
+        "sw1",
+        "ok1"
+      ]
+    ]
+  },
+  {
+    "id": "resp1",
+    "type": "http response",
+    "z": "tab1",
+    "name": "",
+    "statusCode": "200",
+    "headers": {},
+    "x": 560,
+    "y": 120,
+    "wires": []
+  },
+  {
+    "id": "sw1",
+    "type": "switch",
+    "z": "tab1",
+    "name": "ce fel de eveniment",
+    "property": "payload.eveniment",
+    "propertyType": "msg",
+    "rules": [
+      {
+        "t": "eq",
+        "v": "detectie",
+        "vt": "str"
+      },
+      {
+        "t": "eq",
+        "v": "alarma_camera",
+        "vt": "str"
+      }
+    ],
+    "checkall": "true",
+    "repair": false,
+    "outputs": 2,
+    "x": 340,
+    "y": 200,
+    "wires": [
+      [
+        "f_om",
+        "f_animal"
+      ],
+      [
+        "f_spate"
+      ]
+    ]
+  },
+  {
+    "id": "ok1",
+    "type": "function",
+    "z": "tab1",
+    "name": "raspunde 200",
+    "func": "msg.payload='';return msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 350,
+    "y": 120,
+    "wires": [
+      [
+        "resp1"
+      ]
+    ]
+  },
+  {
+    "id": "f_om",
+    "type": "function",
+    "z": "tab1",
+    "name": "om la intrare? (pauza 60s)",
+    "func": "const p = msg.payload;\nif (p.eticheta !== 'person') return null;\nif (p.camera.grup !== 'Intrari') return null;\n// fara pauza, cine sta la poarta e salutat la fiecare cadru\nconst k = 'salut' + p.camera.id;\nconst acum = Date.now();\nif (acum - (flow.get(k) || 0) < 60000) return null;\nflow.set(k, acum);\nmsg.url = 'http://192.168.1.50:8079/api/v1/camera/' + p.camera.id + '/anunt';\nmsg.payload = { text: 'Buna ziua. Va rugam asteptati, venim imediat.' };\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 590,
+    "y": 180,
+    "wires": [
+      [
+        "req"
+      ]
+    ]
+  },
+  {
+    "id": "f_spate",
+    "type": "function",
+    "z": "tab1",
+    "name": "miscare in grupul Spate",
+    "func": "const p = msg.payload;\nif (p.camera.grup !== 'Spate') return null;\n// filtram pe grup, nu pe id-uri: o camera noua in grup intra singura in flux\nmsg.url = 'http://192.168.1.50:8079/api/v1/camera/' + p.camera.id + '/releu';\nmsg.payload = { pornit: true, port: 1 };\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 590,
+    "y": 260,
+    "wires": [
+      [
+        "req"
+      ]
+    ]
+  },
+  {
+    "id": "f_animal",
+    "type": "function",
+    "z": "tab1",
+    "name": "animal detectat -> ia poza",
+    "func": "const p = msg.payload;\nif (!['dog','cat','bird','horse','sheep','cow','bear'].includes(p.eticheta)) return null;\nmsg.method = 'GET';\nmsg.url = 'http://192.168.1.50:8079/api/v1/camera/' + p.camera.id + '/poza';\nmsg.titlu = p.eticheta_ro + ' la ' + p.camera.nume;\nmsg.payload = null;\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 590,
+    "y": 340,
+    "wires": [
+      [
+        "req_poza"
+      ]
+    ]
+  },
+  {
+    "id": "req",
+    "type": "http request",
+    "z": "tab1",
+    "name": "comanda catre NVR",
+    "method": "POST",
+    "ret": "obj",
+    "paytoqs": "ignore",
+    "url": "",
+    "tls": "",
+    "persist": false,
+    "proxy": "",
+    "headers": [
+      {
+        "keyType": "other",
+        "keyValue": "X-Token",
+        "valueType": "other",
+        "valueValue": "JETONUL_TAU"
+      }
+    ],
+    "x": 880,
+    "y": 220,
+    "wires": [
+      [
+        "dbg"
+      ]
+    ]
+  },
+  {
+    "id": "req_poza",
+    "type": "http request",
+    "z": "tab1",
+    "name": "ia poza",
+    "method": "GET",
+    "ret": "bin",
+    "paytoqs": "ignore",
+    "url": "",
+    "tls": "",
+    "persist": false,
+    "proxy": "",
+    "headers": [
+      {
+        "keyType": "other",
+        "keyValue": "X-Token",
+        "valueType": "other",
+        "valueValue": "JETONUL_TAU"
+      }
+    ],
+    "x": 880,
+    "y": 340,
+    "wires": [
+      [
+        "dbg"
+      ]
+    ]
+  },
+  {
+    "id": "dbg",
+    "type": "debug",
+    "z": "tab1",
+    "name": "rezultat",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "x": 1080,
+    "y": 280,
+    "wires": []
+  }
+]
