@@ -25,6 +25,7 @@ pre{background:var(--code);border:1px solid var(--line);border-radius:10px;paddi
 .btn{display:inline-block;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:600;border:1px solid var(--line);background:var(--card);color:var(--fg)}
 .btn.p{background:var(--acc);border-color:var(--acc);color:#fff}
 .note{background:var(--acc2);border-radius:10px;padding:12px 16px;font-size:14.5px}
+.shots{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin:16px 0}.shots figure{margin:0}.shots img{width:100%;border:1px solid var(--line);border-radius:10px;display:block}.shots figcaption{font-size:13px;color:var(--mut);margin-top:6px}.shots.tel{grid-template-columns:repeat(auto-fit,minmax(160px,1fr));max-width:620px}
 footer{margin-top:40px;color:var(--mut);font-size:13.5px;border-top:1px solid var(--line);padding-top:16px}
 h2{font-size:22px;margin:34px 0 10px}
 </style>
@@ -56,6 +57,20 @@ sudo ./install.sh</code></pre>
   <div class="card"><h3>Operations</h3><p>Home/away/night modes with rules, Telegram alerts and daily digest, Web Push, MQTT and webhooks, map view, siren/strobe/talk on supported cameras.</p></div>
   <div class="card"><h3>Accounts and safety</h3><p>Admin and per‑camera viewers, 2FA, revocable sessions, CSRF, strict CSP, audit log; go2rtc never listens on the LAN.</p></div>
   <div class="card"><h3>Honest about its origin</h3><p>Built for one real installation (18 cameras, an RTX 2000 Ada) and published as is. The UI is in Romanian. AGPL‑3.0; model licences in NOTICE.md.</p></div>
+</div>
+
+<h2>Screenshots</h2>
+<p class="note">Taken on the built-in demo mode (synthetic cameras): no real footage, nobody's house.</p>
+<div class="shots">
+  <figure><img src="img/live-1366.png" alt="Live grid with four demo cameras" loading="lazy"><figcaption>Live grid</figcaption></figure>
+  <figure><img src="img/inregistrari-1366.png" alt="Playback with the day timeline" loading="lazy"><figcaption>Playback and timeline</figcaption></figure>
+  <figure><img src="img/hd-1366.png" alt="HD view of one camera" loading="lazy"><figcaption>HD view with time-shift</figcaption></figure>
+  <figure><img src="img/stare-1366.png" alt="System status page" loading="lazy"><figcaption>Status: recording, disk, AI</figcaption></figure>
+</div>
+<div class="shots tel">
+  <figure><img src="img/live-telefon.png" alt="Live on a phone" loading="lazy"><figcaption>Phone: live</figcaption></figure>
+  <figure><img src="img/inregistrari-telefon.png" alt="Playback on a phone" loading="lazy"><figcaption>Phone: playback</figcaption></figure>
+  <figure><img src="img/meniu-telefon.png" alt="More menu on a phone" loading="lazy"><figcaption>Phone: more menu</figcaption></figure>
 </div>
 
 <h2>What you need</h2>

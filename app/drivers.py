@@ -27,7 +27,7 @@ VENDORI = {"hik": "Hikvision (ISAPI)", "onvif": "ONVIF (generic)", "demo": "Demo
 # camerele demo: go2rtc genereaza singur imaginea (ffmpeg lavfi), fara nicio camera reala —
 # interfata se poate vedea si testa pe o instalare goala, iar capturile publice nu arata
 # casa nimanui. Tiparul (testsrc2, smptebars...) vine din cam["demo"].
-DEMO_TIPARE = ("testsrc2", "testsrc", "smptebars", "life")   # fara mandelbrot: 135% CPU si bitrate urias
+DEMO_TIPARE = ("testsrc2", "testsrc", "smptebars", "gradients")   # fara mandelbrot (135% CPU, bitrate urias) si fara life (arata ca zgomot)
 
 
 def este_demo(cam):

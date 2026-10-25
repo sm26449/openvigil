@@ -14,6 +14,20 @@ o singură comandă de instalare.
 > nu un produs: pe alt hardware pot apărea colțuri netăiate. Licențele modelelor descărcate
 > sunt în [NOTICE.md](NOTICE.md).
 
+## Capturi
+
+Făcute în modul demo (camere sintetice), deci fără imagini reale.
+
+| Live | Înregistrări cu timeline |
+|---|---|
+| ![Live](docs/img/live-1366.png) | ![Înregistrări](docs/img/inregistrari-1366.png) |
+
+| HD | Setări → Stare |
+|---|---|
+| ![HD](docs/img/hd-1366.png) | ![Stare](docs/img/stare-1366.png) |
+
+<p align="center"><img src="docs/img/live-telefon.png" width="200" alt="Live pe telefon"> <img src="docs/img/inregistrari-telefon.png" width="200" alt="Înregistrări pe telefon"> <img src="docs/img/meniu-telefon.png" width="200" alt="Meniul pe telefon"></p>
+
 ## Ce face
 
 - **Înregistrează continuu** fluxul mare al fiecărei camere în segmente MP4 de 5 minute, cu

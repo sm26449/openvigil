@@ -160,7 +160,7 @@ function buildLive() {
     const lbl = document.createElement('div');
     lbl.className = 'label';
     lbl.innerHTML = html`<span class="nm">${c.id}. ${c.name}</span>`;
-    if (c.ip) {
+    if (c.ip && c.vendor !== 'demo') {   // camerele demo n-au adresa, doar un tipar
       const ip = document.createElement('span');
       ip.className = 'ip';
       ip.textContent = c.ip;

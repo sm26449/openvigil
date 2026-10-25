@@ -12,6 +12,7 @@ tests/node_modules
 tests/*.png
 go2rtc
 docs/ro
+docs/img
 README*.md
 CONTRIBUTING.md
 SECURITY.md

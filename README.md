@@ -15,6 +15,20 @@ install command.
 > edges outside the hardware it was built on, and read [NOTICE.md](NOTICE.md) for the
 > licences of the models it downloads.
 
+## Screenshots
+
+Taken on the built-in demo mode (synthetic cameras), so no real footage.
+
+| Live | Playback with timeline |
+|---|---|
+| ![Live grid](docs/img/live-1366.png) | ![Playback](docs/img/inregistrari-1366.png) |
+
+| HD view | Settings → Status |
+|---|---|
+| ![HD](docs/img/hd-1366.png) | ![Status](docs/img/stare-1366.png) |
+
+<p align="center"><img src="docs/img/live-telefon.png" width="200" alt="Live on a phone"> <img src="docs/img/inregistrari-telefon.png" width="200" alt="Playback on a phone"> <img src="docs/img/meniu-telefon.png" width="200" alt="More menu on a phone"></p>
+
 ## What it does
 
 - **Records continuously** from every camera's main stream into 5-minute MP4 segments,

@@ -177,7 +177,7 @@ header > nav button.active { background: var(--accent); color: #fff; }
 /* cutia playerului are o inaltime care nu depinde de fluxul din ea: raportul camerei (invatat la
    primul cadru, 16/9 pana atunci), plafonat ca timeline-ul sa ramana pe ecran. Asa un clic pe
    bara nu mai muta toata pagina in sus si in jos cat porneste fluxul nou. */
-#player { position: relative; overflow: hidden; width: 100%; aspect-ratio: var(--pb-ar, 16 / 9); max-height: min(70vh, calc(100vh - 330px)); min-height: 160px; margin: 0 auto; }
+#player { position: relative; overflow: hidden; width: 100%; aspect-ratio: var(--pb-ar, 16 / 9); max-height: min(70vh, calc(100vh - 370px)); min-height: 160px; margin: 0 auto; }
 #player:not(.grid) > .pb-dala { position: absolute; inset: 0; }
 #player:not(.grid) > .pb-dala.vechi { z-index: 0; }
 #player:not(.grid) > .pb-dala:not(.vechi) { z-index: 1; }

@@ -349,7 +349,7 @@ def _camera_noua_onvif(job, cams, ip, user, pw, port, name, http_port):
 jobs.register("camera_noua", _job_camera_noua)
 
 
-DEMO_CAMERE = (("Intrare", "testsrc2"), ("Curte", "testsrc"), ("Garaj", "smptebars"), ("Stradă", "life"))
+DEMO_CAMERE = (("Intrare", "testsrc2"), ("Curte", "testsrc"), ("Garaj", "smptebars"), ("Stradă", "gradients"))
 
 
 @bp.route("/api/demo/camere", methods=["POST"])
