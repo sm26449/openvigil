@@ -7,7 +7,7 @@ NVR auto-găzduit pentru camere IP (Hikvision în primul rând, ONVIF în al doi
 totul local, rulează AI pe GPU-ul tău și nu vorbește cu niciun cloud. Un singur stack Docker,
 o singură comandă de instalare.
 
-*English: [README.md](README.md) · manualul complet: [docs/ro/manual.md](docs/ro/manual.md)*
+**Site: [openvigil.dev](https://openvigil.dev)** · *English: [README.md](README.md) · manualul complet: [docs/ro/manual.md](docs/ro/manual.md)*
 
 > **Stare.** Scris pentru o instalație reală (18 camere Hikvision, un RTX 2000 Ada, în
 > funcțiune non-stop din 2026) și publicat așa cum e, sub AGPL-3.0. E un sistem care merge,

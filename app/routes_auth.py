@@ -51,7 +51,8 @@ LOGIN_HTML = ("""<!DOCTYPE html><html lang="ro"><head><meta charset="utf-8">
 <form method="post" action="/login"><h1>🎥 """ + C.NUME + """</h1><p class="err">{err}</p>
 <input name="user" placeholder="Utilizator" autofocus autocomplete="username">
 <input type="password" name="password" placeholder="Parola" autocomplete="current-password">
-<button type="submit">Intra</button></form></body></html>""")
+<button type="submit">Intra</button>
+<p class="hint"><a href="https://openvigil.dev" rel="noopener" style="color:#8b949e">OpenVigil</a> · openvigil.dev</p></form></body></html>""")
 
 SETUP_HTML = ("""<!DOCTYPE html><html lang="ro"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>NVR — primul cont</title>"""
@@ -64,7 +65,8 @@ SETUP_HTML = ("""<!DOCTYPE html><html lang="ro"><head><meta charset="utf-8">
  autocomplete="new-password" autofocus>
 <input type="password" name="password2" placeholder="Parola inca o data"
  autocomplete="new-password">
-<button type="submit">Creeaza contul</button></form></body></html>""")
+<button type="submit">Creeaza contul</button>
+<p class="hint"><a href="https://openvigil.dev" rel="noopener" style="color:#8b949e">OpenVigil</a> · openvigil.dev</p></form></body></html>""")
 
 TOTP_HTML = ("""<!DOCTYPE html><html lang="ro"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>NVR — cod</title>"""

@@ -6,6 +6,7 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 ## [Nepublicat]
 
 ### Adăugat
+- Site-ul proiectului: [openvigil.dev](https://openvigil.dev).
 - CI pe GitHub Actions: pytest fără GPU (`requirements-ci.txt`), verificarea modulelor ES,
   shellcheck, validarea fișierelor Compose, căutarea de secrete; build-ul imaginii cu testele
   rulate în container (săptămânal și la schimbări de Dockerfile/lock). Template-uri de issue și PR.

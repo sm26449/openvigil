@@ -7,7 +7,7 @@ A self-hosted NVR for IP cameras (Hikvision first, ONVIF second) that records ev
 locally, runs its own AI on your GPU and never talks to a cloud. One Docker stack, one
 install command.
 
-*Română: [README.ro.md](README.ro.md) · manual detaliat: [docs/ro/manual.md](docs/ro/manual.md)*
+**Website: [openvigil.dev](https://openvigil.dev)** · *Română: [README.ro.md](README.ro.md) · manual detaliat: [docs/ro/manual.md](docs/ro/manual.md)*
 
 > **Status.** Built for one real installation (18 Hikvision cameras, an NVIDIA RTX 2000 Ada,
 > running 24/7 since mid-2026) and published as is, under AGPL-3.0. The user interface and

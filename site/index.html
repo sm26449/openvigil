@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenVigil — self-hosted NVR with local AI</title>
+<meta name="description" content="OpenVigil is a self-hosted NVR for IP cameras (Hikvision, ONVIF): continuous recording, go2rtc streaming, YOLO11 detection, faces, re-ID and VLM descriptions on your own GPU. One Docker stack, one install command. AGPL-3.0.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<meta property="og:title" content="OpenVigil — self-hosted NVR with local AI">
+<meta property="og:description" content="Records everything locally, runs AI on your GPU, never talks to a cloud.">
+<meta property="og:url" content="https://openvigil.dev">
+<style>
+:root{--bg:#f6f7f4;--fg:#1b1f1a;--mut:#5d655c;--line:#d9ddd5;--card:#ffffff;--acc:#1f6f4a;--acc2:#e8f3ec;--code:#eef0ea}
+@media (prefers-color-scheme:dark){:root{--bg:#121513;--fg:#e8ebe6;--mut:#9aa399;--line:#2a302b;--card:#1a1e1b;--acc:#5fcf93;--acc2:#16271d;--code:#1f2420;color-scheme:dark}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:var(--acc)}main{max-width:900px;margin:0 auto;padding:40px 20px 60px}
+header{display:flex;align-items:center;gap:14px;margin-bottom:28px}header svg{width:44px;height:44px}
+h1{font-size:34px;margin:0;letter-spacing:-.5px}.tag{color:var(--mut);margin:0}
+.lead{font-size:19px;max-width:66ch}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin:28px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px}
+.card h3{margin:0 0 6px;font-size:16px}.card p{margin:0;color:var(--mut);font-size:14.5px}
+pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow-x:auto;font-size:14px}
+.btns{display:flex;flex-wrap:wrap;gap:10px;margin:22px 0}
+.btn{display:inline-block;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:600;border:1px solid var(--line);background:var(--card);color:var(--fg)}
+.btn.p{background:var(--acc);border-color:var(--acc);color:#fff}
+.note{background:var(--acc2);border-radius:10px;padding:12px 16px;font-size:14.5px}
+footer{margin-top:40px;color:var(--mut);font-size:13.5px;border-top:1px solid var(--line);padding-top:16px}
+h2{font-size:22px;margin:34px 0 10px}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="28" fill="none" stroke="currentColor" stroke-width="4"/><circle cx="32" cy="32" r="11" fill="currentColor"/><path d="M8 32h10M46 32h10M32 8v10M32 46v10" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>
+  <div><h1>OpenVigil</h1><p class="tag">Self-hosted NVR for IP cameras, with AI that stays in your house.</p></div>
+</header>
+
+<p class="lead">OpenVigil records every camera continuously on your own disk, streams live to the browser through go2rtc, and runs detection, face recognition, re-identification and natural-language descriptions on your own GPU. No cloud, no subscription, no phone-home. Hikvision first, ONVIF second.</p>
+
+<div class="btns">
+  <a class="btn p" href="https://github.com/sm26449/openvigil">Source on GitHub</a>
+  <a class="btn" href="https://github.com/sm26449/openvigil#install">Install guide</a>
+  <a class="btn" href="https://github.com/sm26449/openvigil/blob/main/README.ro.md">Română</a>
+</div>
+
+<pre><code>git clone https://github.com/sm26449/openvigil.git /opt/openvigil
+cd /opt/openvigil
+sudo ./install.sh</code></pre>
+<p class="note">One script: Docker, the NVIDIA container toolkit if you have a GPU, a <code>.env</code> with your time zone and ports, build, start. Then open <code>http://&lt;server&gt;:8079</code>, create the first account and add cameras.</p>
+
+<div class="grid">
+  <div class="card"><h3>Records everything</h3><p>5‑minute MP4 segments per camera, retention by days and free space, motion‑only mode, SHA‑256 chain of custody for evidence.</p></div>
+  <div class="card"><h3>Live and playback</h3><p>MSE/WebRTC live with two‑way audio, zoomable timeline, 0.5–8× speed on GPU, exports with boxes, time‑lapse, heatmaps.</p></div>
+  <div class="card"><h3>Local AI</h3><p>YOLO11 detection with fine‑tuning on your own frames, InsightFace faces, OSNet re‑ID, plates, Qwen2.5‑VL descriptions, SigLIP semantic search.</p></div>
+  <div class="card"><h3>Operations</h3><p>Home/away/night modes with rules, Telegram alerts and daily digest, Web Push, MQTT and webhooks, map view, siren/strobe/talk on supported cameras.</p></div>
+  <div class="card"><h3>Accounts and safety</h3><p>Admin and per‑camera viewers, 2FA, revocable sessions, CSRF, strict CSP, audit log; go2rtc never listens on the LAN.</p></div>
+  <div class="card"><h3>Honest about its origin</h3><p>Built for one real installation (18 cameras, an RTX 2000 Ada) and published as is. The UI is in Romanian. AGPL‑3.0; model licences in NOTICE.md.</p></div>
+</div>
+
+<h2>What you need</h2>
+<p>A Linux box with Docker, disk for recordings (about 1 GB per camera per hour at 4 MP H.265), cameras on a LAN the box can reach, and, for the AI features, an NVIDIA GPU. Without a GPU you still get recording, live view and CPU detection.</p>
+
+<h2>Română</h2>
+<p>OpenVigil e un NVR auto‑găzduit: înregistrează totul local, rulează AI pe placa ta video și nu vorbește cu niciun cloud. Instalarea e o singură comandă; manualul complet, în română, e în <a href="https://github.com/sm26449/openvigil/blob/main/docs/ro/manual.md">docs/ro/manual.md</a>.</p>
+
+<footer>OpenVigil · <a href="https://github.com/sm26449/openvigil">github.com/sm26449/openvigil</a> · AGPL‑3.0 · Not affiliated with Hikvision, NVIDIA or ONVIF.</footer>
+</main>
+</body>
+</html>
