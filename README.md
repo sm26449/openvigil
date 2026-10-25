@@ -1,5 +1,8 @@
 # OpenVigil
 
+[![CI](https://github.com/sm26449/openvigil/actions/workflows/ci.yml/badge.svg)](https://github.com/sm26449/openvigil/actions/workflows/ci.yml)
+[![Imagine Docker](https://github.com/sm26449/openvigil/actions/workflows/imagine.yml/badge.svg)](https://github.com/sm26449/openvigil/actions/workflows/imagine.yml)
+
 A self-hosted NVR for IP cameras (Hikvision first, ONVIF second) that records everything
 locally, runs its own AI on your GPU and never talks to a cloud. One Docker stack, one
 install command.
@@ -124,9 +127,32 @@ models/                                      Hugging Face cache (Qwen, SigLIP)
 `data/` is a bind mount: back it up, and if you want encryption at rest put it on a LUKS
 or fscrypt volume on the host. The app only notices when the directory is not writable.
 
+## Troubleshooting
+
+- **First build takes long / fails with "no space left"**: the image is ~11 GB and the build
+  downloads ~6 GB of wheels. Keep 20 GB free on the Docker data root (`docker system df`).
+- **`hwaccel GPU (h264_nvenc): NU` in the web log, or `torch cuda: False`**: the containers
+  don't see the GPU. Check `nvidia-smi` on the host, then `docker info | grep -i runtimes`
+  must list `nvidia`; rerun `sudo ./install.sh` to install the toolkit, and make sure you start
+  the stack with `-f docker-compose.gpu.yml`.
+- **Yellow banner "nu se poate scrie în directorul de înregistrări"**: the `DATA_DIR` on the
+  host is not writable by `PUID:PGID` from `.env` (`chown`), or the volume is read-only.
+- **Port already in use**: change `WEB_PORT`, `STREAM_PORT`, `AI_PORT`, `WEBRTC_PORT` or the
+  go2rtc addresses in `.env`, then `docker compose up -d`.
+- **Camera added but black tile / 502 thumbnail**: the host can't reach the camera's RTSP
+  (port 554) or the credentials lack RTSP rights; `docker compose logs go2rtc` shows the
+  dial error. Hikvision cameras also need ISAPI enabled for events, siren and talk.
+- **AI features missing**: faces, descriptions and semantic search need the GPU profile;
+  on CPU only detection runs. Re-ID needs the OSNet ONNX file (see NOTICE.md).
+- **Logs**: `docker compose logs -f web record ai go2rtc`; passwords never appear in them.
+
+Day-to-day operations (logs, updates, backups, ports, uninstall): [docs/operare.md](docs/operare.md) (Romanian).
+
 ## Tests
 
-- `tests/test_*.py`: unit and API tests, run inside the image (`docker compose run --rm web test`).
+- `tests/test_*.py`: unit and API tests. Run inside the image with `docker compose run --rm web test`,
+  or on a plain machine with `pip install -r requirements-ci.txt && python -m pytest -q tests`
+  (the AI-dependent tests skip themselves). This is what CI runs on every push.
 - `tests/ui-test.js`: a Playwright walk through the real UI (needs a running stack and
   `NVR_TEST_USER` / `NVR_TEST_PASS` for an admin account of a test installation).
 - `scripts/module_check.py`: static check of the ES modules.

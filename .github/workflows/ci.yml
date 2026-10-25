@@ -1,0 +1,61 @@
+# Verificari la fiecare push si PR: testele backend (fara GPU), modulele ES ale interfetei,
+# scripturile shell, fisierele Compose. Build-ul imaginii Docker e in imagine.yml (mai rar).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  teste:
+    name: pytest + lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TZ: Europe/Bucharest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-ci.txt
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Dependente (fara GPU/AI)
+        run: pip install -r requirements-ci.txt
+
+      - name: Sintaxa Python
+        run: python -m compileall -q app scripts config.py gen_go2rtc.py
+
+      - name: Teste backend
+        run: python -m pytest -q tests
+
+      - name: Modulele ES ale interfetei
+        run: python scripts/module_check.py
+
+      - name: Scripturi shell
+        run: |
+          sudo apt-get install -y -q shellcheck >/dev/null
+          bash -n install.sh docker/entrypoint.sh
+          shellcheck -S warning install.sh docker/entrypoint.sh
+
+      - name: Fisierele Compose
+        run: |
+          cp .env.example .env
+          docker compose -f docker-compose.yml config -q
+          docker compose -f docker-compose.yml -f docker-compose.gpu.yml config -q
+
+      - name: Fara secrete sau adrese ale unei instalatii in cod
+        run: |
+          # URL-uri RTSP cu parola reala (nu sabloane cu {…} sau exemplul user:parola) si tokeni Telegram
+          ! git grep -n -I -E "rtsp://[A-Za-z0-9_.-]+:[A-Za-z0-9%!._-]{8,}@|[0-9]{9,10}:[A-Za-z0-9_-]{35}" -- . ':!tests/test_*.py'

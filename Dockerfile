@@ -40,6 +40,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends python3-dev bui
 COPY --chown=${PUID}:${PGID} app app
 COPY --chown=${PUID}:${PGID} scripts scripts
 COPY --chown=${PUID}:${PGID} docs docs
+COPY --chown=${PUID}:${PGID} tests tests
 COPY --chown=${PUID}:${PGID} config.py gen_go2rtc.py requirements.txt LICENSE NOTICE.md ./
 COPY docker/entrypoint.sh /usr/local/bin/openvigil
 RUN chmod +x /usr/local/bin/openvigil && mkdir -p data /home/openvigil/.cache \

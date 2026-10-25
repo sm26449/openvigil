@@ -1,5 +1,8 @@
 # OpenVigil
 
+[![CI](https://github.com/sm26449/openvigil/actions/workflows/ci.yml/badge.svg)](https://github.com/sm26449/openvigil/actions/workflows/ci.yml)
+[![Imagine Docker](https://github.com/sm26449/openvigil/actions/workflows/imagine.yml/badge.svg)](https://github.com/sm26449/openvigil/actions/workflows/imagine.yml)
+
 NVR auto-găzduit pentru camere IP (Hikvision în primul rând, ONVIF în al doilea): înregistrează
 totul local, rulează AI pe GPU-ul tău și nu vorbește cu niciun cloud. Un singur stack Docker,
 o singură comandă de instalare.
@@ -63,6 +66,25 @@ cu `HTTPS=true` și `TRUSTED_PROXIES` în `.env`. Proxy-ul trimite `/api/ws` și
 `data/` e un director al gazdei: fă-i backup, iar dacă vrei criptare la rest pune-l pe un
 volum LUKS sau fscrypt. Copiile nocturne (configurație, baze de date) sunt criptate cu cheia
 din `data/backup_key`; fără ea nu valorează nimic, noteaz-o în altă parte.
+
+## Depanare
+
+- **Primul build durează sau cade cu „no space left”**: imaginea are ~11 GB, build-ul descarcă
+  ~6 GB. Ține 20 GB liberi unde stă Docker (`docker system df`).
+- **`hwaccel GPU (h264_nvenc): NU` în jurnalul web sau `torch cuda: False`**: containerele nu
+  văd placa. `nvidia-smi` pe gazdă, apoi `docker info | grep -i runtimes` trebuie să conțină
+  `nvidia`; rulează din nou `sudo ./install.sh` și pornește cu `-f docker-compose.gpu.yml`.
+- **Banner galben „nu se poate scrie în directorul de înregistrări”**: `DATA_DIR` nu e al lui
+  `PUID:PGID` din `.env` (`chown`) sau volumul e read-only.
+- **Port ocupat**: schimbă `WEB_PORT`, `STREAM_PORT`, `AI_PORT`, `WEBRTC_PORT` sau adresele
+  go2rtc în `.env`, apoi `docker compose up -d`.
+- **Camera adăugată, dar cadru negru / miniatură 502**: gazda nu ajunge la RTSP-ul camerei
+  (port 554) sau contul nu are drept de RTSP; `docker compose logs go2rtc` arată eroarea.
+  Camerele Hikvision au nevoie și de ISAPI pornit pentru evenimente, sirenă, difuzor.
+- **Lipsesc funcțiile AI**: fețele, descrierile și căutarea semantică cer profilul GPU; pe CPU
+  rulează doar detecția. Re-ID cere fișierul OSNet (vezi NOTICE.md).
+
+Operarea de zi cu zi (jurnale, actualizare, copii, porturi, dezinstalare): [docs/operare.md](docs/operare.md).
 
 ## Documentație
 

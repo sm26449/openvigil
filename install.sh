@@ -108,7 +108,10 @@ if [ ! -f .env ]; then
 else
   gata ".env exista, il pastrez"
 fi
-set -a; . ./.env; set +a
+# citim doar cheile de care avem nevoie (valorile pot avea spatii, nu „sourcing")
+env_val() { sed -n "s/^$1=//p" .env | tail -1 | tr -d '\r'; }
+DATA_DIR="$(env_val DATA_DIR)"; MODELS_DIR="$(env_val MODELS_DIR)"
+PUID="$(env_val PUID)"; PGID="$(env_val PGID)"; WEB_PORT="$(env_val WEB_PORT)"
 DATA_DIR="${DATA_DIR:-./data}"; MODELS_DIR="${MODELS_DIR:-./models}"
 mkdir -p "$DATA_DIR" "$MODELS_DIR"
 chown "${PUID:-$PUID_IMPLICIT}:${PGID:-$PGID_IMPLICIT}" "$DATA_DIR" "$MODELS_DIR"
@@ -127,7 +130,7 @@ gata "containerele ruleaza: $(docker compose "${FISIERE_COMPOSE[@]}" ps --servic
 # ---------------------------------------------------------------- 5. verificare
 spune "5/5 Verificare"
 PORT="${WEB_PORT:-8079}"
-for i in $(seq 1 60); do
+for _ in $(seq 1 60); do
   if curl -sf "http://127.0.0.1:${PORT}/healthz" >/dev/null 2>&1; then break; fi
   sleep 3
 done

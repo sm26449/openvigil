@@ -1,0 +1,13 @@
+# Dependentele minime pentru testele backend (pytest) pe o masina fara GPU/AI — folosite de CI.
+# Modulele grele (torch, ultralytics, insightface, transformers, onnxruntime) se importa lenes
+# in cod, iar testele care chiar le cer se sar (pytest.importorskip).
+Flask==3.1.3
+waitress==3.0.2
+requests==2.34.2
+opencv-python-headless==5.0.0.93
+numpy==2.5.2
+pillow==12.3.0
+paho-mqtt==2.1.0
+pywebpush==2.5.0
+segno==1.6.6
+pytest==9.1.1

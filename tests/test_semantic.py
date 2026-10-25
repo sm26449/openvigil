@@ -8,7 +8,8 @@ import sys
 
 import numpy as np
 import pytest
-import torch
+
+torch = pytest.importorskip("torch")   # fara torch (CI usor) testul se sare, nu pica
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app"))
 import semantic  # noqa: E402
