@@ -304,7 +304,8 @@ header > nav button.active { background: var(--accent); color: #fff; }
 
 /* tabul Setari */
 .set-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--s4); }
-.set-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r2); padding: var(--s5); }
+.set-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r2); padding: var(--s5); min-width: 0; overflow-wrap: anywhere; }
+.set-cols > * { min-width: 0; }   /* un card cu continut lat nu are voie sa largeasca grila */
 .set-card h2 { margin: 0 0 12px; font-size: var(--fs-md); color: #fff; }
 .set-card label { display: block; font-size: var(--fs-sm); color: var(--text-2); margin-bottom: 10px; }
 .set-card label.inline { display: inline-flex; align-items: center; gap: var(--s2); margin-right: 14px; font-size: var(--fs-sm); }
@@ -1626,4 +1627,30 @@ dialog#reid::backdrop { background: rgba(0, 0, 0, .6); }
   #hd-shift::-webkit-scrollbar { display: none; }
   #hd-shift > * { flex: none; }
   #hd-tl-wrap { padding: var(--s2) var(--s3) calc(var(--s3) + env(safe-area-inset-bottom, 0px)); }
+}
+
+
+/* ---------- telefon si tableta ingusta: Setari pe o coloana, navigarea ca segment derulabil ---------- */
+@media (max-width: 900px) {
+  #set:not(.hidden) { display: block; }
+  .set-nav { position: sticky; top: 53px; z-index: 6; flex-direction: row; gap: var(--s1); overflow-x: auto; scrollbar-width: none; background: var(--bg); padding: var(--s2) 0; margin-bottom: var(--s3); }
+  .set-nav::-webkit-scrollbar { display: none; }
+  .snav-item { flex: none; border-left: 0; border-bottom: 2px solid transparent; white-space: nowrap; padding: var(--s2) var(--s3); }
+  .snav-item.on { border-left: 0; border-bottom-color: var(--accent); }
+  #set-nav #set-q { margin-left: var(--s2); flex: 0 0 150px; max-width: 150px; }
+  #set-nav .set-adv { flex: none; }
+  .set-cols { grid-template-columns: 1fr; }
+  .set-card { padding: var(--s4); }
+  /* galeria de fete: imaginile si actiunile se rup pe randuri, nu ies din card */
+  .fc-group .fc-g-imgs { flex-wrap: wrap; }
+  .fc-group .fc-g-imgs img { width: 56px; height: 56px; }
+  .fc-group .fc-g-meta { min-width: 0; flex: 1 1 100%; }
+  .fc-group .fc-g-act { margin-left: 0; width: 100%; }
+  .fc-add input[type="text"], .fc-add input:not([type]) { width: 100%; }
+  .ru-grid { grid-template-columns: 1fr; }
+  /* AI: aceeasi bara de sectiuni derulabila ca la Setari; subtitlurile mici dispar */
+  #ai-nav { position: sticky; top: 53px; z-index: 6; display: flex; flex-direction: row; gap: var(--s1); overflow-x: auto; scrollbar-width: none; background: var(--bg); padding: var(--s2) 0; margin-bottom: var(--s3); }
+  #ai-nav::-webkit-scrollbar { display: none; }
+  .ainav-item { flex: none; padding: var(--s2) var(--s3); }
+  .ainav-item small { display: none; }
 }
