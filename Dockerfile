@@ -32,18 +32,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && curl -fsSL -o /usr/local/bin/go2rtc \
         "https://github.com/AlexxIT/go2rtc/releases/download/v${GO2RTC_VERSION}/go2rtc_linux_amd64" \
     && chmod +x /usr/local/bin/go2rtc \
-    && (getent group "${PGID}" || groupadd -g "${PGID}" openvigil) \
-    && useradd -m -u "${PUID}" -g "${PGID}" -s /bin/bash openvigil 2>/dev/null \
-       || usermod -l openvigil -d /home/openvigil -m "$(getent passwd "${PUID}" | cut -d: -f1)"
+    && (userdel -r ubuntu 2>/dev/null || true) \
+    && (getent group "${PGID}" >/dev/null || groupadd -g "${PGID}" openvigil) \
+    && useradd -m -u "${PUID}" -g "${PGID}" -s /bin/bash openvigil
 WORKDIR /opt/openvigil
 COPY --from=builder /opt/openvigil/venv venv
-COPY --chown=openvigil app app
-COPY --chown=openvigil scripts scripts
-COPY --chown=openvigil docs docs
-COPY --chown=openvigil config.py gen_go2rtc.py requirements.txt requirements.lock LICENSE NOTICE.md ./
+COPY --chown=${PUID}:${PGID} app app
+COPY --chown=${PUID}:${PGID} scripts scripts
+COPY --chown=${PUID}:${PGID} docs docs
+COPY --chown=${PUID}:${PGID} config.py gen_go2rtc.py requirements.txt requirements.lock LICENSE NOTICE.md ./
 COPY docker/entrypoint.sh /usr/local/bin/openvigil
 RUN chmod +x /usr/local/bin/openvigil && mkdir -p data /home/openvigil/.cache \
-    && chown -R openvigil:"${PGID}" data /home/openvigil
+    && chown -R "${PUID}:${PGID}" data /home/openvigil
 USER openvigil
 VOLUME ["/opt/openvigil/data", "/home/openvigil/.cache"]
 ENTRYPOINT ["/usr/local/bin/openvigil"]
