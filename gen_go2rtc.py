@@ -49,21 +49,27 @@ NVENC = ("-c:v h264_nvenc -profile:v main -pix_fmt yuv420p -preset p4 -rc vbr -c
 
 
 
+def _asculta(url, port_implicit):
+    """'http://127.0.0.1:1984' -> '127.0.0.1:1984': go2rtc asculta exact unde il cauta clientii."""
+    u = urllib.parse.urlsplit(url)
+    return f"{u.hostname or '127.0.0.1'}:{u.port or port_implicit}"
+
+
 def generate():
     lines = [
         # API-ul si RTSP-ul doar pe localhost: browserul vine prin releul autentificat din
         # nvr-web (app/stream_proxy.py, :8076), nvr-ai/track prin 127.0.0.1. Direct pe LAN
         # go2rtc n-are nicio autentificare si ar ocoli conturile interfetei.
         "api:",
-        '  listen: "127.0.0.1:1984"',
+        f'  listen: "{_asculta(C.GO2RTC_API, 1984)}"',
         # pagina e servita de pe :8079, WS vine prin releu de pe :8076 (cross-origin)
         '  origin: "*"',
         "rtsp:",
-        '  listen: "127.0.0.1:8554"',
+        f'  listen: "{_asculta(C.GO2RTC_RTSP, 8554)}"',
         # WebRTC ramane pe toate interfetele: media (DTLS-SRTP) merge direct intre browser si
         # go2rtc, iar fara semnalizarea de pe /api/ws (autentificata) portul nu da nimic
         "webrtc:",
-        '  listen: ":8555"',
+        f'  listen: ":{C.WEBRTC_PORT}"',
         "log:",
         "  level: info",
         # template custom: encode H.264 pe GPU (NVENC). Referit prin '#video=h264n' din backend.

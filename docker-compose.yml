@@ -34,7 +34,7 @@ services:
         PGID: ${PGID:-1000}
     command: go2rtc
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://127.0.0.1:1984/api"]
+      test: ["CMD-SHELL", "curl -sf ${GO2RTC_API:-http://127.0.0.1:1984}/api"]
       interval: 15s
       timeout: 5s
       retries: 5

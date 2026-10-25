@@ -17,6 +17,7 @@ import time
 
 import settings
 import logare
+import config as C
 
 RO = {"person": "om", "car": "masina", "motorcycle": "motocicleta", "bus": "autobuz",
       "truck": "camion", "bird": "pasare", "cat": "pisica", "dog": "caine",
@@ -30,7 +31,7 @@ LOST_TTL = 2.5          # secunde fara ID -> obiectul a iesit din cadru
 TRAIL_PAS = 2.0         # secunde intre punctele de traiectorie (episoade E3)
 TRAIL_MAX = 150         # puncte pastrate; la umplere se injumatateste rezolutia
 MIN_MOVE = 40           # px de deplasare neta sub care obiectul e "stationar"
-RTSP = "rtsp://127.0.0.1:8554/cam{cam_id}"
+RTSP = C.GO2RTC_RTSP + "/cam{cam_id}"
 
 workers = {}
 

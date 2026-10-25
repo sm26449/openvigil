@@ -44,6 +44,8 @@ AI_PORT = _int("AI_PORT", 8077)
 # go2rtc (motorul de streaming): API si RTSP, doar pe localhost
 GO2RTC_API = _text("GO2RTC_API", "http://127.0.0.1:1984")
 GO2RTC_RTSP = _text("GO2RTC_RTSP", "rtsp://127.0.0.1:8554")
+# WebRTC (media direct browser <-> go2rtc, pe toate interfetele; semnalizarea e autentificata)
+WEBRTC_PORT = _int("WEBRTC_PORT", 8555)
 
 # in spatele unui reverse proxy cu TLS (Traefik, Caddy, nginx): cookie Secure + adresa
 # clientului din X-Forwarded-For, dar numai de la proxy-urile de incredere
