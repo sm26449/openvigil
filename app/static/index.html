@@ -14,25 +14,34 @@
 <header>
   <h1 id="nume-sistem">OpenVigil</h1>
   <nav>
-    <button id="tab-live" class="active">Live</button>
-    <button id="tab-harta">Harta</button>
-    <button id="tab-ev">Evenimente <span id="inc-badge" class="tab-badge hidden">0</span></button>
-    <button id="tab-pb">Înregistrări</button>
-    <button id="tab-ai">AI</button>
-    <button id="tab-cams">Camere</button>
-    <button id="tab-set">Setări</button>
-    <button id="tab-stare" title="Starea serverului, înregistrării și AI-ului (Setări → Stare)">Stare</button>
+    <button id="tab-live" class="active"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v11H3z"/><path d="M8 21h8M12 16v5"/></svg><span>Live</span></button>
+    <button id="tab-harta"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>Harta</span></button>
+    <button id="tab-ev"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4z"/><path d="M10 21h4"/></svg><span>Evenimente</span> <span id="inc-badge" class="tab-badge hidden">0</span></button>
+    <button id="tab-pb"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Înregistrări</span></button>
+    <button id="tab-ai"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg><span>AI</span></button>
+    <button id="tab-cams"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h12v10H3z"/><path d="M15 10l6-3v10l-6-3z"/></svg><span>Camere</span></button>
+    <button id="tab-set"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Setări</span></button>
+    <button id="tab-stare" title="Starea serverului, înregistrării și AI-ului (Setări → Stare)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg><span>Stare</span></button>
+    <button id="nav-more" class="doar-mobil" aria-haspopup="dialog" aria-controls="sheet" aria-expanded="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg><span>Mai mult</span></button>
   </nav>
   <div id="mod-chip" class="seg mod-seg" role="group" aria-label="Modul sistemului" title="Modul: regulile pot fi valabile doar acasă, doar plecat sau doar noaptea">
-    <button data-mod="acasa">🏠 Acasă</button><button data-mod="plecat">🔒 Plecat</button><button data-mod="noapte">🌙 Noapte</button>
+    <button data-mod="acasa" title="Acasă">🏠 <span>Acasă</span></button><button data-mod="plecat" title="Plecat">🔒 <span>Plecat</span></button><button data-mod="noapte" title="Noapte">🌙 <span>Noapte</span></button>
   </div>
-  <button id="add-cam" title="Adaugă o camera (IP direct, nu prin NVR)">Adaugă camera</button>
+  <button id="add-cam" title="Adaugă o cameră (IP direct)"><span class="plus" aria-hidden="true">+</span> <span>Adaugă camera</span></button>
   <div id="pulse" title="Starea fiecărei camere — click pentru a o deschide"></div>
   <input id="q-global" class="search" placeholder="Caută: descriere, număr, persoană… ( / )" aria-label="Caută în poze, numere, persoane și jurnal" autocomplete="off">
   <span id="quick-links"></span>
   <span id="user-chip" title="Utilizatorul conectat"></span>
   <span id="status"></span>
 </header>
+<div id="sheet" class="hidden" role="dialog" aria-modal="true" aria-label="Mai mult">
+  <div class="sheet-fundal" data-inchide></div>
+  <div class="sheet-cutie">
+    <div class="sheet-maner" aria-hidden="true"></div>
+    <div id="sheet-cont"></div>
+    <button type="button" class="sheet-inchide" data-inchide>Închide</button>
+  </div>
+</div>
 <div id="blocat" class="hidden" role="alert">
   <span>🔒 În directorul de înregistrări nu se poate scrie: verifică volumul, permisiunile sau cheia de criptare a gazdei. Înregistrarea așteaptă.</span>
 </div>

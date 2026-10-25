@@ -39,6 +39,44 @@ function showEv(pane, updateHash = true) {
 }
 const evPaneVisible = (pane) => !$('#ev').classList.contains('hidden') && evPane === pane;
 $('#ev-nav').onclick = (e) => { const b = e.target.closest('button[data-evpane]'); if (b) showEv(b.dataset.evpane); };
+/* ---------- telefon: bara de jos cu 4 taburi + „Mai mult”; restul antetului intra in foaie ----------
+   Elementele sunt ACELEASI (handlerele raman), doar se muta in DOM dupa latime. */
+const navMobil = window.matchMedia('(max-width: 760px)');
+const IN_FOAIE = ['tab-harta', 'tab-ai', 'tab-set', 'tab-stare', 'add-cam', 'q-global', 'quick-links', 'user-chip', 'status'];
+const navAcasa = {};   // id -> [parinte, urmatorul frate] ca sa le punem inapoi
+function asazaNav() {
+  const foaie = $('#sheet-cont');
+  if (!foaie) return;
+  if (navMobil.matches) {
+    for (const id of IN_FOAIE) {
+      const el = document.getElementById(id);
+      if (!el || el.parentElement === foaie) continue;
+      navAcasa[id] = [el.parentElement, el.nextSibling];
+      el.classList.add('in-foaie');
+      foaie.appendChild(el);
+    }
+  } else {
+    inchideFoaia();
+    for (const id of IN_FOAIE) {
+      const el = document.getElementById(id);
+      if (!el || !navAcasa[id] || el.parentElement !== foaie) continue;
+      const [p, next] = navAcasa[id];
+      el.classList.remove('in-foaie');
+      p.insertBefore(el, next && next.parentElement === p ? next : null);
+    }
+  }
+}
+function deschideFoaia() { $('#sheet').classList.remove('hidden'); $('#nav-more').setAttribute('aria-expanded', 'true'); $('#nav-more').classList.add('active'); }
+function inchideFoaia() { const s = $('#sheet'); if (!s || s.classList.contains('hidden')) return; s.classList.add('hidden'); $('#nav-more').setAttribute('aria-expanded', 'false'); $('#nav-more').classList.remove('active'); }
+$('#nav-more') && ($('#nav-more').onclick = () => ($('#sheet').classList.contains('hidden') ? deschideFoaia() : inchideFoaia()));
+$('#sheet') && $('#sheet').addEventListener('click', (e) => {
+  if (e.target.closest('[data-inchide]')) { inchideFoaia(); return; }
+  if (e.target.closest('button, a')) setTimeout(inchideFoaia, 0);   // dupa handlerul tabului
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('#sheet') && !$('#sheet').classList.contains('hidden')) inchideFoaia(); });
+navMobil.addEventListener('change', asazaNav);
+asazaNav();
+
 /* ---------- rutare pe hash: #live, #inc, #pb/<cam>/<zi>/<sec>, #hd/<cam> ----------
    Adresa spune unde esti, deci se poate trimite (Telegram: "vezi aici") si deschide direct
    momentul; Inapoi pe telefon inchide overlay-ul HD in loc sa iasa din aplicatie. */
