@@ -38,7 +38,7 @@ jobs:
       - name: Ce e inauntru
         run: |
           docker run --rm openvigil:ci ffmpeg -hide_banner -version | head -1
-          docker run --rm openvigil:ci go2rtc -version
+          docker run --rm --entrypoint /usr/local/bin/go2rtc openvigil:ci -version   # fara entrypoint: `go2rtc` ar porni serverul
           docker run --rm openvigil:ci venv/bin/python -c "import torch, ultralytics, insightface, transformers, onnxruntime; print('torch', torch.__version__, '| onnx', onnxruntime.get_available_providers())"
 
       - name: Teste in imagine
