@@ -1,35 +1,24 @@
 # OpenVigil — o singura imagine pentru toate serviciile (web, record, ai, go2rtc).
 # Straturile grele (venv cu torch/CUDA) sunt comune; comanda de pornire alege serviciul.
+# O singura etapa, intentionat: venv-ul de ~10 GB nu se copiaza intre etape, deci build-ul
+# cere pe disc doar imaginea finala, nu de doua ori atat.
 #
 #   docker compose build            # sau: docker build -t openvigil .
 #
-ARG GO2RTC_VERSION=1.9.14
-
-# ---------------------------------------------------------------- venv cu toate bibliotecile
-FROM ubuntu:24.04 AS builder
-ENV DEBIAN_FRONTEND=noninteractive PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        python3 python3-venv python3-dev build-essential ca-certificates git \
-    && rm -rf /var/lib/apt/lists/*
-WORKDIR /opt/openvigil
-COPY requirements.lock .
-RUN python3 -m venv venv && venv/bin/pip install --upgrade pip wheel \
-    && venv/bin/pip install --no-deps -r requirements.lock
-# --no-deps: lock-ul e un `pip freeze` complet; fara el pip ar adauga dependente nepinuite
-# (ex. onnxruntime CPU peste onnxruntime-gpu, care pierde providerul CUDA)
-
-# ---------------------------------------------------------------- imaginea finala
 FROM ubuntu:24.04
-ARG GO2RTC_VERSION
+ARG GO2RTC_VERSION=1.9.14
 ARG PUID=1000
 ARG PGID=1000
 ENV DEBIAN_FRONTEND=noninteractive PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1 \
     TZ=UTC HF_HOME=/home/openvigil/.cache/huggingface \
     NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
+WORKDIR /opt/openvigil
+
 # ffmpeg din Ubuntu are h264_nvenc/hevc_nvenc si -hwaccel cuda: bibliotecile driverului vin
 # de la nvidia-container-toolkit la rulare. Fara GPU raman libx264 si decodarea pe CPU.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        python3 ffmpeg curl ca-certificates tzdata libglib2.0-0 libgomp1 smartmontools \
+        python3 python3-venv ffmpeg curl ca-certificates tzdata libglib2.0-0 libgomp1 smartmontools \
     && rm -rf /var/lib/apt/lists/* \
     && curl -fsSL -o /usr/local/bin/go2rtc \
         "https://github.com/AlexxIT/go2rtc/releases/download/v${GO2RTC_VERSION}/go2rtc_linux_amd64" \
@@ -37,12 +26,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && (userdel -r ubuntu 2>/dev/null || true) \
     && (getent group "${PGID}" >/dev/null || groupadd -g "${PGID}" openvigil) \
     && useradd -m -u "${PUID}" -g "${PGID}" -s /bin/bash openvigil
-WORKDIR /opt/openvigil
-COPY --from=builder /opt/openvigil/venv venv
+
+# venv-ul: exact lock-ul (`pip freeze` complet), cu --no-deps ca pip sa nu adauge dependente
+# nepinuite (ex. onnxruntime CPU peste onnxruntime-gpu, care pierde providerul CUDA).
+# Uneltele de compilare se scot in acelasi strat, ca sa nu ramana in imagine.
+COPY requirements.lock .
+RUN apt-get update && apt-get install -y --no-install-recommends python3-dev build-essential git \
+    && python3 -m venv venv && venv/bin/pip install --upgrade pip wheel \
+    && venv/bin/pip install --no-deps -r requirements.lock \
+    && apt-get purge -y --auto-remove python3-dev build-essential git \
+    && rm -rf /var/lib/apt/lists/* /root/.cache
+
 COPY --chown=${PUID}:${PGID} app app
 COPY --chown=${PUID}:${PGID} scripts scripts
 COPY --chown=${PUID}:${PGID} docs docs
-COPY --chown=${PUID}:${PGID} config.py gen_go2rtc.py requirements.txt requirements.lock LICENSE NOTICE.md ./
+COPY --chown=${PUID}:${PGID} config.py gen_go2rtc.py requirements.txt LICENSE NOTICE.md ./
 COPY docker/entrypoint.sh /usr/local/bin/openvigil
 RUN chmod +x /usr/local/bin/openvigil && mkdir -p data /home/openvigil/.cache \
     && chown -R "${PUID}:${PGID}" data /home/openvigil

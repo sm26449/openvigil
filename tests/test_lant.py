@@ -64,3 +64,22 @@ def test_verificare_mutare_si_curatare(tmp_path):
     assert lant.verifica(7, a[2])["ok"] is False           # continutul modificat mai sus
     # curatare: fisierul nu mai e listat -> amprenta dispare
     assert lant.curata(lambda cam: [], [7]) == 1 and lant.get(7, a[2]) is None
+
+
+def test_caile_absolute_vechi_se_rezolva_in_radacina_noua(tmp_path, monkeypatch):
+    """Lantul scris de o instalare veche (cai absolute de pe gazda) ramane valabil cand codul
+    ruleaza din alt director sau din container: se recalculeaza fata de ROOT."""
+    rec = tmp_path / "radacina" / "data" / "recordings" / "cam1"
+    rec.mkdir(parents=True)
+    f = rec / "2026-10-25_18-45-08Z.mp4"
+    f.write_bytes(b"x" * 100)
+    monkeypatch.setattr(lant, "ROOT", str(tmp_path / "radacina"))
+    lant._c().execute("INSERT INTO segmente(cam, nume, epoch, cale, octeti, sha256, calculat) "
+                      "VALUES(1, ?, 1, ?, 100, ?, 1)",
+                      (f.name, "/alta/gazda/data/recordings/cam1/" + f.name, lant.hash_fisier(str(f))))
+    assert lant.get(1, f.name)["cale"] == str(f)
+    assert lant.verifica(1, f.name)["ok"] is True
+    # ce se scrie de acum e relativ la radacina
+    lant.inregistreaza(1, 2, str(f))
+    rand = lant._c().execute("SELECT cale FROM segmente WHERE cam=1 AND nume=?", (f.name,)).fetchone()
+    assert rand[0] == "data/recordings/cam1/" + f.name

@@ -55,6 +55,10 @@ def _c():
             c.execute("PRAGMA journal_mode=WAL")
             c.execute("PRAGMA synchronous=NORMAL")
             c.executescript(SCHEMA)
+            # caile vechi, absolute (ale altei instalari sau ale gazdei, cand rulam in container),
+            # devin relative la radacina proiectului: data/recordings/camN/nume.mp4
+            c.execute("UPDATE segmente SET cale = substr(cale, instr(cale, '/data/recordings/') + 1) "
+                      "WHERE cale LIKE '/%' AND instr(cale, '/data/recordings/') > 0")
             for suf in ("", "-wal", "-shm"):
                 try:
                     os.chmod(DB_FILE + suf, 0o600)
@@ -81,6 +85,25 @@ def hash_fisier(cale):
     return h.hexdigest()
 
 
+def _rel(cale):
+    """Pe disc memoram calea relativa la radacina proiectului cand fisierul e sub ea, ca lantul
+    sa ramana valabil daca instalarea se muta (alt director, container). Arhiva din afara
+    radacinii ramane absoluta."""
+    cale = os.path.abspath(cale)
+    if cale.startswith(ROOT + os.sep):
+        return os.path.relpath(cale, ROOT)
+    return cale
+
+
+def _abs(cale):
+    if os.path.isabs(cale):
+        if os.path.exists(cale):
+            return cale
+        i = cale.find("/data/recordings/")           # cale absoluta a altei instalari
+        return os.path.join(ROOT, cale[i + 1:]) if i >= 0 else cale
+    return os.path.join(ROOT, cale)
+
+
 def inregistreaza(cam, epoch, cale):
     """Hash-uieste un segment inchis si il memoreaza. Intoarce randul."""
     sha = hash_fisier(cale)
@@ -88,12 +111,12 @@ def inregistreaza(cam, epoch, cale):
     nume = os.path.basename(cale)
     with _lock:
         _c().execute("INSERT OR REPLACE INTO segmente(cam, nume, epoch, cale, octeti, sha256, calculat, arhivat) "
-                     "VALUES(?,?,?,?,?,?,?,NULL)", (cam, nume, int(epoch), cale, octeti, sha, time.time()))
-    return {"cam": cam, "nume": nume, "epoch": int(epoch), "cale": cale, "octeti": octeti, "sha256": sha}
+                     "VALUES(?,?,?,?,?,?,?,NULL)", (cam, nume, int(epoch), _rel(cale), octeti, sha, time.time()))
+    return {"cam": cam, "nume": nume, "epoch": int(epoch), "cale": os.path.abspath(cale), "octeti": octeti, "sha256": sha}
 
 
 def _rand(r):
-    return {"cam": r[0], "nume": r[1], "epoch": r[2], "cale": r[3], "octeti": r[4],
+    return {"cam": r[0], "nume": r[1], "epoch": r[2], "cale": _abs(r[3]), "octeti": r[4],
             "sha256": r[5], "calculat": r[6], "arhivat": r[7]}
 
 
@@ -128,7 +151,7 @@ def muta(cam, nume, cale_noua, arhivat=True):
     """Dupa mutarea in arhiva: calea noua + momentul."""
     with _lock:
         _c().execute("UPDATE segmente SET cale=?, arhivat=? WHERE cam=? AND nume=?",
-                     (cale_noua, time.time() if arhivat else None, cam, nume))
+                     (_rel(cale_noua), time.time() if arhivat else None, cam, nume))
 
 
 def sterge(cam, nume):
