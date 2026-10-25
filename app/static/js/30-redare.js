@@ -388,9 +388,10 @@ $('#pb-shot').onclick = () => {
    moment. Fiecare element de pe bara (segment, punct de eveniment, marcaj) isi tine
    secunda(ele) in data-sec/data-end, iar relayoutTimeline() le aseaza — asa zoom-ul nu
    trebuie sa stie cine a desenat ce. 1 px ≈ 220 s pe telefon la 24h; la 15 min ≈ 2 s. */
-const tlView = { start: 0, span: 86400 };
+const tlView = { start: 0, span: 86400, manualLa: 0 };
 const tlX = (sec) => ((sec - tlView.start) / tlView.span * 100) + '%';
-function tlSetView(span, center) {
+function tlSetView(span, center, auto = false) {
+  if (!auto) tlView.manualLa = Date.now();   // utilizatorul a ales fereastra: n-o mutam dupa cursor imediat
   span = Math.max(300, Math.min(86400, span));
   const mid = center ?? tlView.start + tlView.span / 2;
   tlView.span = span;
@@ -413,6 +414,7 @@ function relayoutTimeline() {
   }
   if (tl._cursor && tl._cursorSec != null) placeCursor(tl._cursorSec);
   if (tl._sel && tl._selRange) placeSel(...tl._selRange);
+  grupeazaPuncte(tl);
   // gradatii: pasul care da cel mult ~12 etichete
   const ticks = $('#ticks');
   ticks.innerHTML = '';
@@ -426,6 +428,35 @@ function relayoutTimeline() {
   }
   const r = $('#tl-range');
   if (r) r.textContent = span >= 86400 ? '' : `${hms(start).slice(0, 5)} – ${hms(end).slice(0, 5)}`;
+}
+/* punctele mai apropiate de ~7 px se strang intr-o pastila cu numarul lor; clicul pe pastila
+   apropie bara in jurul lor, in loc sa porneasca redarea „la nimereala”. */
+function grupeazaPuncte(tl) {
+  for (const g of tl.querySelectorAll('.evgrup')) g.remove();
+  const w = tl.getBoundingClientRect().width || 1000;
+  const pxSec = w / tlView.span;
+  const dots = [...tl.querySelectorAll('.evdot')].filter((d) => d.style.display !== 'none')
+    .map((d) => ({ el: d, sec: +d.dataset.sec })).sort((a, b) => a.sec - b.sec);
+  let grup = [];
+  const inchide = () => {
+    if (grup.length < 2) { grup = []; return; }
+    const a = grup[0].sec, b = grup[grup.length - 1].sec, mid = (a + b) / 2;
+    for (const d of grup) d.el.style.display = 'none';
+    const g = document.createElement('span');
+    g.className = 'evgrup';
+    g.textContent = grup.length;
+    g.title = `${grup.length} evenimente ${hms(a).slice(0, 5)}–${hms(b).slice(0, 5)} — clic pentru a apropia`;
+    g.style.left = tlX(mid);
+    g.onclick = (e) => { e.stopPropagation(); tlSetView(Math.max(300, Math.min(tlView.span / 4, Math.max(900, (b - a) * 2))), mid); };
+    tl.appendChild(g);
+    grup = [];
+  };
+  for (const d of dots) {
+    // grup nou la o pauza de >7 px sau cand grupul ar depasi ~24 px (o zona densa devine un sir de pastile, nu o pastila de 3 ore)
+    if (grup.length && ((d.sec - grup[grup.length - 1].sec) * pxSec > 7 || (d.sec - grup[0].sec) * pxSec > 24)) inchide();
+    grup.push(d);
+  }
+  inchide();
 }
 function placeCursor(sec) {
   const tlA11y = $('#timeline'); if (tlA11y) { tlA11y.setAttribute('aria-valuenow', Math.round(sec)); tlA11y.setAttribute('aria-valuetext', hms(Math.round(sec))); }
@@ -482,7 +513,7 @@ function renderTimeline(date) {
   };
   let dragDe = null;
   tl.onpointerdown = (e) => {
-    if (e.target.classList.contains('evdot')) return;   // clic pe un eveniment, nu tragere
+    if (e.target.classList.contains('evdot') || e.target.classList.contains('evgrup')) return;   // clic pe un eveniment/grup, nu tragere
     dragDe = secLa(e);
     tl.setPointerCapture(e.pointerId);
   };
@@ -500,7 +531,7 @@ function renderTimeline(date) {
     if (b - a < Math.max(2, tlView.span / 400)) {          // a fost un clic, nu o tragere
       sel.style.display = 'none'; tl._selRange = null;
       placeCursor(s);
-      playFrom(date, s);
+      if (pbDate === date) pbSeek(s); else playFrom(date, s);
       return;
     }
     const b2 = Math.min(a + 1800, b);                      // exportul e plafonat la 30 min
@@ -527,6 +558,7 @@ let pbSpeed = 1;
 // 9 fluxuri concomitente merg la 2.6x fata de timpul real pe masina asta, deci 3x3 incape
 // cu marja chiar si peste inregistrare si detectie.
 const PB_MAX = 9;
+const pbAspect = {};   // cam -> 'w / h', invatat de la primul cadru; cutia playerului nu sare intre fluxuri
 S.pbExtra = [];
 
 function renderMultiList() {
@@ -579,8 +611,13 @@ async function playFrom(date, sec) {
   $('#pb-play').classList.remove('paused');
 
   const wrap = $('#player');
-  wrap.innerHTML = '';
+  // nu golim: ce era ramane „vechi” pana cand noul flux da primul cadru (sau 4 s)
+  for (const c of wrap.children) c.classList.add('vechi');
+  const curataVechi = () => { for (const c of [...wrap.querySelectorAll('.vechi')]) c.remove(); };
+  if (toate.length > 1 || wrap.classList.contains('grid')) curataVechi();   // grila: fara suprapunere
   wrap.classList.toggle('grid', toate.length > 1);
+  if (toate.length === 1 && pbAspect[primar]) wrap.style.setProperty('--pb-ar', pbAspect[primar]);
+  setTimeout(curataVechi, 4000);
   if (toate.length > 1) {
     // patrat cat mai apropiat: 2 camere -> 2 coloane, 5 -> 3, 9 -> 3
     wrap.style.setProperty('--col', Math.ceil(Math.sqrt(toate.length)));
@@ -611,6 +648,16 @@ async function playFrom(date, sec) {
       et.textContent = nume[ch] || 'cam ' + ch;
       dala.appendChild(et);
     }
+    // primul cadru al noului flux: retinem raportul camerei (cutia nu mai sare data viitoare)
+    // si abia atunci scoatem videoul vechi
+    dala.addEventListener('loadeddata', (ev) => {
+      const v = ev.target;
+      if (v.videoWidth && v.videoHeight) {
+        pbAspect[ch] = `${v.videoWidth} / ${v.videoHeight}`;
+        if (toate.length === 1) wrap.style.setProperty('--pb-ar', pbAspect[ch]);
+      }
+      curataVechi();
+    }, true);
     // mic delay ca go2rtc sa porneasca ffmpeg-ul; MSE (native 6MP, WebRTC ar refuza)
     setTimeout(() => dala.appendChild(streamEl(d.stream, HD_MODE, false, hdBufferTarget())), 400);
     wrap.appendChild(dala);
@@ -627,6 +674,7 @@ async function playFrom(date, sec) {
 
 /* cursorul avanseaza in timpul redarii, urmarind timpul din player */
 let curTimer = null;
+let curUltimVizibil = true;
 function startCursor(date, sec0) {
   pbDate = date;
   pbPos = sec0;
@@ -642,9 +690,13 @@ function startCursor(date, sec0) {
     // la viteza marita, o secunda redata inseamna pbSpeed secunde de material
     pbPos = sec0 + played * pbSpeed;
     placeCursor(pbPos);
-    // bara marita urmareste cursorul: cand iese din fereastra, fereastra se muta dupa el
-    if (tlView.span < 86400 && (pbPos > tlView.start + tlView.span * 0.98 || pbPos < tlView.start))
-      tlSetView(tlView.span, pbPos + tlView.span * 0.3);
+    // bara marita urmareste cursorul: cand IESE din fereastra (era inauntru la tic-ul trecut),
+    // fereastra se muta dupa el — dar nu in primele secunde dupa ce utilizatorul a ales singur
+    // alta fereastra (zoom pe un grup de evenimente, derulare), ca sa nu-i fuga bara de sub ochi
+    const vizibil = pbPos >= tlView.start && pbPos <= tlView.start + tlView.span * 0.98;
+    if (tlView.span < 86400 && !vizibil && curUltimVizibil && Date.now() - tlView.manualLa > 8000)
+      tlSetView(tlView.span, pbPos + tlView.span * 0.3, true);
+    curUltimVizibil = vizibil;
     $('#pb-pos').textContent = hms(pbPos);
     // adresa reflecta momentul (link partajabil) — doar cat timp tabul Inregistrari e pe ecran
     if (++tic % 10 === 0 && !$('#pb').classList.contains('hidden') && !hdCam) setHash(pbHash());

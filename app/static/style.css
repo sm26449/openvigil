@@ -147,9 +147,18 @@ nav button.active { background: var(--accent); color: #fff; }
 .pb-controls select, .pb-controls input { background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: var(--r1); padding: var(--s2) var(--s3); font-size: var(--fs-md); }
 .pb-controls button { background: var(--accent); color: #fff; border: 0; padding: var(--s2) var(--s5); border-radius: var(--r1); cursor: pointer; }
 #pb-info { font-size: var(--fs-sm); color: var(--text-3); }
-#player-wrap { background: #000; border-radius: var(--r2); overflow: hidden; max-height: 70vh; }
-#player { position: relative; overflow: hidden; }
-#player video-stream, #player video { width: 100%; max-height: 70vh; object-fit: contain; display: block; }
+#player-wrap { background: #000; border-radius: var(--r2); overflow: hidden; }
+/* cutia playerului are o inaltime care nu depinde de fluxul din ea: raportul camerei (invatat la
+   primul cadru, 16/9 pana atunci), plafonat ca timeline-ul sa ramana pe ecran. Asa un clic pe
+   bara nu mai muta toata pagina in sus si in jos cat porneste fluxul nou. */
+#player { position: relative; overflow: hidden; width: 100%; aspect-ratio: var(--pb-ar, 16 / 9); max-height: min(70vh, calc(100vh - 330px)); min-height: 160px; margin: 0 auto; }
+#player:not(.grid) > .pb-dala { position: absolute; inset: 0; }
+#player:not(.grid) > .pb-dala.vechi { z-index: 0; }
+#player:not(.grid) > .pb-dala:not(.vechi) { z-index: 1; }
+#player video-stream, #player video { width: 100%; height: 100%; object-fit: contain; display: block; }
+#player.grid { aspect-ratio: auto; max-height: none; }
+#player.grid .pb-dala { aspect-ratio: 16 / 9; }
+#player.grid .pb-dala.vechi { display: none; }
 #player:empty::before { content: "Alege camera + data, apoi un moment pe timeline."; color: var(--text-3); display: flex; align-items: center; justify-content: center; height: 320px; font-size: var(--fs-md); }
 
 /* HD overlay */
@@ -348,7 +357,8 @@ nav button.active { background: var(--accent); color: #fff; }
 @media (max-width: 900px) { .pb-main { flex-direction: column; } .pb-right { width: 100%; max-height: 240px; } }
 
 /* timeline */
-#timeline-wrap { margin-top: 10px; }
+/* bara de timp ramane lipita de marginea de jos a ferestrei cat timp playerul e mai inalt decat ecranul */
+#timeline-wrap { margin-top: 10px; position: sticky; bottom: 0; z-index: 5; background: var(--bg); padding: var(--s2) 0 var(--s1); }
 #timeline { position: relative; height: 46px; background: var(--surface-2); border-radius: var(--r1); overflow: hidden; cursor: crosshair; }
 #timeline .seg { position: absolute; top: 0; height: 100%; background: var(--motion); opacity: .85; }
 #timeline .seg.continuous { background: var(--ok); }
@@ -356,6 +366,8 @@ nav button.active { background: var(--accent); color: #fff; }
 #timeline .evdot { position: absolute; top: 2px; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; background: var(--alarm); border: 1px solid #fff3; cursor: pointer; z-index: 3; }
 #timeline .evdot.det { background: var(--ok); }
 #timeline .evdot:hover { transform: scale(1.5); }
+#timeline .evgrup { position: absolute; top: 1px; height: 12px; min-width: 12px; padding: 0 4px; border-radius: 6px; background: var(--alarm); color: #fff; font-size: 9px; line-height: 12px; text-align: center; transform: translateX(-50%); cursor: zoom-in; border: 1px solid #fff3; z-index: 3; }
+#timeline .evgrup:hover { filter: brightness(1.2); }
 /* marcaje (bookmarks): steag auriu pe toata inaltimea; intervalul = banda translucida */
 .marcaj { --mk: #f0c75e; position: absolute; top: 0; height: 100%; width: 3px; margin-left: -1px; background: var(--mk); cursor: pointer; z-index: 4; }
 .marcaj::before { content: ''; position: absolute; top: 0; left: -4px; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 7px solid var(--mk); }
@@ -921,6 +933,7 @@ body.panel-open #cams { margin-right: 420px; }
 
 /* ---- redare sincronizata pe mai multe camere ---- */
 #pb-multi.active { background: var(--accent); color: #fff; }
+#pb-multi-list.hidden { display: none; }   /* regula pe ID ar bate .hidden si ar lasa o bara goala */
 #pb-multi-list { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center;
   padding: var(--s3); background: var(--surface-2); border: 1px solid var(--line);
   border-radius: var(--r1); margin-bottom: var(--s3); }

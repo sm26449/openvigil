@@ -1,0 +1,12 @@
+# Suprapunere pentru dezvoltare: codul din repo e montat in containerul web, deci schimbarile
+# din app/static se vad imediat (reincarca pagina), iar cele din Python dupa `restart web`.
+# Nu e pentru productie: imaginea ramane sursa adevarului la `install.sh`.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml -f docker-compose.dev.yml up -d web
+
+services:
+  web:
+    volumes:
+      - ${DATA_DIR:-./data}:/opt/openvigil/data
+      - ./app:/opt/openvigil/app:ro
+      - ./tests:/opt/openvigil/tests:ro

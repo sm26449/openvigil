@@ -17,6 +17,9 @@ simple ca lucrurile să rămână coerente.
 cp .env.example .env            # ajustează porturile dacă e nevoie
 docker compose up -d --build    # sau cu -f docker-compose.gpu.yml pentru NVIDIA
 docker compose run --rm --no-deps web test                    # pytest
+# dezvoltare pe interfata: codul din repo montat in containerul web (schimbarile din app/static
+# se vad la reincarcarea paginii; cele din Python dupa `docker compose restart web`)
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d web
 cd tests && npm install && NVR_TEST_USER=admin NVR_TEST_PASS=... node ui-test.js   # browser
 python3 scripts/module_check.py                     # modulele ES ale interfeței
 ```
