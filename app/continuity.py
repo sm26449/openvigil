@@ -279,7 +279,10 @@ def _forecast():
                         "zile_evenimente": ret_ev, "cu_evenimente": round(fr * 100),
                         "necesar_gb": round(cere, 1), "zile_pe_disc": round(span, 1)})
     try:
-        u = shutil.disk_usage(record.REC_DIR)
+        cale = record.REC_DIR          # la prima pornire nu exista inca: urcam la parinte
+        while not os.path.isdir(cale) and os.path.dirname(cale) != cale:
+            cale = os.path.dirname(cale)
+        u = shutil.disk_usage(cale)
         liber, total = u.free / 2**30, u.total / 2**30
     except OSError:
         liber = total = 0
