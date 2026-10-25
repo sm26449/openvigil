@@ -15,6 +15,56 @@ import { loadSettings } from './60-setari.js';
 import { loadFaces, loadPlates, loadRules, loadTrack } from './70-ai.js';
 /* ---------- panou de incidente: triaj in timp real ---------- */
 let incFilter = 'noi';
+/* lista se incarca progresiv: 30 de randuri, apoi inca 30 cand ajungi la capat (120 odata
+   insemnau 16 ecrane de derulat pe telefon). Ordinea ramane cea de prioritate (critic sus). */
+const INC_PAS = 30;
+let incToate = [], incArat = 0, incRand = null, incObs = null;
+function cand(t) {
+  // „18:57:16” azi, „ieri 18:57”, altfel „23.10 18:57” — ca sa stii dintr-o privire cat de vechi e
+  const zi = t.slice(0, 10), ora = t.slice(11, 19);
+  const azi = new Date(), ieri = new Date(Date.now() - 86400000);
+  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  if (zi === iso(azi)) return ora;
+  if (zi === iso(ieri)) return `ieri ${ora.slice(0, 5)}`;
+  return `${zi.slice(8, 10)}.${zi.slice(5, 7)} ${ora.slice(0, 5)}`;
+}
+function arataInc() {
+  const list = $('#inc-list');
+  const vechi = list.querySelector('.inc-mai'); if (vechi) vechi.remove();
+  const felie = incToate.slice(incArat, incArat + INC_PAS);
+  const frag = document.createElement('div');
+  frag.className = 'inc-felie';
+  frag.innerHTML = html`${felie.map(incRand)}`;
+  list.appendChild(frag);
+  leagaInc(frag);
+  incArat += felie.length;
+  const ramase = incToate.length - incArat;
+  if (ramase > 0) {
+    const mai = document.createElement('button');
+    mai.className = 'inc-mai';
+    mai.type = 'button';
+    mai.textContent = `Încă ${Math.min(INC_PAS, ramase)} din ${ramase} rămase`;
+    mai.onclick = arataInc;
+    list.appendChild(mai);
+    if ('IntersectionObserver' in window) {
+      if (incObs) incObs.disconnect();
+      incObs = new IntersectionObserver((en) => { if (en.some((x) => x.isIntersecting)) { incObs.disconnect(); arataInc(); } }, { rootMargin: '300px' });
+      incObs.observe(mai);
+    }
+  }
+}
+function leagaInc(container) {
+  wireClips(container);
+  wireDosar(container);
+  for (const b of container.querySelectorAll('.inc-ok, .inc-no, .inc-reopen')) {
+    const stare = b.classList.contains('inc-ok') ? 'confirmat'
+      : b.classList.contains('inc-no') ? 'fals' : 'nou';
+    b.onclick = async () => {
+      await post(`/api/incidents/${b.dataset.id}/stare`, { stare });
+      loadIncidents(); refreshIncBadge();
+    };
+  }
+}
 const EV_ICO = { persoana_necunoscuta: '👤', persoana: '👤', fata_falsa: '🚫',
   numar: '🚗', detectie: '👁', obiect: '🎯', alarma_camera: '⚠', zgomot: '🔊',
   camera_offline: '📵', intrus: '🚨', trecere: '⳹', intrare_zona: '▱',
@@ -29,7 +79,7 @@ async function loadIncidents() {
     if (incFilter === 'critic') inc = inc.filter((e) => e.sev === 'critic');
     $('#inc-info').textContent = incFilter === 'noi'
       ? `${inc.length} de tratat` : `${inc.length} incidente`;
-    $('#inc-list').innerHTML = lista(inc, (e) => {
+    incRand = (e) => {
       const det = e.text || e.nume || e.numar || (DET_RO[e.eticheta] || e.eticheta)
         || (EV_RO[(e.subtip || '').toLowerCase()] || e.subtip) || '';
       const cam = e.cam ? (names[e.cam] || 'cam ' + e.cam) : '—';
@@ -55,7 +105,7 @@ async function loadIncidents() {
         <span class="inc-ico">${EV_ICO[e.tip] || '•'}</span>
         <div class="inc-main">
           <div class="inc-top"><b>${EV_TIP_RO[e.tip] || e.tip}</b>${det ? ' · ' + det : ''}
-            <span class="inc-when">${e.t.slice(11)} · ${cam}</span></div>
+            <span class="inc-when">${cand(e.t)} · ${cam}</span></div>
           ${tratat}
         </div>
         ${traseu}
@@ -68,17 +118,11 @@ async function loadIncidents() {
           title="Adauga la un dosar de caz">🗂 la dosar</button>` : ''}
         <div class="inc-acts">${act}</div>
       </div>`;
-    }, '<p class="hint">Niciun incident de tratat. Liniste.</p>');
-    wireClips($('#inc-list'));
-    wireDosar($('#inc-list'));
-    for (const b of $('#inc-list').querySelectorAll('.inc-ok, .inc-no, .inc-reopen')) {
-      const stare = b.classList.contains('inc-ok') ? 'confirmat'
-        : b.classList.contains('inc-no') ? 'fals' : 'nou';
-      b.onclick = async () => {
-        await post(`/api/incidents/${b.dataset.id}/stare`, { stare });
-        loadIncidents(); refreshIncBadge();
-      };
-    }
+    };
+    incToate = inc; incArat = 0;
+    const list = $('#inc-list');
+    list.innerHTML = inc.length ? '' : html`<p class="hint">Niciun incident de tratat. Liniște.</p>`;
+    if (inc.length) arataInc();
   } catch {}
 }
 for (const b of document.querySelectorAll('#inc-filter button')) {

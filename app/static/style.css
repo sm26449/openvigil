@@ -1318,6 +1318,9 @@ button.ask-clip { background: none; border: 0; color: inherit; cursor: pointer; 
 @media (prefers-reduced-motion: reduce) { #tab-inc.flash { animation: none; } }
 
 .inc-bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+.inc-bar .link-btn { min-height: 32px; padding: var(--s1) var(--s3); border: 1px solid var(--line); border-radius: var(--r1); background: var(--surface-2); color: var(--text-2); font-size: var(--fs-sm); }
+/* segmentele (filtre, sub-navigari) au cel putin 32 px pe desktop, 44 pe telefon */
+.seg button { min-height: 32px; }
 /* Evenimente: sub-navigarea (De tratat / Jurnal / Poze) deasupra panoului activ */
 #ev-nav { margin-bottom: 14px; }
 #ev-nav button { font-size: var(--fs-md); padding: var(--s2) var(--s4); }
@@ -1346,9 +1349,17 @@ button.ask-clip { background: none; border: 0; color: inherit; cursor: pointer; 
 .inc-done { display: inline-block; font-size: var(--fs-xs); margin-top: 2px; font-weight: 600; }
 .inc-done.inc-confirmat { color: var(--ok, #4caf7d); }
 .inc-done.inc-fals { color: var(--text-3, #888); }
+.inc-felie { display: contents; }
+.inc-mai { align-self: center; min-height: 44px; padding: var(--s2) var(--s5); margin: var(--s2) 0; background: var(--surface-2); color: var(--text-2); border: 1px solid var(--line); border-radius: var(--r-pill); cursor: pointer; font-size: var(--fs-sm); }
+.inc-mai:hover { background: var(--line); color: var(--text); }
+/* actiunile secundare (clip, fisa, dosar) sunt butoane adevarate, nu legaturi de 11 px */
+.inc-card .link-btn { min-height: 32px; padding: var(--s1) var(--s3); border: 1px solid var(--line); border-radius: var(--r1); background: var(--surface-2); color: var(--text-2); font-size: var(--fs-sm); white-space: nowrap; }
+.inc-card .link-btn { text-decoration: none; }
+.inc-card .link-btn:hover { color: var(--text); border-color: var(--text-3); }
+.inc-card .clip-btn { color: var(--text); font-weight: 600; }
 .inc-acts { display: flex; gap: 6px; flex: none; }
 .inc-acts button { border: 1px solid var(--line); background: var(--surface-2);
-  color: var(--text); border-radius: 6px; padding: 5px 10px; font-size: var(--fs-xs);
+  color: var(--text); border-radius: 6px; padding: 6px 12px; min-height: 32px; font-size: var(--fs-sm);
   cursor: pointer; white-space: nowrap; }
 .inc-ok:hover { background: var(--ok, #4caf7d); color: #fff; border-color: transparent; }
 .inc-no:hover { background: var(--text-3, #888); color: #fff; border-color: transparent; }
@@ -1574,7 +1585,9 @@ dialog#reid::backdrop { background: rgba(0, 0, 0, .6); }
   .inc-card .inc-main { flex: 1 1 calc(100% - 60px); }
   .inc-card .inc-traseu { order: 5; }
   .inc-card .link-btn, .inc-card .inc-acts { order: 6; }
-  .inc-card .inc-acts { margin-left: auto; }
+  .inc-card .inc-acts { margin-left: auto; width: 100%; }
+  .inc-card .inc-acts button { flex: 1; min-height: 44px; }
+  header > nav .tab-badge { top: 2px; left: calc(50% + 2px); }
   .inc-acts button { min-height: 40px; padding: var(--s2) var(--s3); font-size: var(--fs-sm); }
   /* tinte de 44 px pe latimi de telefon, indiferent de ce raporteaza pointerul */
   .seg button, .live-bar button, .pb-controls button, #pb-nav button, .ov-bar button, .set-card button, .ctrl button,
