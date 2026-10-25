@@ -1563,7 +1563,7 @@ dialog#reid::backdrop { background: rgba(0, 0, 0, .6); }
   #mod-chip button { padding: var(--s1) var(--s2); font-size: var(--fs-xs); min-height: 36px; }
   header > nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 55; height: var(--bara-jos); padding: 0 0 env(safe-area-inset-bottom, 0px); margin: 0;
         display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; background: var(--surface); border-top: 1px solid var(--line); flex-wrap: nowrap; }
-  header > nav button { flex-direction: column; justify-content: center; gap: 2px; border-radius: 0; background: transparent; color: var(--text-3); font-size: 10.5px; padding: var(--s1) 0; min-height: 56px; min-width: 0; position: relative; }
+  header > nav button { flex-direction: column; justify-content: center; gap: 2px; border-radius: 0; background: transparent; color: var(--text-3); font-size: 11px; padding: var(--s1) 0; min-height: 56px; min-width: 0; position: relative; }
   header > nav button .ic { display: block; width: 22px; height: 22px; }
   header > nav button.active { background: transparent; color: var(--accent-hi); }
   header > nav button.active::after { content: ""; position: absolute; top: 0; left: 20%; right: 20%; height: 2px; background: var(--accent-hi); border-radius: 0 0 2px 2px; }
@@ -1594,9 +1594,14 @@ dialog#reid::backdrop { background: rgba(0, 0, 0, .6); }
   .inc-card .inc-acts button { flex: 1; min-height: 44px; }
   header > nav .tab-badge { top: 2px; left: calc(50% + 2px); }
   .inc-acts button { min-height: 40px; padding: var(--s2) var(--s3); font-size: var(--fs-sm); }
-  /* tinte de 44 px pe latimi de telefon, indiferent de ce raporteaza pointerul */
+}
+
+/* tinte de 44 px pe telefon SI tableta (≤1000 px), indiferent de ce raporteaza pointerul */
+@media (max-width: 1000px) {
   .seg button, .live-bar button, .pb-controls button, #pb-nav button, .ov-bar button, .set-card button, .ctrl button,
-  .io-row button, .me-box button, .snav-item, .chip-btn, .view-go, .u-row .link-btn, .inc-card button, #tl-zoom button, #pb-speed button { min-height: 44px; }
+  .io-row button, .me-box button, .snav-item, .ainav-item, .chip-btn, .view-go, .u-row .link-btn, .inc-card button, .inc-card .link-btn,
+  #tl-zoom button, #pb-speed button, #hd-shift button, #hd-ctrls button, #hd-close, .chips button, #ev-nav button, #inc-filter button { min-height: 44px; }
+  #hd-ctrls button { min-width: 44px; }
   #timeline, #hd-timeline { min-height: 44px; }
 }
 
