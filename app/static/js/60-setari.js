@@ -1286,3 +1286,15 @@ $('#s-train-apply').onclick = async () => {
 };
 
 export { SET_LABELS, flash, hdBufferTarget, hdHeightParam, loadSettings, meDlg };
+
+/* ---------- mod demo: camere sintetice (Setari -> Unelte) ---------- */
+$('#s-demo-add') && ($('#s-demo-add').onclick = async () => {
+  const d = await post('/api/demo/camere', { actiune: 'adauga' });
+  flash('#s-msg-demo', d && d.ok ? `Camere demo: ${d.demo.length}. Apar în Live în câteva secunde.` : (d && d.error) || 'Eroare', !(d && d.ok));
+  if (d && d.ok) loadCameras();
+});
+$('#s-demo-del') && ($('#s-demo-del').onclick = async () => {
+  const d = await post('/api/demo/camere', { actiune: 'sterge' });
+  flash('#s-msg-demo', d && d.ok ? 'Camerele demo au fost scoase.' : (d && d.error) || 'Eroare', !(d && d.ok));
+  if (d && d.ok) loadCameras();
+});

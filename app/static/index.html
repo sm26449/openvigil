@@ -618,7 +618,7 @@
     <div class="set-cols">
     <div class="set-card wide">
       <h2 data-ic="live">Înregistrăm chiar acum?</h2>
-      <div id="cont-live" class="cont-live">Se încarcă...</div>
+      <div id="cont-live" class="cont-live"><span class="schelet"><i></i><i></i><i></i></span></div>
       <p class="hint">Dovada nu e ca procesul trăiește sau ca răspunde camera — ci ca fișierul
         de pe disc crește. Dacă o camera tace mai mult de trei minute, lanțul ei se repornește
         singur și primesti notificare.</p>
@@ -639,7 +639,7 @@
 
     <div class="set-card">
       <h2 data-ic="server">Starea serverului</h2>
-      <div id="sys-stats" class="sys-grid">Se încarcă...</div>
+      <div id="sys-stats" class="sys-grid"><span class="schelet"><i></i><i></i><i></i></span></div>
       <p class="hint">Se reîmprospătează la 5 secunde cât timp ești pe această pagina.</p>
     </div>
 
@@ -694,7 +694,7 @@
 
     <div class="set-card">
       <h2 data-ic="disk">Spațiu și înregistrări</h2>
-      <div id="s-storage" class="hint">Se încarcă...</div>
+      <div id="s-storage" class="hint"><span class="schelet o-linie"><i></i><i></i><i></i></span></div>
       <label class="inline"><input id="s-reencode" type="checkbox"> Re-encodează înregistrările vechi</label>
       <p class="hint" id="s-reencode-desc">
         Recomprimă segmentele mai vechi de 6 ore cu un codec mai eficient (AV1/HEVC) și
@@ -718,7 +718,7 @@
     <div class="set-cols">
     <div class="set-card wide">
       <h2 data-ic="listen">Alarma de zgomot</h2>
-      <div id="noise-live" class="noise-live">Se încarcă...</div>
+      <div id="noise-live" class="noise-live"><span class="schelet"><i></i><i></i><i></i></span></div>
       <div id="noise-prof" class="noise-prof"></div>
       <label class="inline"><input id="noise-on" type="checkbox"> Da alarma la zgomot</label>
       <div class="noise-rules" id="inc-gap-wrap" style="display:none"></div>
@@ -739,7 +739,7 @@
     <div class="set-card">
       <h2 data-ic="image">Căutare semantică în alarme</h2>
       <label class="inline"><input id="sem-on" type="checkbox"> Activata</label>
-      <div id="sem-status" class="hint">Se încarcă...</div>
+      <div id="sem-status" class="hint"><span class="schelet o-linie"><i></i><i></i><i></i></span></div>
       <button id="sem-backfill" class="btn sm">Indexeaza istoricul acum</button>
       <span class="s-msg" id="sem-msg"></span>
       <p class="hint">Fiecare poza din Alarme primeste o "amprenta" de sens (SigLIP,
@@ -1000,7 +1000,7 @@
 
     <div class="set-card" data-avansat>
       <h2 data-ic="external">Ora camerelor</h2>
-      <div id="time-status" class="hint">Se încarcă...</div>
+      <div id="time-status" class="hint"><span class="schelet o-linie"><i></i><i></i><i></i></span></div>
       <label>Server de timp (NTP)
         <input id="ntp-host" placeholder="ex. 192.168.1.1 sau time.cloudflare.com"></label>
       <p class="hint">Lasă gol dacă nu ai unul: oricum setam ora exactă direct pe camere,
@@ -1012,7 +1012,7 @@
 
     <div class="set-card" data-avansat>
       <h2 data-ic="bolt">Fluiditate grila (cadre-cheie)</h2>
-      <div id="s-kf-status" class="hint">Se încarcă...</div>
+      <div id="s-kf-status" class="hint"><span class="schelet o-linie"><i></i><i></i><i></i></span></div>
       <label>Interval între cadrele-cheie, pe fluxul din grila
         <select id="s-kf">
           <option value="500">0,5 secunde — cea mai rapidă pornire</option>
@@ -1067,6 +1067,18 @@
         (ultralytics, pe GPU; rulează în nvr-ai și încetinește detecția cât durează, deci
         noaptea) → 3) aplici modelul aici (fără restart, cu backup și revenire).</p>
       <span class="s-msg" id="s-msg-train"></span>
+    </div>
+
+    <div class="set-card" id="demo-card">
+      <h2 data-ic="camera">Mod demo</h2>
+      <p class="hint">Patru camere sintetice (imaginea o generează go2rtc, fără nicio cameră
+        reală): vezi interfața și înregistrarea pe o instalare goală, faci capturi fără casa
+        nimănui. Se înregistrează ca orice cameră, deci scoate-le când nu-ți mai trebuie.</p>
+      <div class="s-btns">
+        <button id="s-demo-add">Adaugă camerele demo</button>
+        <button id="s-demo-del">Scoate camerele demo</button>
+      </div>
+      <span class="s-msg" id="s-msg-demo"></span>
     </div>
 
     <div class="set-card">

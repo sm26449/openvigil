@@ -65,3 +65,9 @@ def test_revenirea_la_go2rtc_doar_dupa_prag_si_la_inceput_de_segment():
     assert not record.revenire_la_preferata(1, t0 - 100, t0 + 3)           # prea devreme
     assert record.revenire_la_preferata(1, t0 - 700, t0 + 3)               # tarziu + segment nou
     assert not record.revenire_la_preferata(1, t0 - 700, t0 + 120)         # in mijlocul segmentului
+
+
+def test_camera_demo_inregistreaza_doar_prin_go2rtc(monkeypatch):
+    monkeypatch.setattr(settings, "nvr_retras", lambda: True)
+    urls = record._sources({"id": 9, "vendor": "demo", "demo": "testsrc2", "ip": "demo-testsrc2", "user": "", "pass": ""})
+    assert urls == [("rtsp://127.0.0.1:8554/cam9_main", "prin go2rtc")]

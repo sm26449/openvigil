@@ -55,6 +55,13 @@ sudo ./install.sh --update            # git pull, rebuild, repornire
 docker compose run --rm --no-deps web test      # pytest
 ```
 
+## Mod demo
+
+N-ai camere încă? **Setări → Unelte → Mod demo** adaugă patru camere sintetice (imaginea o
+generează go2rtc din sursele de test ale ffmpeg). Transmit, înregistrează și se redau ca
+cele reale, deci poți vedea interfața, testa o instalare sau face capturi care nu arată
+casa nimănui. Le scoți din același card.
+
 ## Acces din afară
 
 Ține interfața în LAN și pune-o în spatele unui reverse proxy cu TLS (Traefik, Caddy, nginx),

@@ -98,6 +98,13 @@ sudo ./install.sh --update            # git pull, rebuild, restart
 docker compose run --rm --no-deps web test      # pytest (350+ tests)
 ```
 
+## Demo mode
+
+No cameras yet? **Setări → Unelte → Mod demo** adds four synthetic cameras (go2rtc generates
+the picture with ffmpeg's test sources). They stream, record and play back like real ones,
+so you can explore the interface, test an install, or take screenshots that show nobody's
+house. Remove them from the same card when you are done.
+
 ## Reverse proxy and remote access
 
 Keep the UI off the public internet; put it behind Traefik, Caddy or nginx with TLS and

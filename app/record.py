@@ -89,8 +89,10 @@ def _sources(cam):
     Fara rezerva, o camera care refuza o sursa (blocare temporara, parola schimbata) ar
     inceta sa inregistreze."""
     import settings
-    urls = [(f"{GO2RTC_RTSP}/cam{cam['id']}_main", "prin go2rtc"),
-            (_rtsp(cam), "direct de pe camera")]
+    urls = [(f"{GO2RTC_RTSP}/cam{cam['id']}_main", "prin go2rtc")]
+    if cam.get("vendor") == "demo":
+        return urls                      # fluxul sintetic exista doar in go2rtc
+    urls.append((_rtsp(cam), "direct de pe camera"))
     if cam.get("nvr_channel") and not settings.nvr_retras():
         pw = urllib.parse.quote(C.NVR_PASS, safe="")
         urls.append((f"rtsp://{C.NVR_USER}:{pw}@{C.NVR_IP}:{C.NVR_PORT}"

@@ -22,7 +22,22 @@ registru, ca sa nu intrebe camera la fiecare pornire de flux.
 """
 import urllib.parse
 
-VENDORI = {"hik": "Hikvision (ISAPI)", "onvif": "ONVIF (generic)"}
+VENDORI = {"hik": "Hikvision (ISAPI)", "onvif": "ONVIF (generic)", "demo": "Demo (flux sintetic, fără cameră)"}
+
+# camerele demo: go2rtc genereaza singur imaginea (ffmpeg lavfi), fara nicio camera reala —
+# interfata se poate vedea si testa pe o instalare goala, iar capturile publice nu arata
+# casa nimanui. Tiparul (testsrc2, smptebars...) vine din cam["demo"].
+DEMO_TIPARE = ("testsrc2", "testsrc", "smptebars", "life")   # fara mandelbrot: 135% CPU si bitrate urias
+
+
+def este_demo(cam):
+    return (cam or {}).get("vendor") == "demo"
+
+
+def demo_sursa(cam, mare):
+    tipar = (cam or {}).get("demo") if (cam or {}).get("demo") in DEMO_TIPARE else DEMO_TIPARE[0]
+    size = "1280x720" if mare else "640x360"
+    return f"ffmpeg:virtual?video={tipar}&size={size}&rate=15#video=h264"
 
 
 class Nesuportat(RuntimeError):
@@ -55,6 +70,8 @@ def _cu_parola(url, cam):
 
 
 def rtsp_main(cam):
+    if este_demo(cam):
+        return demo_sursa(cam, True)
     if este_hik(cam):
         pw = urllib.parse.quote(cam["pass"], safe="")
         return f"rtsp://{cam['user']}:{pw}@{cam['ip']}:{cam.get('port', 554)}/Streaming/Channels/101"
@@ -65,6 +82,8 @@ def rtsp_main(cam):
 
 
 def rtsp_sub(cam):
+    if este_demo(cam):
+        return demo_sursa(cam, False)
     if este_hik(cam):
         pw = urllib.parse.quote(cam["pass"], safe="")
         return f"rtsp://{cam['user']}:{pw}@{cam['ip']}:{cam.get('port', 554)}/Streaming/Channels/102"
@@ -79,6 +98,8 @@ def rtsp(cam, canal):
 
 # ---- identificare / sanatate ----
 def _onvif(cam):
+    if este_demo(cam):
+        raise Nesuportat("camera demo nu are actiuni (flux sintetic)")
     import onvif
     return onvif.Camera(cam["ip"], cam.get("user") or "", cam.get("pass") or "",
                         (cam.get("onvif") or {}).get("port") or cam.get("http_port") or 80)
@@ -86,6 +107,8 @@ def _onvif(cam):
 
 def device_info(cam):
     """{model, serial, firmware, name, manufacturer}; ridica RuntimeError la esec."""
+    if este_demo(cam):
+        return {"manufacturer": "OpenVigil", "model": "Demo", "serial": "", "firmware": "", "name": cam.get("name") or "Demo"}
     if este_hik(cam):
         import xml.etree.ElementTree as ET
         import requests
@@ -106,6 +129,8 @@ def device_info(cam):
 
 def ping(cam, timeout=6):
     """True daca camera raspunde la o interogare ieftina (watchdog-ul online/offline)."""
+    if este_demo(cam):
+        return True
     try:
         if este_hik(cam):
             import requests
@@ -121,6 +146,8 @@ def ping(cam, timeout=6):
 
 def snapshot(cam):
     """JPEG (bytes) de pe mainstream, sau None."""
+    if este_demo(cam):
+        return None                     # miniaturile vin oricum de la go2rtc (frame.jpeg)
     try:
         if este_hik(cam):
             import requests
@@ -137,6 +164,9 @@ def snapshot(cam):
 
 # ---- capabilitati ----
 def probe_features(cam):
+    if este_demo(cam):
+        return {"mic": False, "talk": False, "siren": False, "strobe": False, "io_out": 0,
+                "sounds": [], "zoom": False, "ptz": False, "focus": False, "smart": {}}
     if este_hik(cam):
         import camctl
         return camctl.probe_features(cam)
@@ -254,7 +284,7 @@ def speak(cam, *a, **kw):
 
 def get_stream(cam, ch=101):
     if not este_hik(cam):
-        return {}
+        return {}                        # ONVIF/demo: nimic de citit
     import camctl
     return camctl.get_stream(cam, ch)
 

@@ -234,6 +234,8 @@ def api_add_camera():
     port = int(b.get("port") or 554)
     name = (b.get("name") or "").strip()
     vendor = b.get("vendor") if b.get("vendor") in drivers.VENDORI else "hik"
+    if vendor == "demo":
+        return jsonify({"error": "camerele demo se adaugă din Setări → Unelte → Mod demo"}), 400
     if not (ip and user and pw):
         return jsonify({"error": "ip, user și parola sunt obligatorii"}), 400
     if any(c["ip"] == ip for c in load_ext()):
@@ -345,6 +347,47 @@ def _camera_noua_onvif(job, cams, ip, user, pw, port, name, http_port):
 
 
 jobs.register("camera_noua", _job_camera_noua)
+
+
+DEMO_CAMERE = (("Intrare", "testsrc2"), ("Curte", "testsrc"), ("Garaj", "smptebars"), ("Stradă", "life"))
+
+
+@bp.route("/api/demo/camere", methods=["POST"])
+def api_demo_camere():
+    """Mod demo: {actiune: "adauga"} pune 4 camere sintetice (go2rtc le genereaza imaginea,
+    fara nicio camera reala); {actiune: "sterge"} le scoate. Pentru instalari goale, teste
+    si capturi de ecran care nu arata casa nimanui."""
+    b = request.get_json(silent=True) or {}
+    actiune = b.get("actiune") or "adauga"
+    with EXT_LOCK:
+        cams = load_ext()
+        if actiune == "sterge":
+            rest = [c for c in cams if c.get("vendor") != "demo"]
+            sterse = [c["id"] for c in cams if c.get("vendor") == "demo"]
+            save_ext(rest)
+            cams = rest
+        else:
+            sterse = []
+            existente = {c.get("demo") for c in cams if c.get("vendor") == "demo"}
+            for nume, tipar in DEMO_CAMERE:
+                if tipar in existente:
+                    continue
+                nid = next_cam_id(cams)
+                cams.append({"id": nid, "name": f"{nume} (demo)", "ip": f"demo-{tipar}", "port": 0,
+                             "user": "", "pass": "", "model": "Demo", "vendor": "demo", "demo": tipar,
+                             "playback": False, "record": "continuous",
+                             "features": drivers.probe_features({"vendor": "demo"})})
+            save_ext(cams)
+    invalidate_cam_cache()
+    sync_all_watchers(cams)
+    for cid in sterse:
+        try:
+            requests.delete(f"{C.GO2RTC_API}/api/streams", params={"src": f"cam{cid}"}, timeout=10)
+        except Exception:
+            pass
+    reload_streams()
+    audit.log(f"mod demo: {actiune} ({len([c for c in cams if c.get('vendor') == 'demo'])} camere demo)")
+    return jsonify({"ok": True, "demo": [c["id"] for c in cams if c.get("vendor") == "demo"]})
 
 
 @bp.route("/api/cameras/<int:cam_id>", methods=["DELETE"])

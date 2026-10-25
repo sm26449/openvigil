@@ -6,6 +6,8 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 ## [Nepublicat]
 
 ### Adăugat
+- Mod demo: patru camere sintetice (vendor `demo`, go2rtc `ffmpeg:virtual`), din Setări → Unelte;
+  fără acțiuni, fără rețea, înregistrate doar prin go2rtc.
 - Site-ul proiectului: [openvigil.dev](https://openvigil.dev).
 - CI pe GitHub Actions: pytest fără GPU (`requirements-ci.txt`), verificarea modulelor ES,
   shellcheck, validarea fișierelor Compose, căutarea de secrete; build-ul imaginii cu testele

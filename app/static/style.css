@@ -1144,7 +1144,7 @@ body.viewer #tab-ai { display: none !important; }
 .ev-filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
   margin-bottom: 10px; }
 #ev-list { max-height: 60vh; overflow-y: auto; }
-.ev-row { display: flex; gap: 10px; padding: 5px 2px; border-bottom: 1px solid var(--line);
+.ev-row { display: flex; gap: 10px; padding: var(--s2) 2px; border-bottom: 1px solid var(--line); font-size: var(--fs-sm);
   font-size: var(--fs-sm); align-items: baseline; }
 .ev-t { color: var(--text-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .ev-tip { color: var(--accent-hi); white-space: nowrap; min-width: 110px; }
@@ -1674,3 +1674,26 @@ dialog#reid::backdrop { background: rgba(0, 0, 0, .6); }
 /* acoperirea pe zile e un tabel lat: deruleaza orizontal in card, nu iese din el */
 #cont-cov { overflow-x: auto; }
 #cont-cov .cov-grid { min-width: max-content; }
+
+
+/* ---------- schelete de incarcare: in locul textului „Se încarcă…”, blocuri gri care pulseaza ---------- */
+.schelet { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s1) 0; }
+.schelet i { display: block; height: 12px; border-radius: 6px; background: linear-gradient(90deg, var(--surface-2) 25%, var(--line) 50%, var(--surface-2) 75%); background-size: 200% 100%; animation: schelet 1.4s ease-in-out infinite; }
+.schelet i:nth-child(1) { width: 60%; } .schelet i:nth-child(2) { width: 85%; } .schelet i:nth-child(3) { width: 45%; }
+.schelet.o-linie i:nth-child(n+2) { display: none; }
+@keyframes schelet { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .schelet i { animation: none; } }
+
+/* ---------- telefon: jurnalul ca fise, nu ca tabel cu 6 coloane ---------- */
+@media (max-width: 760px) {
+  #ev-list { max-height: none; overflow: visible; }   /* fara a doua bara de derulare in pagina */
+  .ev-row { flex-wrap: wrap; gap: var(--s1) var(--s2); padding: var(--s2) 0; }
+  .ev-row .ev-t { order: 1; flex: 1 1 auto; color: var(--text-3); font-variant-numeric: tabular-nums; }
+  .ev-row .ev-dur { order: 2; }
+  .ev-row .ev-tip { order: 3; flex: 1 1 100%; min-width: 0; }
+  .ev-row .ev-cam { order: 4; color: var(--text-2); }
+  .ev-row .ev-det { order: 5; flex: 1 1 100%; white-space: normal; }
+  .ev-row .link-btn { order: 6; min-height: 36px; padding: var(--s1) var(--s3); border: 1px solid var(--line); border-radius: var(--r1); background: var(--surface-2); text-decoration: none; }
+  .ev-filters > * { flex: 1 1 45%; min-width: 0; }
+  .ev-filters #ev-filter { flex: 1 1 100%; }
+}

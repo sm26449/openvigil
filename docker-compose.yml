@@ -13,7 +13,7 @@ name: openvigil
 x-openvigil: &openvigil
   image: openvigil:local
   network_mode: host
-  env_file: .env
+  env_file: ${ENV_FILE:-.env}
   environment:
     TZ: ${TZ:-UTC}
   volumes:
