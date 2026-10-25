@@ -19,4 +19,7 @@ import './js/75-adnotare.js';
 import { loadCameras } from './js/10-live.js';
 import { routeHash } from './js/05-navigare.js';
 
-loadCameras().then(routeHash);
+// toate modulele si-au pus handlerele cand ajungem aici: marcam documentul ca „gata” (testele
+// si orice script extern asteapta atributul in loc sa ghiceasca dupa timp)
+document.documentElement.dataset.gata = '1';
+loadCameras().then(routeHash).finally(() => { document.documentElement.dataset.gata = '2'; });

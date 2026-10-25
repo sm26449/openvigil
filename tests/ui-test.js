@@ -1290,7 +1290,7 @@ const note = (m) => { warn.push(m); console.log('  ⚠ ' + m); };
     {
       const p2 = await ctx.newPage();
       await p2.goto(BASE, { waitUntil: 'domcontentloaded', timeout: 30000 });
-      await p2.waitForSelector('#tab-stare', { timeout: 15000 });
+      await p2.waitForSelector('html[data-gata]', { timeout: 15000 });   // modulele au pus handlerele
       await p2.click('#tab-stare');
       const incarcat = await p2.waitForSelector('#sys-stats .sys-item', { timeout: 12000 }).then(() => true).catch(() => false);
       incarcat ? ok('scurtatura Stare incarca starea sistemului si intr-o pagina proaspata')
