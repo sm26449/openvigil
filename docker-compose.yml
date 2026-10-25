@@ -8,6 +8,8 @@
 #   docker compose logs -f web        # jurnal
 #   docker compose run --rm web test  # pytest
 
+name: openvigil
+
 x-openvigil: &openvigil
   image: openvigil:local
   network_mode: host

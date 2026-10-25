@@ -14,7 +14,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /opt/openvigil
 COPY requirements.lock .
 RUN python3 -m venv venv && venv/bin/pip install --upgrade pip wheel \
-    && venv/bin/pip install -r requirements.lock
+    && venv/bin/pip install --no-deps -r requirements.lock
+# --no-deps: lock-ul e un `pip freeze` complet; fara el pip ar adauga dependente nepinuite
+# (ex. onnxruntime CPU peste onnxruntime-gpu, care pierde providerul CUDA)
 
 # ---------------------------------------------------------------- imaginea finala
 FROM ubuntu:24.04
