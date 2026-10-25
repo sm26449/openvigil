@@ -307,6 +307,7 @@ function buildCtrls(c, container, full) {
   }
   if (ADMIN && f.siren) {
     const b = mkBtn(icon('alarm'), 'Sirena automată la câine (necesită detecția 🐾 pornită)');
+    b.classList.add('alarma');   // starea „pornit” e rosie doar la ce poate face zgomot/lumina
     b.classList.toggle('on', !!c.auto_siren);
     b.onclick = async (e) => {
       e.stopPropagation();
@@ -318,6 +319,7 @@ function buildCtrls(c, container, full) {
   }
   if (f.strobe) {
     const b = mkBtn(icon('strobe'), 'Stroboscop pornit/oprit (se stinge singur dupa 60s)');
+    b.classList.add('alarma');
     b.classList.toggle('on', !!strobeState[c.id]);
     b.onclick = async (e) => {
       e.stopPropagation();

@@ -105,7 +105,7 @@ header > nav button.active { background: var(--accent); color: #fff; }
 .flux-item .fx-when { color: var(--text-3); font-variant-numeric: tabular-nums; }
 .flux-item.nou { animation: fx-in .6s ease-out; }
 @keyframes fx-in { from { background: var(--accent); } to { background: transparent; } }
-@media (max-width: 1000px) { .live-body { flex-direction: column; } .flux { width: auto; position: static; max-height: 40vh; } }
+@media (max-width: 1000px) { .live-body { flex-direction: column; align-items: stretch; } .live-body > .grid { width: 100%; } .flux { width: auto; position: static; max-height: 40vh; } }
 @media (prefers-reduced-motion: reduce) { .flux-item.nou { animation: none; } }
 .tile { position: relative; background: #000; border-radius: var(--r1); overflow: hidden; aspect-ratio: 16/9; cursor: pointer; }
 .tile video-stream, .tile video { width: 100%; height: 100%; object-fit: contain; display: block; }
@@ -116,6 +116,7 @@ header > nav button.active { background: var(--accent); color: #fff; }
   background: linear-gradient(transparent, rgba(0,0,0,.8)); display: flex; align-items: center; gap: var(--s2); }
 .tile .label .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tile .label .ip { margin-left: auto; color: var(--text-3); font-size: var(--fs-xs); flex-shrink: 0; }
+@media (max-width: 1100px) { .tile .label .ip { display: none; } }
 /* Punctul de stare: singurul element permanent din coltul de sus. Verde = inregistreaza,
    rosu pulsand = alarma activa. Se citeste de la distanta, fara sa acopere imaginea. */
 .tile .dot { position: absolute; left: var(--s2); top: var(--s2); width: 8px; height: 8px;
@@ -132,7 +133,9 @@ header > nav button.active { background: var(--accent); color: #fff; }
 .tile .ctrl { position: absolute; right: 6px; bottom: 26px; z-index: 2; }
 .ctrl button { background: rgba(0,0,0,.65); color: #fff; border: 0; border-radius: var(--r1); padding: var(--s1) var(--s2); font-size: var(--fs-md); cursor: pointer; line-height: 1.2; }
 .ctrl button:hover { background: rgba(49,109,202,.9); }
-.ctrl button.on { background: var(--alarm); }
+/* „pornit” = albastru (detectie, microfon); rosu doar pentru sirena/stroboscop, ca sa nu para ca fiecare dala e in alarma */
+.ctrl button.on { background: var(--accent); }
+.ctrl button.alarma.on { background: var(--alarm); }
 .ctrl button:disabled { opacity: .5; cursor: default; }
 .ctrl select { background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: var(--r1); padding: var(--s1) var(--s2); font-size: var(--fs-sm); max-width: 220px; }
 .ctrl input[type=range] { width: 90px; }
@@ -188,8 +191,9 @@ header > nav button.active { background: var(--accent); color: #fff; }
 #hd-overlay { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.92); display: flex; flex-direction: column; }
 #hd-overlay.hidden { display: none; }
 #hd-bar { display: flex; align-items: center; gap: var(--s3); padding: var(--s3) var(--s4); background: var(--surface); border-bottom: 1px solid var(--line); }
-#hd-title { font-size: var(--fs-md); color: #fff; }
-#hd-close { margin-left: auto; background: var(--line); color: var(--text-2); border: 0; padding: var(--s2) var(--s4); border-radius: var(--r1); cursor: pointer; font-size: var(--fs-md); }
+#hd-title { font-size: var(--fs-md); color: #fff; flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#hd-ctrls { display: flex; gap: var(--s2); align-items: center; flex: none; }
+#hd-close { margin-left: var(--s2); flex: none; white-space: nowrap; background: var(--line); color: var(--text-2); border: 0; padding: var(--s2) var(--s4); border-radius: var(--r1); cursor: pointer; font-size: var(--fs-md); }
 #hd-close:hover { background: var(--accent); color: #fff; }
 #hd-player { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; color: var(--text-3); font-size: var(--fs-md); position: relative; overflow: hidden; }
 
@@ -1593,4 +1597,33 @@ dialog#reid::backdrop { background: rgba(0, 0, 0, .6); }
   .seg button, .live-bar button, .pb-controls button, #pb-nav button, .ov-bar button, .set-card button, .ctrl button,
   .io-row button, .me-box button, .snav-item, .chip-btn, .view-go, .u-row .link-btn, .inc-card button, #tl-zoom button, #pb-speed button { min-height: 44px; }
   #timeline, #hd-timeline { min-height: 44px; }
+}
+
+
+/* ---------- telefon: Live si HD ---------- */
+@media (max-width: 760px) {
+  /* grila: doua coloane in portret (dalele de 16:9 raman lizibile), nu o coloana de 5 ecrane */
+  .grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--s1); }
+  .grid[data-cols="3"], .grid[data-cols="4"], .grid[data-cols="6"] { grid-template-columns: repeat(2, 1fr); }
+  .tile { border-radius: 4px; }
+  .tile .label { padding: var(--s4) var(--s2) var(--s1); font-size: var(--fs-xs); }
+  .tile .ctrl { bottom: 22px; right: 4px; gap: var(--s1); }
+  /* barele de deasupra grilei: un singur rand fiecare, derulabil, nu sase randuri de butoane */
+  .live-bar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: var(--s2); margin-bottom: var(--s2); padding-bottom: 2px; }
+  .live-bar::-webkit-scrollbar { display: none; }
+  .live-bar > *, .live-bar .chips { flex: none; }
+  .live-bar .chips { flex-wrap: nowrap; }
+  .live-bar .search { flex: 0 0 160px; min-width: 160px; }
+  .live-bar .bar-label { display: none; }
+  .views-bar #view-save { font-size: var(--fs-xs); }
+  /* HD: bara de sus compacta; controalele intra sub titlu, derulabile */
+  #hd-bar { flex-wrap: wrap; gap: var(--s2); padding: var(--s2) var(--s3); }
+  #hd-ctrls { order: 3; flex-basis: 100%; overflow-x: auto; scrollbar-width: none; }
+  #hd-close { min-width: 44px; min-height: 44px; }
+  #hd-close .hd-close-txt { display: none; }
+  #hd-overlay { background: #000; }   /* pe telefon nu lasam grila sa se vada prin overlay */
+  #hd-shift { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  #hd-shift::-webkit-scrollbar { display: none; }
+  #hd-shift > * { flex: none; }
+  #hd-tl-wrap { padding: var(--s2) var(--s3) calc(var(--s3) + env(safe-area-inset-bottom, 0px)); }
 }
