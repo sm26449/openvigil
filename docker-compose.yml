@@ -21,6 +21,9 @@ x-openvigil: &openvigil
     - ${DATA_DIR:-./data}:/opt/openvigil/data
     # inregistrarile pot sta pe alt disc (RECORDINGS_DIR in .env); implicit sub DATA_DIR
     - ${RECORDINGS_DIR:-${DATA_DIR:-./data}/recordings}:/opt/openvigil/data/recordings
+    # la fel nivelul de arhiva si copiile de siguranta (arhiva_dir din Setari = /opt/openvigil/data/arhiva)
+    - ${ARHIVA_DIR:-${DATA_DIR:-./data}/arhiva}:/opt/openvigil/data/arhiva
+    - ${BACKUP_DIR:-${DATA_DIR:-./data}/backup}:/opt/openvigil/data/backup
   restart: unless-stopped
   stop_grace_period: 25s
   logging:
@@ -52,6 +55,8 @@ services:
     volumes:
       - ${DATA_DIR:-./data}:/opt/openvigil/data
       - ${RECORDINGS_DIR:-${DATA_DIR:-./data}/recordings}:/opt/openvigil/data/recordings
+      - ${ARHIVA_DIR:-${DATA_DIR:-./data}/arhiva}:/opt/openvigil/data/arhiva
+      - ${BACKUP_DIR:-${DATA_DIR:-./data}/backup}:/opt/openvigil/data/backup
       - ${MODELS_DIR:-./models}:/home/openvigil/.cache
     depends_on:
       go2rtc:
@@ -86,6 +91,8 @@ services:
     volumes:
       - ${DATA_DIR:-./data}:/opt/openvigil/data
       - ${RECORDINGS_DIR:-${DATA_DIR:-./data}/recordings}:/opt/openvigil/data/recordings
+      - ${ARHIVA_DIR:-${DATA_DIR:-./data}/arhiva}:/opt/openvigil/data/arhiva
+      - ${BACKUP_DIR:-${DATA_DIR:-./data}/backup}:/opt/openvigil/data/backup
       - ${MODELS_DIR:-./models}:/home/openvigil/.cache
     depends_on:
       web:

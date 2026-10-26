@@ -6,8 +6,8 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 ## [Nepublicat]
 
 ### Adăugat
-- `RECORDINGS_DIR`: înregistrările pot sta pe alt disc decât restul datelor (bind separat
-  pentru `data/recordings`).
+- `RECORDINGS_DIR`, `ARHIVA_DIR`, `BACKUP_DIR`: înregistrările, nivelul de arhivă și copiile
+  nocturne pot sta pe alt disc decât restul datelor (bind-uri separate).
 
 ## [1.0.0] — 2026-10-26
 

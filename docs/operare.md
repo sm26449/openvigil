@@ -42,7 +42,9 @@ cale, cu versiunea veche; imaginile publicate sunt pe
 Înregistrările pot sta pe alt disc decât restul datelor: `RECORDINGS_DIR=/cale/pe/discul/mare`
 în `.env` (apoi `docker compose up -d`). Mutarea de pe discul vechi: copiezi din mers cu
 `rsync -a`, oprești stack-ul, mai rulezi o dată rsync pentru diferență, pui variabila și
-pornești; lanțul de custodie ține căi relative, deci nu se pierde nimic.
+pornești; lanțul de custodie ține căi relative, deci nu se pierde nimic. La fel `ARHIVA_DIR`
+(nivelul de arhivă; în Setări → Înregistrare pui `arhiva_dir = /opt/openvigil/data/arhiva`, calea
+din container) și `BACKUP_DIR` (copiile nocturne, fără altă setare).
 
 - `data/` (sau `DATA_DIR` din `.env`) conține tot: înregistrări, baze de date SQLite, setări,
   camere cu parole, conturi, modele AI locale. Backup-ul lui `data/` fără `recordings/` e mic
