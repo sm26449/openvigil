@@ -59,6 +59,15 @@ Revenire la o versiune anterioară: `git checkout <tag sau commit>` și din nou
 Din afară: reverse proxy cu TLS în fața lui `WEB_PORT` și `STREAM_PORT`, cu `HTTPS=true` în
 `.env` (vezi README). Nu publica niciodată 1984/8554.
 
+## Limba
+
+`NVR_LANG=ro|en` în `.env` (apoi `docker compose up -d`) e limba serverului: notificările,
+rezumatul zilnic și interfața când browserul nu cere o limbă disponibilă. Browserul și
+preferința contului (Contul meu → Limba) au prioritate. Un text care nu-ți place se
+suprascrie fără a atinge aplicația: `data/i18n/en.json` (sau `ro.json`) cu
+`{"textul românesc": "textul tău"}`; cheile sunt textele din `app/static/i18n/en.json`.
+După ce schimbi fișierul: `docker compose restart web`.
+
 ## Camere
 
 - Adăugare: Camere → Adaugă camera (IP, cont, parolă) sau scanner-ul de rețea. Parola rămâne

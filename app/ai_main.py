@@ -32,6 +32,7 @@ import settings
 import track
 import logare
 import config as C
+from i18n import t
 
 CONTRACT = 1        # versiunea contractului web<->ai (docs/ai-contract.md)
 START = time.time()
@@ -481,22 +482,22 @@ def model_verifica():
     b = request.get_json(silent=True) or {}
     path = b.get("path")
     if not path or not os.path.exists(path):
-        return jsonify({"error": "candidatul nu există"}), 404
+        return jsonify({"error": t("candidatul nu există")}), 404
     try:
         import numpy as np
         from ultralytics import YOLO
         m = YOLO(path)
         clase = set(m.names.values()) & detect.INTERESTING
         if "person" not in clase or not (clase & {"car", "truck", "bus"}):
-            return jsonify({"error": f"modelul nu acopera clasele contractului "
-                                     f"(are doar: {sorted(clase)})"}), 422
+            return jsonify({"error": t("modelul nu acopera clasele contractului (are doar: {clase})",
+                                       clase=sorted(clase))}), 422
         m.to("cpu")
         m.predict(np.zeros((320, 320, 3), "uint8"), imgsz=320,
                   device="cpu", verbose=False)
         del m
         return jsonify({"ok": True, "clase": sorted(clase), "sha256": _sha(path)})
     except Exception as e:
-        return jsonify({"error": f"candidatul nu trece verificarea: {str(e)[:120]}"}), 422
+        return jsonify({"error": t("candidatul nu trece verificarea: {e}", e=str(e)[:120])}), 422
 
 
 @app.route("/model/reincarca", methods=["POST"])
@@ -520,7 +521,7 @@ def model_reincarca():
         return jsonify({"ok": True, "amprenta": detect.amprenta(),
                         "clase": sorted(detect.CLASSES.values())})
     except Exception as e:
-        return jsonify({"error": f"reincarcarea a eșuat: {str(e)[:120]}"}), 500
+        return jsonify({"error": t("reincarcarea a eșuat: {e}", e=str(e)[:120])}), 500
 
 
 @app.route("/adnotare/nesigure/start", methods=["POST"])
@@ -554,16 +555,16 @@ def _reid_query_emb(b):
     if b.get("crop_zi") and b.get("crop_fn"):
         e = reid_arhiva.embedding_din(b["crop_zi"], b["crop_fn"])
         if e is None:
-            raise ValueError("esantionul nu mai e in arhivă")
+            raise ValueError(t("esantionul nu mai e in arhivă"))
         return e, None
     poza = b.get("poza") or ""
     m = re.match(r"^(\d{4}-\d{2}-\d{2})/(\d{6}_cam\d+_[A-Za-z0-9_.-]+\.jpg)$", poza)
     if not m:
-        raise ValueError("poza invalidă")
+        raise ValueError(t("poza invalidă"))
     cale = os.path.join(ROOT, "data", "snapshots", m[1], m[2])
     img = cv2.imread(cale)
     if img is None:
-        raise ValueError("poza nu există")
+        raise ValueError(t("poza nu există"))
     h, w = img.shape[:2]
     box = b.get("box")
     try:   # box-ul vine de la client: 4 numere in [0..1], altfel il ignoram (sau 400 daca e gunoi)
@@ -571,7 +572,7 @@ def _reid_query_emb(b):
         if box and not all(0.0 <= v <= 1.0 for v in box):
             box = None
     except (TypeError, ValueError):
-        raise ValueError("box invalid")
+        raise ValueError(t("box invalid"))
     if not box:
         # chenarele de la momentul detectiei (sidecar-ul pozei): cel mai mare om, fara re-detectie
         try:
@@ -592,12 +593,12 @@ def _reid_query_emb(b):
         sz = min(2560, (max(h, w) + 31) // 32 * 32)
         boxes = detect.persoane(img, conf=0.3, imgsz=sz)
         if not boxes:
-            raise ValueError("niciun om găsit în poză (poză veche, fără chenarele salvate)")
+            raise ValueError(t("niciun om găsit în poză (poză veche, fără chenarele salvate)"))
         x1, y1, x2, y2 = max(boxes, key=lambda bb: (bb[2] - bb[0]) * (bb[3] - bb[1]))
         x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
     crop = img[max(0, y1):min(h, y2), max(0, x1):min(w, x2)]
     if crop.size == 0 or crop.shape[0] < 48:
-        raise ValueError("omul e prea mic în poză")
+        raise ValueError(t("omul e prea mic în poză"))
     e = reid.embed([crop])[0]
     ok, buf = cv2.imencode(".jpg", crop, [cv2.IMWRITE_JPEG_QUALITY, 80])
     return e, (buf.tobytes() if ok else None)
@@ -901,7 +902,7 @@ def capabilities():
             "lpr": {"activ": bool(s["lpr_enabled"]), "incarcat": plates._alpr is not None},
             "describe": {"activ": bool(s["person_describe"]),
                          "incarcat": describe._model is not None,
-                         "nota": "lazy; se descarca dupa inactivitate"},
+                         "nota": t("lazy; se descarca dupa inactivitate")},
             "semantic": {"activ": bool(s["semantic_enabled"]),
                          "incarcat": semantic._model is not None,
                          "backfill": dict(semantic.backfill_state)},

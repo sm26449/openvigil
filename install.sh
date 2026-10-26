@@ -102,8 +102,10 @@ spune "3/5 Configurare"
 if [ ! -f .env ]; then
   cp .env.example .env
   TZ_GAZDA="$(timedatectl show -p Timezone --value 2>/dev/null || cat /etc/timezone 2>/dev/null || echo UTC)"
-  sed -i "s#^TZ=.*#TZ=${TZ_GAZDA}#; s#^PUID=.*#PUID=${PUID_IMPLICIT}#; s#^PGID=.*#PGID=${PGID_IMPLICIT}#" .env
-  gata ".env creat din .env.example (TZ=${TZ_GAZDA}, PUID=${PUID_IMPLICIT}, PGID=${PGID_IMPLICIT})"
+  # limba implicita (notificari + interfata cand browserul nu alege): din LANG-ul gazdei
+  LIMBA_GAZDA="en"; case "${LANG:-}" in ro*) LIMBA_GAZDA="ro";; esac
+  sed -i "s#^TZ=.*#TZ=${TZ_GAZDA}#; s#^PUID=.*#PUID=${PUID_IMPLICIT}#; s#^PGID=.*#PGID=${PGID_IMPLICIT}#; s#^NVR_LANG=.*#NVR_LANG=${LIMBA_GAZDA}#" .env
+  gata ".env creat din .env.example (TZ=${TZ_GAZDA}, NVR_LANG=${LIMBA_GAZDA}, PUID=${PUID_IMPLICIT}, PGID=${PGID_IMPLICIT})"
   avert "Deschide .env daca vrei alt port, alt nume sau alt director de date, apoi ruleaza din nou."
 else
   gata ".env exista, il pastrez"

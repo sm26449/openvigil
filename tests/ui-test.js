@@ -17,7 +17,7 @@ const note = (m) => { warn.push(m); console.log('  ⚠ ' + m); };
 (async () => {
   const browser = await chromium.launch();
   // bypassCSP: page.evaluate foloseste eval, pe care CSP-ul paginii il refuza
-  const ctx = await browser.newContext({ viewport: { width: 1600, height: 950 }, bypassCSP: true });
+  const ctx = await browser.newContext({ locale: 'ro-RO', viewport: { width: 1600, height: 950 }, bypassCSP: true });
   const page = await ctx.newPage();
   // dialogurile native (alert/confirm) sunt inchise, dar textul lor ajunge in jurnalul rularii
   // (inchiderea e amanata un tick: handler-ele `page.once('dialog', accept)` ale pasilor ruleaza intai)
@@ -675,7 +675,7 @@ const note = (m) => { warn.push(m); console.log('  ⚠ ' + m); };
   r.ok() ? ok('cont viewer de test creat (camerele 101+102)')
          : bad('creare viewer', 'status ' + r.status());
 
-  const vctx = await browser.newContext({ viewport: { width: 1600, height: 950 }, bypassCSP: true });
+  const vctx = await browser.newContext({ locale: 'ro-RO', viewport: { width: 1600, height: 950 }, bypassCSP: true });
   const vpage = await vctx.newPage();
   await vpage.goto(BASE, { waitUntil: 'domcontentloaded' });
   await vpage.fill('input[name="user"]', TESTU);
@@ -751,7 +751,7 @@ const note = (m) => { warn.push(m); console.log('  ⚠ ' + m); };
   r = await page.request.post(BASE + '/api/users', { headers: csrf,
     data: { user: OPU, pass: 'parola-op-ui', role: 'operator', cameras: [101, 102] } });
   r.ok() ? ok('cont operator de test creat') : bad('creare operator', 'status ' + r.status());
-  const octx = await browser.newContext({ viewport: { width: 1600, height: 950 }, bypassCSP: true });
+  const octx = await browser.newContext({ locale: 'ro-RO', viewport: { width: 1600, height: 950 }, bypassCSP: true });
   const opage = await octx.newPage();
   await opage.goto(BASE, { waitUntil: 'domcontentloaded' });
   await opage.fill('input[name="user"]', OPU);
@@ -826,7 +826,7 @@ const note = (m) => { warn.push(m); console.log('  ⚠ ' + m); };
   r = await page.request.post(BASE + '/api/users', { headers: csrf,
     data: { user: TFAU, pass: 'parola-2fa-ui', role: 'viewer' } });
   r.ok() ? ok('cont de test pentru 2FA creat') : bad('creare cont 2fa', 'status ' + r.status());
-  const tctx = await browser.newContext({ viewport: { width: 1200, height: 800 }, bypassCSP: true });
+  const tctx = await browser.newContext({ locale: 'ro-RO', viewport: { width: 1200, height: 800 }, bypassCSP: true });
   const tpage = await tctx.newPage();
   await tpage.goto(BASE + '/login', { waitUntil: 'domcontentloaded' });
   await tpage.fill('input[name="user"]', TFAU);
@@ -1090,7 +1090,7 @@ const note = (m) => { warn.push(m); console.log('  ⚠ ' + m); };
   await page.evaluate(() => window.dispatchEvent(new Event('resize')));
   const rolToast = await page.evaluate(() => { const t = document.querySelector('#toast'); return t ? t.getAttribute('role') : 'fara toast inca'; });
   ['status', 'alert', 'fara toast inca'].includes(rolToast) ? ok('toast-ul poarta role=' + rolToast) : bad('toast aria', rolToast);
-  const tctx2 = await browser.newContext({ viewport: { width: 390, height: 800 }, hasTouch: true, isMobile: true, bypassCSP: true });
+  const tctx2 = await browser.newContext({ locale: 'ro-RO', viewport: { width: 390, height: 800 }, hasTouch: true, isMobile: true, bypassCSP: true });
   const mpage = await tctx2.newPage();
   await mpage.goto(BASE + '/login', { waitUntil: 'domcontentloaded' });
   await mpage.fill('input[name="user"]', USER); await mpage.fill('input[name="password"]', PASS);
@@ -1459,7 +1459,7 @@ const note = (m) => { warn.push(m); console.log('  ⚠ ' + m); };
 
   console.log('\n== 34. Verificarea publica a probelor (/verifica, fara login) ==');
   {
-    const pctx = await browser.newContext();
+    const pctx = await browser.newContext({ locale: 'ro-RO' });
     const pp = await pctx.newPage();
     const g = await pp.goto(BASE + '/verifica', { waitUntil: 'domcontentloaded' });
     g.status() === 200 && (await pp.locator('input[name="sha256"]').count()) === 1 ? ok('verifica: pagina publica se deschide fara login') : bad('verifica', 'status ' + g.status());

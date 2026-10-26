@@ -11,6 +11,7 @@ from flask import Blueprint, jsonify, request, send_file
 import audit
 import harta
 import mod
+from i18n import t
 from server import _visible_ids, current_user
 
 bp = Blueprint("operare", __name__)
@@ -19,7 +20,7 @@ bp = Blueprint("operare", __name__)
 @bp.route("/api/mod", methods=["GET", "POST"])
 def api_mod():
     if request.method == "GET":
-        return jsonify({**mod.get(), "moduri": list(mod.MODURI), "nume": mod.MOD_RO})
+        return jsonify({**mod.get(), "moduri": list(mod.MODURI), "nume": {k: t(v) for k, v in mod.MOD_RO.items()}})
     b = request.get_json(silent=True) or {}
     u = current_user() or {}
     try:
@@ -49,7 +50,7 @@ def api_harta_save():
             p = harta.redenumeste(str(b["id"]), str(b["nume"]))
             audit.log("plan de harta redenumit", p["nume"])
         else:
-            return jsonify({"error": "nimic de facut"}), 400
+            return jsonify({"error": t("nimic de facut")}), 400
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     return jsonify({"ok": True, "plan": {"id": p["id"], "nume": p.get("nume"),
@@ -72,7 +73,7 @@ def api_harta_imagine(pid):
     if request.method == "GET":
         cale = harta.imagine(pid)
         if not cale:
-            return jsonify({"error": "planul nu are imagine"}), 404
+            return jsonify({"error": t("planul nu are imagine")}), 404
         return send_file(cale, max_age=0, conditional=True)
     try:
         harta.salveaza_imagine(pid, request.get_data(), request.content_type)

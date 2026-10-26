@@ -48,6 +48,7 @@ import jurnal
 import settings  # noqa: F401  (folosit indirect; pastrat pentru consecventa modulelor)
 import store
 import logare
+from i18n import t
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RULES_FILE = os.path.join(ROOT, "data", "rules.json")
@@ -132,20 +133,20 @@ def validate(rule):
     """Curata si valideaza o regula venita din UI. Intoarce regula normalizata."""
     tip = (rule.get("declansator") or {}).get("tip")
     if tip not in TRIGGER_TYPES:
-        raise ValueError(f"declanșator necunoscut: {tip}")
+        raise ValueError(t("declanșator necunoscut: {tip}", tip=tip))
     nume = (rule.get("nume") or "").strip()[:60]
     if not nume:
-        raise ValueError("regula are nevoie de un nume")
+        raise ValueError(t("regula are nevoie de un nume"))
     actiuni = []
     for a in rule.get("actiuni") or []:
         if a.get("tip") not in ACTION_TYPES:
-            raise ValueError(f"acțiune necunoscută: {a.get('tip')}")
+            raise ValueError(t("acțiune necunoscută: {tip}", tip=a.get('tip')))
         if a["tip"] == "mod" and a.get("mod") not in MODURI:
-            raise ValueError("actiunea 'mod' are nevoie de un mod: acasa / plecat / noapte")
+            raise ValueError(t("actiunea 'mod' are nevoie de un mod: acasa / plecat / noapte"))
         actiuni.append(a)
     moduri = sorted({str(m) for m in (rule.get("moduri") or []) if m in MODURI})
     if not actiuni:
-        raise ValueError("regula are nevoie de cel puțin o acțiune")
+        raise ValueError(t("regula are nevoie de cel puțin o acțiune"))
     interval = rule.get("interval")
     if interval:
         try:
@@ -153,7 +154,7 @@ def validate(rule):
                 h, m = hhmm.split(":")
                 assert 0 <= int(h) <= 23 and 0 <= int(m) <= 59
         except (ValueError, AssertionError, AttributeError):
-            raise ValueError("interval orar invalid (format HH:MM)")
+            raise ValueError(t("interval orar invalid (format HH:MM)"))
         interval = list(interval[:2])
     zile = sorted({int(z) for z in (rule.get("zile") or []) if 0 <= int(z) <= 6})
     return {"id": rule.get("id") or uuid.uuid4().hex[:12],
@@ -184,7 +185,7 @@ def delete(rule_id):
     rules = load()
     rest = [r for r in rules if r.get("id") != rule_id]
     if len(rest) == len(rules):
-        raise ValueError("regula nu există")
+        raise ValueError(t("regula nu există"))
     save(rest)
 
 
@@ -513,7 +514,7 @@ def _run_actions(rule, tip, cam_id, date):
         try:
             if at == "sirena":
                 if not feat.get("siren"):
-                    raise RuntimeError("camera nu are sirena")
+                    raise RuntimeError(t("camera nu are sirena"))
                 snd = str(a.get("sunet") or 1)
                 camctl.trigger_siren(cam, audio_id=int(snd.lstrip("c")),
                                      volume=int(a.get("volum") or 90),
@@ -521,24 +522,24 @@ def _run_actions(rule, tip, cam_id, date):
                                      custom=snd.startswith("c"))
             elif at == "strobo":
                 if not feat.get("strobe"):
-                    raise RuntimeError("camera nu are stroboscop")
+                    raise RuntimeError(t("camera nu are stroboscop"))
                 camctl.set_strobe(cam, int(a.get("secunde") or 30))
             elif at == "anunt":
                 if not feat.get("talk"):
-                    raise RuntimeError("camera nu are difuzor")
-                text = (a.get("text") or "").strip() or f"Atentie: {context}"
+                    raise RuntimeError(t("camera nu are difuzor"))
+                text = (a.get("text") or "").strip() or t("Atentie: {context}", context=context)
                 camctl.speak(cam, text, repeat=int(a.get("repetari") or 1))
             elif at == "releu":
                 if not feat.get("io_out"):
-                    raise RuntimeError("camera nu are releu")
+                    raise RuntimeError(t("camera nu are releu"))
                 camctl.set_output(cam, int(a.get("port") or 1), True)
                 sec = int(a.get("secunde") or 0)
                 if sec:
                     time.sleep(min(sec, 300))
                     camctl.set_output(cam, int(a.get("port") or 1), False)
             elif at == "notificare":
-                nume_cam = (cam or {}).get("name") or (f"cam {cam_id}" if cam_id else "sistem")
-                text = (a.get("text") or "").strip() or f"Regula „{rule['nume']}”: {context}"
+                nume_cam = (cam or {}).get("name") or (f"cam {cam_id}" if cam_id else t("sistem"))
+                text = (a.get("text") or "").strip() or t("Regula „{nume}”: {context}", nume=rule['nume'], context=context)
                 notify.send(f"⚡ {nume_cam}: {text}" + notify.link(cam_id),
                             key=("regula", rule["id"]))
             elif at == "webhook":
@@ -552,12 +553,12 @@ def _run_actions(rule, tip, cam_id, date):
                 import mqtt
                 topic = (a.get("topic") or "").strip()
                 if not topic:
-                    raise RuntimeError("acțiunea mqtt are nevoie de un topic")
+                    raise RuntimeError(t("acțiunea mqtt are nevoie de un topic"))
                 payload = (a.get("payload") or "").strip() or json.dumps(
                     {"regula": rule["nume"], "declansator": tip, "context": context,
                      "camera": cam_id}, ensure_ascii=False)
                 if not mqtt.publish(topic, payload):
-                    raise RuntimeError("publicarea a eșuat (broker oprit sau MQTT dezactivat)")
+                    raise RuntimeError(t("publicarea a eșuat (broker oprit sau MQTT dezactivat)"))
             rezultate.append(f"{at} ok")
         except Exception as e:
             rezultate.append(f"{at}: {str(e)[:60]}")

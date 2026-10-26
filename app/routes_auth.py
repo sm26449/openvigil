@@ -19,11 +19,13 @@ import secrets
 import time
 
 from markupsafe import escape
-from flask import Blueprint, jsonify, redirect, request, session
+from flask import Blueprint, g, jsonify, redirect, request, session
 
 import audit
+import i18n
 import totp
 import users
+from i18n import t
 from server import _visible_ids, current_user
 import config as C
 
@@ -52,12 +54,13 @@ LOGIN_HTML = ("""<!DOCTYPE html><html lang="ro"><head><meta charset="utf-8">
 <input name="user" placeholder="Utilizator" autofocus autocomplete="username">
 <input type="password" name="password" placeholder="Parola" autocomplete="current-password">
 <button type="submit">Intra</button>
+{limbi}
 <p class="hint"><a href="https://openvigil.dev" rel="noopener" style="color:#8b949e">OpenVigil</a> · openvigil.dev</p></form></body></html>""")
 
 SETUP_HTML = ("""<!DOCTYPE html><html lang="ro"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>NVR — primul cont</title>"""
               + _AUTH_CSS + """</head><body>
-<form method="post" action="/setup"><h1>🎥 """ + C.NUME + """ — primul cont</h1>
+<form method="post" action="/setup"><h1>🎥 """ + C.NUME + """ — <span>primul cont</span></h1>
 <p class="hint">Nu exista inca niciun utilizator. Creeaza contul de administrator.</p>
 <p class="err">{err}</p>
 <input name="user" placeholder="Utilizator" value="admin" autocomplete="username">
@@ -66,18 +69,34 @@ SETUP_HTML = ("""<!DOCTYPE html><html lang="ro"><head><meta charset="utf-8">
 <input type="password" name="password2" placeholder="Parola inca o data"
  autocomplete="new-password">
 <button type="submit">Creeaza contul</button>
+{limbi}
 <p class="hint"><a href="https://openvigil.dev" rel="noopener" style="color:#8b949e">OpenVigil</a> · openvigil.dev</p></form></body></html>""")
 
 TOTP_HTML = ("""<!DOCTYPE html><html lang="ro"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>NVR — cod</title>"""
              + _AUTH_CSS + """</head><body>
-<form method="post" action="/login/2fa"><h1>🎥 """ + C.NUME + """ — al doilea pas</h1>
+<form method="post" action="/login/2fa"><h1>🎥 """ + C.NUME + """ — <span>al doilea pas</span></h1>
 <p class="hint">Scrie codul din aplicatia de autentificare (sau un cod de recuperare).</p>
 <p class="err">{err}</p>
 <input name="cod" placeholder="Cod de 6 cifre" autofocus inputmode="numeric"
  autocomplete="one-time-code" pattern="[0-9a-z ]*">
 <button type="submit">Intra</button>
 <p class="hint"><a href="/login" style="color:#8b949e">Inapoi la login</a></p></form></body></html>""")
+
+# selectorul de limba de pe formulare: ?lang=xx ramane in cookie (server.py)
+_LIMBI_HTML = ('<p class="hint lang">' + " · ".join(
+    f'<a href="?lang={c}" style="color:#8b949e">{n}</a>' for c, n in i18n.disponibile()) + "</p>")
+
+
+def _pagina(sablon, **camp):
+    """Formularul tradus in limba cererii, cu campurile {err}/{rez} completate (textul
+    mesajelor e deja tradus de apelant; {rez} e HTML de incredere construit aici)."""
+    limba = i18n.limba_curenta()
+    corp = i18n.pagina(sablon, limba).replace("{limbi}", _LIMBI_HTML)
+    for k, v in camp.items():
+        corp = corp.replace("{" + k + "}", v)
+    return corp
+
 
 # incercari esuate de login per IP: dupa 8 in 15 minute, 429 pana se scurge fereastra
 _login_fail = {}
@@ -114,8 +133,7 @@ def login():
         ip = request.remote_addr
         if _too_many_fails(ip):
             audit.log("login blocat (prea multe încercări)")
-            return LOGIN_HTML.replace("{err}",
-                                      "Prea multe încercări — așteaptă 15 minute"), 429
+            return _pagina(LOGIN_HTML, err=t("Prea multe încercări — așteaptă 15 minute")), 429
         name = (request.form.get("user") or "").strip()
         u = users.verify(name, request.form.get("password", ""))
         if u and u.get("totp"):
@@ -124,15 +142,15 @@ def login():
             session.clear()
             session["pre2fa"] = {"user": name, "t": time.time()}
             audit.log("login: parola corectă, se așteaptă codul", name)
-            return TOTP_HTML.replace("{err}", "")
+            return _pagina(TOTP_HTML, err="")
         if u:
             _login_fail.pop(ip, None)
             _login_ok(u)
             audit.log("login reușit", name, who=name)
             return redirect("/")
         _esec(ip, "login esuat", name)
-        return LOGIN_HTML.replace("{err}", "Utilizator sau parola greșite")
-    return LOGIN_HTML.replace("{err}", "")
+        return _pagina(LOGIN_HTML, err=t("Utilizator sau parola greșite"))
+    return _pagina(LOGIN_HTML, err="")
 
 
 @bp.route("/login/2fa", methods=["GET", "POST"])
@@ -144,25 +162,25 @@ def login_2fa():
         session.pop("pre2fa", None)
         return redirect("/login")
     if request.method == "GET":
-        return TOTP_HTML.replace("{err}", "")
+        return _pagina(TOTP_HTML, err="")
     ip = request.remote_addr
     if _too_many_fails(ip):
         audit.log("login blocat (prea multe încercări)", name)
-        return TOTP_HTML.replace("{err}", "Prea multe încercări — așteaptă 15 minute"), 429
+        return _pagina(TOTP_HTML, err=t("Prea multe încercări — așteaptă 15 minute")), 429
     u = users.get(name)
-    t = (u or {}).get("totp")
-    if not u or not t:
+    tp = (u or {}).get("totp")
+    if not u or not tp:
         session.pop("pre2fa", None)
         return redirect("/login")
     cod = (request.form.get("cod") or "").strip()
-    ctr = totp.verifica(t["secret"], cod, dupa=int(t.get("ultimul") or 0))
+    ctr = totp.verifica(tp["secret"], cod, dupa=int(tp.get("ultimul") or 0))
     if ctr is not None and users.totp_folosit(name, ctr):
         cum = "cod"
     elif users.recuperare_folosita(name, cod):
         cum = "cod de recuperare"
     else:
         _esec(ip, "cod 2FA gresit", name)
-        return TOTP_HTML.replace("{err}", "Cod greșit sau deja folosit")
+        return _pagina(TOTP_HTML, err=t("Cod greșit sau deja folosit"))
     _login_fail.pop(ip, None)
     _login_ok(u)
     audit.log(f"login reușit ({cum})", name, who=name)
@@ -178,15 +196,15 @@ def setup():
         name = (request.form.get("user") or "").strip() or "admin"
         pw = request.form.get("password") or ""
         if pw != (request.form.get("password2") or ""):
-            return SETUP_HTML.replace("{err}", "Parolele nu coincid")
+            return _pagina(SETUP_HTML, err=t("Parolele nu coincid"))
         try:
             u = users.upsert(name, password=pw, role="admin")
         except ValueError as e:
-            return SETUP_HTML.replace("{err}", str(escape(str(e))))
+            return _pagina(SETUP_HTML, err=str(escape(t(str(e)))))
         _login_ok(u)
         audit.log("cont administrator creat", name, who=name)
         return redirect("/")
-    return SETUP_HTML.replace("{err}", "")
+    return _pagina(SETUP_HTML, err="")
 
 
 VERIFICA_HTML = ("""<!DOCTYPE html><html lang="ro"><head><meta charset="utf-8">
@@ -194,7 +212,7 @@ VERIFICA_HTML = ("""<!DOCTYPE html><html lang="ro"><head><meta charset="utf-8">
                  + _AUTH_CSS + """<style>form{max-width:520px}.rez{padding:12px 14px;border-radius:8px;margin:12px 0;font-size:15px;line-height:1.5}
 .ok{background:#1d3323;color:#8fd19e}.nu{background:#3a1f1d;color:#ff8a80}.hint{font-size:13px;opacity:.75}
 code{font-size:12px;word-break:break-all}</style></head><body>
-<form method="post" action="/verifica" enctype="multipart/form-data"><h1>🎥 """ + C.NUME + """ — verificarea probelor</h1>
+<form method="post" action="/verifica" enctype="multipart/form-data"><h1>🎥 """ + C.NUME + """ — <span>verificarea probelor</span></h1>
 <p class="hint">Urcă un fișier MP4 exportat din acest NVR sau lipește amprenta lui SHA-256.
 Primești confirmarea că a fost produs aici, când, de pe ce cameră, și că nu a fost modificat de atunci.</p>
 {rez}
@@ -202,6 +220,7 @@ Primești confirmarea că a fost produs aici, când, de pe ce cameră, și că n
 <input name="sha256" placeholder="sau SHA-256 (64 de caractere hex)" autocomplete="off" pattern="[0-9a-fA-F]{64}">
 <button type="submit">Verifică</button>
 <p class="hint">Amprenta se calculează pe server și nu se păstrează fișierul. Pe calculatorul tău: <code>sha256sum fisier.mp4</code>.</p>
+{limbi}
 </form></body></html>""")
 
 
@@ -212,36 +231,40 @@ def verifica():
     import verificare
     from server import get_cameras
     if request.method == "GET":
-        return VERIFICA_HTML.replace("{rez}", "")
+        return _pagina(VERIFICA_HTML, rez="")
     sha = (request.form.get("sha256") or "").strip().lower()
     f = request.files.get("fisier")
     octeti = None
     if f and f.filename:
         sha, octeti = verificare.hash_flux(f.stream)
         if sha is None:
-            return VERIFICA_HTML.replace("{rez}", '<div class="rez nu">Fișierul e prea mare pentru verificare pe web (peste 2 GB): folosește <code>sha256sum</code> și lipește amprenta.</div>'), 413
+            return _pagina(VERIFICA_HTML, rez='<div class="rez nu">' + t("Fișierul e prea mare pentru verificare pe web (peste 2 GB): folosește {cmd} și lipește amprenta.", cmd="<code>sha256sum</code>") + '</div>'), 413
     if not sha:
-        return VERIFICA_HTML.replace("{rez}", '<div class="rez nu">Alege un fișier sau lipește o amprentă.</div>'), 400
+        return _pagina(VERIFICA_HTML, rez='<div class="rez nu">' + t("Alege un fișier sau lipește o amprentă.") + '</div>'), 400
     nume = {c["id"]: c.get("name") or f"cam {c['id']}" for c in get_cameras()}
     r = verificare.cauta(sha, nume)
     e = _html.escape
     if r.get("gasit"):
         if r["fel"] == "segment":
-            txt = (f'<div class="rez ok">✅ <b>Segment brut înregistrat de acest NVR</b> de pe camera <b>{e(r["cam_nume"])}</b>, '
-                   f'fișierul <code>{e(r["nume"] or "")}</code>, amprentă luată la închiderea segmentului ({e(r["t"] or "")}). '
-                   f'Conținutul este identic cu cel de atunci.<br><code>{sha}</code></div>')
+            txt = ('<div class="rez ok">✅ <b>' + t("Segment brut înregistrat de acest NVR") + "</b> "
+                   + t("de pe camera {cam}, fișierul {fisier}, amprentă luată la închiderea segmentului ({cand}).",
+                       cam=f'<b>{e(r["cam_nume"])}</b>', fisier=f'<code>{e(r["nume"] or "")}</code>', cand=e(r["t"] or ""))
+                   + " " + t("Conținutul este identic cu cel de atunci.") + f"<br><code>{sha}</code></div>")
         else:
-            txt = (f'<div class="rez ok">✅ <b>Export produs de acest NVR</b> pe {e(r["t"])}, camera <b>{e(r["cam_nume"])}</b>, '
-                   f'intervalul {e(r.get("start") or "")} – {e(r.get("end") or "")}' + (f', cerut de {e(r["cine"])}' if r.get("cine") else "")
-                   + f'. Conținutul este identic cu fișierul livrat atunci.<br><code>{sha}</code></div>')
+            txt = ('<div class="rez ok">✅ <b>' + t("Export produs de acest NVR") + "</b> "
+                   + t("pe {cand}, camera {cam}, intervalul {start} – {end}", cand=e(r["t"]), cam=f'<b>{e(r["cam_nume"])}</b>',
+                       start=e(r.get("start") or ""), end=e(r.get("end") or ""))
+                   + (", " + t("cerut de {cine}", cine=e(r["cine"])) if r.get("cine") else "")
+                   + ". " + t("Conținutul este identic cu fișierul livrat atunci.") + f"<br><code>{sha}</code></div>")
     else:
-        txt = (f'<div class="rez nu">❌ <b>Amprentă necunoscută</b>: fișierul nu a fost produs de acest NVR, a fost modificat după export, '
-               f'sau e mai vechi decât registrul (2026-10-25).<br><code>{e(sha)}</code></div>')
+        txt = ('<div class="rez nu">❌ <b>' + t("Amprentă necunoscută") + "</b>: "
+               + t("fișierul nu a fost produs de acest NVR, a fost modificat după export, sau e mai vechi decât registrul ({zi}).", zi="2026-10-25")
+               + f"<br><code>{e(sha)}</code></div>")
     try:
         audit.log("verificare publică de probă", sha[:16], detail={"gasit": bool(r.get("gasit")), "octeti": octeti}, who="public")
     except Exception:
         pass
-    return VERIFICA_HTML.replace("{rez}", txt)
+    return _pagina(VERIFICA_HTML, rez=txt)
 
 
 @bp.route("/logout")
@@ -258,7 +281,7 @@ def api_auth_forward():
     in spatele login-ului NVR."""
     u = current_user()
     if not u:
-        return jsonify({"error": "neautentificat"}), 401
+        return jsonify({"error": t("neautentificat")}), 401
     r = jsonify({"ok": True, "user": u["user"], "role": u["role"]})
     r.headers["X-Nvr-User"] = u["user"]
     r.headers["X-Nvr-Role"] = u["role"]
@@ -271,7 +294,25 @@ def api_me():
     vis = _visible_ids()
     return jsonify({"user": u["user"], "role": u["role"], "csrf": session.get("csrf"),
                     "cameras": sorted(vis) if vis is not None else None,
-                    "totp": bool(u.get("totp")), "https": request.is_secure})
+                    "totp": bool(u.get("totp")), "https": request.is_secure,
+                    "lang": i18n.limba_curenta(), "lang_cont": u.get("lang"),
+                    "limbi": [{"cod": c, "nume": n} for c, n in i18n.disponibile()]})
+
+
+@bp.route("/api/me/limba", methods=["POST"])
+def api_me_limba():
+    """Limba interfetei pentru contul curent (Contul meu); goala = dupa browser. Ramane si in
+    cookie, ca formularul de login si pagina de dupa sa fie deja in limba aleasa."""
+    u = current_user()
+    b = request.get_json(silent=True) or {}
+    limba = (b.get("limba") or "").strip()
+    if limba and not i18n.limba_valida(limba):
+        return jsonify({"error": t("limbă necunoscută")}), 400
+    users.set_lang(u["user"], limba or None)
+    g.limba = None
+    g.limba_cookie = limba          # gol = se sterge cookie-ul, ramane browserul
+    audit.log("limba contului schimbată", u["user"], {"limba": limba or "auto"})
+    return jsonify({"ok": True, "lang": limba or None})
 
 
 @bp.route("/api/me/deconectare", methods=["POST"])
@@ -302,13 +343,13 @@ def api_2fa_activeaza():
     """Pasul 2: codul din aplicatie dovedeste ca secretul a fost scanat; abia atunci se
     salveaza. Raspunsul aduce codurile de recuperare — singura data cand se vad."""
     u = current_user()
-    secret, t = _totp_nou.get(u["user"]) or (None, 0)
+    secret, ts = _totp_nou.get(u["user"]) or (None, 0)
     b = request.get_json(silent=True) or {}
-    if not secret or time.time() - t > TOTP_NOU_SEC:
+    if not secret or time.time() - ts > TOTP_NOU_SEC:
         _totp_nou.pop(u["user"], None)
-        return jsonify({"error": "întâi generează codul QR (e valabil 10 minute)"}), 400
+        return jsonify({"error": t("întâi generează codul QR (e valabil 10 minute)")}), 400
     if totp.verifica(secret, str(b.get("cod") or "")) is None:
-        return jsonify({"error": "cod greșit — verifică ora telefonului și încearcă iar"}), 400
+        return jsonify({"error": t("cod greșit — verifică ora telefonului și încearcă iar")}), 400
     coduri = totp.coduri_recuperare()
     users.set_totp(u["user"], secret, coduri)
     _totp_nou.pop(u["user"], None)
@@ -323,7 +364,7 @@ def api_2fa_dezactiveaza():
     u = current_user()
     b = request.get_json(silent=True) or {}
     if not users.verify(u["user"], str(b.get("parola") or "")):
-        return jsonify({"error": "parola greșită"}), 400
+        return jsonify({"error": t("parola greșită")}), 400
     users.clear_totp(u["user"])
     audit.log("2FA dezactivat", u["user"])
     return jsonify({"ok": True})
@@ -377,7 +418,7 @@ def api_user_2fa_delete(name):
 def api_user_delete(name):
     me = current_user()
     if me and me["user"] == name:
-        return jsonify({"error": "nu îți poți șterge propriul cont"}), 400
+        return jsonify({"error": t("nu îți poți șterge propriul cont")}), 400
     try:
         users.delete(name)
     except ValueError as e:

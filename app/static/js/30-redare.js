@@ -4,7 +4,7 @@
    pe toate; importurile/exporturile sunt verificate de scripts/module_check.py (si in pytest).
    ==================================================================== */
 import { S } from './state.js';
-import { $, DET_RO, GO2RTC, HD_MODE, JOB_STARE_RO, html, icon, lista, runJob, streamEl, toast } from './00-core.js';
+import { $, DET_RO, GO2RTC, HD_MODE, JOB_STARE_RO, html, icon, lista, runJob, streamEl, t, toast } from './00-core.js';
 import { pbHash, setHash } from './05-navigare.js';
 import { loadCameras, post } from './10-live.js';
 import { hdCam } from './20-hd.js';
@@ -17,7 +17,7 @@ function buildPbCams() {
   for (const c of S.cameras) {
     const o = document.createElement('option');
     o.value = c.id;
-    o.textContent = `${c.id}. ${c.name}` + (c.playback === false ? ' (fără înregistrări)' : '');
+    o.textContent = `${c.id}. ${c.name}` + (c.playback === false ? ' ' + t('(fără înregistrări)') : '');
     sel.appendChild(o);
   }
   $('#pb-date').value = localDay();
@@ -45,13 +45,13 @@ let curSegments = [];
 async function searchRecordings() {
   const ch = +$('#pb-cam').value;
   const date = $('#pb-date').value;
-  $('#pb-info').textContent = 'Caut...';
+  $('#pb-info').textContent = t('Caut...');
   const url = `/api/recordings?channel=${ch}&start=${date}T00:00:00Z&end=${date}T23:59:59Z`;
   const r = await fetch(url);
   const d = await r.json();
-  if (d.error) { $('#pb-info').textContent = 'Eroare: ' + d.error; return; }
+  if (d.error) { $('#pb-info').textContent = t('Eroare: {err}', { err: d.error }); return; }
   curSegments = d.segments || [];
-  $('#pb-info').textContent = `${d.count} segmente înregistrate`;
+  $('#pb-info').textContent = t('{n} segmente înregistrate', { n: d.count });
   renderTimeline(date);
   drawEventDots(ch, date);
   drawPbMarks(ch, date);
@@ -76,18 +76,18 @@ async function drawEventDots(ch, date) {
       dot.className = 'evdot' + (DET_RO[ev.label] ? ' det'
         : ev.label === 'VMD' ? '' : ' regula');
       dot.dataset.sec = ev.sec;
-      dot.title = `${ev.time} — ${alNume(ev.label)} (click = redă)`;
+      dot.title = t('{ora} — {ev} (click = redă)', { ora: ev.time, ev: t(alNume(ev.label)) });
       dot.onclick = (e) => { e.stopPropagation(); playFrom(date, ev.sec); };
       tl.appendChild(dot);
       const row = document.createElement('div');
       row.className = 'ev-row';
       row.innerHTML = html`<img loading="lazy" src="${ev.url}"><span>${ev.time}<br>` +
-                      html`<b>${AL_ICO[ev.label] || '⚠'} ${alNume(ev.label)}</b></span>`;
+                      html`<b>${AL_ICO[ev.label] || '⚠'} ${t(alNume(ev.label))}</b></span>`;
       row.onclick = () => playFrom(date, ev.sec);
       ev.row = row;
       list.appendChild(row);
     }
-    if (!pbEvents.length) list.innerHTML = '<p class="hint">Niciun eveniment in ziua asta.</p>';
+    if (!pbEvents.length) list.innerHTML = html`<p class="hint">${t('Niciun eveniment in ziua asta.')}</p>`;
   } catch {}
   relayoutTimeline();
 }
@@ -121,7 +121,7 @@ function pbTogglePause(force) {
     if (!v._pbHook) { v._pbHook = true; v.addEventListener('play', () => { if (pbPaused) v.pause(); }); }
     if (pbPaused) v.pause(); else v.play().catch(() => {});
   }
-  $('#pb-play').textContent = pbPaused ? '▶ Redă' : '⏸ Pauză';
+  $('#pb-play').textContent = pbPaused ? t('▶ Redă') : t('⏸ Pauză');
   $('#pb-play').classList.toggle('paused', pbPaused);
 }
 // cadru cu cadru: pauza + un pas de 1/25 s in buffer (camerele inregistreaza la 25 fps)
@@ -144,10 +144,10 @@ $('#pb-play').onclick = () => pbTogglePause();
 $('#pb-f-prev').onclick = () => pbFrame(-1);
 $('#pb-f-next').onclick = () => pbFrame(1);
 $('#pb-link').onclick = async () => {
-  if (pbDate === null) { toast('Pornește întâi redarea.'); return; }
+  if (pbDate === null) { toast(t('Pornește întâi redarea.')); return; }
   const url = `${location.origin}/${pbHash()}`;
-  try { await navigator.clipboard.writeText(url); toast('Legătura copiată: ' + url); }
-  catch { prompt('Copiază legătura către acest moment:', url); }   // http in LAN: fara clipboard API
+  try { await navigator.clipboard.writeText(url); toast(t('Legătura copiată: {url}', { url })); }
+  catch { prompt(t('Copiază legătura către acest moment:'), url); }   // http in LAN: fara clipboard API
 };
 // tastatura, ca la un player: Space/K pauza, J/L si sageti ±10s (Shift ±1min), , . cadru,
 // [ ] viteza, + − zoom pe bara, M marcaj. Doar in tabul Inregistrari, fara overlay-uri,
@@ -177,11 +177,11 @@ document.addEventListener('keydown', (e) => {
 });
 $('#pb-ev-prev').onclick = () => {
   const prev = [...pbEvents].reverse().find((e) => e.sec < (pbPos ?? 86400) - 2);
-  if (prev) pbJump(prev.sec); else $('#pb-info').textContent = 'Nu mai sunt evenimente înainte.';
+  if (prev) pbJump(prev.sec); else $('#pb-info').textContent = t('Nu mai sunt evenimente înainte.');
 };
 $('#pb-ev-next').onclick = () => {
   const next = pbEvents.find((e) => e.sec > (pbPos ?? -1) + 2);
-  if (next) pbJump(next.sec); else $('#pb-info').textContent = 'Nu mai sunt evenimente după.';
+  if (next) pbJump(next.sec); else $('#pb-info').textContent = t('Nu mai sunt evenimente după.');
 };
 for (const b of document.querySelectorAll('#pb-nav button[data-seek]')) {
   b.onclick = () => { if (pbPos !== null) pbJump(pbPos + (+b.dataset.seek)); };
@@ -210,7 +210,7 @@ async function loadMarks(cam, date, tl, list, onPlay) {
     el.style.left = (a / 86400 * 100) + '%';
     if (m.durata > 0) { el.dataset.end = b; el.style.width = Math.max(0.3, (b - a) / 86400 * 100) + '%'; }
     el.title = `🔖 ${m.t.slice(11, 19)}${m.durata > 0 ? ' – ' + m.t_end.slice(11, 19) : ''}`
-      + (m.eticheta ? ' — ' + m.eticheta : '') + (m.nota ? '\n' + m.nota : '') + ' (click = reda)';
+      + (m.eticheta ? ' — ' + m.eticheta : '') + (m.nota ? '\n' + m.nota : '') + ' ' + t('(click = redă)');
     el.onclick = (e) => { e.stopPropagation(); onPlay(a); };
     el.onpointerdown = (e) => e.stopPropagation();   // sa nu porneasca selectia de export
     tl.appendChild(el);
@@ -219,12 +219,12 @@ async function loadMarks(cam, date, tl, list, onPlay) {
   list.innerHTML = lista(marks, (m) => html`
     <div class="mk-row" data-id="${m.id}" title="${m.nota || ''}">
       <span>🔖 ${m.t.slice(11, 16)}${m.durata > 0 ? '–' + m.t_end.slice(11, 16) : ''}</span>
-      <b>${m.eticheta || '(fara eticheta)'}</b>
+      <b>${m.eticheta || t('(fără etichetă)')}</b>
       <span class="mk-acts">
-        <button class="mk-dosar link-btn" title="Pune marcajul la un dosar de caz">dosar</button>
-        <button class="mk-del link-btn" title="Șterge marcajul">✕</button>
+        <button class="mk-dosar link-btn" title="${t('Pune marcajul la un dosar de caz')}">${t('dosar')}</button>
+        <button class="mk-del link-btn" title="${t('Șterge marcajul')}">✕</button>
       </span>
-    </div>`, '<p class="hint">Niciun marcaj. Apasa „Marcaj" in timpul redarii.</p>');
+    </div>`, html`<p class="hint">${t('Niciun marcaj. Apasă „Marcaj” în timpul redării.')}</p>`);
   for (const row of list.querySelectorAll('.mk-row')) {
     const m = marks.find((x) => x.id === row.dataset.id);
     row.onclick = () => onPlay(tSec(m.t, date));
@@ -233,34 +233,34 @@ async function loadMarks(cam, date, tl, list, onPlay) {
       // un moment punctual devine o proba de ±15s in jurul lui
       S.pendingProba = { cam: m.cam, start: evCompact(m.t, m.durata > 0 ? 0 : -15),
                        end: evCompact(m.t_end, m.durata > 0 ? 0 : 15),
-                       nota: m.eticheta || 'marcaj', event_id: 'marcaj:' + m.id };
+                       nota: m.eticheta || t('marcaj'), event_id: 'marcaj:' + m.id };
       openCases(true);
     };
     row.querySelector('.mk-del').onclick = async (e) => {
       e.stopPropagation();
-      if (!confirm('Ștergi marcajul?')) return;
+      if (!confirm(t('Ștergi marcajul?'))) return;
       await fetch(`/api/marcaje/${m.id}`, { method: 'DELETE' });
       loadMarks(cam, date, tl, list, onPlay);
     };
   }
 }
 async function addMark(cam, date, sec, reload) {
-  const eticheta = prompt(`Marcaj la ${hms(sec)} — eticheta (ex. „mașină gri la poarta"):`);
+  const eticheta = prompt(t('Marcaj la {ora} — eticheta (ex. „mașină gri la poartă”):', { ora: hms(sec) }));
   if (eticheta === null) return;
   const r = await post('/api/marcaje', { cam, start: `${date} ${hms(sec)}`, eticheta });
-  if (r && r.id) { toast(`Marcaj pus la ${hms(sec)}.`); reload(); }
+  if (r && r.id) { toast(t('Marcaj pus la {ora}.', { ora: hms(sec) })); reload(); }
 }
 function drawPbMarks(ch, date) {
   loadMarks(ch, date, $('#timeline'), $('#pb-marks'), (sec) => playFrom(date, sec)).then(relayoutTimeline);
 }
 async function addMarkInterval(cam, date, a, b) {
-  const eticheta = prompt(`Marcaj ${hms(a)} – ${hms(b)} — eticheta:`);
+  const eticheta = prompt(t('Marcaj {a} – {b} — eticheta:', { a: hms(a), b: hms(b) }));
   if (eticheta === null) return;
   const r = await post('/api/marcaje', { cam, start: `${date} ${hms(a)}`, end: `${date} ${hms(b)}`, eticheta });
-  if (r && r.id) { toast('Marcaj pus pe interval.'); drawPbMarks(cam, date); }
+  if (r && r.id) { toast(t('Marcaj pus pe interval.')); drawPbMarks(cam, date); }
 }
 $('#pb-mark').onclick = () => {
-  if (pbPos === null || !pbDate) { toast('Pornește întâi redarea: alege un moment pe timeline.'); return; }
+  if (pbPos === null || !pbDate) { toast(t('Pornește întâi redarea: alege un moment pe timeline.')); return; }
   const ch = +$('#pb-cam').value, date = pbDate;
   addMark(ch, date, Math.floor(pbPos), () => drawPbMarks(ch, date));
 };
@@ -292,7 +292,7 @@ function attachDigitalZoom(container) {
       if (!badge) {
         badge = document.createElement('div');
         badge.className = 'zbadge';
-        badge.title = 'Dublu-click sau Escape = revenire';
+        badge.title = t('Dublu-click sau Escape = revenire');
         container.appendChild(badge);
       }
       badge.innerHTML = html`${icon('search', 12)} ${st.z.toFixed(1)}×`;
@@ -364,7 +364,7 @@ document.addEventListener('keydown', (e) => {
 
 /* screenshot: cadrul curent din player (playback) sau cadrul nativ live (HD) */
 function shotFromVideo(v, name) {
-  if (!v || !v.videoWidth) { alert('Nu există imagine de salvat încă.'); return; }
+  if (!v || !v.videoWidth) { alert(t('Nu există imagine de salvat încă.')); return; }
   const cv = document.createElement('canvas');
   cv.width = v.videoWidth;
   cv.height = v.videoHeight;
@@ -445,7 +445,7 @@ function grupeazaPuncte(tl) {
     const g = document.createElement('span');
     g.className = 'evgrup';
     g.textContent = grup.length;
-    g.title = `${grup.length} evenimente ${hms(a).slice(0, 5)}–${hms(b).slice(0, 5)} — clic pentru a apropia`;
+    g.title = t('{n} evenimente {a}–{b} — clic pentru a apropia', { n: grup.length, a: hms(a).slice(0, 5), b: hms(b).slice(0, 5) });
     g.style.left = tlX(mid);
     g.onclick = (e) => { e.stopPropagation(); tlSetView(Math.max(300, Math.min(tlView.span / 4, Math.max(900, (b - a) * 2))), mid); };
     tl.appendChild(g);
@@ -522,7 +522,7 @@ function renderTimeline(date) {
     const s = secLa(e), a = Math.min(dragDe, s), b = Math.max(dragDe, s);
     if (b - a < Math.max(2, tlView.span / 400)) return;
     placeSel(a, b);
-    $('#pb-info').textContent = `Selectat ${hms(a)} – ${hms(b)} (${Math.round((b - a) / 60)} min)`;
+    $('#pb-info').textContent = t('Selectat {a} – {b} ({min} min)', { a: hms(a), b: hms(b), min: Math.round((b - a) / 60) });
   };
   tl.onpointerup = (e) => {
     if (dragDe === null) return;
@@ -537,9 +537,9 @@ function renderTimeline(date) {
     const b2 = Math.min(a + 1800, b);                      // exportul e plafonat la 30 min
     $('#exp-a').value = hms(a);
     $('#exp-b').value = hms(b2);
-    $('#pb-info').innerHTML = html`Selectat ${hms(a)} – ${hms(b2)} (${Math.round((b2 - a) / 60)} min)`
-      + (b - a > 1800 ? html` <span class="hint">(tăiat la 30 min, cât permite exportul)</span>` : '')
-      + html`: <button class="link-btn" id="sel-mp4">⬇ MP4</button> <button class="link-btn" id="sel-mark">🔖 marcaj</button>`;
+    $('#pb-info').innerHTML = html`${t('Selectat {a} – {b} ({min} min)', { a: hms(a), b: hms(b2), min: Math.round((b2 - a) / 60) })}`
+      + (b - a > 1800 ? html` <span class="hint">${t('(tăiat la 30 min, cât permite exportul)')}</span>` : '')
+      + html`: <button class="link-btn" id="sel-mp4">⬇ MP4</button> <button class="link-btn" id="sel-mark">${t('🔖 marcaj')}</button>`;
     $('#sel-mp4').onclick = () => $('#exp-btn').click();
     $('#sel-mark').onclick = () => addMarkInterval(+$('#pb-cam').value, date, Math.floor(a), Math.floor(b2));
   };
@@ -564,16 +564,16 @@ S.pbExtra = [];
 function renderMultiList() {
   const box = $('#pb-multi-list');
   const primar = +$('#pb-cam').value;
-  box.innerHTML = html`<b>Redate în același moment</b>${S.cameras.map((c) => {
-    if (c.id === primar) return html`<span class="mc primar">${c.name} <i>principala</i></span>`;
+  box.innerHTML = html`<b>${t('Redate în același moment')}</b>${S.cameras.map((c) => {
+    if (c.id === primar) return html`<span class="mc primar">${c.name} <i>${t('principala')}</i></span>`;
     const on = S.pbExtra.includes(c.id);
     return html`<button class="mc${on ? ' on' : ''}" data-cam="${c.id}">${c.name}</button>`;
-  })}<span class="mc-info">${S.pbExtra.length + 1} din ${PB_MAX}</span>`;
+  })}<span class="mc-info">${t('{n} din {max}', { n: S.pbExtra.length + 1, max: PB_MAX })}</span>`;
   for (const b of box.querySelectorAll('button[data-cam]')) {
     b.onclick = () => {
       const id = +b.dataset.cam;
       if (S.pbExtra.includes(id)) S.pbExtra = S.pbExtra.filter((x) => x !== id);
-      else if (S.pbExtra.length + 1 >= PB_MAX) { toast(`Maximum ${PB_MAX} camere odată`); return; }
+      else if (S.pbExtra.length + 1 >= PB_MAX) { toast(t('Maximum {n} camere odată', { n: PB_MAX })); return; }
       else S.pbExtra.push(id);
       renderMultiList();
       if (pbDate) playFrom(pbDate, pbPos);
@@ -592,8 +592,8 @@ async function playFrom(date, sec) {
   // clic dupa ultimul material al zilei: spunem imediat, fara sa pornim fluxuri goale
   const ultim = curSegments.length ? secOfDay(curSegments[curSegments.length - 1].end) : 0;
   if (curSegments.length && sec > ultim + 60) {
-    $('#pb-info').textContent = `Nu există înregistrare la ${hms(sec).slice(0, 5)}`
-      + ` — ultima e la ${hms(ultim).slice(0, 5)}.`;
+    $('#pb-info').textContent = t('Nu există înregistrare la {ora} — ultima e la {ultima}.',
+                                    { ora: hms(sec).slice(0, 5), ultima: hms(ultim).slice(0, 5) });
     return;
   }
   const toate = [primar, ...S.pbExtra.filter((x) => x !== primar)];
@@ -603,11 +603,11 @@ async function playFrom(date, sec) {
   $('#exp-a').value = hms(sec);
   $('#exp-b').value = hms(Math.min(86399, sec + 120));
   const ora = `${pad(Math.floor(sec / 3600))}:${pad(Math.floor(sec % 3600 / 60))}`;
-  $('#pb-info').textContent = `Redau de la ${ora}`
-    + (toate.length > 1 ? ` pe ${toate.length} camere` : '')
-    + (pbSpeed !== 1 ? ` cu viteza ${pbSpeed}x (fără sunet)` : '') + '...';
+  $('#pb-info').textContent = t('Redau de la {ora}', { ora })
+    + (toate.length > 1 ? ' ' + t('pe {n} camere', { n: toate.length }) : '')
+    + (pbSpeed !== 1 ? ' ' + t('cu viteza {viteza}x (fără sunet)', { viteza: pbSpeed }) : '') + '...';
   pbPaused = false;
-  $('#pb-play').textContent = '⏸ Pauză';
+  $('#pb-play').textContent = t('⏸ Pauză');
   $('#pb-play').classList.remove('paused');
 
   const wrap = $('#player');
@@ -626,26 +626,26 @@ async function playFrom(date, sec) {
   const nume = Object.fromEntries(S.cameras.map((c) => [c.id, c.name]));
   const cereri = toate.map((ch) =>
     fetch(`/api/play?channel=${ch}&start=${start}&end=${end}&speed=${pbSpeed}${hdHeightParam()}`)
-      .then((r) => r.json()).then((d) => ({ ch, d })).catch(() => ({ ch, d: { error: 'retea' } })));
+      .then((r) => r.json()).then((d) => ({ ch, d })).catch(() => ({ ch, d: { error: t('rețea') } })));
   const raspunsuri = await Promise.all(cereri);
 
   const rele = raspunsuri.filter((x) => x.d.error);
   if (rele.length === raspunsuri.length) {
-    $('#pb-info').textContent = 'Eroare: ' + raspunsuri[0].d.error;
+    $('#pb-info').textContent = t('Eroare: {err}', { err: raspunsuri[0].d.error });
     return;
   }
   for (const { ch, d } of raspunsuri) {
     const dala = document.createElement('div');
     dala.className = 'pb-dala';
     if (d.error) {
-      dala.innerHTML = html`<div class="pb-gol">${nume[ch] || 'cam ' + ch}<small>${d.error}</small></div>`;
+      dala.innerHTML = html`<div class="pb-gol">${nume[ch] || t('cam {id}', { id: ch })}<small>${d.error}</small></div>`;
       wrap.appendChild(dala);
       continue;
     }
     if (toate.length > 1) {
       const et = document.createElement('span');
       et.className = 'pb-eticheta';
-      et.textContent = nume[ch] || 'cam ' + ch;
+      et.textContent = nume[ch] || t('cam {id}', { id: ch });
       dala.appendChild(et);
     }
     // primul cadru al noului flux: retinem raportul camerei (cutia nu mai sare data viitoare)
@@ -663,7 +663,7 @@ async function playFrom(date, sec) {
     wrap.appendChild(dala);
   }
   if (rele.length) {
-    $('#pb-info').textContent += ` (${rele.length} fără material la ora asta)`;
+    $('#pb-info').textContent += ' ' + t('({n} fără material la ora asta)', { n: rele.length });
   }
   if (toate.length === 1) {
     attachDigitalZoom(wrap);
@@ -712,18 +712,18 @@ $('#exp-btn').onclick = () => {
   const ch = +$('#pb-cam').value;
   const date = $('#pb-date').value;
   const a = $('#exp-a').value, b = $('#exp-b').value;
-  if (!date || !a || !b) { alert('Alege data si intervalul (de la / pana la).'); return; }
+  if (!date || !a || !b) { alert(t('Alege data si intervalul (de la / pana la).')); return; }
   const c = (t) => date.replace(/-/g, '') + 'T' + t.replace(/:/g, '').padEnd(6, '0') + 'Z';
   const secs = (t) => t.split(':').reduce((x, y) => x * 60 + +y, 0);
   const dur = secs(b) - secs(a);
-  if (dur <= 0 || dur > 1800) { alert('Interval invalid (max 30 minute).'); return; }
-  $('#pb-info').textContent = 'Export în coada... (la camerele NVR durează ~cât clipul)';
+  if (dur <= 0 || dur > 1800) { alert(t('Interval invalid (max 30 minute).')); return; }
+  $('#pb-info').textContent = t('Export în coada... (la camerele NVR durează ~cât clipul)');
   const wm = $('#exp-wm') && $('#exp-wm').checked ? '&watermark=1' : '';
   runJob(`/api/export?channel=${ch}&start=${c(a)}&end=${c(b)}${wm}`, {}, {
     onProgress: (j) => {
-      $('#pb-info').textContent = j.stare === 'gata' ? 'Export gata — se descarcă.'
-        : j.stare === 'eroare' ? 'Export eșuat: ' + j.mesaj
-        : `Export: ${j.mesaj || JOB_STARE_RO[j.stare]}${j.progres ? ' ' + j.progres + '%' : ''}`;
+      $('#pb-info').textContent = j.stare === 'gata' ? t('Export gata — se descarcă.')
+        : j.stare === 'eroare' ? t('Export eșuat: {mesaj}', { mesaj: j.mesaj })
+        : t('Export: {stare}', { stare: j.mesaj || t(JOB_STARE_RO[j.stare] || j.stare) }) + (j.progres ? ' ' + j.progres + '%' : '');
     },
   });
 };
@@ -769,8 +769,8 @@ function openRegiune() {
   regCh = +$('#pb-cam').value; regDay = $('#pb-date').value || localDay();
   regRect = null; regHits = [];
   const c = S.cameras.find((x) => x.id === regCh);
-  $('#reg-title').textContent = `Caută pe regiune — ${c ? c.name : 'cam ' + regCh}, ${regDay}`;
-  $('#reg-info').textContent = 'Desenează o regiune.'; $('#reg-list').innerHTML = '';
+  $('#reg-title').textContent = t('Caută pe regiune — {cam}, {zi}', { cam: c ? c.name : t('cam {id}', { id: regCh }), zi: regDay });
+  $('#reg-info').textContent = t('Desenează o regiune.'); $('#reg-list').innerHTML = '';
   $('#reg-overlay').classList.remove('hidden');
   ovFrame(regCh, $('#reg-canvas'), (src, w, h) => { regSrc = { src, w, h }; drawRegiune(); });
 }
@@ -786,20 +786,20 @@ function drawRegiune(temp) {
 }
 ovDrag($('#reg-canvas'), async (r) => {
   regRect = r; drawRegiune();
-  $('#reg-info').textContent = 'Caut...';
+  $('#reg-info').textContent = t('Caut...');
   try {
     const d = await (await fetch(`/api/regiune?channel=${regCh}&day=${regDay}&x=${r[0].toFixed(4)}&y=${r[1].toFixed(4)}&w=${r[2].toFixed(4)}&h=${r[3].toFixed(4)}`)).json();
-    if (d.error) { $('#reg-info').textContent = 'Eroare: ' + d.error; return; }
+    if (d.error) { $('#reg-info').textContent = t('Eroare: {err}', { err: d.error }); return; }
     regHits = d.evenimente || [];
-    $('#reg-info').textContent = regHits.length ? `${regHits.length} detecții au atins regiunea` : 'Nicio detecție în regiune în ziua asta (chenarele există pentru evenimentele de după 2026-10-23).';
-    $('#reg-list').innerHTML = lista(regHits, (e) => html`<div class="ev-row" data-sec="${e.sec}"><b>${e.t.slice(11)}</b>${EV_TIP_RO[e.tip] || e.tip}: ${DET_RO[e.eticheta] || e.eticheta || ''}</div>`, '');
+    $('#reg-info').textContent = regHits.length ? t('{n} detecții au atins regiunea', { n: regHits.length }) : t('Nicio detecție în regiune în ziua asta (chenarele există pentru evenimentele de după 2026-10-23).');
+    $('#reg-list').innerHTML = lista(regHits, (e) => html`<div class="ev-row" data-sec="${e.sec}"><b>${e.t.slice(11)}</b>${t(EV_TIP_RO[e.tip] || e.tip)}: ${t(DET_RO[e.eticheta] || e.eticheta || '')}</div>`, '');
     for (const row of $('#reg-list').querySelectorAll('.ev-row')) row.onclick = () => { $('#reg-overlay').classList.add('hidden'); playFrom(regDay, +row.dataset.sec); };
     drawRegiune();
     // punctele gasite apar si pe timeline, galbene
     for (const d0 of document.querySelectorAll('#timeline .evdot.reg')) d0.remove();
-    for (const e of regHits) { const dot = document.createElement('div'); dot.className = 'evdot reg'; dot.dataset.sec = e.sec; dot.title = `${e.t.slice(11)} — ${e.eticheta || e.tip} (regiune)`; dot.onclick = (ev) => { ev.stopPropagation(); playFrom(regDay, e.sec); }; $('#timeline').appendChild(dot); }
+    for (const e of regHits) { const dot = document.createElement('div'); dot.className = 'evdot reg'; dot.dataset.sec = e.sec; dot.title = t('{ora} — {ce} (regiune)', { ora: e.t.slice(11), ce: e.eticheta || e.tip }); dot.onclick = (ev) => { ev.stopPropagation(); playFrom(regDay, e.sec); }; $('#timeline').appendChild(dot); }
     relayoutTimeline();
-  } catch (e) { $('#reg-info').textContent = 'Eroare: ' + e; }
+  } catch (e) { $('#reg-info').textContent = t('Eroare: {err}', { err: e }); }
 }, (r) => drawRegiune(r));
 $('#pb-regiune').onclick = openRegiune;
 $('#reg-close').onclick = () => $('#reg-overlay').classList.add('hidden');
@@ -809,17 +809,18 @@ let heatSrc = null, heatZile = 1, heatCh = 0, heatData = null;
 function openHeat() {
   heatCh = +$('#pb-cam').value;
   const c = S.cameras.find((x) => x.id === heatCh);
-  $('#heat-title').textContent = `Harta de căldură — ${c ? c.name : 'cam ' + heatCh}`;
+  $('#heat-title').textContent = t('Harta de căldură — {cam}', { cam: c ? c.name : t('cam {id}', { id: heatCh }) });
   $('#heat-overlay').classList.remove('hidden');
   ovFrame(heatCh, $('#heat-canvas'), (src, w, h) => { heatSrc = { src, w, h }; loadHeat(); });
 }
 async function loadHeat() {
-  $('#heat-info').textContent = 'Calculez...';
+  $('#heat-info').textContent = t('Calculez...');
   try {
     heatData = await (await fetch(`/api/heatmap?channel=${heatCh}&day=${$('#pb-date').value || localDay()}&zile=${heatZile}`)).json();
-    $('#heat-info').textContent = heatData.error ? 'Eroare: ' + heatData.error
-      : `${heatData.episoade} episoade de prezență umană în ${heatZile === 1 ? 'ziua aleasa' : 'ultimele ' + heatZile + ' zile'}${heatData.max ? '' : ' — nimic de desenat'}`;
-  } catch (e) { $('#heat-info').textContent = 'Eroare: ' + e; }
+    const perioada = heatZile === 1 ? t('ziua aleasă') : t('ultimele {n} zile', { n: heatZile });
+    $('#heat-info').textContent = heatData.error ? t('Eroare: {err}', { err: heatData.error })
+      : t('{n} episoade de prezență umană în {perioada}', { n: heatData.episoade, perioada }) + (heatData.max ? '' : ' ' + t('— nimic de desenat'));
+  } catch (e) { $('#heat-info').textContent = t('Eroare: {err}', { err: e }); }
   drawHeat();
 }
 function drawHeat() {
@@ -845,14 +846,14 @@ $('#heat-zile').onclick = (e) => { const b = e.target.closest('button[data-zile]
 $('#pb-timelapse').onclick = async () => {
   const ch = +$('#pb-cam').value, zi = $('#pb-date').value || localDay();
   const j = await runJob(`/api/timelapse?channel=${ch}&day=${zi}&pas=60`, {}, { download: true });
-  if (j && j.stare === 'gata') toast('Time-lapse gata — se descarcă');
+  if (j && j.stare === 'gata') toast(t('Time-lapse gata — se descarcă'));
 };
 
 // --- masca de confidentialitate (admin, din HD) ---
 let maskCam = null, maskRects = [], maskSrc = null;
 function openMaskEditor(c) {
   maskCam = c; maskRects = (c.mask || []).map((r) => r.slice());
-  $('#mask-title').textContent = `Masca de confidențialitate — ${c.name}`;
+  $('#mask-title').textContent = t('Masca de confidențialitate — {cam}', { cam: c.name });
   $('#mask-overlay').classList.remove('hidden');
   ovFrame(c.id, $('#mask-canvas'), (src, w, h) => { maskSrc = { src, w, h }; drawMask(); });
 }
@@ -869,11 +870,11 @@ ovDrag($('#mask-canvas'), (r) => { maskRects.push(r.map((v) => +v.toFixed(4))); 
 $('#mask-undo').onclick = () => { maskRects.pop(); drawMask(); };
 $('#mask-save').onclick = async () => {
   const d = await post(`/api/cam/${maskCam.id}/masca`, { rects: maskRects });
-  if (d && !d.error) { maskCam.mask = d.mask; toast(maskRects.length ? 'Masca salvată — fluxurile se refac în câteva secunde' : 'Masca scoasă'); $('#mask-overlay').classList.add('hidden'); loadCameras(); }
+  if (d && !d.error) { maskCam.mask = d.mask; toast(maskRects.length ? t('Masca salvată — fluxurile se refac în câteva secunde') : t('Masca scoasă')); $('#mask-overlay').classList.add('hidden'); loadCameras(); }
 };
 $('#mask-clear').onclick = async () => {
   const d = await post(`/api/cam/${maskCam.id}/masca`, { rects: null });
-  if (d && !d.error) { maskCam.mask = null; maskRects = []; toast('Masca scoasă'); $('#mask-overlay').classList.add('hidden'); loadCameras(); }
+  if (d && !d.error) { maskCam.mask = null; maskRects = []; toast(t('Masca scoasă')); $('#mask-overlay').classList.add('hidden'); loadCameras(); }
 };
 $('#mask-close').onclick = () => $('#mask-overlay').classList.add('hidden');
 window.addEventListener('resize', () => { drawRegiune(); drawHeat(); drawMask(); });

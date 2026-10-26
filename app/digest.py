@@ -14,6 +14,7 @@ import time
 from collections import Counter
 
 import rules
+from i18n import t
 
 # tipurile relevante pentru securitate, numarate separat in rezumat
 SECURITATE = {
@@ -95,20 +96,21 @@ def text(day=None):
     nume = _nume_camere()
     cn = lambda c: nume.get(c, f"cam {c}")
     d = build(day=day)
-    linii = [f"📋 Rezumatul zilei {day}",
-             f"{d['total']} evenimente · {d['severitate']['critic']} critice, {d['severitate']['atentie']} de atenție"]
+    linii = [t("📋 Rezumatul zilei {zi}", zi=day),
+             t("{n} evenimente · {c} critice, {a} de atenție", n=d['total'],
+               c=d['severitate']['critic'], a=d['severitate']['atentie'])]
     if d.get("prima_activitate"):
         v = d.get("ora_varf")
-        linii.append(f"activitate {d['prima_activitate']}–{d['ultima_activitate']}"
-                     + (f", vârf la {v[0]} ({v[1]} evenimente)" if v else ""))
+        linii.append(t("activitate {de}–{pana}", de=d['prima_activitate'], pana=d['ultima_activitate'])
+                     + (t(", vârf la {ora} ({n} evenimente)", ora=v[0], n=v[1]) if v else ""))
     if d.get("top_camere"):
-        linii.append("cele mai active: " + ", ".join(f"{cn(c)} ({n})" for c, n in d["top_camere"][:3]))
+        linii.append(t("cele mai active: {lista}", lista=", ".join(f"{cn(c)} ({n})" for c, n in d["top_camere"][:3])))
     # cine a fost vazut (Face ID)
     try:
         import faces
         vazuti = Counter(h["nume"] for h in faces.history(limit=2000) if (h.get("t") or "").startswith(day))
         if vazuti:
-            linii.append("👤 văzuți: " + ", ".join(f"{n}×{k}" for n, k in vazuti.most_common(6)))
+            linii.append(t("👤 văzuți: {lista}", lista=", ".join(f"{n}×{k}" for n, k in vazuti.most_common(6))))
     except Exception:
         pass
     # masini necunoscute
@@ -119,7 +121,7 @@ def text(day=None):
                and not r.get("nume") and r.get("numar") not in kn]
         if nec:
             numere = Counter(r["numar"] for r in nec)
-            linii.append("🚗 mașini necunoscute: " + ", ".join(f"{p}×{k}" for p, k in numere.most_common(5)))
+            linii.append(t("🚗 mașini necunoscute: {lista}", lista=", ".join(f"{p}×{k}" for p, k in numere.most_common(5))))
     except Exception:
         pass
     # inregistrare: goluri + camere care nu scriu
@@ -132,12 +134,13 @@ def text(day=None):
                 continue
             g = continuity.gaps(cam["id"], day)
             if g:
-                goluri.append(f"{cn(cam['id'])} ({len(g)}, {round(sum(x['sec'] for x in g) / 60)} min)")
+                goluri.append(t("{cam} ({n}, {minute} min)", cam=cn(cam['id']), n=len(g),
+                                minute=round(sum(x['sec'] for x in g) / 60)))
         if goluri:
-            linii.append("⏸ goluri de înregistrare: " + ", ".join(goluri[:6]))
+            linii.append(t("⏸ goluri de înregistrare: {lista}", lista=", ".join(goluri[:6])))
         nu_scriu = [cn(x["id"]) for x in continuity.live() if x.get("mod") == "continuous" and not x.get("scrie")]
         if nu_scriu:
-            linii.append("🔴 nu înregistrează acum: " + ", ".join(nu_scriu))
+            linii.append(t("🔴 nu înregistrează acum: {lista}", lista=", ".join(nu_scriu)))
     except Exception:
         pass
     # sabotaj pe camere
@@ -146,12 +149,12 @@ def text(day=None):
         sab = Counter(it["cam"] for it in snaps.list_day(day)
                       if it["label"] in ("shelteralarm", "tamperdetection", "scenechangedetection", "defocusdetection"))
         if sab:
-            linii.append("🛡 sabotaj raportat: " + ", ".join(f"{cn(c)}×{k}" for c, k in sab.most_common(5)))
+            linii.append(t("🛡 sabotaj raportat: {lista}", lista=", ".join(f"{cn(c)}×{k}" for c, k in sab.most_common(5))))
     except Exception:
         pass
     # titlurile zilei
     if d.get("critice"):
-        linii.append("‼ critice:")
+        linii.append(t("‼ critice:"))
         for c in d["critice"][:8]:
             linii.append(f"  {c['ora']} {cn(c['cam'])}: {c['tip']}{' · ' + c['detaliu'] if c['detaliu'] else ''}"
                          + (f" ×{c['de_cate_ori']}" if c.get("de_cate_ori", 1) > 1 else ""))
@@ -189,8 +192,7 @@ def start():
                     elif time.localtime().tm_wday == 0:
                         # rezumatul e oprit: lunea, o proba ca drumul alertelor e deschis
                         import notify
-                        notify.send("✅ NVR: canalul de notificări funcționează (probă săptămânală). "
-                                    "Rezumatul zilnic e oprit; îl pornești din Setări → Notificări.")
+                        notify.send(t("✅ NVR: canalul de notificări funcționează (probă săptămânală). Rezumatul zilnic e oprit; îl pornești din Setări → Notificări."))
                         logare.info("[digest] proba saptamanala de canal trimisa")
             except Exception as e:
                 logare.error(f"[digest] {str(e)[:120]}")

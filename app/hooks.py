@@ -29,6 +29,7 @@ import requests
 
 import settings
 import logare
+from i18n import t
 
 # Evenimentele pe care le putem trimite. Cheia e ce apare in payload si in setari;
 # textul e doar pentru interfata.
@@ -110,7 +111,7 @@ def _trimite(url, secret, corp):
             ultim = type(e).__name__
         if i < INCERCARI - 1:
             time.sleep(2 ** i)      # 1s, apoi 2s
-    _note(url, False, f"{ultim} dupa {INCERCARI} incercari")
+    _note(url, False, t("{ultim} dupa {n} incercari", ultim=ultim, n=INCERCARI))
     return False
 
 
@@ -166,9 +167,9 @@ def test(url=None):
     cfg = settings.load()
     urls = [url] if url else [u.strip() for u in (cfg.get("webhook_urls") or []) if u.strip()]
     if not urls:
-        raise ValueError("nicio adresa configurată")
+        raise ValueError(t("nicio adresa configurată"))
     corp = {"id": uuid.uuid4().hex[:16], "eveniment": "detectie",
             "moment": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "sursa": "openvigil",
-            "proba": True, "camera": {"id": 0, "nume": "Camera de proba", "grup": "test"},
-            "eticheta": "person", "text": "Eveniment de proba trimis din interfata"}
+            "proba": True, "camera": {"id": 0, "nume": t("Camera de proba"), "grup": "test"},
+            "eticheta": "person", "text": t("Eveniment de proba trimis din interfata")}
     return {u: _trimite(u, cfg.get("webhook_secret") or "", corp) for u in urls}

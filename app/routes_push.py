@@ -9,6 +9,7 @@ from flask import Blueprint, jsonify, request
 
 import audit
 import push
+from i18n import t
 from server import current_user
 
 bp = Blueprint("push", __name__)
@@ -48,7 +49,7 @@ def api_push_test():
     u = current_user() or {}
     n = push.test(u.get("user"))
     if not n:
-        return jsonify({"error": "niciun dispozitiv abonat pentru contul tău"}), 400
+        return jsonify({"error": t("niciun dispozitiv abonat pentru contul tău")}), 400
     return jsonify({"ok": True, "trimise": n})
 
 

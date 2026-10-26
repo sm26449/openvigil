@@ -32,6 +32,8 @@ def _lista(cheie, implicit):
 
 # numele sistemului: titlul interfetei, emitentul 2FA, prefixul notificarilor
 NUME = _text("NVR_NAME", "OpenVigil")
+# limba implicita a interfetei si a notificarilor (ro, en...); browserul si contul pot alege alta
+LIMBA = _text("NVR_LANG", "ro").lower() or "ro"
 
 # interfata web (nvr-web). 0.0.0.0 = toate interfetele gazdei.
 WEB_HOST = _text("WEB_HOST", "0.0.0.0")

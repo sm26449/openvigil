@@ -11,6 +11,7 @@ from flask import Blueprint, jsonify, request
 
 import audit
 import marcaje
+from i18n import t
 from server import _visible_ids, current_user
 
 bp = Blueprint("marcaje", __name__)
@@ -32,13 +33,13 @@ def api_marcaje():
             limit=min(2000, request.args.get("limit", 500, type=int)), visible=vis)})
     b = request.get_json(silent=True) or {}
     if not _permis(b.get("cam"), vis):
-        return jsonify({"error": "nu ai acces la această camera"}), 403
+        return jsonify({"error": t("nu ai acces la această camera")}), 403
     try:
         m = marcaje.create(b.get("cam"), b.get("start"), end=b.get("end") or None,
                            eticheta=b.get("eticheta", ""), nota=b.get("nota", ""),
                            who=(current_user() or {}).get("user"))
     except (ValueError, TypeError) as e:
-        return jsonify({"error": f"marcaj invalid: {str(e)[:80]}"}), 400
+        return jsonify({"error": t("marcaj invalid: {e}", e=str(e)[:80])}), 400
     audit.log("marcaj adăugat", f"cam {m['cam']} {m['t']} {m['eticheta']}")
     return jsonify(m)
 
@@ -47,9 +48,9 @@ def api_marcaje():
 def api_marcaj(mid):
     m = marcaje.get(mid)
     if not m:
-        return jsonify({"error": "marcaj inexistent"}), 404
+        return jsonify({"error": t("marcaj inexistent")}), 404
     if not _permis(m["cam"], _visible_ids()):
-        return jsonify({"error": "nu ai acces la această camera"}), 403
+        return jsonify({"error": t("nu ai acces la această camera")}), 403
     if request.method == "DELETE":
         marcaje.delete(mid)
         audit.log("marcaj sters", f"cam {m['cam']} {m['t']}")
@@ -59,5 +60,5 @@ def api_marcaj(mid):
         m = marcaje.update(mid, eticheta=b.get("eticheta"), nota=b.get("nota"),
                            end=b.get("end"))
     except (ValueError, TypeError) as e:
-        return jsonify({"error": f"marcaj invalid: {str(e)[:80]}"}), 400
+        return jsonify({"error": t("marcaj invalid: {e}", e=str(e)[:80])}), 400
     return jsonify(m)

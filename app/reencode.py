@@ -20,6 +20,7 @@ import time
 import record
 import settings
 import logare
+from i18n import t
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MIN_AGE_H = 6        # nu atingem inregistrarile recente
@@ -100,10 +101,10 @@ def _reencode_one(path, enc):
 def _worker():
     enc = available_encoder()
     if not enc:
-        state.update(running=False, last="niciun encoder hardware disponibil")
+        state.update(running=False, last=t("niciun encoder hardware disponibil"))
         return
     if not record.archive_dir() or not os.path.isdir(record.archive_dir()):
-        state.update(running=False, last="recodarea cere un nivel de arhiva configurat (Setari -> Inregistrare)")
+        state.update(running=False, last=t("recodarea cere un nivel de arhiva configurat (Setari -> Inregistrare)"))
         return
     for path in _candidates():
         if not settings.get("reencode_enabled"):

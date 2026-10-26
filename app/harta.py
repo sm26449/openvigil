@@ -17,6 +17,7 @@ import threading
 import uuid
 
 import store
+from i18n import t
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FILE = os.path.join(ROOT, "data", "harta.json")
@@ -74,7 +75,7 @@ def redenumeste(pid, nume):
         d = _load()
         p = next((x for x in d["planuri"] if x["id"] == pid), None)
         if not p:
-            raise ValueError("planul nu există")
+            raise ValueError(t("planul nu există"))
         p["nume"] = (nume or "").strip()[:40] or p.get("nume") or "Plan"
         _save(d)
     return p
@@ -85,7 +86,7 @@ def sterge(pid):
         d = _load()
         rest = [x for x in d["planuri"] if x["id"] != pid]
         if len(rest) == len(d["planuri"]):
-            raise ValueError("planul nu există")
+            raise ValueError(t("planul nu există"))
         d["planuri"] = rest
         _save(d)
     img = _imagine(pid)
@@ -103,14 +104,14 @@ def _pozitie(v):
     try:
         x, y = float(v["x"]), float(v["y"])
     except (KeyError, TypeError, ValueError):
-        raise ValueError("poziție invalida (x, y între 0 și 1)")
+        raise ValueError(t("poziție invalida (x, y între 0 și 1)"))
     if not (0 <= x <= 1 and 0 <= y <= 1):
-        raise ValueError("poziție invalida (x, y între 0 și 1)")
+        raise ValueError(t("poziție invalida (x, y între 0 și 1)"))
     try:
         d = float(v.get("dir", 0)) % 360
         fov = max(10.0, min(180.0, float(v.get("fov", 70))))
     except (TypeError, ValueError):
-        raise ValueError("directie/unghi invalid")
+        raise ValueError(t("directie/unghi invalid"))
     return {"x": round(x, 4), "y": round(y, 4), "dir": round(d, 1), "fov": round(fov, 1)}
 
 
@@ -121,7 +122,7 @@ def aseaza(pid, camere):
         d = _load()
         p = next((x for x in d["planuri"] if x["id"] == pid), None)
         if not p:
-            raise ValueError("planul nu există")
+            raise ValueError(t("planul nu există"))
         p.setdefault("camere", {})
         for cid, v in (camere or {}).items():
             cid = str(int(cid))
@@ -140,16 +141,16 @@ def aseaza(pid, camere):
 def salveaza_imagine(pid, date, mime):
     """Imaginea planului, din corpul cererii (png/jpg/webp, max 8 MB)."""
     if not _ID_RE.match(pid) or not any(x["id"] == pid for x in _load()["planuri"]):
-        raise ValueError("planul nu există")
+        raise ValueError(t("planul nu există"))
     ext = TIPURI.get((mime or "").split(";")[0].strip().lower())
     if not ext:
-        raise ValueError("doar PNG, JPEG sau WebP")
+        raise ValueError(t("doar PNG, JPEG sau WebP"))
     if not date or len(date) > MAX_IMG:
-        raise ValueError("imaginea lipsește sau depaseste 8 MB")
+        raise ValueError(t("imaginea lipsește sau depaseste 8 MB"))
     # semnatura fisierului, nu doar antetul declarat
     if not (date[:8] == b"\x89PNG\r\n\x1a\n" or date[:3] == b"\xff\xd8\xff"
             or (date[:4] == b"RIFF" and date[8:12] == b"WEBP")):
-        raise ValueError("continutul nu arată a imagine")
+        raise ValueError(t("continutul nu arată a imagine"))
     os.makedirs(DIR, exist_ok=True)
     vechi = _imagine(pid)
     if vechi:

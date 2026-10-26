@@ -11,8 +11,9 @@ if (!customElements.get('video-stream')) customElements.define('video-stream', V
 // fluxurile video vin prin releul autentificat din nvr-web (:8076), nu direct din go2rtc.
 // Pe HTTPS (prin Traefik) releul e pe aceeasi origine: proxy-ul trimite /api/ws si
 // /api/frame.jpeg catre :8076, iar browserul nu mai are nevoie de un al doilea port.
+const STREAM_PORT = document.querySelector('meta[name="ov-stream-port"]')?.content || '8076';
 const GO2RTC = location.protocol === 'https:' ? location.origin
-  : `${location.protocol}//${location.hostname}:8076`;
+  : `${location.protocol}//${location.hostname}:${STREAM_PORT}`;
 const $ = (s) => document.querySelector(s);
 
 /* ---------- scaparea HTML: tot ce intra in innerHTML trece prin html`` ----------
@@ -57,12 +58,32 @@ function toast(msg, err = false, urgent = false) {
   _toastT = setTimeout(() => el.classList.remove('show'), 3200);
 }
 
+/* ---------- limba interfetei ----------
+   Cheia unui text e textul romanesc insusi (vezi app/i18n.py): t('Adaugă camera'). Dictionarul
+   limbii alese de server (<html lang>) vine de la /i18n/<limba>.json; fara traducere, t()
+   intoarce cheia. Parametrii se pun DUPA traducere: t('{n} camere', { n }) — ordinea
+   cuvintelor difera intre limbi, deci textele nu se lipesc din bucati. O valoare-obiect
+   {one, few, other} e o forma de plural, aleasa dupa `n` cu regulile limbii. */
+const _fetch = window.fetch.bind(window);
+const LIMBA = document.documentElement.lang || 'ro';
+let _DICT = {};
+try {
+  const r = await _fetch(`/i18n/${LIMBA}.json`);
+  if (r.ok) _DICT = await r.json();
+} catch {}
+const _plural = new Intl.PluralRules(LIMBA);
+function t(cheie, p) {
+  let v = _DICT[cheie];
+  if (v && typeof v === 'object') v = (p && p.n != null ? v[_plural.select(+p.n)] : null) ?? v.other ?? cheie;
+  if (typeof v !== 'string' || !v) v = cheie;
+  return p ? v.replace(/\{(\w+)\}/g, (m, k) => (k in p ? String(p[k]) : m)) : v;
+}
+
 /* ---------- cine sunt eu (rol + jeton CSRF), inainte de orice ----------
    Toate cererile care modifica ceva poarta jetonul CSRF al sesiunii in antetul
    X-CSRF — serverul refuza POST/DELETE fara el. Wrapper-ul il adauga singur, ca sa
    nu depindem de fiecare loc de apel; tot el prinde 401 (sesiune expirata) si duce
    la login in loc sa lase pagina sa esueze tacut. */
-const _fetch = window.fetch.bind(window);
 let ME = { user: '', role: 'admin', csrf: '' };
 window.fetch = (url, opts = {}) => {
   const method = (opts.method || 'GET').toUpperCase();
@@ -85,8 +106,8 @@ const ADMIN = ME.role === 'admin';
 const CAN_ACT = ADMIN || ME.role === 'operator';
 if (!ADMIN) document.body.classList.add('viewer');
 if (ME.user) {
-  const rol = ADMIN ? '' : ME.role === 'operator' ? ' (operator)' : ' (vizualizare)';
-  $('#user-chip').innerHTML = html`<span class="me-open" title="Contul meu: 2FA, notificari push, dispozitive">${ME.user}${rol}${ME.totp ? ' 🔐' : ''}</span> · <a href="/logout">ieși</a>`;
+  const rol = ADMIN ? '' : ` (${ME.role === 'operator' ? t('operator') : t('vizualizare')})`;
+  $('#user-chip').innerHTML = html`<span class="me-open" title="${t('Contul meu: 2FA, notificari push, dispozitive')}">${ME.user}${rol}${ME.totp ? ' 🔐' : ''}</span> · <a href="/logout">${t('ieși')}</a>`;
 }
 
 // mode 'mse,webrtc' pt. grila (substream Main, WebRTC merge); 'mse' pt. HD/playback
@@ -163,11 +184,11 @@ function renderJobs() {
     const activ = j.stare === 'asteapta' || j.stare === 'ruleaza';
     return html`<div class="job ${j.stare}" data-id="${j.id}">
       <div class="job-head">
-        <span class="job-t">${JOB_RO[j.tip] || j.tip}</span>
-        <span class="job-m">${j.mesaj || JOB_STARE_RO[j.stare] || j.stare}${activ && j.progres ? ' · ' + j.progres + '%' : ''}</span>
-        ${activ ? html`<button class="job-x link-btn" title="Anuleaza">✕</button>`
-          : j.stare === 'gata' && j.are_fisier ? html`<button class="job-dl link-btn" title="Descarca din nou">⬇</button>`
-          : html`<button class="job-hide link-btn" title="Inchide">✕</button>`}
+        <span class="job-t">${t(JOB_RO[j.tip] || j.tip)}</span>
+        <span class="job-m">${j.mesaj || t(JOB_STARE_RO[j.stare] || j.stare)}${activ && j.progres ? ' · ' + j.progres + '%' : ''}</span>
+        ${activ ? html`<button class="job-x link-btn" title="${t('Anuleaza')}">✕</button>`
+          : j.stare === 'gata' && j.are_fisier ? html`<button class="job-dl link-btn" title="${t('Descarca din nou')}">⬇</button>`
+          : html`<button class="job-hide link-btn" title="${t('Inchide')}">✕</button>`}
       </div>
       ${activ ? html`<div class="job-bar"><i style="width:${j.progres || 0}%"></i></div>` : ''}
     </div>`;
@@ -196,7 +217,7 @@ async function jobWait(job, { onProgress, download = true } = {}) {
     try { job = await (await fetch(`/api/jobs/${job.id}`)).json(); } catch {}
     if (job.error) { job = { ...jobsSeen.get(job.id || ''), stare: 'eroare', mesaj: job.error }; }
   }
-  if (job.stare === 'eroare') toast(`${JOB_RO[job.tip] || job.tip}: ${job.mesaj}`, true);
+  if (job.stare === 'eroare') toast(`${t(JOB_RO[job.tip] || job.tip)}: ${job.mesaj}`, true);
   else if (job.stare === 'gata' && job.are_fisier && download) descarcaJob(job);
   setTimeout(() => { if (jobsSeen.get(job.id) === job && job.stare !== 'eroare') { jobsSeen.delete(job.id); renderJobs(); } }, 12000);
   return job;
@@ -205,10 +226,10 @@ async function jobWait(job, { onProgress, download = true } = {}) {
 // raspuns sincron {stare:'gata', rezultat, sincron:true}; null la eroare (cu toast).
 async function runJob(url, opts = {}, ui = {}) {
   let r;
-  try { r = await fetch(url, opts); } catch (e) { toast('Eroare rețea: ' + e, true); return null; }
+  try { r = await fetch(url, opts); } catch (e) { toast(t('Eroare rețea: {e}', { e }), true); return null; }
   const d = await r.json().catch(() => ({}));
   if (r.status === 202 && d.id) return jobWait(d, ui);
-  if (!r.ok || d.error) { toast(d.error || `Eroare ${r.status}`, true); return null; }
+  if (!r.ok || d.error) { toast(d.error || t('Eroare {status}', { status: r.status }), true); return null; }
   return { stare: 'gata', rezultat: d, sincron: true };
 }
 // clipul e gata in cache? (altfel asteapta jobul care il genereaza)
@@ -267,4 +288,4 @@ const EV_RO = {
 // text fara diacritice si cu litere mici, pentru cautari („Masina” gaseste „mașină”)
 const fdia = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
-export { $, ADMIN, CAN_ACT, DET_RO, EV_RO, GO2RTC, HD_MODE, HLS_SUFFIX, JOB_STARE_RO, ME, clipReady, esc, fdia, gridFrame, html, icon, lista, raw, runJob, streamEl, talkStart, talkStop, toast };
+export { $, ADMIN, CAN_ACT, DET_RO, EV_RO, GO2RTC, HD_MODE, HLS_SUFFIX, JOB_STARE_RO, LIMBA, ME, clipReady, esc, fdia, gridFrame, html, icon, lista, raw, runJob, streamEl, t, talkStart, talkStop, toast };

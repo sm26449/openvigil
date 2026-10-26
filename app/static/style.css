@@ -185,7 +185,7 @@ header > nav button.active { background: var(--accent); color: #fff; }
 #player.grid { aspect-ratio: auto; max-height: none; }
 #player.grid .pb-dala { aspect-ratio: 16 / 9; }
 #player.grid .pb-dala.vechi { display: none; }
-#player:empty::before { content: "Alege camera + data, apoi un moment pe timeline."; color: var(--text-3); display: flex; align-items: center; justify-content: center; height: 320px; font-size: var(--fs-md); }
+#player:empty::before { content: attr(data-gol); color: var(--text-3); display: flex; align-items: center; justify-content: center; height: 320px; font-size: var(--fs-md); }
 
 /* HD overlay */
 #hd-overlay { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.92); display: flex; flex-direction: column; }

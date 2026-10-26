@@ -24,6 +24,7 @@ import store
 import users
 import logare
 import config as C
+from i18n import t
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 VAPID_FILE = os.path.join(ROOT, "data", "push_vapid.json")
@@ -112,13 +113,13 @@ def aboneaza(user, abonament, nivel="critic", agent=""):
     """Salveaza (sau reinnoieste) abonamentul unui browser. Acelasi endpoint trece la
     utilizatorul curent (telefonul a schimbat contul)."""
     if not isinstance(abonament, dict) or not abonament.get("endpoint"):
-        raise ValueError("abonament invalid")
+        raise ValueError(t("abonament invalid"))
     keys = abonament.get("keys") or {}
     if not keys.get("p256dh") or not keys.get("auth"):
-        raise ValueError("abonamentului îi lipsesc cheile")
+        raise ValueError(t("abonamentului îi lipsesc cheile"))
     ep = str(abonament["endpoint"])[:2000]
     if not ep.startswith("https://"):
-        raise ValueError("endpoint-ul trebuie sa fie https")
+        raise ValueError(t("endpoint-ul trebuie sa fie https"))
     nivel = nivel if nivel in NIVELURI else "critic"
     c = _c()
     with jurnal.lock:
@@ -248,23 +249,22 @@ def eveniment(e, sync=False):
     cam = e.get("cam")
     det = (e.get("text") or e.get("nume") or e.get("numar") or e.get("eticheta")
            or e.get("comportament") or e.get("subtip") or "")
-    tip = TIP_RO.get(e.get("tip"), e.get("tip") or "eveniment")
+    tip = t(TIP_RO.get(e.get("tip"), e.get("tip") or "eveniment"))
     titlu = ("🚨 " if sev == "critic" else "⚠️ ") + (_nume_cam(cam) if cam is not None else "NVR")
     corp = f"{tip}{': ' + str(det)[:80] if det else ''}"
-    t = e.get("t") or ""
-    if cam is not None and len(t) >= 19:
-        h, m, s = int(t[11:13]), int(t[14:16]), int(t[17:19])
-        url = f"/#pb/{cam}/{t[:10]}/{max(0, h * 3600 + m * 60 + s - 10)}"
+    ts = e.get("t") or ""
+    if cam is not None and len(ts) >= 19:
+        h, m, s = int(ts[11:13]), int(ts[14:16]), int(ts[17:19])
+        url = f"/#pb/{cam}/{ts[:10]}/{max(0, h * 3600 + m * 60 + s - 10)}"
     else:
         url = "/#ev/inc"
     return trimite({"titlu": titlu, "corp": corp, "url": url, "tag": e.get("id") or "nvr",
-                    "sev": sev, "t": t}, sev=sev, cam_id=cam, sync=sync)
+                    "sev": sev, "t": ts}, sev=sev, cam_id=cam, sync=sync)
 
 
 def test(user):
     """Mesaj de proba pe toate dispozitivele utilizatorului (sincron, pentru buton)."""
-    return trimite({"titlu": f"✅ {C.NUME}", "corp": "Notificarile push functioneaza pe acest "
-                    "dispozitiv.", "url": "/#ev/inc", "tag": "test"}, user=user, ttl=60, sync=True)
+    return trimite({"titlu": f"✅ {C.NUME}", "corp": t("Notificarile push functioneaza pe acest dispozitiv."), "url": "/#ev/inc", "tag": "test"}, user=user, ttl=60, sync=True)
 
 
 def reset():

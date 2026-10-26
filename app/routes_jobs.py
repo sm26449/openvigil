@@ -8,6 +8,7 @@ Un utilizator vede si opreste doar joburile lui; adminul le vede pe toate.
 from flask import Blueprint, jsonify, request, send_file
 
 import jobs
+from i18n import t
 from server import current_user
 
 bp = Blueprint("jobs", __name__)
@@ -31,7 +32,7 @@ def api_jobs():
 def api_job(jid):
     j = jobs.get(jid)
     if not j or not _al_meu(j):
-        return jsonify({"error": "job inexistent"}), 404
+        return jsonify({"error": t("job inexistent")}), 404
     if request.method == "DELETE":
         return jsonify({"ok": jobs.cancel(jid), **(jobs.get(jid) or {})})
     return jsonify(j)
@@ -41,10 +42,10 @@ def api_job(jid):
 def api_job_fisier(jid):
     j = jobs.get(jid)
     if not j or not _al_meu(j):
-        return jsonify({"error": "job inexistent"}), 404
+        return jsonify({"error": t("job inexistent")}), 404
     f = jobs.cale_fisier(jid)
     if not f:
-        return jsonify({"error": "fișierul nu (mai) există — joburile se păstrează o ora"}), 404
+        return jsonify({"error": t("fișierul nu (mai) există — joburile se păstrează o ora")}), 404
     cale, nume, mime = f
     return send_file(cale, mimetype=mime or "application/octet-stream",
                      as_attachment=True, download_name=nume or "rezultat")

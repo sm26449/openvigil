@@ -14,6 +14,7 @@ import os
 import re
 import threading
 import time
+from i18n import t
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FISIER = os.path.join(ROOT, "data", "exporturi.jsonl")
@@ -64,7 +65,7 @@ def cauta(sha256, nume_camere=None):
     {gasit: False}. Intai registrul exporturilor (cel mai nou), apoi segmentele brute."""
     sha256 = (sha256 or "").strip().lower()
     if not _SHA.match(sha256):
-        return {"gasit": False, "motiv": "hash invalid"}
+        return {"gasit": False, "motiv": t("hash invalid")}
     nume_camere = nume_camere or {}
     potriviri = [r for r in _exporturi() if r.get("sha256") == sha256]
     if potriviri:

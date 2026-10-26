@@ -15,6 +15,7 @@ import time
 import jurnal
 import record
 import logare
+from i18n import t
 
 GRID_W, GRID_H = 64, 36
 TIPURI_CHENAR = ("detectie", "intrus", "obiect")
@@ -38,7 +39,7 @@ def regiune(cam, day, rect, limit=300):
     """Evenimentele zilei cu chenar in dreptunghiul dat, cele mai noi primele."""
     x, y, w, h = rect
     if not (0 <= x <= 1 and 0 <= y <= 1 and 0 < w <= 1 and 0 < h <= 1):
-        raise ValueError("regiune invalida")
+        raise ValueError(t("regiune invalida"))
     out = []
     for e in jurnal.query(limit=20000, cam=cam, day=day):
         ch = e.get("chenar")
@@ -129,9 +130,9 @@ def job_timelapse(job, run_ffmpeg, hw, masca_vf="", lucratori=4, run=None):
     cam, day, pas = int(p["channel"]), str(p["day"]), int(p.get("pas") or 60)
     seg = segmente_zi(cam, day)
     if not seg:
-        raise RuntimeError("nu există înregistrări în ziua aleasă")
+        raise RuntimeError(t("nu există înregistrări în ziua aleasă"))
     momente = cadre(seg, pas)
-    job.progres(1, f"{len(seg)} segmente, {len(momente)} cadre")
+    job.progres(1, t("{segmente} segmente, {cadre} cadre", segmente=len(seg), cadre=len(momente)))
     cadre_dir = job.cale("cadre")
     os.makedirs(cadre_dir, exist_ok=True)
     gata = [0]
@@ -147,27 +148,27 @@ def job_timelapse(job, run_ffmpeg, hw, masca_vf="", lucratori=4, run=None):
             logare.info(f"[timelapse] cadru {i}: {str(e)[:60]}")
         gata[0] += 1
         if gata[0] % 20 == 0:
-            job.progres(1 + int(79 * gata[0] / max(1, len(momente))), f"cadre: {gata[0]}/{len(momente)}")
+            job.progres(1 + int(79 * gata[0] / max(1, len(momente))), t("cadre: {gata}/{total}", gata=gata[0], total=len(momente)))
     try:
         with ThreadPoolExecutor(max_workers=lucratori) as ex:
             list(ex.map(unul, enumerate(momente)))
         if job.anulat:
-            raise RuntimeError("anulat")
+            raise RuntimeError(t("anulat"))
         # numerotare continua: un cadru lipsa (fisier corupt) nu rupe secventa
         jpgs = sorted(f for f in os.listdir(cadre_dir) if f.endswith(".jpg"))
         if not jpgs:
-            raise RuntimeError("niciun cadru extras")
+            raise RuntimeError(t("niciun cadru extras"))
         for i, f in enumerate(jpgs):
             if f != f"{i:05d}.jpg":
                 os.replace(os.path.join(cadre_dir, f), os.path.join(cadre_dir, f"{i:05d}.jpg"))
-        job.progres(82, f"encodez {len(jpgs)} cadre")
+        job.progres(82, t("encodez {n} cadre", n=len(jpgs)))
         out = job.cale("mp4")
         rc, err, expirat = run_ffmpeg(comanda_timelapse(cadre_dir, out, hw, masca_vf),
                                       durata=len(jpgs) / 25, timeout=600, job=job)
         if expirat:
-            raise RuntimeError("time-lapse: timeout la encodare")
+            raise RuntimeError(t("time-lapse: timeout la encodare"))
         if rc != 0 or not os.path.exists(out) or os.path.getsize(out) < 1000:
-            raise RuntimeError(f"time-lapse eșuat: {(err or 'fișier gol')[-200:]}")
+            raise RuntimeError(t("time-lapse eșuat: {err}", err=(err or t("fișier gol"))[-200:]))
     finally:
         shutil.rmtree(cadre_dir, ignore_errors=True)
     job.fisier(out, f"cam{cam}_{day}_timelapse.mp4", "video/mp4")

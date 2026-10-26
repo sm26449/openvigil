@@ -15,6 +15,7 @@ import threading
 import time
 
 import store
+from i18n import t
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ACK_FILE = os.path.join(ROOT, "data", "incidents.json")
@@ -39,7 +40,7 @@ def _save(data):
 def set_state(event_id, stare, who=None):
     """Marcheaza un incident: confirmat / fals / nou (dez-confirmare)."""
     if stare not in STARI:
-        raise ValueError(f"stare necunoscută: {stare}")
+        raise ValueError(t("stare necunoscută: {stare}", stare=stare))
     with _lock:      # RMW sub lock: doi operatori (sau resolve_recent + UI) nu pierd ACK-uri
         data = _load()
         if stare == "nou":

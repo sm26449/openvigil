@@ -6,7 +6,7 @@
    Modul ES al interfetei (app/static/js/); intrarea e app/static/app.js.
    ==================================================================== */
 import { S } from './state.js';
-import { $, DET_RO, fdia, html, lista } from './00-core.js';
+import { $, DET_RO, fdia, html, lista, t } from './00-core.js';
 import { AL_RO, EV_TIP_RO } from './40-evenimente.js';
 import { openFisa } from './45-fisa.js';
 
@@ -19,7 +19,7 @@ async function cauta(q) {
   qUltim = q;
   const dlg = $('#cauta'); if (!dlg) return;
   $('#cauta-q').textContent = q;
-  $('#cauta-info').textContent = 'caut…';
+  $('#cauta-info').textContent = t('caut…');
   $('#cauta-grid').innerHTML = '';
   if (!dlg.open) dlg.showModal();
   const zile = +($('#cauta-zile').value || 30);
@@ -34,7 +34,7 @@ async function cauta(q) {
   ]);
   const rez = [];
   for (const p of ((sem && sem.results) || [])) {
-    rez.push({ cat: 'poze', cam: p.cam, t: `${p.day} ${p.time}`, titlu: DET_RO[p.label] || AL_RO[p.label] || p.label, poza: p.url, tip: 'detectie', det: p.label });
+    rez.push({ cat: 'poze', cam: p.cam, t: `${p.day} ${p.time}`, titlu: t(DET_RO[p.label] || AL_RO[p.label] || p.label), poza: p.url, tip: 'detectie', det: p.label });
   }
   for (const r of ((pl && pl.reads) || [])) {
     if (!qd || fdia(r.numar).includes(qd.replace(/\s+/g, '')) || fdia(r.nume || '').includes(qd)) {
@@ -46,9 +46,9 @@ async function cauta(q) {
   }
   const qcuv = qd.split(/\s+/).filter(Boolean);
   for (const e of ((jur && jur.events) || [])) {
-    const txt = fdia([EV_TIP_RO[e.tip] || e.tip, e.eticheta ? (DET_RO[e.eticheta] || e.eticheta) : '', e.nume, e.numar, e.text, e.context, names[e.cam]].filter(Boolean).join(' '));
+    const txt = fdia([t(EV_TIP_RO[e.tip] || e.tip), e.eticheta ? t(DET_RO[e.eticheta] || e.eticheta) : '', e.nume, e.numar, e.text, e.context, names[e.cam]].filter(Boolean).join(' '));
     if (qcuv.every((w) => txt.includes(w))) {
-      rez.push({ cat: 'jurnal', cam: e.cam, t: e.t, titlu: (EV_TIP_RO[e.tip] || e.tip) + (e.eticheta || e.nume || e.numar ? ': ' + (DET_RO[e.eticheta] || e.eticheta || e.nume || e.numar) : ''), tip: e.tip, sev: e.sev, id: e.id, det: e.eticheta || e.nume || e.numar || '', cine: e.nume || '' });
+      rez.push({ cat: 'jurnal', cam: e.cam, t: e.t, titlu: t(EV_TIP_RO[e.tip] || e.tip) + (e.eticheta || e.nume || e.numar ? ': ' + t(DET_RO[e.eticheta] || e.eticheta || e.nume || e.numar) : ''), tip: e.tip, sev: e.sev, id: e.id, det: e.eticheta || e.nume || e.numar || '', cine: e.nume || '' });
     }
   }
   // dedup (jurnal vs poze la aceeasi secunda pe aceeasi camera) si ordine: cele mai noi primele
@@ -67,7 +67,9 @@ function qRender() {
     const c = b.dataset.cat; b.classList.toggle('on', c === qCat);
     b.textContent = b.dataset.txt + (c ? ` ${nr[c] || 0}` : ` ${qRez.length}`);
   }
-  $('#cauta-info').textContent = qRez.length ? `${items.length} rezultate${qCat ? '' : ' din toate sursele'} pentru „${qUltim}”` : `nimic pentru „${qUltim}”`;
+  $('#cauta-info').textContent = !qRez.length ? t('nimic pentru „{q}”', { q: qUltim })
+    : qCat ? t('{n} rezultate pentru „{q}”', { n: items.length, q: qUltim })
+    : t('{n} rezultate din toate sursele pentru „{q}”', { n: items.length, q: qUltim });
   $('#cauta-grid').innerHTML = lista(items, (r, i) => html`
     <button class="q-item" data-i="${i}" data-cat="${r.cat}">
       ${r.poza ? html`<img src="${r.poza}" alt="" loading="lazy">` : html`<span class="q-noimg">${r.cat === 'persoane' ? '👤' : '•'}</span>`}

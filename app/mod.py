@@ -18,6 +18,7 @@ import time
 
 import store
 import logare
+from i18n import t
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FILE = os.path.join(ROOT, "data", "mod.json")
@@ -44,7 +45,7 @@ def set(mod, cine=None, sursa="ui", anunta=True):     # noqa: A001  (numele e AP
     """Schimba modul. Intoarce starea noua; daca modul e deja cel cerut, nu face nimic
     (nici eveniment, nici MQTT) — comutatoarele din 3 surse nu trebuie sa se bata."""
     if mod not in MODURI:
-        raise ValueError(f"mod necunoscut: {mod} (acasa / plecat / noapte)")
+        raise ValueError(t("mod necunoscut: {mod} (acasa / plecat / noapte)", mod=mod))
     with _lock:
         vechi = get()
         if vechi["mod"] == mod:

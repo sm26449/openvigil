@@ -16,6 +16,7 @@ import xml.etree.ElementTree as ET
 import requests
 from requests.auth import HTTPDigestAuth
 
+from i18n import t
 import snaps
 import logare
 
@@ -217,7 +218,7 @@ def probe_smart(cam):
 def set_smart(cam, key, on):
     """Porneste/opreste o functie smart, pastrand restul configuratiei camerei."""
     if key not in SMART:
-        raise ValueError("functie necunoscută")
+        raise ValueError(t("functie necunoscută"))
     path = SMART[key][1]
     s = _sess(cam)
     r = s.get(_url(cam, path), timeout=10)
@@ -227,7 +228,7 @@ def set_smart(cam, key, on):
     if el is None:
         el = next((e for e in root.iter() if e.tag.endswith("enabled")), None)
     if el is None:
-        raise RuntimeError("camera nu expune comutatorul")
+        raise RuntimeError(t("camera nu expune comutatorul"))
     el.text = "true" if on else "false"
     r = s.put(_url(cam, path), data=ET.tostring(root, encoding="unicode"),
               headers={"Content-Type": "application/xml"}, timeout=10)
@@ -449,7 +450,7 @@ def set_stream(cam, ch=101, codec=None, kbps=None, fps=None, keyframe=None):
     root = ET.fromstring(r.text)
     v = root.find(f"{{{HIK_NS}}}Video")
     if v is None:
-        raise RuntimeError("stream fără sectiune Video")
+        raise RuntimeError(t("stream fără sectiune Video"))
 
     def setel(tag, val):
         el = v.find(f"{{{HIK_NS}}}{tag}")
@@ -580,7 +581,7 @@ def presets_list(cam):
         pid = el.find(f"{{{HIK_NS}}}id")
         nm = el.find(f"{{{HIK_NS}}}presetName")
         if pid is not None:
-            out.append({"id": int(pid.text), "nume": (nm.text if nm is not None else "") or f"Pozitia {pid.text}"})
+            out.append({"id": int(pid.text), "nume": (nm.text if nm is not None else "") or t("Pozitia {id}", id=pid.text)})
     return sorted(out, key=lambda p: p["id"])
 
 
@@ -628,7 +629,7 @@ def set_focus_mode(cam, mode):
     buna la o camera fixa; AUTO cauta continuu, ceea ce la un cadru static e inutil."""
     mode = str(mode).upper()
     if mode not in FOCUS_MODES:
-        raise ValueError("mod de focalizare necunoscut")
+        raise ValueError(t("mod de focalizare necunoscut"))
     s = _sess(cam)
     r = s.put(_url(cam, "/ISAPI/Image/channels/1/focusConfiguration"),
               data=('<FocusConfiguration><focusStyle>' + mode + '</focusStyle>'

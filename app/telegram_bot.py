@@ -14,6 +14,7 @@ import requests
 
 import settings
 import logare
+from i18n import t
 
 _fir = None
 _offset = 0
@@ -40,10 +41,11 @@ def _stare_text():
     except Exception:
         live = []
     jos = [c["name"] for c in live if not c.get("scrie")]
-    txt = f"{mod.MOD_ICO[m['mod']]} Mod: {mod.MOD_RO[m['mod']]}"
+    txt = t("{ico} Mod: {mod}", ico=mod.MOD_ICO[m['mod']], mod=t(mod.MOD_RO[m['mod']]))
     if m.get("de_cand"):
-        txt += f" (din {time.strftime('%H:%M', time.localtime(m['de_cand']))}, {m.get('sursa') or '?'})"
-    txt += f"\n📹 {len(live)} camere inregistreaza" + (f"; NU scriu: {', '.join(jos)}" if jos else "")
+        txt += t(" (din {ora}, {sursa})", ora=time.strftime('%H:%M', time.localtime(m['de_cand'])),
+                 sursa=m.get('sursa') or '?')
+    txt += "\n" + t("📹 {n} camere inregistreaza", n=len(live)) + (t("; NU scriu: {lista}", lista=', '.join(jos)) if jos else "")
     return txt
 
 
@@ -57,10 +59,10 @@ def raspuns(text, cine="telegram"):
         era = mod.curent()
         mod.set(m, cine=cine, sursa="telegram")
         if era == m:
-            return f"{mod.MOD_ICO[m]} Deja in modul {mod.MOD_RO[m]}."
-        return f"{mod.MOD_ICO[m]} Mod: {mod.MOD_RO[m]} (era {mod.MOD_RO[era]})."
+            return t("{ico} Deja in modul {mod}.", ico=mod.MOD_ICO[m], mod=t(mod.MOD_RO[m]))
+        return t("{ico} Mod: {mod} (era {era}).", ico=mod.MOD_ICO[m], mod=t(mod.MOD_RO[m]), era=t(mod.MOD_RO[era]))
     if cmd in ("/mod", "/stare", "/status", "/start", "/help"):
-        return (_stare_text() + "\n\nComenzi: /acasa, /plecat, /noapte, /stare")
+        return (_stare_text() + "\n\n" + t("Comenzi: /acasa, /plecat, /noapte, /stare"))
     return None
 
 
@@ -95,7 +97,7 @@ def _bucla():
                 try:
                     rasp = raspuns(text, cine=f"telegram:{cine}")
                 except Exception as e:
-                    rasp = f"Eroare: {str(e)[:80]}"
+                    rasp = t("Eroare: {e}", e=str(e)[:80])
                 if rasp:
                     _trimite(cfg, rasp)
         except Exception as e:

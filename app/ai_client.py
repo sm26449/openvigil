@@ -17,6 +17,7 @@ import time
 import requests
 import logare
 import config as C
+from i18n import t
 
 AI = f"http://127.0.0.1:{C.AI_PORT}"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -53,8 +54,8 @@ def local_permis(nume):
     import settings
     import detect
     if settings.get("ai_service") and not detect.IS_HOST:
-        raise RuntimeError(f"nvr-ai e configurat (ai_service) și nu răspunde — modelul "
-                           f"{nume} nu se încarcă în nvr-web")
+        raise RuntimeError(t("nvr-ai e configurat (ai_service) și nu răspunde — modelul {nume} nu se încarcă în nvr-web",
+                             nume=nume))
 
 
 def remote():

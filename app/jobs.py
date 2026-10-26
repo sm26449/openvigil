@@ -30,6 +30,7 @@ import uuid
 
 import jurnal
 import logare
+from i18n import t
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DIR = os.path.join(ROOT, "data", "tmp", "joburi")
@@ -216,7 +217,7 @@ def cancel(jid):
             except OSError:
                 pass
     else:
-        _set(jid, stare="anulat", terminat=int(time.time()), mesaj="anulat")
+        _set(jid, stare="anulat", terminat=int(time.time()), mesaj=t("anulat"))
     return True
 
 
@@ -226,7 +227,7 @@ def _ruleaza(job):
     try:
         rez = _handlers[job.tip](job)
         if job.anulat:
-            raise JobError("anulat")
+            raise JobError(t("anulat"))
         _set(job.id, stare="gata", progres=100, terminat=int(time.time()),
              rezultat=json.dumps(rez or {}, ensure_ascii=False), mesaj=job.mesaj)
     except JobError as e:
@@ -235,7 +236,7 @@ def _ruleaza(job):
     except Exception as e:                      # bug in handler: nu doboara lucratorul
         traceback.print_exc()
         _set(job.id, stare="anulat" if job.anulat else "eroare", terminat=int(time.time()),
-             mesaj=f"eroare interna: {str(e)[:160]}")
+             mesaj=t("eroare interna: {e}", e=str(e)[:160]))
     finally:
         _active.pop(job.id, None)
 
@@ -300,17 +301,17 @@ def start(workers=WORKERS):
     _stop.clear()
     c = _db()
     with jurnal.lock:
-        c.execute("UPDATE jobs SET stare = 'eroare', terminat = ?, "
-                  "mesaj = 'serviciul a repornit inainte sa termine' "
-                  "WHERE stare IN ('asteapta', 'ruleaza')", (int(time.time()),))
+        c.execute("UPDATE jobs SET stare = 'eroare', terminat = ?, mesaj = ? "
+                  "WHERE stare IN ('asteapta', 'ruleaza')",
+                  (int(time.time()), t("serviciul a repornit inainte sa termine")))
     os.makedirs(DIR, exist_ok=True)
     for i in range(max(1, workers)):
-        t = threading.Thread(target=_lucrator, name=f"job-{i}", daemon=True)
-        t.start()
-        _threads.append(t)
-    t = threading.Thread(target=_curatator, name="job-curatare", daemon=True)
-    t.start()
-    _threads.append(t)
+        th = threading.Thread(target=_lucrator, name=f"job-{i}", daemon=True)
+        th.start()
+        _threads.append(th)
+    th = threading.Thread(target=_curatator, name="job-curatare", daemon=True)
+    th.start()
+    _threads.append(th)
 
 
 def stop():

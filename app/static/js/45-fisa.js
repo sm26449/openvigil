@@ -7,7 +7,7 @@
    Modul ES al interfetei (app/static/js/); intrarea e app/static/app.js.
    ==================================================================== */
 import { S } from './state.js';
-import { $, ADMIN, CAN_ACT, DET_RO, html } from './00-core.js';
+import { $, ADMIN, CAN_ACT, DET_RO, html, t } from './00-core.js';
 import { post } from './10-live.js';
 import { AL_RO, EV_TIP_RO, evCompact, openCases, openClip } from './40-evenimente.js';
 import { regulaDin } from './70-ai.js';
@@ -16,8 +16,8 @@ const SEV_RO = { info: 'informativ', atentie: 'atenție', critic: 'critic' };
 let fisaEv = null;
 
 function fisaCe(ev) {
-  const tip = EV_TIP_RO[ev.tip] || AL_RO[ev.tip] || DET_RO[ev.tip] || ev.tip || 'Eveniment';
-  const det = ev.det ? (DET_RO[ev.det] || AL_RO[ev.det] || ev.det) : '';
+  const tip = t(EV_TIP_RO[ev.tip] || AL_RO[ev.tip] || DET_RO[ev.tip] || ev.tip || 'Eveniment');
+  const det = ev.det ? t(DET_RO[ev.det] || AL_RO[ev.det] || ev.det) : '';
   return det && det !== tip ? `${tip}: ${det}` : tip;
 }
 function fisaSec(t) { const [h, m, s] = t.slice(11).split(':').map(Number); return h * 3600 + m * 60 + s; }
@@ -28,11 +28,11 @@ function openFisa(ev) {
   const cam = S.cameras.find((c) => c.id === +ev.cam);
   const zi = ev.t.slice(0, 10), ora = ev.t.slice(11, 19);
   $('#fisa-title').textContent = fisaCe(ev);
-  $('#fisa-sev').textContent = SEV_RO[ev.sev] || '';
+  $('#fisa-sev').textContent = SEV_RO[ev.sev] ? t(SEV_RO[ev.sev]) : '';
   $('#fisa-sev').className = 'chip sev-' + (ev.sev || 'info') + (ev.sev ? '' : ' hidden');
-  $('#fisa-meta').innerHTML = html`<div><b>Unde</b> ${cam ? cam.name : 'cam ' + ev.cam}</div>
-    <div><b>Când</b> ${zi} ${ora}</div>${ev.cine ? html`<div><b>Cine</b> ${ev.cine}</div>` : ''}${
-    ev.stare ? html`<div><b>Stare</b> ${ev.stare === 'confirmat' ? 'confirmat' : ev.stare === 'fals' ? 'alarmă falsă' : 'de tratat'}${ev.tratat_de ? ' de ' + ev.tratat_de : ''}</div>` : ''}`;
+  $('#fisa-meta').innerHTML = html`<div><b>${t('Unde')}</b> ${cam ? cam.name : 'cam ' + ev.cam}</div>
+    <div><b>${t('Când')}</b> ${zi} ${ora}</div>${ev.cine ? html`<div><b>${t('Cine')}</b> ${ev.cine}</div>` : ''}${
+    ev.stare ? html`<div><b>${t('Stare')}</b> ${ev.stare === 'confirmat' ? t('confirmat') : ev.stare === 'fals' ? t('alarmă falsă') : t('de tratat')}${ev.tratat_de ? ' ' + t('de {cine}', { cine: ev.tratat_de }) : ''}</div>` : ''}`;
   const img = $('#fisa-img');
   if (ev.poza) { img.src = ev.poza; img.classList.remove('hidden'); } else { img.removeAttribute('src'); img.classList.add('hidden'); }
   $('#fisa-noimg').classList.toggle('hidden', !!ev.poza);
@@ -69,7 +69,7 @@ $('#fisa') && (() => {
     if (!fisaEv) return;
     fisaInchide();
     const cn = (S.cameras.find((c) => c.id === +fisaEv.cam) || {}).name || 'cam ' + fisaEv.cam;
-    regulaDin({ tip: fisaEv.tip, valoare: fisaEv.det || '', cam: fisaEv.cam, nume: `${fisaCe(fisaEv)} pe ${cn}` });
+    regulaDin({ tip: fisaEv.tip, valoare: fisaEv.det || '', cam: fisaEv.cam, nume: t('{ce} pe {cam}', { ce: fisaCe(fisaEv), cam: cn }) });
   };
 })();
 

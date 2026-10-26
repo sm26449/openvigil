@@ -4,7 +4,7 @@
    Se reimprospateaza la 10 s doar cand grila Live e vizibila, incremental (?dupa=).
    Modul ES al interfetei (app/static/js/); intrarea e app/static/app.js.
    ==================================================================== */
-import { $, DET_RO, html } from './00-core.js';
+import { $, DET_RO, html, t } from './00-core.js';
 import { AL_RO } from './40-evenimente.js';
 import { openFisa } from './45-fisa.js';
 
@@ -13,7 +13,7 @@ let fluxItems = [], fluxCat = '', fluxUltim = '', fluxTimer = null, fluxOn = fal
 
 function fxEticheta(it) {
   if (it.cat === 'fata' || it.cat === 'numar') return it.label;
-  return DET_RO[it.label] || AL_RO[it.label] || it.label;
+  return t(DET_RO[it.label] || AL_RO[it.label] || it.label);
 }
 function fxSec(t) { const [h, m, s] = t.split(':').map(Number); return h * 3600 + m * 60 + s; }
 
@@ -23,11 +23,11 @@ function fluxRender(noi = new Set()) {
   const items = fluxItems.filter((it) => fluxCat ? it.cat === fluxCat : it.cat !== 'miscare').slice(0, 60);
   list.innerHTML = html`${items.map((it) => html`
     <button class="flux-item ${noi.has(it.url) ? 'nou' : ''}" data-cat="${it.cat}" data-cam="${it.cam}" data-zi="${it.zi}" data-sec="${fxSec(it.time)}"
-      title="${fxEticheta(it)} · ${it.cam_nume} · ${it.time} — click: redă momentul">
+      title="${fxEticheta(it)} · ${it.cam_nume} · ${it.time} — ${t('click: redă momentul')}">
       <img src="${it.thumb}" alt="" loading="lazy">
       <span class="fx-main"><span class="fx-what">${fxEticheta(it)}</span><span>${it.cam_nume}</span><span class="fx-when">${it.time}</span></span>
     </button>`)}`;
-  if (!items.length) list.innerHTML = '<p class="hint">Nimic azi' + (fluxCat ? ' la ' + CAT_RO[fluxCat].toLowerCase() : ' în afară de mișcare simplă') + '.</p>';
+  if (!items.length) list.innerHTML = html`<p class="hint">${fluxCat ? t('Nimic azi la {cat}.', { cat: t(CAT_RO[fluxCat]).toLowerCase() }) : t('Nimic azi în afară de mișcare simplă.')}</p>`;
   for (const b of list.querySelectorAll('.flux-item')) {
     b.onclick = () => {
       const it = items.find((x) => String(x.cam) === b.dataset.cam && fxSec(x.time) === +b.dataset.sec) || items[0];
@@ -35,7 +35,8 @@ function fluxRender(noi = new Set()) {
     };
   }
   const nm = fluxItems.filter((it) => it.cat === 'miscare').length;
-  $('#flux-info').textContent = fluxCat ? `${items.length} ${CAT_RO[fluxCat].toLowerCase()} din ${fluxItems.length} cadre azi` : `${items.length} evenimente azi (+${nm} mișcare simplă)`;
+  $('#flux-info').textContent = fluxCat ? t('{n} {cat} din {total} cadre azi', { n: items.length, cat: t(CAT_RO[fluxCat]).toLowerCase(), total: fluxItems.length })
+    : t('{n} evenimente azi (+{nm} mișcare simplă)', { n: items.length, nm });
 }
 
 async function fluxLoad(incremental = true) {

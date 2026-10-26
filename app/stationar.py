@@ -21,6 +21,7 @@ import threading
 import time
 import uuid
 import logare
+from i18n import t
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FILE = os.path.join(ROOT, "data", "stationar.json")
@@ -38,7 +39,7 @@ FORME = {"car": ("o masina", "plecata"), "truck": ("un camion", "plecat"),
 
 
 def _forma(lbl):
-    return FORME.get(lbl, (f"un {lbl}", "plecat"))
+    return FORME.get(lbl, (t("un {lbl}", lbl=lbl), "plecat"))
 
 _reg = {}              # cam -> {sid: {lbl, box(x,y,w,h normalizat), t0, last}}
 _bind = {}             # (cam, track_id) -> sid
@@ -116,7 +117,7 @@ def sosire(cam, track_id, lbl, box, now=None, since=None):
           zona=[round(v, 3) for v in box],
           # momentul OPRIRII — clipul din UI tinteste aici, nu confirmarea (+2 min)
           inceput=time.strftime("%H:%M:%S", time.localtime(since or now)),
-          text=f"{_forma(lbl)[0]} a parcat")
+          text=t("{vehicul} a parcat", vehicul=t(_forma(lbl)[0])))
     return True
 
 
@@ -141,8 +142,9 @@ def plecare(cam, track_id, now=None):
         durata = round((now - e["t0"]) / 60, 1)
         _emit("parcare_sfarsit", cam, eticheta=e["lbl"],
               eticheta_ro=RO.get(e["lbl"], e["lbl"]), durata_min=durata,
-              text=f"{_forma(e['lbl'])[0]} {_forma(e['lbl'])[1]} dupa "
-                   + (f"{durata} min" if durata < 90 else f"{round(durata / 60, 1)} ore"))
+              text=t("{vehicul} {plecat} dupa {durata}", vehicul=t(_forma(e['lbl'])[0]),
+                     plecat=t(_forma(e['lbl'])[1]),
+                     durata=(t("{n} min", n=durata) if durata < 90 else t("{n} ore", n=round(durata / 60, 1)))))
     return e
 
 
@@ -171,11 +173,11 @@ def tick(now=None):
         durata = round((e["last"] - e["t0"]) / 60, 1)
         _emit("parcare_sfarsit", cam, eticheta=e["lbl"],
               eticheta_ro=RO.get(e["lbl"], e["lbl"]), durata_min=durata,
-              nota="pierdut din vedere",
+              nota=t("pierdut din vedere"),
               # clipul tinteste ULTIMA vedere, nu inchiderea (+10 min de gratie)
               vazut_ultima=time.strftime("%H:%M:%S", time.localtime(e["last"])),
-              text=f"{_forma(e['lbl'])[0]} {_forma(e['lbl'])[1]} dupa ~{durata} min "
-                   f"(pierdut din vedere)")
+              text=t("{vehicul} {plecat} dupa ~{n} min (pierdut din vedere)", vehicul=t(_forma(e['lbl'])[0]),
+                     plecat=t(_forma(e['lbl'])[1]), n=durata))
 
 
 def suprapune(cam, box, refresh=False):

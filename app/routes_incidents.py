@@ -22,6 +22,7 @@ import cases as cases_mod
 import jobs
 import digest as digest_mod
 import incidents as incidents_mod
+from i18n import t
 from server import ROOT, _visible_ids, current_user, get_cameras, render_clip
 
 bp = Blueprint("incidents", __name__)
@@ -64,7 +65,7 @@ def api_digest_trimite():
     try:
         msg = digest_mod.trimite(b.get("day") or None, sync=True)
     except Exception as e:
-        return jsonify({"error": f"nu s-a putut trimite: {str(e)[:120]}"}), 400
+        return jsonify({"error": t("nu s-a putut trimite: {e}", e=str(e)[:120])}), 400
     audit.log("rezumatul zilei trimis", b.get("day") or "azi")
     return jsonify({"ok": True, "text": msg})
 
@@ -107,16 +108,16 @@ def api_case(cid):
     if request.method == "DELETE":
         c = cases_mod.get(cid)
         if c and not _case_visible(c, _visible_ids()):
-            return jsonify({"error": "nu ai acces la acest caz"}), 403
+            return jsonify({"error": t("nu ai acces la acest caz")}), 403
         if not cases_mod.delete(cid):
-            return jsonify({"error": "caz inexistent"}), 404
+            return jsonify({"error": t("caz inexistent")}), 404
         audit.log("caz sters", cid)
         return jsonify({"ok": True})
     c = cases_mod.get(cid)
     if not c:
-        return jsonify({"error": "caz inexistent"}), 404
+        return jsonify({"error": t("caz inexistent")}), 404
     if not _case_visible(c, _visible_ids()):
-        return jsonify({"error": "nu ai acces la acest caz"}), 403
+        return jsonify({"error": t("nu ai acces la acest caz")}), 403
     return jsonify(c)
 
 
@@ -128,20 +129,20 @@ def api_case_add(cid):
     if vis is not None:      # nu poti adauga proba de pe o camera pe care n-o vezi
         try:
             if int(b.get("cam", -1)) not in vis:
-                return jsonify({"error": "nu ai acces la această camera"}), 403
+                return jsonify({"error": t("nu ai acces la această camera")}), 403
         except (ValueError, TypeError):
-            return jsonify({"error": "cam invalid"}), 400
+            return jsonify({"error": t("cam invalid")}), 400
         c0 = cases_mod.get(cid)   # nici la un caz cu probe de pe camere straine
         if c0 and not _case_visible(c0, vis):
-            return jsonify({"error": "nu ai acces la acest caz"}), 403
+            return jsonify({"error": t("nu ai acces la acest caz")}), 403
     try:
         c = cases_mod.add_proba(cid, b["cam"], b["start"], b["end"],
                                 nota=b.get("nota", ""), event_id=b.get("event_id"),
                                 who=(current_user() or {}).get("user"))
     except KeyError:
-        return jsonify({"error": "caz inexistent"}), 404
+        return jsonify({"error": t("caz inexistent")}), 404
     except (ValueError, TypeError):
-        return jsonify({"error": "date proba invalide (cam/start/end)"}), 400
+        return jsonify({"error": t("date proba invalide (cam/start/end)")}), 400
     return jsonify(c)
 
 
@@ -150,7 +151,7 @@ def api_case_del(cid, pid):
     try:
         ok = cases_mod.del_proba(cid, pid)
     except KeyError:
-        return jsonify({"error": "caz inexistent"}), 404
+        return jsonify({"error": t("caz inexistent")}), 404
     return jsonify({"ok": ok})
 
 
@@ -161,12 +162,12 @@ def api_case_export(cid):
     Dureaza (un ffmpeg per proba), deci 202 + job; ZIP-ul vine din /api/jobs/<id>/fisier."""
     c = cases_mod.get(cid)
     if not c:
-        return jsonify({"error": "caz inexistent"}), 404
+        return jsonify({"error": t("caz inexistent")}), 404
     if not c.get("probe"):
-        return jsonify({"error": "cazul nu are nicio proba"}), 400
+        return jsonify({"error": t("cazul nu are nicio proba")}), 400
     vis = _visible_ids()
     if not _case_visible(c, vis):
-        return jsonify({"error": "nu ai acces la acest caz"}), 403
+        return jsonify({"error": t("nu ai acces la acest caz")}), 403
     return jsonify(jobs.submit("dosar", {"cid": cid, "vis": sorted(vis) if vis is not None else None},
                                who=(current_user() or {}).get("user"))), 202
 
@@ -176,7 +177,7 @@ def _job_dosar(job):
     vis = set(vis) if vis is not None else None
     c = cases_mod.get(cid)
     if not c or not c.get("probe"):
-        raise jobs.JobError("cazul nu (mai) există sau nu are probe")
+        raise jobs.JobError(t("cazul nu (mai) există sau nu are probe"))
     tmpdir = os.path.join(ROOT, "data", "tmp", f"caz_{cid}_{job.id}")
     os.makedirs(tmpdir, exist_ok=True)
     manifest = {"caz": {k: c[k] for k in ("id", "titlu", "descriere", "creat", "creat_de")},
@@ -187,8 +188,8 @@ def _job_dosar(job):
     try:
         for i, p in enumerate(c["probe"], 1):
             if job.anulat:
-                raise jobs.JobError("anulat")
-            job.progres(int((i - 1) / n * 90), f"proba {i} din {n}")
+                raise jobs.JobError(t("anulat"))
+            job.progres(int((i - 1) / n * 90), t("proba {i} din {total}", i=i, total=n))
             ch = int(p["cam"])
             if vis is not None and ch not in vis:
                 continue   # operator restrans: sare probele din camere fara acces
@@ -207,7 +208,7 @@ def _job_dosar(job):
                 "start": p["start"], "end": p["end"], "nota": p.get("nota"),
                 "sha256": sha, "octeti": os.path.getsize(out)})
             fisiere.append((out, fn))
-        job.progres(92, "impachetez")
+        job.progres(92, t("impachetez"))
         man_path = os.path.join(tmpdir, "manifest.json")
         with open(man_path, "w") as fh:
             json.dump(manifest, fh, ensure_ascii=False, indent=1)

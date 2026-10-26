@@ -22,6 +22,8 @@ registru, ca sa nu intrebe camera la fiecare pornire de flux.
 """
 import urllib.parse
 
+from i18n import t
+
 VENDORI = {"hik": "Hikvision (ISAPI)", "onvif": "ONVIF (generic)", "demo": "Demo (flux sintetic, fără cameră)"}
 
 # camerele demo: go2rtc genereaza singur imaginea (ffmpeg lavfi), fara nicio camera reala —
@@ -77,7 +79,7 @@ def rtsp_main(cam):
         return f"rtsp://{cam['user']}:{pw}@{cam['ip']}:{cam.get('port', 554)}/Streaming/Channels/101"
     o = cam.get("onvif") or {}
     if not o.get("main"):
-        raise Nesuportat("camera ONVIF fără URL de flux (readauga sau resondeaza camera)")
+        raise Nesuportat(t("camera ONVIF fără URL de flux (readauga sau resondeaza camera)"))
     return _cu_parola(o["main"], cam)
 
 
@@ -99,7 +101,7 @@ def rtsp(cam, canal):
 # ---- identificare / sanatate ----
 def _onvif(cam):
     if este_demo(cam):
-        raise Nesuportat("camera demo nu are actiuni (flux sintetic)")
+        raise Nesuportat(t("camera demo nu are actiuni (flux sintetic)"))
     import onvif
     return onvif.Camera(cam["ip"], cam.get("user") or "", cam.get("pass") or "",
                         (cam.get("onvif") or {}).get("port") or cam.get("http_port") or 80)
@@ -117,10 +119,10 @@ def device_info(cam):
         s.auth = HTTPDigestAuth(cam["user"], cam["pass"])
         r = s.get(f"http://{cam['ip']}/ISAPI/System/deviceInfo", timeout=12)
         if r.status_code == 401:
-            raise RuntimeError("autentificare esuata (user/parola)")
+            raise RuntimeError(t("autentificare esuata (user/parola)"))
         r.raise_for_status()
         root = ET.fromstring(r.text)
-        g = lambda t: next((e.text for e in root.iter() if e.tag.endswith(t)), None)
+        g = lambda tag: next((e.text for e in root.iter() if e.tag.endswith(tag)), None)
         return {"manufacturer": "Hikvision", "model": g("model"), "serial": g("serialNumber"),
                 "firmware": g("firmwareVersion"), "name": g("deviceName") or g("model")}
     i = _onvif(cam).info()
@@ -232,7 +234,7 @@ def _token_onvif(cam, pid):
     for p in _onvif(cam).presetari():
         if p["id"] == int(pid):
             return p["token"]
-    raise Nesuportat("presetarea nu există")
+    raise Nesuportat(t("presetarea nu există"))
 
 
 def preset_goto(cam, pid):
@@ -256,28 +258,28 @@ def set_output(cam, port, on):
     c = _onvif(cam)
     relee = c.relee()
     if not relee:
-        raise Nesuportat("camera nu are relee ONVIF")
+        raise Nesuportat(t("camera nu are relee ONVIF"))
     tok = relee[max(0, min(len(relee) - 1, int(port) - 1))]
     return c.releu(tok, on)
 
 
 def trigger_siren(cam, *a, **kw):
     if not este_hik(cam):
-        raise Nesuportat("sirena există doar pe camerele Hikvision")
+        raise Nesuportat(t("sirena există doar pe camerele Hikvision"))
     import camctl
     return camctl.trigger_siren(cam, *a, **kw)
 
 
 def set_strobe(cam, *a, **kw):
     if not este_hik(cam):
-        raise Nesuportat("stroboscopul există doar pe camerele Hikvision")
+        raise Nesuportat(t("stroboscopul există doar pe camerele Hikvision"))
     import camctl
     return camctl.set_strobe(cam, *a, **kw)
 
 
 def speak(cam, *a, **kw):
     if not este_hik(cam):
-        raise Nesuportat("difuzorul (two-way audio ISAPI) există doar pe camerele Hikvision")
+        raise Nesuportat(t("difuzorul (two-way audio ISAPI) există doar pe camerele Hikvision"))
     import camctl
     return camctl.speak(cam, *a, **kw)
 
@@ -291,7 +293,7 @@ def get_stream(cam, ch=101):
 
 def set_stream(cam, ch=101, **kw):
     if not este_hik(cam):
-        raise Nesuportat("calitatea fluxului se seteaza doar pe camerele Hikvision (ISAPI)")
+        raise Nesuportat(t("calitatea fluxului se seteaza doar pe camerele Hikvision (ISAPI)"))
     import camctl
     return camctl.set_stream(cam, ch, **kw)
 
@@ -308,7 +310,7 @@ def get_time(cam):
 
 def set_time(cam, **kw):
     if not este_hik(cam):
-        raise Nesuportat("sincronizarea orei se face doar pe camerele Hikvision")
+        raise Nesuportat(t("sincronizarea orei se face doar pe camerele Hikvision"))
     import camctl
     return camctl.set_time(cam, **kw)
 

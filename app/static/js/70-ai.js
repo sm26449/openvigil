@@ -4,7 +4,7 @@
    pe toate; importurile/exporturile sunt verificate de scripts/module_check.py (si in pytest).
    ==================================================================== */
 import { S } from './state.js';
-import { $, DET_RO, EV_RO, html, lista, raw } from './00-core.js';
+import { $, DET_RO, EV_RO, html, lista, raw, t } from './00-core.js';
 import { MOD_ICO } from './05-navigare.js';
 import { post } from './10-live.js';
 import { wireClips } from './40-evenimente.js';
@@ -22,23 +22,23 @@ async function loadFaces() {
     $('#fc-persons').innerHTML = lista(d.persons, (p) => html`
       <div class="fc-person" data-name="${p.name}">
         ${p.cover ? html`<img src="${p.cover}" alt="">` : ''}
-        <b>${p.name}</b> <span class="hint">${p.photos} poze</span>
-        <button class="fc-hist link-btn" title="Când a mai apărut">istoric</button>
-        <button class="fc-ren link-btn" title="Schimbă numele">redenumește</button>
-        <button class="fc-del link-btn">șterge</button>
-      </div>`, '<p class="hint">Nicio persoana inca.</p>');
+        <b>${p.name}</b> <span class="hint">${t('{n} poze', { n: p.photos })}</span>
+        <button class="fc-hist link-btn" title="${t('Când a mai apărut')}">${t('istoric')}</button>
+        <button class="fc-ren link-btn" title="${t('Schimbă numele')}">${t('redenumește')}</button>
+        <button class="fc-del link-btn">${t('șterge')}</button>
+      </div>`, html`<p class="hint">${t('Nicio persoana inca.')}</p>`);
     for (const row of document.querySelectorAll('#fc-persons .fc-person')) {
       row.querySelector('.fc-ren').onclick = async () => {
         const n = row.dataset.name;
-        const nou = prompt(`Numele nou pentru "${n}":`, n);
+        const nou = prompt(t('Numele nou pentru "{n}":', { n }), n);
         if (!nou || nou.trim() === n) return;
         const r = await post(`/api/faces/person/${encodeURIComponent(n)}/rename`, { nou: nou.trim() });
-        if (r && r.ok) { flash('#fc-msg', `"${n}" e acum "${r.nume}" ✓`); loadFaces(); }
-        else flash('#fc-msg', (r && r.error) || 'Eșuat', true);
+        if (r && r.ok) { flash('#fc-msg', t('"{vechi}" e acum "{nou}" ✓', { vechi: n, nou: r.nume })); loadFaces(); }
+        else flash('#fc-msg', (r && r.error) || t('Eșuat'), true);
       };
       row.querySelector('.fc-del').onclick = async () => {
         const n = row.dataset.name;
-        if (!confirm(`Ștergi persoana "${n}" și toate pozele ei?`)) return;
+        if (!confirm(t('Ștergi persoana "{n}" și toate pozele ei?', { n }))) return;
         await fetch(`/api/faces/person/${encodeURIComponent(n)}`, { method: 'DELETE' });
         loadFaces();
       };
@@ -48,15 +48,15 @@ async function loadFaces() {
         const names = Object.fromEntries(S.cameras.map((c) => [c.id, c.name]));
         const box = $('#fc-history');
         box.classList.remove('hidden');
-        box.innerHTML = html`<h3 class="wh-h3">Aparițiile lui „${n}”
-          <button class="link-btn" id="fc-hist-close">închide</button></h3>${
+        box.innerHTML = html`<h3 class="wh-h3">${t('Aparițiile lui „{n}”', { n })}
+          <button class="link-btn" id="fc-hist-close">${t('închide')}</button></h3>${
           lista(d2.history || [], (h) => html`<div class="ev-row">
               <span class="ev-t">${h.t}</span>
-              <span class="ev-cam">${names[h.cam] || 'cam ' + h.cam}</span>
-              <span class="ev-det">similaritate ${Math.round(h.sim * 100)}%</span>
+              <span class="ev-cam">${names[h.cam] || t('cam {id}', { id: h.cam })}</span>
+              <span class="ev-det">${t('similaritate {p}%', { p: Math.round(h.sim * 100) })}</span>
               <button class="clip-btn link-btn" data-cam="${h.cam}" data-t="${h.t}"
-                data-cap="${n} — ${h.t}">▶ clip</button>
-            </div>`, '<p class="hint">Nicio aparitie inregistrata inca.</p>')}`;
+                data-cap="${n} — ${h.t}">${t('▶ clip')}</button>
+            </div>`, html`<p class="hint">${t('Nicio aparitie inregistrata inca.')}</p>`)}`;
         $('#fc-hist-close').onclick = () => box.classList.add('hidden');
         wireClips(box);
       };
@@ -64,27 +64,28 @@ async function loadFaces() {
     // necunoscutii ca persoane: grupurile permanente (regrupate in nvr-ai), cu sugestie si unire
     const persoaneNume = (d.persons || []).map((p) => p.name);
     const camNume = Object.fromEntries(S.cameras.map((c) => [c.id, c.name]));
-    $('#fc-groups-t').textContent = d.grupuri_t ? `regrupat ${d.grupuri_t.slice(11, 16)}` : 'încă neregrupat';
+    $('#fc-groups-t').textContent = d.grupuri_t ? t('regrupat {ora}', { ora: d.grupuri_t.slice(11, 16) }) : t('încă neregrupat');
     $('#fc-groups').innerHTML = lista(d.grupuri || [], (g) => html`
       <div class="fc-group" data-id="${g.id}">
         <div class="fc-g-imgs">${g.mostre.map((m) => html`<img src="${m.url}" alt="" loading="lazy">`)}</div>
-        <div class="fc-g-meta"><b>Necunoscut ${g.id.replace('nec-', '')}</b> · ${g.n} poze în ${g.zile} ${g.zile === 1 ? 'zi' : 'zile'}
-          <div class="hint">${g.ultima ? `ultima oară ${g.ultima.zi} ${g.ultima.ora} · ${camNume[g.ultima.cam] || 'cam ' + g.ultima.cam}` : g.interval}</div>
-          ${g.sugestie ? html`<div>seamănă cu <b>${g.sugestie.nume}</b> (${Math.round(g.sugestie.sim * 100)}%)</div>` : ''}</div>
+        <div class="fc-g-meta"><b>${t('Necunoscut {id}', { id: g.id.replace('nec-', '') })}</b> · ${g.zile === 1
+            ? t('{n} poze în {zile} zi', { n: g.n, zile: g.zile }) : t('{n} poze în {zile} zile', { n: g.n, zile: g.zile })}
+          <div class="hint">${g.ultima ? t('ultima oară {zi} {ora} · {cam}', { zi: g.ultima.zi, ora: g.ultima.ora, cam: camNume[g.ultima.cam] || t('cam {id}', { id: g.ultima.cam }) }) : g.interval}</div>
+          ${g.sugestie ? html`<div>${raw(t('seamănă cu {nume} ({p}%)', { nume: html`<b>${g.sugestie.nume}</b>`, p: Math.round(g.sugestie.sim * 100) }))}</div>` : ''}</div>
         <div class="fc-g-act">
-          ${g.sugestie ? html`<button class="btn sm fc-g-sug" data-nume="${g.sugestie.nume}">e ${g.sugestie.nume}</button>` : ''}
-          ${persoaneNume.length ? html`<select class="fc-g-sel" aria-label="Persoană existentă">
-            <option value="">altă persoană…</option>${persoaneNume.map((p) => html`<option value="${p}">${p}</option>`)}</select>` : ''}
-          <input class="fc-g-new" placeholder="nume nou" autocomplete="off" aria-label="Numele persoanei noi">
-          <button class="fc-g-ok link-btn" title="Dă-i numele ales: devine persoană cunoscută">✓</button>
-          <button class="fc-g-ign link-btn" title="Nu e nimeni de interes: șterge pozele grupului">ignoră</button>
+          ${g.sugestie ? html`<button class="btn sm fc-g-sug" data-nume="${g.sugestie.nume}">${t('e {nume}', { nume: g.sugestie.nume })}</button>` : ''}
+          ${persoaneNume.length ? html`<select class="fc-g-sel" aria-label="${t('Persoană existentă')}">
+            <option value="">${t('altă persoană…')}</option>${persoaneNume.map((p) => html`<option value="${p}">${p}</option>`)}</select>` : ''}
+          <input class="fc-g-new" placeholder="${t('nume nou')}" autocomplete="off" aria-label="${t('Numele persoanei noi')}">
+          <button class="fc-g-ok link-btn" title="${t('Dă-i numele ales: devine persoană cunoscută')}">✓</button>
+          <button class="fc-g-ign link-btn" title="${t('Nu e nimeni de interes: șterge pozele grupului')}">${t('ignoră')}</button>
         </div>
-      </div>`, '<p class="hint">Niciun grup încă: fețele necunoscute apar aici grupate pe persoană, la două minute după ce sunt capturate.</p>');
+      </div>`, html`<p class="hint">${t('Niciun grup încă: fețele necunoscute apar aici grupate pe persoană, la două minute după ce sunt capturate.')}</p>`);
     const grupuriMap = Object.fromEntries((d.grupuri || []).map((g) => [g.id, g]));
     const trimiteGrup = async (row, actiune, nume) => {
       const g = grupuriMap[row.dataset.id];
       const r = await post('/api/faces/groups/assign', { poze: g.poze, actiune, nume });
-      if (r && r.ok) { flash('#fc-msg', actiune === 'persoana' ? `„${r.nume}”: ${r.inrolate} poze învățate ✓` : `${r.sterse} poze ignorate ✓`); post('/api/faces/regrupeaza', {}).then(loadFaces); }
+      if (r && r.ok) { flash('#fc-msg', actiune === 'persoana' ? t('„{nume}”: {n} poze învățate ✓', { nume: r.nume, n: r.inrolate }) : t('{n} poze ignorate ✓', { n: r.sterse })); post('/api/faces/regrupeaza', {}).then(loadFaces); }
     };
     for (const row of document.querySelectorAll('#fc-groups .fc-group')) {
       const sug = row.querySelector('.fc-g-sug');
@@ -92,7 +93,7 @@ async function loadFaces() {
       row.querySelector('.fc-g-ok').onclick = () => {
         const sel = row.querySelector('.fc-g-sel');
         const nume = row.querySelector('.fc-g-new').value.trim() || (sel && sel.value) || '';
-        if (!nume) { flash('#fc-msg', 'Alege o persoană sau scrie un nume nou.', true); return; }
+        if (!nume) { flash('#fc-msg', t('Alege o persoană sau scrie un nume nou.'), true); return; }
         trimiteGrup(row, 'persoana', nume);
       };
       row.querySelector('.fc-g-ign').onclick = () => trimiteGrup(row, 'ignora', '');
@@ -101,30 +102,30 @@ async function loadFaces() {
     for (const p of (d.perechi || [])) {
       const row = document.querySelector(`#fc-persons .fc-person[data-name="${CSS.escape(p.b)}"]`);
       if (!row || row.querySelector('.fc-unire')) continue;
-      row.insertAdjacentHTML('beforeend', html`<span class="fc-unire hint">pare aceeași cu <b>${p.a}</b> (${Math.round(p.sim * 100)}%)
-        <button class="link-btn fc-unire-btn" data-in="${p.a}">unește</button></span>`);
+      row.insertAdjacentHTML('beforeend', html`<span class="fc-unire hint">${raw(t('pare aceeași cu {nume} ({p}%)', { nume: html`<b>${p.a}</b>`, p: Math.round(p.sim * 100) }))}
+        <button class="link-btn fc-unire-btn" data-in="${p.a}">${t('unește')}</button></span>`);
       row.querySelector('.fc-unire-btn').onclick = async () => {
-        if (!confirm(`Unești „${p.b}” în „${p.a}”? Pozele se mută, „${p.b}” dispare.`)) return;
+        if (!confirm(t('Unești „{b}” în „{a}”? Pozele se mută, „{b}” dispare.', { a: p.a, b: p.b }))) return;
         const r = await post(`/api/faces/person/${encodeURIComponent(p.b)}/uneste`, { in: p.a });
-        if (r && r.ok) { flash('#fc-msg', `„${p.b}” a intrat în „${p.a}” (${r.poze_mutate} poze) ✓`); loadFaces(); }
+        if (r && r.ok) { flash('#fc-msg', t('„{b}” a intrat în „{a}” ({n} poze) ✓', { a: p.a, b: p.b, n: r.poze_mutate })); loadFaces(); }
       };
     }
     $('#fc-unknown-grid').innerHTML = lista(d.unknown, (u) => html`
       <div class="fc-unk" data-rel="${u.rel}">
-        <img src="${u.url}" alt="" loading="lazy" title="cam ${u.cam} — ${u.time}">
+        <img src="${u.url}" alt="" loading="lazy" title="${t('cam {id}', { id: u.cam })} — ${u.time}">
         <div class="fc-unk-act">
-          <input placeholder="cine e?" autocomplete="off">
-          <button class="fc-name-btn" title="Înrolează față cu acest nume">✓</button>
-          <button class="fc-unk-del" title="Șterge crop-ul">✕</button>
+          <input placeholder="${t('cine e?')}" autocomplete="off">
+          <button class="fc-name-btn" title="${t('Înrolează față cu acest nume')}">✓</button>
+          <button class="fc-unk-del" title="${t('Șterge crop-ul')}">✕</button>
         </div>
-      </div>`, '<p class="hint">Nicio fata neetichetata.</p>');
+      </div>`, html`<p class="hint">${t('Nicio fata neetichetata.')}</p>`);
     for (const box of document.querySelectorAll('#fc-unknown-grid .fc-unk')) {
       const rel = box.dataset.rel;
       box.querySelector('.fc-name-btn').onclick = async () => {
         const name = box.querySelector('input').value.trim();
-        if (!name) { alert('Scrie numele persoanei.'); return; }
+        if (!name) { alert(t('Scrie numele persoanei.')); return; }
         const r = await post('/api/faces/enroll', { name, rel });
-        if (r && !r.error) { flash('#fc-msg', `"${r.name}" învățat ✓`); loadFaces(); }
+        if (r && !r.error) { flash('#fc-msg', t('"{nume}" învățat ✓', { nume: r.name })); loadFaces(); }
       };
       box.querySelector('.fc-unk-del').onclick = async () => {
         await post('/api/faces/unknown/clear', { rel });
@@ -139,28 +140,28 @@ for (const [id, key] of [['fc-on', 'enabled'], ['fc-notify', 'notify'],
   const el = $('#' + id);
   if (el) el.onchange = async () => {
     await post('/api/faces/config', { [key]: el.checked });
-    flash('#fc-msg', 'Salvat ✓');
+    flash('#fc-msg', t('Salvat ✓'));
   };
 }
 $('#fc-thr') && ($('#fc-thr').onchange = async () => {
   await post('/api/faces/config', { threshold: +$('#fc-thr').value });
-  flash('#fc-msg', 'Prag salvat ✓');
+  flash('#fc-msg', t('Prag salvat ✓'));
 });
 $('#fc-file') && ($('#fc-file').onchange = () => {
   const name = $('#fc-name').value.trim();
   const f = $('#fc-file').files[0];
-  if (!name) { alert('Scrie întâi numele persoanei.'); $('#fc-file').value = ''; return; }
+  if (!name) { alert(t('Scrie întâi numele persoanei.')); $('#fc-file').value = ''; return; }
   if (!f) return;
   const rd = new FileReader();
   rd.onload = async () => {
     const r = await post('/api/faces/enroll', { name, data: rd.result });
-    if (r && !r.error) { flash('#fc-msg', `Poza adăugată la "${r.name}" ✓`); loadFaces(); }
+    if (r && !r.error) { flash('#fc-msg', t('Poza adăugată la "{nume}" ✓', { nume: r.name })); loadFaces(); }
     $('#fc-file').value = '';
   };
   rd.readAsDataURL(f);
 });
 $('#fc-unk-clear') && ($('#fc-unk-clear').onclick = async () => {
-  if (!confirm('Ștergi toate fețele neetichetate?')) return;
+  if (!confirm(t('Ștergi toate fețele neetichetate?'))) return;
   await post('/api/faces/unknown/clear', {});
   loadFaces();
 });
@@ -168,33 +169,33 @@ $('#fc-unk-clear') && ($('#fc-unk-clear').onclick = async () => {
    (inlocuieste inrolarea automata, care amesteca persoane) */
 async function loadGroups() {
   const box = $('#fc-groups');
-  flash('#fc-msg', 'Grupez fețele capturate... (prima dată poate dura un minut)');
+  flash('#fc-msg', t('Grupez fețele capturate... (prima dată poate dura un minut)'));
   let d;
-  try { d = await (await fetch('/api/faces/groups')).json(); } catch { d = { error: 'rețea' }; }
-  if (!d || d.error) { flash('#fc-msg', (d && d.error) || 'Eșuat', true); return; }
+  try { d = await (await fetch('/api/faces/groups')).json(); } catch { d = { error: t('rețea') }; }
+  if (!d || d.error) { flash('#fc-msg', (d && d.error) || t('Eșuat'), true); return; }
   box.classList.remove('hidden');
   const persoane = d.persoane || [];
   box.innerHTML = lista(d.grupuri, (g) => html`
     <div class="fc-group" data-id="${g.id}">
       <div class="fc-g-imgs">${g.mostre.map((m) => html`<img src="${m.url}" alt="" loading="lazy">`)}</div>
-      <div class="fc-g-meta"><b>${g.n} poze</b> în ${g.zile} ${g.zile === 1 ? 'zi' : 'zile'}
+      <div class="fc-g-meta"><b>${t('{n} poze', { n: g.n })}</b> ${g.zile === 1 ? t('în {n} zi', { n: g.zile }) : t('în {n} zile', { n: g.zile })}
         <div class="hint">${g.interval}</div>
-        ${g.sugestie ? html`<div>seamănă cu <b>${g.sugestie.nume}</b> (${Math.round(g.sugestie.sim * 100)}%)</div>` : ''}</div>
+        ${g.sugestie ? html`<div>${raw(t('seamănă cu {nume} ({p}%)', { nume: html`<b>${g.sugestie.nume}</b>`, p: Math.round(g.sugestie.sim * 100) }))}</div>` : ''}</div>
       <div class="fc-g-act">
-        ${g.sugestie ? html`<button class="btn sm fc-g-sug" data-nume="${g.sugestie.nume}">e ${g.sugestie.nume}</button>` : ''}
-        ${persoane.length ? html`<select class="fc-g-sel" aria-label="Persoană existentă">
-          <option value="">altă persoană…</option>${persoane.map((p) => html`<option value="${p}">${p}</option>`)}</select>` : ''}
-        <input class="fc-g-new" placeholder="persoană nouă" autocomplete="off" aria-label="Numele persoanei noi">
-        <button class="fc-g-ok link-btn" title="Înrolează grupul cu numele ales">✓</button>
-        <button class="fc-g-ign link-btn" title="Nu e nimeni de interes: șterge pozele grupului">ignoră</button>
+        ${g.sugestie ? html`<button class="btn sm fc-g-sug" data-nume="${g.sugestie.nume}">${t('e {nume}', { nume: g.sugestie.nume })}</button>` : ''}
+        ${persoane.length ? html`<select class="fc-g-sel" aria-label="${t('Persoană existentă')}">
+          <option value="">${t('altă persoană…')}</option>${persoane.map((p) => html`<option value="${p}">${p}</option>`)}</select>` : ''}
+        <input class="fc-g-new" placeholder="${t('persoană nouă')}" autocomplete="off" aria-label="${t('Numele persoanei noi')}">
+        <button class="fc-g-ok link-btn" title="${t('Înrolează grupul cu numele ales')}">✓</button>
+        <button class="fc-g-ign link-btn" title="${t('Nu e nimeni de interes: șterge pozele grupului')}">${t('ignoră')}</button>
       </div>
-    </div>`, '<p class="hint">Niciun grup: fiecare față capturată e singură (sau nu există fețe).</p>');
+    </div>`, html`<p class="hint">${t('Niciun grup: fiecare față capturată e singură (sau nu există fețe).')}</p>`);
   const grupuri = Object.fromEntries((d.grupuri || []).map((g) => [g.id, g]));
   const trimite = async (row, actiune, nume) => {
     const g = grupuri[row.dataset.id];
     const r = await post('/api/faces/groups/assign', { poze: g.poze, actiune, nume });
     if (r && r.ok) {
-      flash('#fc-msg', actiune === 'persoana' ? `„${r.nume}”: ${r.inrolate} poze învățate, ${r.sterse} scoase din necunoscute ✓` : `${r.sterse} poze ignorate ✓`);
+      flash('#fc-msg', actiune === 'persoana' ? t('„{nume}”: {n} poze învățate, {sterse} scoase din necunoscute ✓', { nume: r.nume, n: r.inrolate, sterse: r.sterse }) : t('{n} poze ignorate ✓', { n: r.sterse }));
       row.remove();
       loadFaces();
     }
@@ -205,23 +206,23 @@ async function loadGroups() {
     row.querySelector('.fc-g-ok').onclick = () => {
       const sel = row.querySelector('.fc-g-sel');
       const nume = row.querySelector('.fc-g-new').value.trim() || (sel && sel.value) || '';
-      if (!nume) { flash('#fc-msg', 'Alege o persoană sau scrie un nume nou.', true); return; }
+      if (!nume) { flash('#fc-msg', t('Alege o persoană sau scrie un nume nou.'), true); return; }
       trimite(row, 'persoana', nume);
     };
     row.querySelector('.fc-g-ign').onclick = () => trimite(row, 'ignora', '');
   }
-  flash('#fc-msg', `${(d.grupuri || []).length} grupuri`);
+  flash('#fc-msg', t('{n} grupuri', { n: (d.grupuri || []).length }));
 }
 $('#fc-group') && ($('#fc-group').onclick = async () => {
-  flash('#fc-msg', 'Regrupez… (prima dată poate dura un minut)');
+  flash('#fc-msg', t('Regrupez… (prima dată poate dura un minut)'));
   const r = await post('/api/faces/regrupeaza', {});
-  if (r && r.ok) { flash('#fc-msg', `${r.grupuri} grupuri, ${r.perechi} perechi de persoane care par aceeași`); loadFaces(); }
+  if (r && r.ok) { flash('#fc-msg', t('{grupuri} grupuri, {perechi} perechi de persoane care par aceeași', { grupuri: r.grupuri, perechi: r.perechi })); loadFaces(); }
 });
 $('#fc-regula-plecat') && ($('#fc-regula-plecat').onclick = async () => {
-  if (!confirm('Creez regula „Față necunoscută când sunt plecat”: notificare (Telegram/email/push) la orice față care nu e în bibliotecă, doar în modurile „plecat” și „noapte”, cel mult una la 2 minute?')) return;
-  const r = await post('/api/rules', { nume: 'Față necunoscută când sunt plecat', declansator: { tip: 'persoana_necunoscuta', valoare: '' },
+  if (!confirm(t('Creez regula „Față necunoscută când sunt plecat”: notificare (Telegram/email/push) la orice față care nu e în bibliotecă, doar în modurile „plecat” și „noapte”, cel mult una la 2 minute?'))) return;
+  const r = await post('/api/rules', { nume: t('Față necunoscută când sunt plecat'), declansator: { tip: 'persoana_necunoscuta', valoare: '' },
     moduri: ['plecat', 'noapte'], cooldown: 120, actiuni: [{ tip: 'notificare' }] });
-  flash('#fc-msg', r && r.ok ? 'Regula a fost creată; o vezi și o modifici în AI → Reguli.' : (r && r.error) || 'Eroare', !!(r && r.error));
+  flash('#fc-msg', r && r.ok ? t('Regula a fost creată; o vezi și o modifici în AI → Reguli.') : (r && r.error) || t('Eroare'), !!(r && r.error));
 });
 
 /* ---------- numere de inmatriculare (LPR) ---------- */
@@ -241,13 +242,13 @@ async function loadPlates() {
     }
     for (const o of sel.options) o.selected = (d.alert_cams || []).includes(+o.value);
     const st = d.stats || {};
-    $('#lp-stats').textContent = `Citiri: ${st.azi || 0} azi, ${st.total7 || 0} în ultimele 7 zile`
-      + ` (${st.necunoscute7 || 0} fără nume)`;
+    $('#lp-stats').textContent = t('Citiri: {azi} azi, {total} în ultimele 7 zile ({nec} fără nume)',
+      { azi: st.azi || 0, total: st.total7 || 0, nec: st.necunoscute7 || 0 });
     $('#lp-known').innerHTML = lista(d.known, (k) => html`
       <div class="u-row" data-plate="${k.plate}">
         <b>${k.plate}</b> <span class="hint">${k.name}</span>
-        <button class="lp-del link-btn">șterge</button>
-      </div>`, '<p class="hint">Nicio masina cunoscuta.</p>');
+        <button class="lp-del link-btn">${t('șterge')}</button>
+      </div>`, html`<p class="hint">${t('Nicio masina cunoscuta.')}</p>`);
     for (const row of document.querySelectorAll('#lp-known .u-row')) {
       row.querySelector('.lp-del').onclick = async () => {
         await fetch(`/api/plates/known/${encodeURIComponent(row.dataset.plate)}`,
@@ -259,19 +260,19 @@ async function loadPlates() {
       <div class="lp-read">
         ${r.url ? html`<img src="${r.url}" alt="" loading="lazy">` : ''}
         <div><b>${r.numar}</b>${r.nume ? html` <span class="u-role">${r.nume}</span>` : ''}
-        <div class="hint">cam ${r.cam} — ${r.t} — ${Math.round(r.incredere * 100)}%</div>
+        <div class="hint">${t('cam {id}', { id: r.cam })} — ${r.t} — ${Math.round(r.incredere * 100)}%</div>
         <button class="clip-btn link-btn" data-cam="${r.cam}" data-t="${r.t}"
-          data-cap="${r.numar}${r.nume ? ' (' + r.nume + ')' : ''} — ${r.t}">▶ clip</button>
+          data-cap="${r.numar}${r.nume ? ' (' + r.nume + ')' : ''} — ${r.t}">${t('▶ clip')}</button>
         ${r.nume ? '' : html`<button class="lp-name-btn link-btn" data-plate="${r.numar}">
-          da-i un nume</button>`}</div>
-      </div>`, '<p class="hint">Nicio citire inca.</p>');
+          ${t('da-i un nume')}</button>`}</div>
+      </div>`, html`<p class="hint">${t('Nicio citire inca.')}</p>`);
     wireClips($('#lp-reads'));
     for (const b of document.querySelectorAll('#lp-reads .lp-name-btn')) {
       b.onclick = async () => {
-        const name = prompt(`Numele mașinii cu numărul ${b.dataset.plate}:`);
+        const name = prompt(t('Numele mașinii cu numărul {numar}:', { numar: b.dataset.plate }));
         if (!name) return;
         const r = await post('/api/plates/known', { plate: b.dataset.plate, name });
-        if (r && !r.error) { flash('#lp-msg', 'Mașină salvată ✓'); loadPlates(); }
+        if (r && !r.error) { flash('#lp-msg', t('Mașină salvată ✓')); loadPlates(); }
       };
     }
   } catch {}
@@ -279,35 +280,35 @@ async function loadPlates() {
 $('#lp-cams') && ($('#lp-cams').onchange = async () => {
   const ids = [...$('#lp-cams').selectedOptions].map((o) => +o.value);
   await post('/api/plates/config', { alert_cams: ids });
-  flash('#lp-msg', ids.length ? `Alertă doar pe ${ids.length} camere ✓` : 'Alertă pe toate camerele ✓');
+  flash('#lp-msg', ids.length ? t('Alertă doar pe {n} camere ✓', { n: ids.length }) : t('Alertă pe toate camerele ✓'));
 });
 $('#lp-sure') && ($('#lp-sure').onchange = async () => {
   await post('/api/plates/config', { sure_conf: +$('#lp-sure').value });
-  flash('#lp-msg', 'Prag salvat ✓');
+  flash('#lp-msg', t('Prag salvat ✓'));
 });
 for (const [id, key] of [['lp-on', 'enabled'], ['lp-nk', 'notify_known'],
                          ['lp-na', 'notify_all'], ['lp-nu', 'notify_unknown']]) {
   const el = $('#' + id);
   if (el) el.onchange = async () => {
     await post('/api/plates/config', { [key]: el.checked });
-    flash('#lp-msg', 'Salvat ✓');
+    flash('#lp-msg', t('Salvat ✓'));
   };
 }
 $('#lp-conf') && ($('#lp-conf').onchange = async () => {
   await post('/api/plates/config', { min_conf: +$('#lp-conf').value });
-  flash('#lp-msg', 'Prag salvat ✓');
+  flash('#lp-msg', t('Prag salvat ✓'));
 });
 $('#lp-add') && ($('#lp-add').onclick = async () => {
   const r = await post('/api/plates/known',
                        { plate: $('#lp-plate').value, name: $('#lp-name').value });
   if (r && !r.error) {
     $('#lp-plate').value = ''; $('#lp-name').value = '';
-    flash('#lp-msg', 'Mașină salvată ✓');
+    flash('#lp-msg', t('Mașină salvată ✓'));
     loadPlates();
   }
 });
 $('#lp-clear') && ($('#lp-clear').onclick = async () => {
-  if (!confirm('Golești jurnalul de citiri și pozele lui?')) return;
+  if (!confirm(t('Golești jurnalul de citiri și pozele lui?'))) return;
   await post('/api/plates/clear', {});
   loadPlates();
 });
@@ -326,39 +327,44 @@ async function loadTrack() {
       html`<option value="${c.id}" ${d.cams.includes(c.id) ? 'selected' : ''}>${c.id}. ${c.name}</option>`)}`;
     const rows = Object.entries(d.state || {}).map(([cid, s]) => {
       const azi = Object.entries(s.azi || {})
-        .map(([l, n]) => `${DET_RO[l] || l}: ${n}`).join(', ') || 'nimic încă azi';
-      return `${names[cid] || 'cam ' + cid}: ${s.activ ? '🟢' : '🔴'} ` +
-        `${azi}${s.in_cadru ? ` · ${s.in_cadru} in cadru acum` : ''}`;
+        .map(([l, n]) => `${t(DET_RO[l] || l)}: ${n}`).join(', ') || t('nimic încă azi');
+      return `${names[cid] || t('cam {id}', { id: cid })}: ${s.activ ? '🟢' : '🔴'} ` +
+        `${azi}${s.in_cadru ? ' · ' + t('{n} in cadru acum', { n: s.in_cadru }) : ''}`;
     });
     $('#tk-state').innerHTML = lista(rows, (r, i) => html`${i ? raw('<br>') : ''}${r}`,
-      'Nicio camera urmărită — bifează mai sus și salvează.');
+      html`${t('Nicio camera urmărită — bifează mai sus și salvează.')}`);
   } catch {}
 }
 $('#tk-save') && ($('#tk-save').onclick = async () => {
   const cams = [...$('#tk-cams').selectedOptions].map((o) => +o.value);
   const r = await post('/api/track/config', { cams });
-  if (r && !r.error) { flash('#tk-msg', 'Salvat — lucratorii pornesc în câteva secunde ✓'); }
+  if (r && !r.error) { flash('#tk-msg', t('Salvat — lucratorii pornesc în câteva secunde ✓')); }
   setTimeout(loadTrack, 3000);
 });
 
 /* ---------- tabul AI: o fraza de stare, din date, sub fiecare intrebare ---------- */
 async function loadAiStare() {
   const j = async (u) => { try { return await (await fetch(u)).json(); } catch { return null; } };
-  const pune = (id, t) => { const el = $('#' + id); if (el) el.textContent = t; };
+  const pune = (id, txt) => { const el = $('#' + id); if (el) el.textContent = txt; };
   const [f, h, p, r, a] = await Promise.all([j('/api/faces'), j('/api/faces/history?limit=1000'), j('/api/plates'), j('/api/rules'), j('/api/adnotare?limit=1')]);
   if (f) {
     const de30 = (h && h.history ? h.history : []).filter((x) => (Date.now() - new Date(x.t.replace(' ', 'T')).getTime()) < 30 * 86400e3).length;
-    pune('ai-stare-pers', `${(f.persons || []).length} persoane cunoscute · ${de30} recunoașteri în 30 de zile · ${(f.unknown || []).length} fețe neetichetate${f.enabled ? '' : ' · Face ID oprit'}`);
+    pune('ai-stare-pers', t('{pers} persoane cunoscute · {rec} recunoașteri în 30 de zile · {nec} fețe neetichetate',
+      { pers: (f.persons || []).length, rec: de30, nec: (f.unknown || []).length }) + (f.enabled ? '' : ' · ' + t('Face ID oprit')));
   }
   if (p) {
     const st = p.stats || {};
-    pune('ai-stare-auto', `${(p.known || []).length} mașini cunoscute · ${st.total7 || 0} citiri în 7 zile (${st.necunoscute7 || 0} fără nume)${p.notify_unknown ? ' · alertă la necunoscute pornită' : ' · fără alertă la necunoscute'}${p.enabled ? '' : ' · LPR oprit'}`);
+    pune('ai-stare-auto', t('{masini} mașini cunoscute · {citiri} citiri în 7 zile ({nec} fără nume)',
+      { masini: (p.known || []).length, citiri: st.total7 || 0, nec: st.necunoscute7 || 0 })
+      + ' · ' + (p.notify_unknown ? t('alertă la necunoscute pornită') : t('fără alertă la necunoscute'))
+      + (p.enabled ? '' : ' · ' + t('LPR oprit')));
   }
   if (r) {
     const lst = Array.isArray(r) ? r : (r.rules || []);
-    pune('ai-stare-reguli', `${lst.filter((x) => x.activ !== false).length} reguli active din ${lst.length}`);
+    pune('ai-stare-reguli', t('{active} reguli active din {total}', { active: lst.filter((x) => x.activ !== false).length, total: lst.length }));
   }
-  if (a) pune('ai-stare-adnot', `${a.total || 0} cadre etichetate · ${a.verificate || 0} verificate de om · ${a.nesigure || 0} în coada de nesigure`);
+  if (a) pune('ai-stare-adnot', t('{total} cadre etichetate · {verificate} verificate de om · {nesigure} în coada de nesigure',
+    { total: a.total || 0, verificate: a.verificate || 0, nesigure: a.nesigure || 0 }));
 }
 $('#tab-ai') && $('#tab-ai').addEventListener('click', loadAiStare);
 if (!$('#ai').classList.contains('hidden')) setTimeout(loadAiStare, 500);
@@ -401,8 +407,8 @@ async function loadRules() {
     const names = Object.fromEntries(S.cameras.map((c) => [c.id, c.name]));
     $('#ru-list').innerHTML = lista(d.rules || [], (r) => {
       const parti = [...(r.grupuri || []),
-                     ...(r.camere || []).map((c) => names[c] || 'cam ' + c)];
-      const unde = parti.length ? parti.join(', ') : 'oriunde';
+                     ...(r.camere || []).map((c) => names[c] || t('cam {id}', { id: c }))];
+      const unde = parti.length ? parti.join(', ') : t('oriunde');
       const zileTxt = (r.zile && r.zile.length)
         ? ' · ' + r.zile.map((z) => (d.zile[z] || z)).join(',') : '';
       const modTxt = (r.moduri && r.moduri.length) ? ' · ' + r.moduri.map((m) => MOD_ICO[m] || m).join('') : '';
@@ -412,16 +418,16 @@ async function loadRules() {
         <b>${r.nume}</b>
         <span class="hint">${d.triggers[r.declansator.tip] || r.declansator.tip}${
           r.declansator.valoare ? ` „${r.declansator.valoare}”` : ''} · ${unde}${cand} → ${ce}</span>
-        <button class="ru-toggle link-btn">${r.activ ? 'opreste' : 'porneste'}</button>
-        <button class="ru-test link-btn" title="Rulează acțiunile acum">testează</button>
-        <button class="ru-edit link-btn">modifică</button>
-        <button class="ru-del link-btn">șterge</button>
+        <button class="ru-toggle link-btn">${r.activ ? t('opreste') : t('porneste')}</button>
+        <button class="ru-test link-btn" title="${t('Rulează acțiunile acum')}">${t('testează')}</button>
+        <button class="ru-edit link-btn">${t('modifică')}</button>
+        <button class="ru-del link-btn">${t('șterge')}</button>
       </div>`;
-    }, '<p class="hint">Nicio regula inca. Fa una mai jos — dureaza 30 de secunde.</p>');
+    }, html`<p class="hint">${t('Nicio regula inca. Fa una mai jos — dureaza 30 de secunde.')}</p>`);
     for (const row of document.querySelectorAll('#ru-list .u-row')) {
       const rule = d.rules.find((r) => r.id === row.dataset.id);
       row.querySelector('.ru-del').onclick = async () => {
-        if (!confirm(`Ștergi regula "${rule.nume}"?`)) return;
+        if (!confirm(t('Ștergi regula "{nume}"?', { nume: rule.nume }))) return;
         await fetch(`/api/rules/${rule.id}`, { method: 'DELETE' });
         loadRules();
       };
@@ -431,7 +437,7 @@ async function loadRules() {
       };
       row.querySelector('.ru-test').onclick = async () => {
         const r = await post(`/api/rules/${rule.id}/test`, {});
-        if (r && !r.error) flash('#ru-msg', 'Acțiunile au rulat — vezi Evenimente ✓');
+        if (r && !r.error) flash('#ru-msg', t('Acțiunile au rulat — vezi Evenimente ✓'));
       };
       row.querySelector('.ru-edit').onclick = () => fillRuleForm(rule);
     }
@@ -447,30 +453,32 @@ function buildRuleValueList() {
   if (tip === 'alarma_camera') {
     dl.innerHTML = html`${['VMD', 'linedetection', 'fielddetection', 'regionEntrance',
                            'regionExiting', 'shelteralarm', 'tamperdetection', 'scenechangedetection']
-      .map((v) => html`<option value="${v}">${EV_RO[v.toLowerCase()] || v}</option>`)}`;
+      .map((v) => html`<option value="${v}">${t(EV_RO[v.toLowerCase()] || v)}</option>`)}`;
   } else if (tip === 'persoana') {
     dl.innerHTML = html`${ruMeta.persons.map((p) => html`<option value="${p}">`)}`;
   } else if (tip === 'numar') {
     dl.innerHTML = html`${['cunoscut', 'necunoscut', ...ruMeta.plates]
       .map((p) => html`<option value="${p}">`)}`;
   } else if (tip === 'obiect') {
-    dl.innerHTML = html`<option value="biciclist">biciclist (om cu viteză de bicicletă)</option>${SET_LABELS.map((l) => html`<option value="${l}">${DET_RO[l] || l}</option>`)}`;
+    dl.innerHTML = html`<option value="biciclist">${t('biciclist (om cu viteză de bicicletă)')}</option>${SET_LABELS.map((l) => html`<option value="${l}">${t(DET_RO[l] || l)}</option>`)}`;
   } else if (tip === 'detectie' || tip === 'intrus' || tip === 'parcare_inceput') {
-    dl.innerHTML = html`${SET_LABELS.map((l) => html`<option value="${l}">${DET_RO[l] || l}</option>`)}`;
+    dl.innerHTML = html`${SET_LABELS.map((l) => html`<option value="${l}">${t(DET_RO[l] || l)}</option>`)}`;
   } else if (tip === 'trecere') {
     // liniile desenate pe camere (Camere → Linii/zone): „poarta”, „poarta:intra”, „poarta:iese”
-    const opts = [['intra', 'orice linie, sens intră'], ['iese', 'orice linie, sens iese']];
+    const opts = [['intra', t('orice linie, sens intră')], ['iese', t('orice linie, sens iese')]];
     for (const [cam, linii] of Object.entries(ruLinii.linii || {})) for (const l of linii) {
-      const c = S.cameras.find((x) => x.id === +cam); const cn = c ? c.name : 'cam ' + cam;
-      opts.push([l.name, `${l.name} (${cn}), orice sens`], [`${l.name}:intra`, `${l.name} (${cn}), intră`], [`${l.name}:iese`, `${l.name} (${cn}), iese`]);
+      const c = S.cameras.find((x) => x.id === +cam); const cn = c ? c.name : t('cam {id}', { id: cam });
+      opts.push([l.name, t('{linie} ({cam}), orice sens', { linie: l.name, cam: cn })],
+        [`${l.name}:intra`, t('{linie} ({cam}), intră', { linie: l.name, cam: cn })],
+        [`${l.name}:iese`, t('{linie} ({cam}), iese', { linie: l.name, cam: cn })]);
     }
-    dl.innerHTML = html`${opts.map(([v, t]) => html`<option value="${v}">${t}</option>`)}`;
+    dl.innerHTML = html`${opts.map(([v, txt]) => html`<option value="${v}">${txt}</option>`)}`;
   } else if (tip === 'intrare_zona') {
     const opts = [];
     for (const [cam, zone] of Object.entries(ruLinii.zone || {})) for (const z of zone) {
-      const c = S.cameras.find((x) => x.id === +cam); opts.push([z.name, `${z.name} (${c ? c.name : 'cam ' + cam})`]);
+      const c = S.cameras.find((x) => x.id === +cam); opts.push([z.name, `${z.name} (${c ? c.name : t('cam {id}', { id: cam })})`]);
     }
-    dl.innerHTML = html`${opts.map(([v, t]) => html`<option value="${v}">${t}</option>`)}`;
+    dl.innerHTML = html`${opts.map(([v, txt]) => html`<option value="${v}">${txt}</option>`)}`;
   } else dl.innerHTML = '';
 }
 // liniile si zonele desenate pe camere, pentru sugestiile din formular (din setari; admin)
@@ -494,7 +502,7 @@ async function regulaDin({ tip, valoare = '', cam = null, nume = '' }) {
 }
 function fillRuleForm(r) {
   $('#ru-id').value = r.id;
-  $('#ru-form-title').textContent = `Modifici: ${r.nume}`;
+  $('#ru-form-title').textContent = t('Modifici: {nume}', { nume: r.nume });
   $('#ru-cancel').classList.remove('hidden');
   $('#ru-name').value = r.nume;
   $('#ru-trigger').value = r.declansator.tip;
@@ -525,7 +533,7 @@ function fillRuleForm(r) {
 }
 function clearRuleForm() {
   $('#ru-id').value = '';
-  $('#ru-form-title').textContent = 'Adaugă o regula';
+  $('#ru-form-title').textContent = t('Adaugă o regula');
   $('#ru-cancel').classList.add('hidden');
   $('#ru-name').value = ''; $('#ru-value').value = '';
   for (const o of $('#ru-cams').options) o.selected = false;
@@ -539,16 +547,16 @@ $('#ru-cancel') && ($('#ru-cancel').onclick = clearRuleForm);
 $('#ru-save') && ($('#ru-save').onclick = async () => {
   const actiuni = [];
   for (const cb of document.querySelectorAll('.ru-actions input[data-act]:checked')) {
-    const t = cb.dataset.act;
-    if (t === 'sirena') actiuni.push({ tip: t, volum: +$('#ru-a-vol').value, repetari: +$('#ru-a-rep').value });
-    else if (t === 'strobo') actiuni.push({ tip: t, secunde: +$('#ru-a-sec').value });
-    else if (t === 'anunt') actiuni.push({ tip: t, text: $('#ru-a-text').value.trim() });
-    else if (t === 'releu') actiuni.push({ tip: t, port: +$('#ru-a-port').value, secunde: +$('#ru-a-rsec').value });
-    else if (t === 'notificare') actiuni.push({ tip: t, text: $('#ru-n-text').value.trim() });
-    else if (t === 'mqtt') actiuni.push({ tip: t, topic: $('#ru-m-topic').value.trim(),
-                                          payload: $('#ru-m-payload').value.trim() });
-    else if (t === 'mod') actiuni.push({ tip: t, mod: $('#ru-a-mod').value });
-    else actiuni.push({ tip: t });
+    const act = cb.dataset.act;
+    if (act === 'sirena') actiuni.push({ tip: act, volum: +$('#ru-a-vol').value, repetari: +$('#ru-a-rep').value });
+    else if (act === 'strobo') actiuni.push({ tip: act, secunde: +$('#ru-a-sec').value });
+    else if (act === 'anunt') actiuni.push({ tip: act, text: $('#ru-a-text').value.trim() });
+    else if (act === 'releu') actiuni.push({ tip: act, port: +$('#ru-a-port').value, secunde: +$('#ru-a-rsec').value });
+    else if (act === 'notificare') actiuni.push({ tip: act, text: $('#ru-n-text').value.trim() });
+    else if (act === 'mqtt') actiuni.push({ tip: act, topic: $('#ru-m-topic').value.trim(),
+                                            payload: $('#ru-m-payload').value.trim() });
+    else if (act === 'mod') actiuni.push({ tip: act, mod: $('#ru-a-mod').value });
+    else actiuni.push({ tip: act });
   }
   const body = {
     id: $('#ru-id').value || undefined,
@@ -564,7 +572,7 @@ $('#ru-save') && ($('#ru-save').onclick = async () => {
     actiuni,
   };
   const r = await post('/api/rules', body);
-  if (r && !r.error) { clearRuleForm(); flash('#ru-msg', 'Regula salvată ✓'); loadRules(); }
+  if (r && !r.error) { clearRuleForm(); flash('#ru-msg', t('Regula salvată ✓')); loadRules(); }
 });
 
 export { loadFaces, loadPlates, loadRules, loadTrack, regulaDin };

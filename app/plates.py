@@ -22,6 +22,7 @@ import requests  # noqa: F401  (pastrat pentru simetrie cu faces; hd_frame vine 
 
 import settings
 import logare
+from i18n import t
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PLATES_DIR = os.path.join(ROOT, "data", "plates")
@@ -74,7 +75,7 @@ def normalize(text):
     """'b 123-xyz' -> 'B123XYZ' (doar litere si cifre, majuscule)."""
     s = re.sub(r"[^A-Z0-9]", "", str(text or "").upper())
     if not 4 <= len(s) <= 10:
-        raise ValueError("numar invalid (4-10 litere/cifre)")
+        raise ValueError(t("numar invalid (4-10 litere/cifre)"))
     return s
 
 
@@ -91,7 +92,7 @@ def set_known(plate, name):
     plate = normalize(plate)
     name = str(name or "").strip()[:40]
     if not name:
-        raise ValueError("scrie un nume pentru mașină")
+        raise ValueError(t("scrie un nume pentru mașină"))
     data = known()
     data[plate] = name
     import store
@@ -102,7 +103,7 @@ def set_known(plate, name):
 def del_known(plate):
     data = known()
     if normalize(plate) not in data:
-        raise ValueError("numărul nu e în lista")
+        raise ValueError(t("numărul nu e în lista"))
     data.pop(normalize(plate))
     import store
     store.atomic_write_json(KNOWN_FILE, data, mode=0o600, indent=2)

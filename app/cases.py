@@ -15,6 +15,8 @@ import threading
 import time
 import uuid
 
+from i18n import t
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CASES_FILE = os.path.join(ROOT, "data", "cases.json")
 _lock = threading.Lock()
@@ -45,7 +47,7 @@ def create(titlu, who=None, descriere=""):
     """Deschide un caz nou. Returneaza cazul creat."""
     titlu = (titlu or "").strip()
     if not titlu:
-        raise ValueError("titlul cazului e obligatoriu")
+        raise ValueError(t("titlul cazului e obligatoriu"))
     data = _load()
     cid = uuid.uuid4().hex[:12]
     data[cid] = {"id": cid, "titlu": titlu, "descriere": (descriere or "").strip(),

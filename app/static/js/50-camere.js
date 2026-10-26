@@ -4,7 +4,7 @@
    pe toate; importurile/exporturile sunt verificate de scripts/module_check.py (si in pytest).
    ==================================================================== */
 import { S } from './state.js';
-import { $, GO2RTC, JOB_STARE_RO, html, icon, lista, runJob, toast } from './00-core.js';
+import { $, GO2RTC, JOB_STARE_RO, html, icon, lista, runJob, t, toast } from './00-core.js';
 import { show } from './05-navigare.js';
 import { buildLive, deleteCamera, filt, loadCameras, matches, post, renderGroupChips, renderViews, zoomBtns } from './10-live.js';
 import { openHD } from './20-hd.js';
@@ -32,16 +32,16 @@ addForm.onsubmit = async (e) => {
     vendor: addForm.vendor.value,                      // hik (ISAPI) sau onvif (generic)
     http_port: +addForm.http_port.value || 80,
   };
-  addMsg.className = ''; addMsg.textContent = 'Verific camera...';
+  addMsg.className = ''; addMsg.textContent = t('Verific camera...');
   $('#addcam-ok').disabled = true;
   try {
     // verificarile iau ~40 s si ruleaza ca job; mesajele lui apar aici pas cu pas
     const j = await runJob('/api/cameras', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
-    }, { download: false, onProgress: (x) => { addMsg.textContent = x.mesaj || JOB_STARE_RO[x.stare] || '...'; } });
+    }, { download: false, onProgress: (x) => { addMsg.textContent = x.mesaj || t(JOB_STARE_RO[x.stare] || '...'); } });
     if (!j || j.stare !== 'gata') {
-      addMsg.className = 'err'; addMsg.textContent = (j && j.mesaj) || 'Eroare';
+      addMsg.className = 'err'; addMsg.textContent = (j && j.mesaj) || t('Eroare');
       return;
     }
     closeAdd();
@@ -56,7 +56,7 @@ let zoneCam = null, zonePts = [], zoneImg = null;
 async function openZoneEditor(c) {
   zoneCam = c;
   zonePts = (c.zone || []).slice();
-  $('#zone-title').textContent = `▣ Zona de detecție — ${c.name}`;
+  $('#zone-title').textContent = t('▣ Zona de detecție — {nume}', { nume: c.name });
   $('#zone-overlay').classList.remove('hidden');
   zoneImg = new Image();
   zoneImg.onload = drawZone;
@@ -108,7 +108,7 @@ $('#zone-canvas').onclick = (e) => {
 };
 $('#zone-undo').onclick = () => { zonePts.pop(); drawZone(); };
 $('#zone-save').onclick = async () => {
-  if (zonePts.length < 3) { alert('Desenează minim 3 colțuri (sau alege "Fără zona").'); return; }
+  if (zonePts.length < 3) { alert(t('Desenează minim 3 colțuri (sau alege "Fără zona").')); return; }
   const d = await post(`/api/cam/${zoneCam.id}/zone`, { points: zonePts });
   if (d && !d.error) { zoneCam.zone = zonePts.slice(); closeZone(); }
 };
@@ -142,10 +142,10 @@ async function openCountEditor(c) {
     if ($('#count-intrus')) $('#count-intrus').value = (s.intrus_mode || {})[c.id] || 'persoane';
     if ($('#count-scene')) $('#count-scene').checked = (s.scene_cams || []).includes(c.id);
   } catch { countLines = []; countZones = []; }
-  $('#count-title').textContent = `⳹ Linii/zone de numărare — ${c.name}`;
+  $('#count-title').textContent = t('⳹ Linii/zone de numărare — {nume}', { nume: c.name });
   for (const b of document.querySelectorAll('#count-mode button'))
     b.classList.toggle('on', b.dataset.m === countMode);
-  $('#count-help').textContent = COUNT_HELP[countMode];
+  $('#count-help').textContent = t(COUNT_HELP[countMode]);
   $('#count-overlay').classList.remove('hidden');
   countImg = new Image();
   countImg.onload = drawCount;
@@ -201,13 +201,13 @@ function renderCountList() {
     ...countLines.map((l, i) => ({ t: 'linie', i, name: l.name })),
     ...countZones.map((z, i) => ({ t: 'zona', i, name: z.name })),
   ];
-  $('#count-list').innerHTML = html`<h4>Definite</h4>${lista(items, (it) => html`
+  $('#count-list').innerHTML = html`<h4>${t('Definite')}</h4>${lista(items, (it) => html`
     <div class="count-item">
       <span class="count-badge count-${it.t}">${it.t === 'linie' ? '⳹' : '▱'}</span>
       <span>${it.name}</span>
-      <button class="count-regula link-btn" data-t="${it.t}" data-name="${it.name}" title="${it.t === 'linie' ? 'Regulă la trecerea acestei linii (alege sensul în formular)' : 'Regulă la intrarea în această zonă'}">⚙ regulă</button>
+      <button class="count-regula link-btn" data-t="${it.t}" data-name="${it.name}" title="${it.t === 'linie' ? t('Regulă la trecerea acestei linii (alege sensul în formular)') : t('Regulă la intrarea în această zonă')}">${t('⚙ regulă')}</button>
       <button class="count-del link-btn" data-t="${it.t}" data-i="${it.i}">✕</button>
-    </div>`, '<p class="hint">Nimic inca. Deseneaza pe imagine.</p>')}`;
+    </div>`, '<p class="hint">' + t('Nimic inca. Deseneaza pe imagine.') + '</p>')}`;
   for (const b of $('#count-list').querySelectorAll('.count-del'))
     b.onclick = () => {
       (b.dataset.t === 'linie' ? countLines : countZones).splice(+b.dataset.i, 1);
@@ -219,7 +219,9 @@ function renderCountList() {
       $('#count-overlay').classList.add('hidden');
       const linie = b.dataset.t === 'linie';
       regulaDin({ tip: linie ? 'trecere' : 'intrare_zona', valoare: linie ? `${b.dataset.name}:intra` : b.dataset.name,
-                  cam: countCam ? countCam.id : null, nume: `${linie ? 'Trecere ' : 'Intrare în '}${b.dataset.name} — ${countCam ? countCam.name : ''}` });
+                  cam: countCam ? countCam.id : null,
+                  nume: linie ? t('Trecere {nume} — {cam}', { nume: b.dataset.name, cam: countCam ? countCam.name : '' })
+                              : t('Intrare în {nume} — {cam}', { nume: b.dataset.name, cam: countCam ? countCam.name : '' }) });
     };
 }
 
@@ -236,19 +238,19 @@ for (const b of document.querySelectorAll('#count-mode button'))
   b.onclick = () => {
     countMode = b.dataset.m; countDraft = [];
     for (const x of document.querySelectorAll('#count-mode button')) x.classList.toggle('on', x === b);
-    $('#count-help').textContent = COUNT_HELP[countMode];
+    $('#count-help').textContent = t(COUNT_HELP[countMode]);
     drawCount();
   };
 $('#count-undo') && ($('#count-undo').onclick = () => { countDraft.pop(); drawCount(); });
 $('#count-add') && ($('#count-add').onclick = () => {
   if (countMode === 'linie') {
-    if (countDraft.length < 2) { toast('O linie are nevoie de 2 capete', true); return; }
-    const nume = prompt('Numele liniei (ex. „Poarta"):', `linie ${countLines.length + 1}`);
+    if (countDraft.length < 2) { toast(t('O linie are nevoie de 2 capete'), true); return; }
+    const nume = prompt(t('Numele liniei (ex. „Poarta"):'), t('linie {n}', { n: countLines.length + 1 }));
     if (!nume) return;
     countLines.push({ name: nume.trim(), p1: countDraft[0], p2: countDraft[1] });
   } else {
-    if (countDraft.length < 3) { toast('O zona are nevoie de minim 3 colțuri', true); return; }
-    const nume = prompt('Numele zonei (ex. „Curte"):', `zona ${countZones.length + 1}`);
+    if (countDraft.length < 3) { toast(t('O zona are nevoie de minim 3 colțuri'), true); return; }
+    const nume = prompt(t('Numele zonei (ex. „Curte"):'), t('zona {n}', { n: countZones.length + 1 }));
     if (!nume) return;
     countZones.push({ name: nume.trim(), poly: countDraft.slice() });
   }
@@ -267,7 +269,7 @@ $('#count-save') && ($('#count-save').onclick = async () => {
   if ($('#count-scene') && $('#count-scene').checked) sc.add(countCam.id); else sc.delete(countCam.id);
   const r = await post('/api/settings', { count_lines: cl, count_zones: cz, intrus_mode: im,
     scene_cams: [...sc] });
-  if (r && !r.error) { toast('Salvat.'); $('#count-overlay').classList.add('hidden'); }
+  if (r && !r.error) { toast(t('Salvat.')); $('#count-overlay').classList.add('hidden'); }
 });
 $('#count-deploy') && ($('#count-deploy').onclick = async () => {
   // salvez intai (ca settings sa aiba desenul curent), apoi trimit pe camera
@@ -278,11 +280,11 @@ $('#count-deploy') && ($('#count-deploy').onclick = async () => {
   await post('/api/settings', { count_lines: cl, count_zones: cz });
   const r = await post(`/api/cam/${countCam.id}/deploy-smart`, {});
   if (r && r.ok) {
-    const rez = (r.rezultat || []).map((x) => `${x[0]}: ${x[2] ? 'OK' : 'esec (' + x[1] + ')'}`).join(' · ');
+    const rez = (r.rezultat || []).map((x) => `${x[0]}: ${x[2] ? t('OK') : t('esec ({motiv})', { motiv: x[1] })}`).join(' · ');
     const ign = (r.zone_ignorate || []).length
-      ? ` · zone ignorate (min 4 colțuri pe camera): ${r.zone_ignorate.join(', ')}` : '';
-    toast('Trimis pe camera — ' + rez + ign);
-  } else toast(r && r.error ? r.error : 'Deploy eșuat', true);
+      ? ' · ' + t('zone ignorate (min 4 colțuri pe camera): {zone}', { zone: r.zone_ignorate.join(', ') }) : '';
+    toast(t('Trimis pe camera — {rezultat}', { rezultat: rez + ign }));
+  } else toast(r && r.error ? r.error : t('Deploy eșuat'), true);
 });
 $('#count-close') && ($('#count-close').onclick = () => $('#count-overlay').classList.add('hidden'));
 window.addEventListener('resize', () => { if (!$('#count-overlay').classList.contains('hidden')) drawCount(); });
@@ -292,8 +294,7 @@ const selected = new Set();
 function refreshBulkBar() {
   const bar = $('#bulk-bar');
   bar.classList.toggle('hidden', selected.size === 0);
-  $('#bulk-count').textContent = selected.size === 1
-    ? '1 camera selectată' : `${selected.size} camere selectate`;
+  $('#bulk-count').textContent = t('{n} camere selectate', { n: selected.size });
 }
 $('#sel-all').onclick = () => {
   const shown = S.cameras.filter((c) => matches(c, filt.cams));
@@ -312,18 +313,18 @@ $('#bulk-apply').onclick = async () => {
   if ($('#bulk-fps').value) st.fps = +$('#bulk-fps').value;
   if (Object.keys(st).length) body.stream = st;
   if ($('#bulk-detect').value !== '') body.detect = $('#bulk-detect').value === '1';
-  if (Object.keys(body).length < 2) { flash('#bulk-msg', 'Alege ce să se schimbe', true); return; }
+  if (Object.keys(body).length < 2) { flash('#bulk-msg', t('Alege ce să se schimbe'), true); return; }
   const n = selected.size;
-  if (!confirm(`Aplici modificările pe ${n} camere?`)) return;
+  if (!confirm(t('Aplici modificările pe {n} camere?', { n }))) return;
   const btn = $('#bulk-apply');
   btn.disabled = true;
-  flash('#bulk-msg', `Aplic pe ${n} camere (durează ~${Math.ceil(n * 0.6)}s)...`);
+  flash('#bulk-msg', t('Aplic pe {n} camere (durează ~{sec}s)...', { n, sec: Math.ceil(n * 0.6) }));
   const d = await post('/api/cameras/bulk', body);
   btn.disabled = false;
   if (d && !d.error) {
     const rele = (d.results || []).filter((r) => !r.ok);
-    flash('#bulk-msg', `Aplicat pe ${d.reusite}/${d.total}` +
-      (rele.length ? ` — probleme: ${rele.map((r) => 'cam' + r.id).join(', ')}` : ' ✓'),
+    flash('#bulk-msg', t('Aplicat pe {reusite}/{total}', { reusite: d.reusite, total: d.total }) +
+      (rele.length ? ' — ' + t('probleme: {lista}', { lista: rele.map((r) => 'cam' + r.id).join(', ') }) : ' ✓'),
       rele.length > 0);
     for (const el of ['#bulk-record','#bulk-group','#bulk-codec','#bulk-kbps','#bulk-fps','#bulk-detect'])
       $(el).value = '';
@@ -389,7 +390,7 @@ function buildCamsTable() {
   refreshBulkBar();
   const all = sortCams(S.cameras.filter((c) => matches(c, filt.cams)));
   $('#cams-info').textContent = all.length === S.cameras.length
-    ? `${S.cameras.length} camere` : `${all.length} din ${S.cameras.length}`;
+    ? t('{n} camere', { n: S.cameras.length }) : t('{n} din {total}', { n: all.length, total: S.cameras.length });
   const per = pageSize || all.length || 1;
   const pages = Math.max(1, Math.ceil(all.length / per));
   if (page > pages) page = pages;
@@ -398,8 +399,8 @@ function buildCamsTable() {
 
   const head = document.createElement('div');
   head.className = 'cam-row cam-row-head';
-  const cols = [['', ''], ['', ''], ['Camera', 'name'], ['Grup', 'group'], ['Dotări', ''],
-                ['Stare', ''], ['Înregistrare', 'record'], ['AI', 'detect'], ['Spațiu', 'gb'], ['', '']];
+  const cols = [['', ''], ['', ''], [t('Camera'), 'name'], [t('Grup'), 'group'], [t('Dotări'), ''],
+                [t('Stare'), ''], [t('Înregistrare'), 'record'], [t('AI'), 'detect'], [t('Spațiu'), 'gb'], ['', '']];
   for (const [label, key] of cols) {
     const s = document.createElement('span');
     if (key) {
@@ -414,7 +415,7 @@ function buildCamsTable() {
   if (!shown.length) {
     const empty = document.createElement('div');
     empty.className = 'cams-empty';
-    empty.textContent = 'Nicio camera nu corespunde filtrelor.';
+    empty.textContent = t('Nicio camera nu corespunde filtrelor.');
     box.appendChild(empty);
   }
 
@@ -427,7 +428,7 @@ function buildCamsTable() {
     pick.type = 'checkbox';
     pick.className = 'cam-pick';
     pick.checked = selected.has(c.id);
-    pick.title = 'Selectează pentru operatii în masa';
+    pick.title = t('Selectează pentru operatii în masa');
     pick.onclick = (e) => e.stopPropagation();
     pick.onchange = () => {
       pick.checked ? selected.add(c.id) : selected.delete(c.id);
@@ -456,21 +457,21 @@ function buildCamsTable() {
                       ['siren', 'siren', 'sirena'], ['strobe', 'strobe', 'stroboscop'],
                       ['zoom', 'zoomin', 'zoom optic']];
     caps.innerHTML = lista(capIcons.filter(([k]) => f[k]),
-      ([, ic, t]) => html`<span title="${t}">${icon(ic, 14)}</span>`, '<i>—</i>');
+      ([, ic, lab]) => html`<span title="${t(lab)}">${icon(ic, 14)}</span>`, '<i>—</i>');
 
     const p = pulseData[c.id] || {};
     const st = document.createElement('span');
     st.className = 'row-state ' + (p.alarm ? 's-alarm' : p.rec === false ? 's-down' : 's-ok');
-    st.textContent = p.alarm ? 'alarma' : p.rec === false ? 'nu scrie' : 'în regula';
+    st.textContent = p.alarm ? t('alarma') : p.rec === false ? t('nu scrie') : t('în regula');
     st.dataset.cam = c.id;   // completat cu ultimul segment / golurile de azi (camSanatate)
 
     const rec = document.createElement('span');
     rec.className = 'row-rec r-' + (c.record || 'continuous');
-    rec.textContent = REC_RO[c.record || 'continuous'];
+    rec.textContent = t(REC_RO[c.record || 'continuous']);
 
     const ai = document.createElement('span');
     ai.className = 'row-ai' + (c.detect ? ' on' : '');
-    ai.textContent = c.detect ? 'pornit' : '—';
+    ai.textContent = c.detect ? t('pornit') : '—';
 
     const gb = document.createElement('span');
     gb.className = 'row-gb';
@@ -493,7 +494,7 @@ function renderPager(total, pages) {
   bar.classList.toggle('hidden', !pageSize || total <= pageSize);
   const per = pageSize || total;
   const from = total ? (page - 1) * per + 1 : 0;
-  $('#pager-info').textContent = `${from}–${Math.min(page * per, total)} din ${total}`;
+  $('#pager-info').textContent = t('{de_la}–{pana_la} din {total}', { de_la: from, pana_la: Math.min(page * per, total), total });
   $('#pg-pos').textContent = `${page} / ${pages}`;
   $('#pg-first').disabled = $('#pg-prev').disabled = page <= 1;
   $('#pg-last').disabled = $('#pg-next').disabled = page >= pages;
@@ -540,13 +541,13 @@ function openCamPanel(c) {
   body.innerHTML = '';
   const msg = document.createElement('span');
   msg.className = 'cam-msg';
-  const flashP = (t) => { msg.textContent = t; setTimeout(() => { msg.textContent = ''; }, 2500); };
+  const flashP = (txt) => { msg.textContent = txt; setTimeout(() => { msg.textContent = ''; }, 2500); };
 
   const img = document.createElement('img');
   img.className = 'panel-thumb';
   img.src = `/api/thumb/${c.id}?t=${Date.now()}`;
   img.onclick = () => { closeCamPanel(); show('live'); openHD(c); };
-  img.title = 'Click pentru imagine mare';
+  img.title = t('Click pentru imagine mare');
   body.appendChild(img);
 
   // General
@@ -555,7 +556,7 @@ function openCamPanel(c) {
   nm.onchange = async () => {
     await post(`/api/cam/${c.id}/config`, { name: nm.value });
     c.name = nm.value; $('#cam-panel-title').textContent = nm.value;
-    buildCamsTable(); buildLive(); buildPbCams(); flashP('Salvat');
+    buildCamsTable(); buildLive(); buildPbCams(); flashP(t('Salvat'));
   };
   const gr = document.createElement('input');
   gr.value = c.group || 'Altele';
@@ -563,13 +564,13 @@ function openCamPanel(c) {
   gr.onchange = async () => {
     await post(`/api/cam/${c.id}/config`, { group: gr.value });
     c.group = gr.value.trim() || 'Altele';
-    buildCamsTable(); buildLive(); flashP('Salvat');
+    buildCamsTable(); buildLive(); flashP(t('Salvat'));
   };
   const links = document.createElement('div');
   links.className = 'panel-links';
-  links.innerHTML = html`<a href="http://${c.ip}" target="_blank">${icon('external', 13)} Interfața camerei</a>${
-    c.nvr_channel ? html`<span class="hint">canal NVR ${c.nvr_channel} (istoric vechi)</span>` : ''}`;
-  body.appendChild(section('General', field('Nume', nm), field('Grup', gr), links));
+  links.innerHTML = html`<a href="http://${c.ip}" target="_blank">${icon('external', 13)} ${t('Interfața camerei')}</a>${
+    c.nvr_channel ? html`<span class="hint">${t('canal NVR {canal} (istoric vechi)', { canal: c.nvr_channel })}</span>` : ''}`;
+  body.appendChild(section(t('General'), field(t('Nume'), nm), field(t('Grup'), gr), links));
 
   if (f.zoom) {
     const bara = document.createElement('div');
@@ -579,31 +580,30 @@ function openCamPanel(c) {
     const nota = document.createElement('p');
     nota.className = 'hint';
     const scrieNota = () => {
-      nota.textContent = 'Ține apăsat cât vrei să se apropie. '
-        + (f.ptz ? 'Camera se și rotește — comenzile sunt în meniul de peste imagine.'
-                 : f.ptz === false ? 'Camera nu se rotește, are doar lentila motorizată.'
-                 : 'Nu știm încă dacă se rotește.')
-        + ' Imaginea de sus se reîmprospătează după fiecare reglaj.';
+      nota.textContent = t('Ține apăsat cât vrei să se apropie.') + ' '
+        + (f.ptz ? t('Camera se și rotește — comenzile sunt în meniul de peste imagine.')
+                 : f.ptz === false ? t('Camera nu se rotește, are doar lentila motorizată.')
+                 : t('Nu știm încă dacă se rotește.'))
+        + ' ' + t('Imaginea de sus se reîmprospătează după fiecare reglaj.');
     };
     scrieNota();
     const proba = document.createElement('button');
     proba.className = 'btn sm';
-    proba.textContent = f.ptz === undefined ? 'Verifică dacă se rotește' : 'Verifică din nou';
-    proba.title = 'Rotește puțin camera și compară imaginile. Poziția se salvează înainte '
-      + 'și se reface după, iar dacă nu se poate salva, proba nici nu se face.';
+    proba.textContent = f.ptz === undefined ? t('Verifică dacă se rotește') : t('Verifică din nou');
+    proba.title = t('Rotește puțin camera și compară imaginile. Poziția se salvează înainte și se reface după, iar dacă nu se poate salva, proba nici nu se face.');
     proba.onclick = async () => {
-      proba.disabled = true; proba.textContent = 'Verific...';
+      proba.disabled = true; proba.textContent = t('Verific...');
       try {
         const r = await (await fetch(`/api/cam/${c.id}/detect-ptz`, { method: 'POST' })).json();
         Object.assign(f, r);
         c.features = f;
         scrieNota();
-        flashP(r.ptz ? 'Se rotește — au apărut comenzile de rotire' : 'Nu se rotește');
+        flashP(r.ptz ? t('Se rotește — au apărut comenzile de rotire') : t('Nu se rotește'));
         buildLive();
-      } catch (e) { flashP('Nu a mers'); }
-      proba.disabled = false; proba.textContent = 'Verifică din nou';
+      } catch (e) { flashP(t('Nu a mers')); }
+      proba.disabled = false; proba.textContent = t('Verifică din nou');
     };
-    body.appendChild(section('Zoom și rotire', bara, proba, nota));
+    body.appendChild(section(t('Zoom și rotire'), bara, proba, nota));
   }
 
   // Conexiune — pana acum se putea schimba doar editand fisierul de pe server
@@ -616,51 +616,51 @@ function openCamPanel(c) {
   user.autocomplete = 'off';
   const pass = document.createElement('input');
   pass.type = 'password';
-  pass.placeholder = 'necompletat = ramane parola actuala';
+  pass.placeholder = t('necompletat = ramane parola actuala');
   pass.autocomplete = 'new-password';
   const connBtn = document.createElement('button');
   connBtn.className = 'panel-action';
-  connBtn.textContent = 'Verifică și salvează conexiunea';
+  connBtn.textContent = t('Verifică și salvează conexiunea');
   connBtn.onclick = async () => {
     const body = { ip: ip.value.trim(), port: +port.value || 554, user: user.value.trim() };
     if (pass.value) body.pass = pass.value;
     connBtn.disabled = true;
-    connBtn.textContent = 'Verific...';
+    connBtn.textContent = t('Verific...');
     const d = await post(`/api/cam/${c.id}/config`, body);
     connBtn.disabled = false;
-    connBtn.textContent = 'Verifică și salvează conexiunea';
+    connBtn.textContent = t('Verifică și salvează conexiunea');
     if (d && !d.error) {
       Object.assign(c, body);
       pass.value = '';
-      flashP('Conexiune verificată și salvată');
+      flashP(t('Conexiune verificată și salvată'));
       buildCamsTable();
     }
   };
-  body.appendChild(section('Conexiune',
-    field('Adresa IP', ip), field('Port RTSP', port),
-    field('Utilizator', user), field('Parola', pass,
-      'Se testează conexiunea înainte de salvare — dacă datele sunt greșite, nu se schimbă nimic'),
+  body.appendChild(section(t('Conexiune'),
+    field(t('Adresa IP'), ip), field(t('Port RTSP'), port),
+    field(t('Utilizator'), user), field(t('Parola'), pass,
+      t('Se testează conexiunea înainte de salvare — dacă datele sunt greșite, nu se schimbă nimic')),
     connBtn));
 
   // Inregistrare
   const sel = document.createElement('select');
   for (const [v, l] of Object.entries(REC_RO)) {
     const o = document.createElement('option');
-    o.value = v; o.textContent = l;
+    o.value = v; o.textContent = t(l);
     sel.appendChild(o);
   }
   sel.value = c.record || 'continuous';
   sel.onchange = async () => {
     const d = await post(`/api/cam/${c.id}/config`, { record: sel.value });
-    if (d && !d.error) { c.record = sel.value; buildCamsTable(); flashP('Salvat'); }
+    if (d && !d.error) { c.record = sel.value; buildCamsTable(); flashP(t('Salvat')); }
   };
   const rd = document.createElement('input');
   rd.type = 'number'; rd.min = 1; rd.max = 365;
-  rd.placeholder = 'implicit';
+  rd.placeholder = t('implicit');
   rd.value = (c.retention || {}).days || '';
   const re = document.createElement('input');
   re.type = 'number'; re.min = 1; re.max = 730;
-  re.placeholder = 'implicit';
+  re.placeholder = t('implicit');
   re.value = (c.retention || {}).event_days || '';
   const saveRet = async () => {
     const r = {};
@@ -668,27 +668,27 @@ function openCamPanel(c) {
     if (re.value) r.event_days = +re.value;
     const d = await post(`/api/cam/${c.id}/config`,
       { retention: Object.keys(r).length ? r : null });
-    if (d && !d.error) { c.retention = Object.keys(r).length ? r : null; flashP('Salvat'); }
+    if (d && !d.error) { c.retention = Object.keys(r).length ? r : null; flashP(t('Salvat')); }
   };
   rd.onchange = saveRet; re.onchange = saveRet;
-  body.appendChild(section('Înregistrare',
-    field('Mod', sel, 'La miscare = se pastreaza doar segmentele cu evenimente (±30s)'),
-    field('Păstrează înregistrarea obișnuită (zile)', rd, 'gol = foloseste setarea generala'),
-    field('Păstrează segmentele cu evenimente (zile)', re, 'gol = foloseste setarea generala')));
+  body.appendChild(section(t('Înregistrare'),
+    field(t('Mod'), sel, t('La miscare = se pastreaza doar segmentele cu evenimente (±30s)')),
+    field(t('Păstrează înregistrarea obișnuită (zile)'), rd, t('gol = foloseste setarea generala')),
+    field(t('Păstrează segmentele cu evenimente (zile)'), re, t('gol = foloseste setarea generala'))));
 
   // Calitate
   const qbox = document.createElement('div');
   qbox.className = 'panel-loading';
-  qbox.textContent = 'Citesc setările din camera...';
-  body.appendChild(section('Calitate și spațiu', qbox));
+  qbox.textContent = t('Citesc setările din camera...');
+  body.appendChild(section(t('Calitate și spațiu'), qbox));
   fetch(`/api/cam/${c.id}/stream`).then((r) => r.json()).then((s) => {
-    if (s.error) { qbox.textContent = 'Indisponibil: ' + s.error; return; }
+    if (s.error) { qbox.textContent = t('Indisponibil: {eroare}', { eroare: s.error }); return; }
     qbox.className = '';
     qbox.innerHTML = '';
     const codec = document.createElement('select');
     for (const cd of (s.codecs.length ? s.codecs : [s.codec])) {
       const o = document.createElement('option');
-      o.value = cd; o.textContent = cd + (cd === 'H.265' ? ' (recomandat)' : '');
+      o.value = cd; o.textContent = cd === 'H.265' ? t('{codec} (recomandat)', { codec: cd }) : cd;
       codec.appendChild(o);
     }
     codec.value = s.codec;
@@ -697,17 +697,17 @@ function openCamPanel(c) {
     const fp = document.createElement('input');
     fp.type = 'number'; fp.min = 1; fp.max = 30; fp.value = s.fps;
     const est = document.createElement('small');
-    const refresh = () => { est.textContent = `${s.width}x${s.height} · ~${(kb.value * 0.0108).toFixed(1)} GB/zi`; };
+    const refresh = () => { est.textContent = t('{rezolutie} · ~{gb} GB/zi', { rezolutie: `${s.width}x${s.height}`, gb: (kb.value * 0.0108).toFixed(1) }); };
     refresh();
     const save = async () => {
       const d = await post(`/api/cam/${c.id}/stream`,
         { codec: codec.value, kbps: +kb.value, fps: +fp.value });
-      if (d && !d.error) { refresh(); flashP('Salvat'); }
+      if (d && !d.error) { refresh(); flashP(t('Salvat')); }
     };
     codec.onchange = save; kb.onchange = save; fp.onchange = save; kb.oninput = refresh;
-    qbox.append(field('Codec', codec), field('Bitrate (kbps)', kb),
-                field('Cadre pe secunda', fp,
-                      'Unele camere revin singure la maximul lor — vezi nota din README'),
+    qbox.append(field(t('Codec'), codec), field(t('Bitrate (kbps)'), kb),
+                field(t('Cadre pe secunda'), fp,
+                      t('Unele camere revin singure la maximul lor — vezi nota din README')),
                 est);
   });
 
@@ -715,33 +715,33 @@ function openCamPanel(c) {
   const aiWrap = document.createElement('div');
   const aiBtn = document.createElement('button');
   aiBtn.className = 'panel-toggle' + (c.detect ? ' on' : '');
-  aiBtn.innerHTML = icon('paw', 14) + (c.detect ? ' Detecție pornită' : ' Detecție oprită');
+  aiBtn.innerHTML = icon('paw', 14) + ' ' + (c.detect ? t('Detecție pornită') : t('Detecție oprită'));
   aiBtn.onclick = async () => {
     c.detect = !c.detect;
     await post(`/api/cam/${c.id}/detect`, { on: c.detect });
     aiBtn.className = 'panel-toggle' + (c.detect ? ' on' : '');
-    aiBtn.innerHTML = icon('paw', 14) + (c.detect ? ' Detecție pornită' : ' Detecție oprită');
-    buildCamsTable(); flashP('Salvat');
+    aiBtn.innerHTML = icon('paw', 14) + ' ' + (c.detect ? t('Detecție pornită') : t('Detecție oprită'));
+    buildCamsTable(); flashP(t('Salvat'));
   };
   const zoneBtn = document.createElement('button');
   zoneBtn.className = 'panel-toggle' + (c.zone && c.zone.length ? ' on' : '');
-  zoneBtn.innerHTML = icon('zone', 14) + (c.zone && c.zone.length ? ' Zona definită' : ' Fără zona');
+  zoneBtn.innerHTML = icon('zone', 14) + ' ' + (c.zone && c.zone.length ? t('Zona definită') : t('Fără zona'));
   zoneBtn.onclick = () => { closeCamPanel(); openZoneEditor(c); };
   aiWrap.append(aiBtn, zoneBtn);
   if (f.siren) {
     const sirenBtn = document.createElement('button');
     sirenBtn.className = 'panel-toggle' + (c.auto_siren ? ' on' : '');
-    sirenBtn.innerHTML = icon('alarm', 14) + (c.auto_siren ? ' Anunț automat pornit' : ' Anunț automat oprit');
+    sirenBtn.innerHTML = icon('alarm', 14) + ' ' + (c.auto_siren ? t('Anunț automat pornit') : t('Anunț automat oprit'));
     sirenBtn.onclick = async () => {
       c.auto_siren = !c.auto_siren;
       await post(`/api/cam/${c.id}/detect`, { auto_siren: c.auto_siren });
       sirenBtn.className = 'panel-toggle' + (c.auto_siren ? ' on' : '');
-      sirenBtn.innerHTML = icon('alarm', 14) + (c.auto_siren ? ' Anunț automat pornit' : ' Anunț automat oprit');
-      flashP('Salvat');
+      sirenBtn.innerHTML = icon('alarm', 14) + ' ' + (c.auto_siren ? t('Anunț automat pornit') : t('Anunț automat oprit'));
+      flashP(t('Salvat'));
     };
     aiWrap.append(sirenBtn);
   }
-  body.appendChild(section('Detecție AI (pe server)', aiWrap));
+  body.appendChild(section(t('Detecție AI (pe server)'), aiWrap));
 
   // Detectii in firmware
   const sm = f.smart || {};
@@ -756,12 +756,12 @@ function openCamPanel(c) {
         cb.disabled = true;
         const d = await post(`/api/cam/${c.id}/config`, { smart: { [k]: cb.checked } });
         cb.disabled = false;
-        if (d && d.error) cb.checked = !cb.checked; else { sm[k] = cb.checked; flashP('Salvat'); }
+        if (d && d.error) cb.checked = !cb.checked; else { sm[k] = cb.checked; flashP(t('Salvat')); }
       };
-      lab.append(cb, document.createTextNode(' ' + (SMART_RO[k] || k)));
+      lab.append(cb, document.createTextNode(' ' + t(SMART_RO[k] || k)));
       box.appendChild(lab);
     }
-    body.appendChild(section('Detecții în camera', box));
+    body.appendChild(section(t('Detecții în camera'), box));
   }
 
   // Audio
@@ -771,78 +771,78 @@ function openCamPanel(c) {
       const s2 = document.createElement('select');
       for (const snd of (f.sounds || [])) {
         const o = document.createElement('option');
-        o.value = snd.id; o.textContent = SOUND_RO[snd.id] || snd.name;
+        o.value = snd.id; o.textContent = SOUND_RO[snd.id] ? t(SOUND_RO[snd.id]) : snd.name;
         s2.appendChild(o);
       }
       for (let i = 1; i <= 3; i++) {
         const o = document.createElement('option');
-        o.value = 'c' + i; o.textContent = `Sunetul meu ${i}`;
+        o.value = 'c' + i; o.textContent = t('Sunetul meu {n}', { n: i });
         s2.appendChild(o);
       }
       const vol = document.createElement('input');
       vol.type = 'range'; vol.min = 1; vol.max = 100; vol.value = 70;
       const play = document.createElement('button');
       play.className = 'panel-action';
-      play.innerHTML = icon('siren', 14) + ' Redă anunțul';
+      play.innerHTML = icon('siren', 14) + ' ' + t('Redă anunțul');
       play.onclick = async () => {
         play.disabled = true;
         const v = s2.value;
         await post(`/api/cam/${c.id}/siren`, {
           sound: +String(v).replace('c', ''), volume: +vol.value, times: 1,
           custom: String(v).startsWith('c') });
-        flashP('Redat');
+        flashP(t('Redat'));
         setTimeout(() => { play.disabled = false; }, 2000);
       };
-      a.append(field('Anunț', s2), field('Volum', vol), play);
+      a.append(field(t('Anunț'), s2), field(t('Volum'), vol), play);
     }
     if (f.talk) {
       const txt = document.createElement('input');
-      txt.placeholder = 'Scrie ce să spună camera...';
+      txt.placeholder = t('Scrie ce să spună camera...');
       const say = document.createElement('button');
       say.className = 'panel-action';
-      say.innerHTML = icon('talk', 14) + ' Rostește';
+      say.innerHTML = icon('talk', 14) + ' ' + t('Rostește');
       say.onclick = async () => {
         if (!txt.value.trim()) return;
         say.disabled = true;
         const d = await post(`/api/cam/${c.id}/say`, { text: txt.value.trim(), repeat: 2 });
         say.disabled = false;
-        if (d && !d.error) flashP(`Transmis ${d.secunde}s`);
+        if (d && !d.error) flashP(t('Transmis {sec}s', { sec: d.secunde }));
       };
-      a.append(field('Mesaj vocal', txt, 'Necesită difuzor conectat la ieșirea audio'), say);
+      a.append(field(t('Mesaj vocal'), txt, t('Necesită difuzor conectat la ieșirea audio')), say);
     }
-    body.appendChild(section('Audio', a));
+    body.appendChild(section(t('Audio'), a));
   }
 
   const maint = document.createElement('div');
   const reprobe = document.createElement('button');
   reprobe.className = 'panel-toggle';
-  reprobe.textContent = 'Reinteroghează dotările';
-  reprobe.title = 'După un upgrade de firmware sau după ce ai conectat un difuzor';
+  reprobe.textContent = t('Reinteroghează dotările');
+  reprobe.title = t('După un upgrade de firmware sau după ce ai conectat un difuzor');
   reprobe.onclick = async () => {
     reprobe.disabled = true;
-    reprobe.textContent = 'Interoghez...';
+    reprobe.textContent = t('Interoghez...');
     const d = await post(`/api/cam/${c.id}/reprobe`);
     reprobe.disabled = false;
-    reprobe.textContent = 'Reinteroghează dotările';
-    if (d && !d.error) { await loadCameras(); flashP('Dotări actualizate'); buildCamsTable(); }
+    reprobe.textContent = t('Reinteroghează dotările');
+    if (d && !d.error) { await loadCameras(); flashP(t('Dotări actualizate')); buildCamsTable(); }
   };
   const reboot = document.createElement('button');
   reboot.className = 'panel-toggle';
-  reboot.textContent = 'Repornește camera';
+  reboot.textContent = t('Repornește camera');
   reboot.onclick = async () => {
-    if (!confirm(`Repornești camera "${c.name}"?\nRevine în aproximativ 40 de secunde.`)) return;
+    if (!confirm(t('Repornești camera "{nume}"?\nRevine în aproximativ 40 de secunde.', { nume: c.name }))) return;
     const d = await post(`/api/cam/${c.id}/reboot`);
-    if (d && !d.error) flashP('Camera repornește...');
+    if (d && !d.error) flashP(t('Camera repornește...'));
   };
   maint.append(reprobe, reboot);
-  body.appendChild(section('Întreținere', maint));
+  body.appendChild(section(t('Întreținere'), maint));
 
   if (c.id >= 101) {
     const del = document.createElement('button');
     del.className = 'panel-action danger';
-    del.innerHTML = icon('trash', 14) + ' Șterge camera';
+    del.innerHTML = icon('trash', 14) + ' ' + t('Șterge camera');
     del.onclick = () => { closeCamPanel(); deleteCamera(c); };
-    body.appendChild(section('Zona periculoasă', del));
+    body.appendChild(section(t('Zona periculoasă'), del));
   }
   body.appendChild(msg);
   p.classList.remove('hidden');
@@ -899,9 +899,9 @@ $('#scan-go').onclick = async () => {
 };
 async function pollScan() {
   const s = await (await fetch('/api/discover')).json();
-  $('#scan-status').textContent = s.error ? 'Eroare: ' + s.error
-    : s.running ? `Scanez... ${s.done}/${s.total} adrese, ${s.found.length} găsite`
-                : `Gata: ${s.found.length} dispozitive găsite`;
+  $('#scan-status').textContent = s.error ? t('Eroare: {eroare}', { eroare: s.error })
+    : s.running ? t('Scanez... {done}/{total} adrese, {gasite} găsite', { done: s.done, total: s.total, gasite: s.found.length })
+                : t('Gata: {n} dispozitive găsite', { n: s.found.length });
   if (!s.running) clearInterval(scanTimer);
   const box = $('#scan-results');
   box.innerHTML = '';
@@ -915,7 +915,7 @@ async function pollScan() {
     cb.dataset.info = JSON.stringify(it);
     row.appendChild(cb);
     row.append(` ${it.ip} — ${it.model || it.vendor}` + (it.vendor === 'onvif' ? ' [ONVIF]' : '') +
-      (it.known ? ' (deja adăugată)' : it.auth ? '' : ' (parola necunoscută)'));
+      (it.known ? ' ' + t('(deja adăugată)') : it.auth ? '' : ' ' + t('(parola necunoscută)')));
     box.appendChild(row);
   }
   const addable = s.found.some((i) => !i.known && i.auth);
@@ -925,10 +925,10 @@ $('#scan-add').onclick = async () => {
   const picked = [...$('#scan-results').querySelectorAll('input:checked')]
     .map((cb) => JSON.parse(cb.dataset.info));
   if (!picked.length) return;
-  $('#scan-status').textContent = `Adaug ${picked.length} camere...`;
+  $('#scan-status').textContent = t('Adaug {n} camere...', { n: picked.length });
   const d = await post('/api/cameras/import', { cameras: picked });
   if (d && !d.error) {
-    $('#scan-status').textContent = `Adăugate ${d.added.length} camere ✓`;
+    $('#scan-status').textContent = t('Adăugate {n} camere ✓', { n: d.added.length });
     await loadCameras();
     buildCamsTable();
   }
@@ -949,11 +949,12 @@ async function camSanatate() {
     const id = +st.dataset.cam, a = acum[id], g = goluri[id] || [];
     const parti = [];
     if (a && a.mod === 'continuous') {
-      parti.push(a.scrie ? `scrie, ultimul segment acum ${a.varsta < 90 ? a.varsta + ' s' : Math.round(a.varsta / 60) + ' min'}` : `nu scrie de ${Math.round((a.varsta || 0) / 60)} min`);
-      if (a.reporniri) parti.push(`${a.reporniri} reporniri`);
-    } else if (a) parti.push(a.mod === 'motion' ? 'la mișcare' : 'înregistrare oprită');
-    if (g.length) { const min = g.reduce((s, x) => s + (x.minute || 0), 0); parti.push(`${g.length} ${g.length === 1 ? 'gol' : 'goluri'} azi (${min} min)`); st.classList.add('s-goluri'); }
-    if (sab[id]) { parti.push(`sabotaj raportat de ${sab[id]} ori azi${sab[id] >= 10 ? ' (probabil IR/insecte noaptea)' : ''}`); st.classList.add('s-goluri'); }
+      parti.push(a.scrie ? t('scrie, ultimul segment acum {varsta}', { varsta: a.varsta < 90 ? a.varsta + ' s' : Math.round(a.varsta / 60) + ' min' })
+                         : t('nu scrie de {min} min', { min: Math.round((a.varsta || 0) / 60) }));
+      if (a.reporniri) parti.push(t('{n} reporniri', { n: a.reporniri }));
+    } else if (a) parti.push(a.mod === 'motion' ? t('la mișcare') : t('înregistrare oprită'));
+    if (g.length) { const min = g.reduce((s, x) => s + (x.minute || 0), 0); parti.push(t('{n} goluri azi ({min} min)', { n: g.length, min })); st.classList.add('s-goluri'); }
+    if (sab[id]) { parti.push(t('sabotaj raportat de {n} ori azi', { n: sab[id] }) + (sab[id] >= 10 ? ' ' + t('(probabil IR/insecte noaptea)') : '')); st.classList.add('s-goluri'); }
     const old = st.querySelector('small'); if (old) old.remove();
     if (parti.length) { const sm = document.createElement('small'); sm.textContent = parti.join(' · '); st.appendChild(sm); }
   }

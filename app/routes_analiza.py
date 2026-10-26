@@ -9,6 +9,7 @@ from flask import Blueprint, jsonify, request
 import analiza
 import jobs
 import masca
+from i18n import t
 from server import HW, _cam_entry, _run_ffmpeg, current_user
 
 bp = Blueprint("analiza", __name__)
@@ -37,10 +38,10 @@ def api_regiune():
         rect = [float(request.args.get(k, "0")) for k in ("x", "y", "w", "h")]
         day = _zi(request.args.get("day"))
         if not day:
-            raise ValueError("zi invalida")
+            raise ValueError(t("zi invalida"))
         ev = analiza.regiune(cam, day, rect)
     except (KeyError, ValueError) as e:
-        return jsonify({"error": str(e) or "parametri invalizi"}), 400
+        return jsonify({"error": str(e) or t("parametri invalizi")}), 400
     return jsonify({"evenimente": ev, "zi": day, "camera": cam})
 
 
@@ -54,7 +55,7 @@ def api_heatmap():
         if request.args.get("day") and not day:
             raise ValueError
     except (KeyError, ValueError):
-        return jsonify({"error": "parametri invalizi"}), 400
+        return jsonify({"error": t("parametri invalizi")}), 400
     return jsonify(analiza.heatmap(cam, day, zile))
 
 
@@ -68,9 +69,9 @@ def api_timelapse():
         if not day:
             raise ValueError
     except (KeyError, ValueError):
-        return jsonify({"error": "parametri invalizi"}), 400
+        return jsonify({"error": t("parametri invalizi")}), 400
     if not _cam_entry(cam):
-        return jsonify({"error": "camera nu există"}), 404
+        return jsonify({"error": t("camera nu există")}), 404
     who = (current_user() or {}).get("user")
     return jsonify(jobs.submit("timelapse", {"channel": cam, "day": day, "pas": pas},
                                who=who, cam=cam)), 202

@@ -112,6 +112,20 @@ sudo ./install.sh --update            # git pull, rebuild, restart
 docker compose run --rm --no-deps web test      # pytest (350+ tests)
 ```
 
+## Language
+
+The interface is available in **English and Romanian**. It follows the browser's language
+by default; every account can pin its own in *My account → Language*, and the login page has
+a switch (`?lang=en`). `NVR_LANG` in `.env` sets the server default, which is also the
+language of Telegram and e-mail notifications and of the daily digest.
+
+Adding or adjusting a language needs no code: Romanian is the source text, so a dictionary
+is a flat JSON file mapping Romanian strings to translations. Drop
+`data/i18n/<code>.json` next to your recordings to override any string or add a language
+(`{"_meta": {"nume": "Deutsch"}, "Adaugă camera": "Kamera hinzufügen", ...}`);
+`app/static/i18n/en.json` is the complete reference and `python3 scripts/i18n_check.py`
+reports missing keys. Contributions of new languages are welcome.
+
 ## Demo mode
 
 No cameras yet? **Setări → Unelte → Mod demo** adds four synthetic cameras (go2rtc generates

@@ -14,6 +14,7 @@ from requests.auth import HTTPDigestAuth
 
 import settings
 import logare
+from i18n import t
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EXT_FILE = os.path.join(ROOT, "data", "cameras.json")
@@ -47,7 +48,7 @@ def _send_telegram(cfg, text, jpeg=None):
                           data={"chat_id": cfg["telegram_chat"], "text": text}, timeout=20)
     r.raise_for_status()
     if not r.json().get("ok"):
-        raise RuntimeError(r.json().get("description", "telegram: răspuns ne-ok"))
+        raise RuntimeError(r.json().get("description", t("telegram: răspuns ne-ok")))
 
 
 def _send_email(cfg, text, jpeg=None):
@@ -73,7 +74,7 @@ def send(text, jpeg=None, key=None, sync=False):
     em = bool(cfg["email_enabled"] and cfg["email_smtp"] and cfg["email_to"])
     if not (tg or em):
         if sync:
-            raise RuntimeError("niciun canal configurat (Telegram sau email)")
+            raise RuntimeError(t("niciun canal configurat (Telegram sau email)"))
         return
     if key and not _throttle_ok(key, cfg["notify_cooldown"]):
         return
@@ -98,14 +99,14 @@ def send(text, jpeg=None, key=None, sync=False):
 def test_channel(channel):
     """Trimite un mesaj de test pe un canal anume; ridica exceptie cu motivul la esec."""
     cfg = settings.load()
-    text = f"✅ Test notificare NVR ({time.strftime('%H:%M:%S')})"
+    text = t("✅ Test notificare NVR ({ora})", ora=time.strftime('%H:%M:%S'))
     if channel == "telegram":
         if not (cfg["telegram_token"] and cfg["telegram_chat"]):
-            raise RuntimeError("completează token-ul și chat ID-ul întâi")
+            raise RuntimeError(t("completează token-ul și chat ID-ul întâi"))
         _send_telegram(cfg, text)
     else:
         if not (cfg["email_smtp"] and cfg["email_to"]):
-            raise RuntimeError("completează serverul SMTP și adresa destinatar întâi")
+            raise RuntimeError(t("completează serverul SMTP și adresa destinatar întâi"))
         _send_email(cfg, text)
 
 
@@ -125,7 +126,8 @@ def detection(cam_id, label, jpeg=None):
     if label not in settings.get("notify_labels"):
         return
     name = _cam_name(cam_id)
-    send(f"🚨 {name}: {RO.get(label, label)} detectat ({time.strftime('%H:%M:%S')})"
+    send(t("🚨 {cam}: {ce} detectat ({ora})", cam=name, ce=t(RO.get(label, label)),
+           ora=time.strftime('%H:%M:%S'))
          + link(cam_id), jpeg=jpeg, key=(cam_id, label))
 
 
@@ -148,9 +150,9 @@ def plate(cam_id, numar, nume=None, jpeg=None):
         straina = (settings.get("lpr_notify_unknown")
                    and (not cams or int(cam_id) in cams))
         if straina:
-            text = f"🚗⚠️ {_cam_name(cam_id)}: mașină necunoscută, număr {numar}"
+            text = t("🚗⚠️ {cam}: mașină necunoscută, număr {numar}", cam=_cam_name(cam_id), numar=numar)
         elif settings.get("lpr_notify_all"):
-            text = f"🚗 {_cam_name(cam_id)}: număr {numar}"
+            text = t("🚗 {cam}: număr {numar}", cam=_cam_name(cam_id), numar=numar)
         else:
             return
     send(f"{text} ({time.strftime('%H:%M:%S')})" + link(cam_id), jpeg=jpeg,
@@ -186,8 +188,8 @@ def _check_disk():
     limit = C.RECORD_MIN_FREE_GB * 2
     if free_gb < limit and time.time() - _disk_alerted > 12 * 3600:
         _disk_alerted = time.time()
-        send(f"💾 Atentie: doar {free_gb:.0f}GB liberi pe disc "
-             f"(sub {C.RECORD_MIN_FREE_GB}GB incep sa se stearga inregistrarile vechi)")
+        send(t("💾 Atentie: doar {liber}GB liberi pe disc (sub {prag}GB incep sa se stearga inregistrarile vechi)",
+               liber=f"{free_gb:.0f}", prag=C.RECORD_MIN_FREE_GB))
 
 
 def _check_nvr():
@@ -212,12 +214,12 @@ def _check_nvr():
             _states["nvr"] = True
         elif _fails["nvr"] >= OFFLINE_DUPA:
             _states["nvr"] = False
-            send(f"⚠️ NVR OFFLINE (de la pornirea serverului): {C.NVR_IP}")
+            send(t("⚠️ NVR OFFLINE (de la pornirea serverului): {ip}", ip=C.NVR_IP))
         return
     nou = _stare_noua(prev, ok, _fails["nvr"])   # acelasi debounce ca la camere
     if nou != prev:
         _states["nvr"] = nou
-        send(("⚠️ NVR OFFLINE: " if not nou else "✅ NVR revenit: ") + C.NVR_IP)
+        send(t("✅ NVR revenit: {ip}", ip=C.NVR_IP) if nou else t("⚠️ NVR OFFLINE: {ip}", ip=C.NVR_IP))
 
 
 def stare_nvr():
@@ -242,7 +244,7 @@ def _check_streams():
     lipsa = [i for i in ids if f"cam{i}" not in have]
     if lipsa and time.time() - _stream_alerted > 6 * 3600:
         _stream_alerted = time.time()
-        send(f"⚠️ Camerele {lipsa} nu au flux video configurat — nu se vad in interfata")
+        send(t("⚠️ Camerele {lista} nu au flux video configurat — nu se vad in interfata", lista=lipsa))
         logare.info(f"[notify] camere fara stream: {lipsa}")
 
 
@@ -281,7 +283,7 @@ def _watchdog():
         # + camerele de pe NVR accesate direct (watchdog pe fiecare)
         try:
             with open(os.path.join(ROOT, "data", "nvrcams.json")) as f:
-                cams += [{"id": int(ch), "name": f"canal {ch} ({e.get('model', '?')})", **e}
+                cams += [{"id": int(ch), "name": t("canal {ch} ({model})", ch=ch, model=e.get('model', '?')), **e}
                          for ch, e in json.load(f).items()]
         except (FileNotFoundError, ValueError):
             pass
@@ -298,8 +300,8 @@ def _watchdog():
             if nou != prev:
                 _states[cid] = nou
                 nume = cam.get("name") or f"cam {cid}"
-                send(("⚠️ Camera OFFLINE: " if not nou else "✅ Camera revenita: ")
-                     + f"{nume} ({cam['ip']})")
+                send(t("✅ Camera revenita: {cam} ({ip})", cam=nume, ip=cam['ip']) if nou
+                     else t("⚠️ Camera OFFLINE: {cam} ({ip})", cam=nume, ip=cam['ip']))
                 try:
                     import hooks
                     hooks.emit("camera_online" if nou else "camera_offline", cid)

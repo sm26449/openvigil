@@ -24,6 +24,7 @@ import time
 
 import record
 import logare
+from i18n import t
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 STATE_FILE = os.path.join(ROOT, "data", "continuity.json")
@@ -313,13 +314,11 @@ def _propunere(disponibil, gb_zi, frac):
     med = (sum(frac.values()) / len(frac)) if frac else 0
     if med > 0.5:
         return {"zile": max(1, zile), "zile_evenimente": max(1, zile),
-                "motiv": (f"{round(med * 100)}% din segmente contin evenimente, deci treapta "
-                          f"lunga s-ar aplica oricum la aproape tot. Doua numere diferite ar "
-                          f"fi o promisiune fara acoperire.")}
+                "motiv": t("{procent}% din segmente contin evenimente, deci treapta lunga s-ar aplica oricum la aproape tot. Doua numere diferite ar fi o promisiune fara acoperire.",
+                           procent=round(med * 100))}
     lung = int(disponibil / (gb_zi * (med + (1 - med) * 0.35)) * 0.85)
     return {"zile": max(1, zile), "zile_evenimente": max(1, min(lung, zile * 4)),
-            "motiv": "Segmentele fara evenimente pot fi sterse mai devreme, deci treapta "
-                     "lunga incape."}
+            "motiv": t("Segmentele fara evenimente pot fi sterse mai devreme, deci treapta lunga incape.")}
 
 
 def problems():
@@ -328,9 +327,9 @@ def problems():
     out = []
     for c in live():
         if not c["scrie"]:
-            v = "niciodata" if c["varsta"] is None else f"de {c['varsta'] // 60} min"
+            v = t("niciodata") if c["varsta"] is None else t("de {n} min", n=c['varsta'] // 60)
             out.append({"cheie": f"mut-{c['id']}", "cam_id": c["id"], "grav": True,
-                        "text": f"{c['name']}: nu s-a mai scris nimic pe disc {v}"})
+                        "text": t("{cam}: nu s-a mai scris nimic pe disc {de}", cam=c['name'], de=v)})
     azi = time.strftime("%Y-%m-%d")
     for cam in _cams():
         if cam.get("record", "continuous") != "continuous":
@@ -341,14 +340,13 @@ def problems():
             ora = time.strftime("%H:%M", time.localtime(g["start"]))
             out.append({"cheie": f"gol-{cam['id']}-{int(g['start'] // 600)}",
                         "cam_id": cam["id"], "grav": True,
-                        "text": (f"{cam['name']}: gol de {g['sec'] // 60} min in "
-                                 f"inregistrare, incepand {ora}")})
+                        "text": t("{cam}: gol de {n} min in inregistrare, incepand {ora}",
+                                  cam=cam['name'], n=g['sec'] // 60, ora=ora)})
     f = forecast()
     if not f["incape"]:
         out.append({"cheie": "retentie", "grav": True,
-                    "text": (f"Retentia configurata cere {f['necesar_gb']} GB, dar avem loc "
-                             f"de {f['disponibil_gb']} GB. Inregistrarile vor fi sterse mai "
-                             f"devreme decat scrie in setari.")})
+                    "text": t("Retentia configurata cere {necesar} GB, dar avem loc de {disponibil} GB. Inregistrarile vor fi sterse mai devreme decat scrie in setari.",
+                              necesar=f['necesar_gb'], disponibil=f['disponibil_gb'])})
     return out
 
 

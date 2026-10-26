@@ -22,6 +22,7 @@ import detect
 import discover
 import drivers
 import health
+from i18n import t
 import jobs
 import record
 import settings
@@ -40,11 +41,11 @@ def api_ptz(cam_id):
     cam = _cam_entry(cam_id)
     f = (cam or {}).get("features") or {}
     if not cam or not (f.get("zoom") or f.get("ptz")):
-        return jsonify({"error": "camera nu are lentila motorizată sau cap mobil"}), 404
+        return jsonify({"error": t("camera nu are lentila motorizată sau cap mobil")}), 404
     b = request.get_json(silent=True) or {}
     pan, tilt = int(b.get("pan") or 0), int(b.get("tilt") or 0)
     if (pan or tilt) and not f.get("ptz"):
-        return jsonify({"error": "camera nu se rotește"}), 400
+        return jsonify({"error": t("camera nu se rotește")}), 400
     try:
         drivers.ptz_move(cam, pan=pan, tilt=tilt, zoom=int(b.get("zoom") or 0))
         return jsonify({"ok": True})
@@ -58,7 +59,7 @@ def api_presets(cam_id):
     intr-un slot liber, POST {id} = du-te acolo, DELETE ?id= = sterge."""
     cam = _cam_entry(cam_id)
     if not cam or not (cam.get("features") or {}).get("presets"):
-        return jsonify({"error": "camera nu memorează poziții"}), 404
+        return jsonify({"error": t("camera nu memorează poziții")}), 404
     try:
         if request.method == "GET":
             return jsonify(drivers.presets_list(cam))
@@ -71,14 +72,14 @@ def api_presets(cam_id):
             drivers.preset_goto(cam, int(b["id"]))
             return jsonify({"ok": True})
         if not drivers.este_hik(cam):
-            tok = drivers.preset_save(cam, None, b.get("nume") or "Pozitie")
+            tok = drivers.preset_save(cam, None, b.get("nume") or t("Pozitie"))
             audit.log("presetare salvată", f"cam{cam_id}", {"token": tok, "nume": b.get("nume")})
             return jsonify({"ok": True, "token": tok})
         folosite = {p["id"] for p in drivers.presets_list(cam)}
         pid = next((i for i in range(1, 200) if i not in folosite), None)
         if pid is None:
-            return jsonify({"error": "nu mai sunt sloturi libere"}), 400
-        drivers.preset_save(cam, pid, b.get("nume") or f"Pozitia {pid}")
+            return jsonify({"error": t("nu mai sunt sloturi libere")}), 400
+        drivers.preset_save(cam, pid, b.get("nume") or t("Pozitia {id}", id=pid))
         audit.log("presetare salvată", f"cam{cam_id}", {"id": pid, "nume": b.get("nume")})
         return jsonify({"ok": True, "id": pid})
     except (requests.RequestException, RuntimeError) as e:
@@ -90,9 +91,9 @@ def api_focus(cam_id):
     """Modul de focalizare: AUTO / SEMIAUTO / MANUAL."""
     cam = _cam_entry(cam_id)
     if not cam:
-        return jsonify({"error": "camera inexistenta"}), 404
+        return jsonify({"error": t("camera inexistenta")}), 404
     if not drivers.este_hik(cam):
-        return jsonify({"error": "focalizarea se seteaza doar pe camerele Hikvision"}), 400
+        return jsonify({"error": t("focalizarea se seteaza doar pe camerele Hikvision")}), 400
     try:
         if request.method == "GET":
             return jsonify({"mod": camctl.get_focus_mode(cam), "optiuni": camctl.FOCUS_MODES})
@@ -112,7 +113,7 @@ def api_detect_ptz(cam_id):
     Nu ne putem lua dupa capabilitatile raportate: si bullet-urile fixe le anunta."""
     cam = _cam_entry(cam_id)
     if not cam:
-        return jsonify({"error": "camera inexistenta"}), 404
+        return jsonify({"error": t("camera inexistenta")}), 404
 
     def frame():
         r = requests.get(f"{C.GO2RTC_API}/api/frame.jpeg",
@@ -121,8 +122,7 @@ def api_detect_ptz(cam_id):
         return r.content
 
     if not drivers.este_hik(cam):
-        return jsonify({"error": "proba de rotire merge doar pe camerele Hikvision; pe ONVIF "
-                        "folosește butoanele PTZ direct"}), 400
+        return jsonify({"error": t("proba de rotire merge doar pe camerele Hikvision; pe ONVIF folosește butoanele PTZ direct")}), 400
     rez = camctl.detect_ptz(cam, frame)
     with EXT_LOCK:
         cams = load_ext()
@@ -138,10 +138,10 @@ def api_detect_ptz(cam_id):
 def api_zone(cam_id):
     """Body: {points: [[x,y],...]} normalizat 0..1 (minim 3 puncte) sau {points: null}."""
     if not any(c["id"] == cam_id for c in get_cameras()):
-        return jsonify({"error": "camera nu există"}), 404
+        return jsonify({"error": t("camera nu există")}), 404
     pts = (request.get_json(silent=True) or {}).get("points")
     if pts is not None and (not isinstance(pts, list) or len(pts) < 3):
-        return jsonify({"error": "minim 3 puncte"}), 400
+        return jsonify({"error": t("minim 3 puncte")}), 400
     detect.set_zone(cam_id, pts)
     return jsonify({"ok": True})
 
@@ -155,7 +155,7 @@ def api_masca(cam_id):
         cams = load_ext()
         cam = next((c for c in cams if c["id"] == cam_id), None)
         if not cam:
-            return jsonify({"error": "camera nu există"}), 404
+            return jsonify({"error": t("camera nu există")}), 404
         try:
             rects = masca.normalizeaza((request.get_json(silent=True) or {}).get("rects"))
         except ValueError as e:
@@ -178,17 +178,17 @@ def api_deploy_smart(cam_id):
     ca sa le impuna la rezolutie nativa. Camera declanseaza, AI-ul confirma pe HD."""
     cam = _cam_entry(cam_id)
     if not cam:
-        return jsonify({"error": "camera nu există"}), 404
+        return jsonify({"error": t("camera nu există")}), 404
     if not cam.get("ip") or not cam.get("user"):
-        return jsonify({"error": "doar camere directe pe IP (nu prin NVR)"}), 400
+        return jsonify({"error": t("doar camere directe pe IP (nu prin NVR)")}), 400
     lines = (settings.get("count_lines") or {}).get(str(cam_id)) or []
     zones = (settings.get("count_zones") or {}).get(str(cam_id)) or []
     if not lines and not zones:
-        return jsonify({"error": "desenează întâi o linie sau o zona"}), 400
+        return jsonify({"error": t("desenează întâi o linie sau o zona")}), 400
     try:
         res = camctl.deploy_smart(cam, lines, zones)
     except Exception as e:
-        return jsonify({"error": f"deploy eșuat: {str(e)[:120]}"}), 502
+        return jsonify({"error": t("deploy eșuat: {e}", e=str(e)[:120])}), 502
     audit.log("linii/zone trimise pe camera", cam_id)
     return jsonify({"ok": True, **res})
 
@@ -235,11 +235,11 @@ def api_add_camera():
     name = (b.get("name") or "").strip()
     vendor = b.get("vendor") if b.get("vendor") in drivers.VENDORI else "hik"
     if vendor == "demo":
-        return jsonify({"error": "camerele demo se adaugă din Setări → Unelte → Mod demo"}), 400
+        return jsonify({"error": t("camerele demo se adaugă din Setări → Unelte → Mod demo")}), 400
     if not (ip and user and pw):
-        return jsonify({"error": "ip, user și parola sunt obligatorii"}), 400
+        return jsonify({"error": t("ip, user și parola sunt obligatorii")}), 400
     if any(c["ip"] == ip for c in load_ext()):
-        return jsonify({"error": f"camera cu IP {ip} există deja"}), 409
+        return jsonify({"error": t("camera cu IP {ip} există deja", ip=ip)}), 409
     return jsonify(jobs.submit("camera_noua", {"name": name, "ip": ip, "port": port,
                                                "user": user, "vendor": vendor,
                                                "http_port": int(b.get("http_port") or 80)},
@@ -253,28 +253,28 @@ def _job_camera_noua(job):
     pw = job.secret.get("pass") or ""
     cams = load_ext()
     if any(c["ip"] == ip for c in cams):
-        raise jobs.JobError(f"camera cu IP {ip} există deja")
+        raise jobs.JobError(t("camera cu IP {ip} există deja", ip=ip))
     if p.get("vendor") == "onvif":
         return _camera_noua_onvif(job, cams, ip, user, pw, port, name, p.get("http_port") or 80)
 
     # testeaza ISAPI cu credentialele date si citeste modelul
-    job.progres(10, "contactez camera")
+    job.progres(10, t("contactez camera"))
     sess = requests.Session()
     sess.auth = HTTPDigestAuth(user, pw)
     try:
         r = sess.get(f"http://{ip}/ISAPI/System/deviceInfo", timeout=12)
         if r.status_code == 401:
-            raise jobs.JobError("autentificare esuata (user/parola)")
+            raise jobs.JobError(t("autentificare esuata (user/parola)"))
         r.raise_for_status()
         info = ET.fromstring(r.text)
         model = xml_text(info, "model")
     except requests.ConnectionError:
-        raise jobs.JobError(f"nu pot contacta camera: {ip} nu răspunde pe HTTP")
+        raise jobs.JobError(t("nu pot contacta camera: {ip} nu răspunde pe HTTP", ip=ip))
     except requests.RequestException as e:
-        raise jobs.JobError(f"nu pot contacta camera: {str(e)[:120]}")
+        raise jobs.JobError(t("nu pot contacta camera: {e}", e=str(e)[:120]))
 
     # are stocare (SD/HDD) -> playback disponibil
-    job.progres(30, "verific stocarea")
+    job.progres(30, t("verific stocarea"))
     playback = False
     try:
         hdd = ET.fromstring(sess.get(f"http://{ip}/ISAPI/ContentMgmt/Storage/hdd",
@@ -288,19 +288,19 @@ def _job_camera_noua(job):
            "ip": ip, "port": port, "user": user, "pass": pw,
            "model": model, "playback": playback}
     # verificam ca fluxul video chiar functioneaza, nu doar ca raspunde camera
-    job.progres(45, "verific fluxul video")
+    job.progres(45, t("verific fluxul video"))
     hc = health.check_stream(cam, 102)
     if not hc.get("ok"):
-        raise jobs.JobError(f"camera răspunde, dar nu livreaza imagine: {hc.get('eroare')}")
+        raise jobs.JobError(t("camera răspunde, dar nu livreaza imagine: {e}", e=hc.get("eroare")))
     # ce stie camera sa faca (mic/difuzor/sirena/stroboscop) + pregatire (audio AAC, linkage)
-    job.progres(65, "citesc capabilitatile")
+    job.progres(65, t("citesc capabilitatile"))
     cam["features"] = camctl.probe_features(cam)
     camctl.setup_camera(cam, cam["features"])
-    job.progres(90, "salvez și pornesc fluxurile")
+    job.progres(90, t("salvez și pornesc fluxurile"))
     with EXT_LOCK:
         cams = load_ext()                 # recitit: altcineva putea adauga intre timp
         if any(c["ip"] == ip for c in cams):
-            raise jobs.JobError(f"camera cu IP {ip} există deja")
+            raise jobs.JobError(t("camera cu IP {ip} există deja", ip=ip))
         cams.append(cam)
         save_ext(cams)   # nvr-record vede mtime-ul si porneste inregistrarea in <10s
     sync_all_watchers(cams)
@@ -313,7 +313,7 @@ def _job_camera_noua(job):
 
 def _camera_noua_onvif(job, cams, ip, user, pw, port, name, http_port):
     """Camera non-Hikvision: identificare + fluxuri prin ONVIF, apoi aceleasi verificari."""
-    job.progres(10, "contactez camera (ONVIF)")
+    job.progres(10, t("contactez camera (ONVIF)"))
     cam = {"id": 0, "name": name, "ip": ip, "port": port, "user": user, "pass": pw,
            "vendor": "onvif", "onvif": {"port": int(http_port)}}
     try:
@@ -321,22 +321,22 @@ def _camera_noua_onvif(job, cams, ip, user, pw, port, name, http_port):
         job.progres(25, f"{info.get('manufacturer') or ''} {info.get('model') or ''}".strip())
         cam["onvif"].update(drivers.descopera_fluxuri(cam))
     except Exception as e:
-        raise jobs.JobError(f"ONVIF: {str(e)[:120]}")
+        raise jobs.JobError(t("ONVIF: {e}", e=str(e)[:120]))
     model = " ".join(x for x in (info.get("manufacturer"), info.get("model")) if x) or "ONVIF"
     new_id = next_cam_id(cams)
     cam.update({"id": new_id, "name": name or (info.get("model") or f"Camera {new_id}"),
                 "model": model, "playback": False})
-    job.progres(45, "verific fluxul video")
+    job.progres(45, t("verific fluxul video"))
     hc = health.check_stream(cam, 102)
     if not hc.get("ok"):
-        raise jobs.JobError(f"camera răspunde, dar nu livreaza imagine: {hc.get('eroare')}")
-    job.progres(65, "citesc capabilitatile")
+        raise jobs.JobError(t("camera răspunde, dar nu livreaza imagine: {e}", e=hc.get("eroare")))
+    job.progres(65, t("citesc capabilitatile"))
     cam["features"] = drivers.probe_features(cam)
-    job.progres(90, "salvez și pornesc fluxurile")
+    job.progres(90, t("salvez și pornesc fluxurile"))
     with EXT_LOCK:
         cams = load_ext()
         if any(c["ip"] == ip for c in cams):
-            raise jobs.JobError(f"camera cu IP {ip} există deja")
+            raise jobs.JobError(t("camera cu IP {ip} există deja", ip=ip))
         cams.append(cam)
         save_ext(cams)
     sync_all_watchers(cams)
@@ -396,7 +396,7 @@ def api_del_camera(cam_id):
         cams = load_ext()
         rest = [c for c in cams if c["id"] != cam_id]
         if len(rest) == len(cams):
-            return jsonify({"error": "camera nu există"}), 404
+            return jsonify({"error": t("camera nu există")}), 404
         save_ext(rest)
     sync_all_watchers(rest)
     try:
@@ -415,7 +415,7 @@ def api_siren(cam_id):
     """Body optional: {sound: audioID, volume: 1..100, times: n}. Reda sunetul prin difuzor."""
     cam = _cam_entry(cam_id)
     if not cam or not cam.get("features", {}).get("siren"):
-        return jsonify({"error": "camera nu are sirena"}), 404
+        return jsonify({"error": t("camera nu are sirena")}), 404
     b = request.get_json(silent=True) or {}
     try:
         drivers.trigger_siren(cam, b.get("sound"), b.get("volume"), b.get("times"),
@@ -430,7 +430,7 @@ def api_strobe(cam_id):
     """Body: {on: true/false}. Siguranta: se stinge singur dupa 60s."""
     cam = _cam_entry(cam_id)
     if not cam or not cam.get("features", {}).get("strobe"):
-        return jsonify({"error": "camera nu are stroboscop"}), 404
+        return jsonify({"error": t("camera nu are stroboscop")}), 404
     b = request.get_json(silent=True) or {}
     try:
         drivers.set_strobe(cam, bool(b.get("on")))
@@ -444,7 +444,7 @@ def api_output(cam_id):
     """Body: {on: true/false, port: 1}. Comuta releul (iesirea de alarma)."""
     cam = _cam_entry(cam_id)
     if not cam or not cam.get("features", {}).get("io_out"):
-        return jsonify({"error": "camera nu are ieșire de alarma"}), 404
+        return jsonify({"error": t("camera nu are ieșire de alarma")}), 404
     b = request.get_json(silent=True) or {}
     try:
         drivers.set_output(cam, int(b.get("port") or 1), bool(b.get("on")))
@@ -458,7 +458,7 @@ def api_say(cam_id):
     (canalul de vorbire, altul decat sirena). Sau {tone: true} pentru un ton de test."""
     cam = _cam_entry(cam_id)
     if not cam or not cam.get("features", {}).get("talk"):
-        return jsonify({"error": "camera nu are canal de vorbire"}), 404
+        return jsonify({"error": t("camera nu are canal de vorbire")}), 404
     b = request.get_json(silent=True) or {}
     os.makedirs(os.path.join(ROOT, "data", "tmp"), exist_ok=True)
     wav = os.path.join(ROOT, "data", "tmp", f"say{cam_id}.wav")
@@ -470,7 +470,7 @@ def api_say(cam_id):
         else:
             text = (b.get("text") or "").strip()[:300]
             if not text:
-                return jsonify({"error": "scrie mesajul"}), 400
+                return jsonify({"error": t("scrie mesajul")}), 400
             raw = os.path.join(ROOT, "data", "tmp", f"say{cam_id}_raw.wav")
             subprocess.run(["espeak-ng", "-v", "ro", "-s", str(b.get("speed") or 150),
                             "-p", "40", "-w", raw, "--", text], check=True, timeout=30)
@@ -495,7 +495,7 @@ def api_volume(cam_id):
     """Body: {speaker: 0..100}. Volumul difuzorului (two-way audio)."""
     cam = _cam_entry(cam_id)
     if not cam or not cam.get("features", {}).get("talk"):
-        return jsonify({"error": "camera nu are difuzor"}), 404
+        return jsonify({"error": t("camera nu are difuzor")}), 404
     b = request.get_json(silent=True) or {}
     try:
         camctl.set_speaker_volume(cam, int(b.get("speaker") or 50))
@@ -507,7 +507,7 @@ def api_volume(cam_id):
 def api_detect(cam_id):
     """Body: {on: bool} si/sau {auto_siren: bool} — detectia si sirena automata la caine."""
     if not any(c["id"] == cam_id for c in get_cameras()):
-        return jsonify({"error": "camera nu există"}), 404
+        return jsonify({"error": t("camera nu există")}), 404
     b = request.get_json(silent=True) or {}
     detect.set_detect(cam_id,
                       on=b.get("on") if "on" in b else None,
@@ -529,10 +529,10 @@ def api_discover():
         if pair not in users:
             users.append(pair)
     if not users:
-        return jsonify({"error": "completează user și parola"}), 400
+        return jsonify({"error": t("completează user și parola")}), 400
     known = {c["ip"] for c in load_ext()}
     if not discover.start(cidr, users, known):
-        return jsonify({"error": "o scanare rulează deja"}), 409
+        return jsonify({"error": t("o scanare rulează deja")}), 409
     return jsonify({"ok": True})
 
 
@@ -591,7 +591,7 @@ def api_cam_config(cam_id):
         cams = load_ext()
         cam = next((c for c in cams if c["id"] == cam_id), None)
         if not cam:
-            return jsonify({"error": "camera nu există"}), 404
+            return jsonify({"error": t("camera nu există")}), 404
         reconnect = False
         if b.get("name"):
             cam["name"] = b["name"].strip()[:60]
@@ -617,9 +617,9 @@ def api_cam_config(cam_id):
                     cam["onvif"] = probe["onvif"]
             except Exception as e:
                 msg = str(e)
-                if "autentificare" in msg or "401" in msg:
-                    return jsonify({"error": "utilizator sau parola greșite"}), 401
-                return jsonify({"error": f"nu pot contacta camera la {probe['ip']}: {msg[:80]}"}), 502
+                if "401" in msg or msg == t("autentificare esuata (user/parola)"):
+                    return jsonify({"error": t("utilizator sau parola greșite")}), 401
+                return jsonify({"error": t("nu pot contacta camera la {ip}: {e}", ip=probe["ip"], e=msg[:80])}), 502
             cam.update(conn)
             if "port" in conn:
                 cam["port"] = int(conn["port"])
@@ -651,14 +651,14 @@ def api_bulk():
     b = request.get_json(silent=True) or {}
     ids = [int(i) for i in (b.get("ids") or [])]
     if not ids:
-        return jsonify({"error": "nicio camera selectată"}), 400
+        return jsonify({"error": t("nicio camera selectată")}), 400
     cams = load_ext()
     by_id = {c["id"]: c for c in cams}
     results, changed = [], False
     for cid in ids:
         cam = by_id.get(cid)
         if not cam:
-            results.append({"id": cid, "ok": False, "err": "inexistenta"})
+            results.append({"id": cid, "ok": False, "err": t("inexistenta")})
             continue
         errs = []
         if b.get("record") in ("continuous", "motion", "off"):
@@ -675,12 +675,12 @@ def api_bulk():
                 _remember_desired(cid, st)
                 record.reset_codec(cid)
             except Exception as e:
-                errs.append(f"calitate: {str(e)[:40]}")
+                errs.append(t("calitate: {e}", e=str(e)[:40]))
         if st.get("sub_keyframe"):
             try:
                 _set_stream_synced(cam, keyframe=st["sub_keyframe"], ch=102)
             except Exception as e:
-                errs.append(f"cadre-cheie: {str(e)[:40]}")
+                errs.append(t("cadre-cheie: {e}", e=str(e)[:40]))
         for key, on in (b.get("smart") or {}).items():
             try:
                 camctl.set_smart(cam, key, bool(on))
@@ -709,9 +709,9 @@ def api_cam_stream(cam_id):
     Afecteaza direct spatiul ocupat: inregistram exact ce trimite camera (fara recodare)."""
     cam = _cam_entry(cam_id)
     if not cam:
-        return jsonify({"error": "camera nu există"}), 404
+        return jsonify({"error": t("camera nu există")}), 404
     if not drivers.este_hik(cam):
-        return jsonify({"error": "calitatea fluxului se seteaza din interfața camerei (ONVIF)",
+        return jsonify({"error": t("calitatea fluxului se seteaza din interfața camerei (ONVIF)"),
                         "vendor": "onvif"}), 400
     try:
         if request.method == "POST":
@@ -738,7 +738,7 @@ def api_cam_health(cam_id):
     """Verifica efectiv fluxul video al camerei (nu doar ca raspunde la interogari)."""
     cam = _cam_entry(cam_id)
     if not cam:
-        return jsonify({"error": "camera nu există"}), 404
+        return jsonify({"error": t("camera nu există")}), 404
     return jsonify({"sub": health.check_stream(cam, 102),
                     "main": health.check_stream(cam, 101)})
 
@@ -750,7 +750,7 @@ def api_reprobe(cam_id):
         cams = load_ext()
         cam = next((c for c in cams if c["id"] == cam_id), None)
         if not cam:
-            return jsonify({"error": "camera nu există"}), 404
+            return jsonify({"error": t("camera nu există")}), 404
         try:
             # Ce s-a aflat prin proba (camera chiar se roteste? chiar pastreaza pozitiile?) nu
             # poate fi dedus din interogarea obisnuita — firmware-ul raporteaza PTZ si acolo
@@ -776,7 +776,7 @@ def api_reboot(cam_id):
     """Reporneste camera (revine in ~40 de secunde)."""
     cam = _cam_entry(cam_id)
     if not cam:
-        return jsonify({"error": "camera nu există"}), 404
+        return jsonify({"error": t("camera nu există")}), 404
     try:
         s = requests.Session()
         s.auth = HTTPDigestAuth(cam["user"], cam["pass"])

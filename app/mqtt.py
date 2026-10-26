@@ -24,6 +24,7 @@ import time
 import settings
 import logare
 import config as C
+from i18n import t
 
 _client = None
 _init_lock = threading.Lock()
@@ -148,17 +149,16 @@ def publish_event(eveniment, cam_id, date):
 def test():
     """Conectare + publicare sincrona de proba — pentru butonul din Setari."""
     if not settings.get("mqtt_host"):
-        raise ValueError("completează adresa brokerului")
+        raise ValueError(t("completează adresa brokerului"))
     reconfigure()
     if not enabled():
-        raise ValueError("pornește întâi MQTT (bifa Activat)")
+        raise ValueError(t("pornește întâi MQTT (bifa Activat)"))
     c = _get_client()
     t0 = time.time()
     while not state["connected"] and time.time() - t0 < 6:
         time.sleep(0.1)
     if not state["connected"]:
-        raise RuntimeError(state.get("error") or "brokerul nu raspunde "
-                           "(adresa/portul/user/parola?)")
+        raise RuntimeError(state.get("error") or t("brokerul nu raspunde (adresa/portul/user/parola?)"))
     c.publish(f"{_base()}/proba",
               json.dumps({"mesaj": f"salut de la {C.NUME}",
                           "moment": time.strftime("%H:%M:%S")}, ensure_ascii=False))

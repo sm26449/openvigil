@@ -5,7 +5,7 @@
    „cauta dupa acesta” = lant de cautari. Modul ES al interfetei; intrarea e app/static/app.js.
    ==================================================================== */
 import { S } from './state.js';
-import { $, html, lista } from './00-core.js';
+import { $, html, lista, t } from './00-core.js';
 import { openFisa } from './45-fisa.js';
 
 let reidUltim = null;
@@ -13,28 +13,28 @@ let reidUltim = null;
 async function reidCauta(body) {
   const dlg = $('#reid'); if (!dlg) return;
   reidUltim = body;
-  $('#reid-info').textContent = 'caut…'; $('#reid-list').innerHTML = '';
+  $('#reid-info').textContent = t('caut…'); $('#reid-list').innerHTML = '';
   if (!dlg.open) dlg.showModal();
   let d;
   try {
     const q = new URLSearchParams({ ...body, zile: String(+$('#reid-zile').value || 7) });
     d = await (await fetch('/api/reid/cauta?' + q)).json();
-  } catch { d = { error: 'rețea' }; }
-  if (!d || d.error) { $('#reid-info').textContent = (d && d.error) || 'eșuat'; return; }
+  } catch { d = { error: t('rețea') }; }
+  if (!d || d.error) { $('#reid-info').textContent = (d && d.error) || t('eșuat'); return; }
   const q = $('#reid-q');
   if (d.interogare) { q.src = 'data:image/jpeg;base64,' + d.interogare; q.classList.remove('hidden'); } else q.classList.add('hidden');
   const ap = d.aparitii || [], a = d.arhiva || {};
   $('#reid-info').textContent = ap.length
-    ? `${ap.length} apariții în ${$('#reid-zile').selectedOptions[0].textContent} · arhiva: ${a.esantioane_7_zile || 0} eșantioane în 7 zile`
-    : `nimic asemănător în ${$('#reid-zile').selectedOptions[0].textContent} (arhiva are ${a.esantioane_7_zile || 0} eșantioane în 7 zile; re-ID-ul eșantionează doar camerele urmărite)`;
+    ? t('{n} apariții în {perioada} · arhiva: {m} eșantioane în 7 zile', { n: ap.length, perioada: $('#reid-zile').selectedOptions[0].textContent, m: a.esantioane_7_zile || 0 })
+    : t('nimic asemănător în {perioada} (arhiva are {m} eșantioane în 7 zile; re-ID-ul eșantionează doar camerele urmărite)', { perioada: $('#reid-zile').selectedOptions[0].textContent, m: a.esantioane_7_zile || 0 });
   // pe zile, cele mai noi primele; in zi, dupa ora
   const zile = [...new Set(ap.map((x) => x.zi))].sort().reverse();
   $('#reid-list').innerHTML = html`${zile.map((zi) => html`<div class="reid-zi">${zi}</div>${
     lista(ap.filter((x) => x.zi === zi).sort((p, r) => r.t - p.t), (x) => html`
       <div class="reid-item" data-zi="${x.zi}" data-fn="${x.fn}" data-cam="${x.cam}" data-t="${x.t}">
-        <img src="${x.crop}" alt="" loading="lazy" title="deschide momentul">
+        <img src="${x.crop}" alt="" loading="lazy" title="${t('deschide momentul')}">
         <span class="r-main"><span><span class="r-sim">${Math.round(x.sim * 100)}%</span> · ${x.cam_nume} · ${x.ora}${x.cine ? ' · ' + x.cine : ''}</span></span>
-        <span class="r-acts"><button class="link-btn r-fisa">fișă</button><button class="link-btn r-mai" title="Caută mai departe după această apariție">caută după acesta</button></span>
+        <span class="r-acts"><button class="link-btn r-fisa">${t('fișă')}</button><button class="link-btn r-mai" title="${t('Caută mai departe după această apariție')}">${t('caută după acesta')}</button></span>
       </div>`, '')}`)}`;
   for (const it of $('#reid-list').querySelectorAll('.reid-item')) {
     const deschide = () => {

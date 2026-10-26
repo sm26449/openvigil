@@ -15,6 +15,7 @@ import audit
 import backup_nocturn
 import jobs
 import lant
+from i18n import t
 from server import current_user
 
 bp = Blueprint("date", __name__)
@@ -33,10 +34,10 @@ def api_segmente():
     try:
         cam = int(request.args["channel"])
     except (KeyError, ValueError):
-        return jsonify({"error": "channel lipsa"}), 400
+        return jsonify({"error": t("channel lipsa")}), 400
     t0 = _zi(request.args.get("day") or time.strftime("%Y-%m-%d"))
     if t0 is None:
-        return jsonify({"error": "zi invalida"}), 400
+        return jsonify({"error": t("zi invalida")}), 400
     seg = lant.lista(cam, since=t0, until=t0 + 86400)
     for s in seg:
         s["exista"] = os.path.exists(s["cale"])
@@ -51,7 +52,7 @@ def api_segmente_verifica():
         cam = int(request.args["channel"])
         nume = os.path.basename(request.args["nume"])
     except (KeyError, ValueError):
-        return jsonify({"error": "parametri lipsa"}), 400
+        return jsonify({"error": t("parametri lipsa")}), 400
     r = lant.verifica(cam, nume)
     audit.log("verificare amprenta segment", f"cam{cam} {nume}", {"ok": r.get("ok")})
     return jsonify({"camera": cam, "nume": nume, **r})
@@ -79,7 +80,7 @@ def _job_backup(job):
     try:
         return backup_nocturn.ruleaza(progres=job.progres, cine=job.parametri.get("cine") or "admin")
     except Exception as e:
-        raise jobs.JobError(f"copia a eșuat: {str(e)[:150]}")
+        raise jobs.JobError(t("copia a eșuat: {e}", e=str(e)[:150]))
 
 
 @bp.route("/api/backup/cheie")
@@ -87,8 +88,8 @@ def api_backup_cheie():
     """Cheia de criptare — fara ea copiile sunt inutile; se arata o data, de notat separat."""
     audit.log("cheia de backup afisata")
     return jsonify({"cheie": backup_nocturn.cheie(), "amprenta": backup_nocturn.amprenta_cheie(),
-                    "nota": "Pastreaz-o in alta parte decat serverul (manager de parole). "
-                            "Refacere: scripts/restaureaza-backup.py <fisier.enc> <destinatie>"})
+                    "nota": t("Pastreaz-o in alta parte decat serverul (manager de parole). Refacere: {cmd}",
+                              cmd="scripts/restaureaza-backup.py <fisier.enc> <destinatie>")})
 
 
 jobs.register("backup", _job_backup)

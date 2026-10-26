@@ -6,6 +6,11 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 ## [Nepublicat]
 
 ### Adăugat
+- Interfață multilingvă: română și engleză. Limba urmează browserul, poate fi fixată pe cont
+  (Contul meu → Limba) sau din `?lang=`; `NVR_LANG` dă limba serverului (notificări, rezumat).
+  Cheia unui text e textul românesc (`t()` în Python și JavaScript, `app/i18n.py`), pagina
+  e tradusă pe server; dicționare JSON în `app/static/i18n/`, suprascrieri în `data/i18n/`;
+  `scripts/i18n_check.py` verifică acoperirea.
 - Mod demo: patru camere sintetice (vendor `demo`, go2rtc `ffmpeg:virtual`), din Setări → Unelte;
   fără acțiuni, fără rețea, înregistrate doar prin go2rtc.
 - Site-ul proiectului: [openvigil.dev](https://openvigil.dev).

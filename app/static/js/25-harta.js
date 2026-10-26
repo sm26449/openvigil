@@ -4,7 +4,7 @@
    pe toate; importurile/exporturile sunt verificate de scripts/module_check.py (si in pytest).
    ==================================================================== */
 import { S } from './state.js';
-import { $, ADMIN, html, lista, toast } from './00-core.js';
+import { $, ADMIN, html, lista, t, toast } from './00-core.js';
 import { post } from './10-live.js';
 import { openHD } from './20-hd.js';
 /* ---------- Etapa 4: harta proprietatii ----------
@@ -40,15 +40,15 @@ function renderHarta() {
   $('#harta-side').classList.toggle('hidden', !hartaEdit || !p);
   if (!p) {
     img.removeAttribute('src'); wrap.classList.add('gol');
-    empty.textContent = ADMIN ? 'Niciun plan încă. Apasă „Editează” → „Plan nou”, apoi încarcă o imagine (schiță curții, o captura din satelit) și așază camerele.'
-                              : 'Administratorul nu a configurat încă harta proprietății.';
+    empty.textContent = ADMIN ? t('Niciun plan încă. Apasă „Editează” → „Plan nou”, apoi încarcă o imagine (schiță curții, o captura din satelit) și așază camerele.')
+                              : t('Administratorul nu a configurat încă harta proprietății.');
     empty.classList.remove('hidden');
     $('#harta-info').textContent = '';
     return;
   }
   if (!p.imagine) {
     img.removeAttribute('src'); wrap.classList.add('gol');
-    empty.textContent = ADMIN ? 'Planul nu are imagine: apasa „Incarca imaginea” (PNG/JPEG/WebP, pana la 8 MB).' : 'Planul nu are încă o imagine.';
+    empty.textContent = ADMIN ? t('Planul nu are imagine: apasa „Incarca imaginea” (PNG/JPEG/WebP, pana la 8 MB).') : t('Planul nu are încă o imagine.');
     empty.classList.remove('hidden');
   } else {
     empty.classList.add('hidden'); wrap.classList.remove('gol');
@@ -57,7 +57,8 @@ function renderHarta() {
     else drawHarta();
   }
   const n = Object.keys(p.camere || {}).length;
-  $('#harta-info').textContent = `${n} camere pe plan` + (hartaEdit ? ' — trage camerele; click pe una o selectează' : '');
+  $('#harta-info').textContent = hartaEdit ? t('{n} camere pe plan — trage camerele; click pe una o selectează', { n })
+                                           : t('{n} camere pe plan', { n });
   if (hartaEdit) renderHartaSide();
 }
 function drawHarta() {
@@ -87,8 +88,8 @@ function drawHarta() {
     g.querySelector('text').setAttribute('font-size', (12 * k).toFixed(2));
     if (!hartaEdit) {
       g.onclick = () => openHD(c);
-      const t = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-      t.textContent = `${c.name} — click pentru HD`; g.appendChild(t);
+      const ttl = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+      ttl.textContent = t('{nume} — click pentru HD', { nume: c.name }); g.appendChild(ttl);
     } else hartaDrag(g, c, pos);
     svg.appendChild(g);
     hartaMk[c.id] = g;
@@ -118,7 +119,7 @@ async function hartaSave(camere) {
   const p = hartaPlan();
   if (!p) return;
   const d = await post('/api/harta', { id: p.id, camere });
-  if (d && !d.error) { p.camere = d.plan.camere; drawHarta(); renderHartaSide(); $('#harta-info').textContent = `${Object.keys(p.camere).length} camere pe plan — salvat ✓`; }
+  if (d && !d.error) { p.camere = d.plan.camere; drawHarta(); renderHartaSide(); $('#harta-info').textContent = t('{n} camere pe plan — salvat ✓', { n: Object.keys(p.camere).length }); }
 }
 function renderHartaSide() {
   const p = hartaPlan();
@@ -126,7 +127,7 @@ function renderHartaSide() {
   const placed = new Set(Object.keys(p.camere || {}).map(Number));
   const libere = S.cameras.filter((c) => !placed.has(c.id));
   $('#harta-unplaced').innerHTML = lista(libere, (c) => html`<div class="u-row" data-id="${c.id}"><b>${c.id}.</b> ${c.name}</div>`,
-    '<p class="hint">Toate camerele sunt pe un plan.</p>');
+    html`<p class="hint">${t('Toate camerele sunt pe un plan.')}</p>`);
   for (const row of document.querySelectorAll('#harta-unplaced .u-row')) {
     row.onclick = () => { const id = +row.dataset.id; hartaSel = id; hartaSave({ [id]: { x: 0.5, y: 0.5, dir: 0, fov: 70 } }); };
   }
@@ -135,44 +136,44 @@ function renderHartaSide() {
   selBox.classList.toggle('hidden', !pos);
   if (!pos) return;
   const c = S.cameras.find((x) => x.id === hartaSel);
-  $('#harta-sel-name').textContent = c ? `${c.id}. ${c.name}` : `cam ${hartaSel}`;
+  $('#harta-sel-name').textContent = c ? `${c.id}. ${c.name}` : t('cam {id}', { id: hartaSel });
   $('#harta-dir').value = pos.dir; $('#harta-fov').value = pos.fov;
 }
 $('#harta-dir').oninput = () => { const p = hartaPlan(); const pos = p && p.camere[hartaSel]; if (pos) { pos.dir = +$('#harta-dir').value; drawHarta(); } };
 $('#harta-fov').oninput = () => { const p = hartaPlan(); const pos = p && p.camere[hartaSel]; if (pos) { pos.fov = +$('#harta-fov').value; drawHarta(); } };
 $('#harta-dir').onchange = $('#harta-fov').onchange = () => { const p = hartaPlan(); const pos = p && p.camere[hartaSel]; if (pos) hartaSave({ [hartaSel]: pos }); };
 $('#harta-unplace').onclick = () => { if (hartaSel !== null) { const id = hartaSel; hartaSel = null; hartaSave({ [id]: null }); } };
-$('#harta-edit').onclick = () => { hartaEdit = !hartaEdit; $('#harta-edit').textContent = hartaEdit ? 'Gata' : 'Editează'; hartaSel = null; loadHarta(); };
+$('#harta-edit').onclick = () => { hartaEdit = !hartaEdit; $('#harta-edit').textContent = hartaEdit ? t('Gata') : t('Editează'); hartaSel = null; loadHarta(); };
 $('#harta-plan').onchange = () => { hartaPid = $('#harta-plan').value; localStorage.setItem('hartaPlan', hartaPid); hartaSel = null; renderHarta(); };
 $('#harta-new').onclick = async () => {
-  const nume = prompt('Numele planului (ex. Curtea, Parter, Etaj):', 'Curtea');
+  const nume = prompt(t('Numele planului (ex. Curtea, Parter, Etaj):'), t('Curtea'));
   if (!nume) return;
   const d = await post('/api/harta', { plan_nou: nume });
   if (d && !d.error) { hartaPid = d.plan.id; localStorage.setItem('hartaPlan', hartaPid); loadHarta(); }
 };
 $('#harta-rename').onclick = async () => {
   const p = hartaPlan(); if (!p) return;
-  const nume = prompt('Numele nou al planului:', p.nume);
+  const nume = prompt(t('Numele nou al planului:'), p.nume);
   if (!nume) return;
   const d = await post('/api/harta', { id: p.id, nume });
   if (d && !d.error) loadHarta();
 };
 $('#harta-del').onclick = async () => {
   const p = hartaPlan(); if (!p) return;
-  if (!confirm(`Ștergi planul „${p.nume}” cu imaginea și pozițiile lui?`)) return;
+  if (!confirm(t('Ștergi planul „{nume}” cu imaginea și pozițiile lui?', { nume: p.nume }))) return;
   const r = await fetch(`/api/harta/${p.id}`, { method: 'DELETE' });
   const d = await r.json();
-  if (d.error) { alert('Eroare: ' + d.error); return; }
+  if (d.error) { alert(t('Eroare: {err}', { err: d.error })); return; }
   hartaPid = ''; loadHarta();
 };
-$('#harta-upload').onclick = () => { if (hartaPlan()) $('#harta-file').click(); else toast('Fa întâi un plan', true); };
+$('#harta-upload').onclick = () => { if (hartaPlan()) $('#harta-file').click(); else toast(t('Fa întâi un plan'), true); };
 $('#harta-file').onchange = async () => {
   const f = $('#harta-file').files[0], p = hartaPlan();
   if (!f || !p) return;
   const r = await fetch(`/api/harta/${p.id}/imagine`, { method: 'POST', headers: { 'Content-Type': f.type }, body: f });
   const d = await r.json();
   $('#harta-file').value = '';
-  if (d.error) { alert('Eroare: ' + d.error); return; }
+  if (d.error) { alert(t('Eroare: {err}', { err: d.error })); return; }
   p._v = Date.now();
   loadHarta().then(() => { hartaPlan()._v = p._v; renderHarta(); });
 };

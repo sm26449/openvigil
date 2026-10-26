@@ -18,6 +18,7 @@ import time
 
 import ai_analytics
 import logare
+from i18n import t
 
 GAP = 45           # secunde fara nicio persoana -> episodul s-a incheiat
 NUME_FEREASTRA = 30  # numele recunoscute cu putin inainte de episod tot ale lui sunt
@@ -151,16 +152,16 @@ def _text(e, nume, semnalmente, fapta=None):
     """Rezumatul in romana — UI-ul il afiseaza ca atare pe cardul de incident."""
     n = e["max_simultan"]
     cine = ", ".join(nume) if nume else \
-        ("o persoana necunoscuta" if n <= 1 else f"{n} persoane simultan")
+        (t("o persoana necunoscuta") if n <= 1 else t("{n} persoane simultan", n=n))
     sec = int(e["last"] - e["t0"])
-    durata = f"{sec}s" if sec < 90 else f"{round(sec / 60)} min"
+    durata = f"{sec}s" if sec < 90 else t("{n} min", n=round(sec / 60))
     parti = [f"{cine} · {durata}"]
     if fapta:
-        parti.append(fapta)
+        parti.append(t(fapta))
     if e["zone"]:
-        parti.append("zone: " + ", ".join(sorted(e["zone"])))
+        parti.append(t("zone: {lista}", lista=", ".join(sorted(e["zone"]))))
     if e["directii"]:
-        parti.append("directie: " + ", ".join(sorted(e["directii"])))
+        parti.append(t("directie: {lista}", lista=", ".join(sorted(e["directii"]))))
     if semnalmente:
         parti.append(semnalmente.rstrip("."))
     return " · ".join(parti)

@@ -22,6 +22,7 @@ import tarfile
 import threading
 import time
 import logare
+from i18n import t
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "data")
@@ -117,10 +118,10 @@ def creeaza(dest_dir=None, fete=None, data_dir=None, progres=None):
                 tar.add(tmp, arcname=rel)
                 continut.append(rel)
         if progres:
-            progres(40, "arhiva construita")
-    for t in tmpdb:
+            progres(40, t("arhiva construita"))
+    for tmpf in tmpdb:
         try:
-            os.remove(t)
+            os.remove(tmpf)
         except OSError:
             pass
     clar = buf.getvalue()
@@ -138,7 +139,7 @@ def creeaza(dest_dir=None, fete=None, data_dir=None, progres=None):
     with open(cale[:-len(".tar.gz.enc")] + ".json", "w") as f:
         json.dump(manifest, f, indent=2, ensure_ascii=False)
     if progres:
-        progres(70, "criptată și scrisa local")
+        progres(70, t("criptată și scrisa local"))
     return manifest
 
 
@@ -184,7 +185,7 @@ def trimite(cale, remote, run=subprocess.run):
     intr-un director montat. Intoarce (ok, mesaj)."""
     remote = (remote or "").strip()
     if not remote:
-        return None, "fara destinatie externa"
+        return None, t("fara destinatie externa")
     fisiere = [cale, cale[:-len(".tar.gz.enc")] + ".json"]
     if ":" in remote and not os.path.isdir(remote):
         cmd = ["rsync", "-a", "--partial", "--timeout=120",
@@ -193,14 +194,14 @@ def trimite(cale, remote, run=subprocess.run):
             r = run(cmd, capture_output=True, text=True, timeout=1800)
         except Exception as e:
             return False, f"rsync: {str(e)[:120]}"
-        return (r.returncode == 0), ("trimis" if r.returncode == 0 else (r.stderr or "rsync a esuat")[-200:])
+        return (r.returncode == 0), (t("trimis") if r.returncode == 0 else (r.stderr or t("rsync a esuat"))[-200:])
     try:
         os.makedirs(remote, exist_ok=True)
         for f in fisiere:
             shutil.copy2(f, os.path.join(remote, os.path.basename(f)))
-        return True, "copiat"
+        return True, t("copiat")
     except OSError as e:
-        return False, f"copiere: {str(e)[:120]}"
+        return False, t("copiere: {e}", e=str(e)[:120])
 
 
 def restaureaza(cale, k, dest_dir, manifest=None):
@@ -212,15 +213,15 @@ def restaureaza(cale, k, dest_dir, manifest=None):
     try:
         clar = Fernet((k or "").strip().encode()).decrypt(cript)
     except (InvalidToken, ValueError):
-        raise ValueError("cheie greșită sau fișier corupt")
+        raise ValueError(t("cheie greșită sau fișier corupt"))
     if manifest and manifest.get("sha256_clar") and hashlib.sha256(clar).hexdigest() != manifest["sha256_clar"]:
-        raise ValueError("continutul nu corespunde manifestului (sha256)")
+        raise ValueError(t("continutul nu corespunde manifestului (sha256)"))
     os.makedirs(dest_dir, exist_ok=True)
     out = []
     with tarfile.open(fileobj=io.BytesIO(clar), mode="r:gz") as tar:
         for m in tar.getmembers():
             if m.name.startswith("/") or ".." in m.name.split("/"):
-                raise ValueError(f"cale periculoasă în arhiva: {m.name}")
+                raise ValueError(t("cale periculoasă în arhiva: {cale}", cale=m.name))
         tar.extractall(dest_dir, filter="data")
         out = [m.name for m in tar.getmembers() if m.isfile()]
     return out
@@ -264,18 +265,18 @@ def ruleaza(progres=None, cine="program"):
             if ok_ext is False:
                 try:
                     import notify
-                    notify.send(f"⚠️ Copia de siguranță s-a scris local, dar NU a plecat în afara: {msg_ext}",
+                    notify.send(t("⚠️ Copia de siguranță s-a scris local, dar NU a plecat în afara: {motiv}", motiv=msg_ext),
                                 key="backup-extern")
                 except Exception:
                     pass
             if progres:
-                progres(100, "gata")
+                progres(100, t("gata"))
             return m
         except Exception as e:
             _stare({"ok": False, "eroare": str(e)[:200], "la": time.time()})
             try:
                 import notify
-                notify.send(f"⚠️ Copia de siguranță a EȘUAT: {str(e)[:120]}", key="backup-esuat")
+                notify.send(t("⚠️ Copia de siguranță a EȘUAT: {e}", e=str(e)[:120]), key="backup-esuat")
             except Exception:
                 pass
             raise

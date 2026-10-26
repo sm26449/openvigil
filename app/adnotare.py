@@ -13,6 +13,7 @@ import threading
 import time
 
 import store
+from i18n import t
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FINETUNE = os.path.join(ROOT, "data", "finetune")
@@ -48,12 +49,12 @@ def verificate():
 
 def _cai(split, fn):
     if not _FN.match(fn or ""):
-        raise ValueError("cadru invalid")
+        raise ValueError(t("cadru invalid"))
     if split == "nesigure":          # cadru brut din data/dataset, etichete din coada
         import nesigure
         return os.path.join(nesigure.DATASET_DIR, fn), None
     if split not in SPLITS:
-        raise ValueError("cadru invalid")
+        raise ValueError(t("cadru invalid"))
     img = os.path.join(FINETUNE, "images", split, fn)
     lbl = os.path.join(FINETUNE, "labels", split, fn[:-4] + ".txt")
     return img, lbl
@@ -164,9 +165,9 @@ def salveaza(split, fn, boxes, cine=None):
         try:
             c = int(b["cls"]); cx, cy, w, h = (float(b[k]) for k in ("cx", "cy", "w", "h"))
         except (KeyError, TypeError, ValueError):
-            raise ValueError("chenar invalid")
+            raise ValueError(t("chenar invalid"))
         if not (0 <= c < n_clase) or not all(0.0 <= v <= 1.0 for v in (cx, cy, w, h)) or w <= 0 or h <= 0:
-            raise ValueError("chenar în afara cadrului sau clasă necunoscută")
+            raise ValueError(t("chenar în afara cadrului sau clasă necunoscută"))
         linii.append(f"{c} {cx:.6f} {cy:.6f} {w:.6f} {h:.6f}")
     os.makedirs(os.path.dirname(lbl), exist_ok=True)
     with _lock:

@@ -4,7 +4,7 @@
    pe toate; importurile/exporturile sunt verificate de scripts/module_check.py (si in pytest).
    ==================================================================== */
 import { S } from './state.js';
-import { $, ADMIN, CAN_ACT, DET_RO, HD_MODE, gridFrame, html, icon, streamEl, talkStop, toast } from './00-core.js';
+import { $, ADMIN, CAN_ACT, DET_RO, HD_MODE, gridFrame, html, icon, streamEl, t, talkStop, toast } from './00-core.js';
 import { show } from './05-navigare.js';
 import { ZOOM_MAX_MS, buildCtrls, post } from './10-live.js';
 import { addMark, attachDigitalZoom, compact, hms, loadMarks, localDay, pad, searchRecordings, secOfDay } from './30-redare.js';
@@ -54,7 +54,7 @@ function ptzOverlay(c) {
       const b = document.createElement('button');
       if (!sg) { b.className = 'gol'; b.disabled = true; } else {
         b.textContent = sg;
-        b.title = 'Ține apăsat ca să se rotească';
+        b.title = t('Ține apăsat ca să se rotească');
         tine(b, { pan: p, tilt: t });
       }
       pad.appendChild(b);
@@ -65,9 +65,9 @@ function ptzOverlay(c) {
   if (f.zoom) {
     const z = document.createElement('div');
     z.className = 'ptz-rand';
-    for (const [ic, v, ttl] of [['zoomin', 60, 'Apropie'], ['zoomout', -60, 'Depărtează']]) {
+    for (const [ic, v, ttl] of [['zoomin', 60, t('Apropie (ține apăsat)')], ['zoomout', -60, t('Depărtează (ține apăsat)')]]) {
       const b = document.createElement('button');
-      b.innerHTML = icon(ic); b.title = ttl + ' (ține apăsat)';
+      b.innerHTML = icon(ic); b.title = ttl;
       tine(b, { zoom: v });
       z.appendChild(b);
     }
@@ -78,36 +78,36 @@ function ptzOverlay(c) {
     const p = document.createElement('div');
     p.className = 'ptz-pre';
     const selPoz = document.createElement('select');
-    selPoz.title = 'Poziții memorate';
+    selPoz.title = t('Poziții memorate');
     const incarca = async () => {
       const ps = await (await fetch(`/api/cam/${c.id}/presets`)).json();
-      selPoz.innerHTML = html`<option value="">Poziții memorate…</option>${
+      selPoz.innerHTML = html`<option value="">${t('Poziții memorate…')}</option>${
         (Array.isArray(ps) ? ps : []).map((x) => html`<option value="${x.id}">${x.nume}</option>`)}`;
     };
     selPoz.onchange = async () => {
       if (!selPoz.value) return;
       await post(`/api/cam/${c.id}/presets`, { id: +selPoz.value });
-      toast('Camera se duce pe poziție');
+      toast(t('Camera se duce pe poziție'));
     };
     const add = document.createElement('button');
-    add.innerHTML = icon('plus'); add.title = 'Memorează poziția de acum';
+    add.innerHTML = icon('plus'); add.title = t('Memorează poziția de acum');
     add.onclick = async (e) => {
       e.stopPropagation();
-      const nume = prompt('Cum numim poziția asta?', 'Poziție nouă');
+      const nume = prompt(t('Cum numim poziția asta?'), t('Poziție nouă'));
       if (!nume) return;
       const r = await post(`/api/cam/${c.id}/presets`, { nume });
-      if (r && r.error) { toast('Nu a mers: ' + r.error); return; }
+      if (r && r.error) { toast(t('Nu a mers: {err}', { err: r.error })); return; }
       await incarca();
-      toast('Poziție memorată');
+      toast(t('Poziție memorată'));
     };
     const del = document.createElement('button');
-    del.innerHTML = icon('trash'); del.title = 'Șterge poziția aleasă';
+    del.innerHTML = icon('trash'); del.title = t('Șterge poziția aleasă');
     del.onclick = async (e) => {
       e.stopPropagation();
-      if (!selPoz.value) { toast('Alege întâi o poziție'); return; }
+      if (!selPoz.value) { toast(t('Alege întâi o poziție')); return; }
       await fetch(`/api/cam/${c.id}/presets?id=${selPoz.value}`, { method: 'DELETE' });
       await incarca();
-      toast('Poziție ștearsă');
+      toast(t('Poziție ștearsă'));
     };
     if (ADMIN) p.append(selPoz, add, del);   // operatorul recheama/salveaza, nu sterge
     else p.append(selPoz, add);
@@ -119,16 +119,16 @@ function ptzOverlay(c) {
     const fr = document.createElement('div');
     fr.className = 'ptz-focus';
     const sel = document.createElement('select');
-    sel.title = 'Cum focalizează camera';
-    sel.innerHTML = '<option value="AUTO">Focalizare automata</option>'
-      + '<option value="SEMIAUTO">Focalizeaza dupa miscare</option>'
-      + '<option value="MANUAL">Focalizare manuala</option>';
+    sel.title = t('Cum focalizează camera');
+    sel.innerHTML = html`<option value="AUTO">${t('Focalizare automată')}</option>
+      <option value="SEMIAUTO">${t('Focalizează după mișcare')}</option>
+      <option value="MANUAL">${t('Focalizare manuală')}</option>`;
     fetch(`/api/cam/${c.id}/focus`).then((r) => r.json()).then((d) => {
       if (d.mod) sel.value = d.mod;
     }).catch(() => {});
     sel.onchange = async () => {
       const r = await post(`/api/cam/${c.id}/focus`, { mod: sel.value });
-      toast(r && r.error ? 'Nu a mers: ' + r.error : 'Focalizare schimbată');
+      toast(r && r.error ? t('Nu a mers: {err}', { err: r.error }) : t('Focalizare schimbată'));
     };
     fr.appendChild(sel);
     box.appendChild(fr);
@@ -181,7 +181,7 @@ async function hdGoLive() {
   $('#hd-live').classList.add('on');
   hdPos = null;
   const d = await (await fetch(`/api/play?channel=${hdCam.id}${hdHeightParam()}`)).json();
-  if (d.error) { wrap.innerHTML = html`Eroare: ${d.error}`; return; }
+  if (d.error) { wrap.innerHTML = html`${t('Eroare: {err}', { err: d.error })}`; return; }
   const sub = streamEl(`cam${hdCam.id}`, 'mse,webrtc');   // substream live: plasa de siguranta
   sub.style.position = 'absolute'; sub.style.inset = '0';
   const hd = streamEl(d.stream, HD_MODE, false, hdBufferTarget());  // HD (mainstream) deasupra
@@ -227,9 +227,9 @@ async function hdPlayAt(when) {
   const date = localDay();
   const sec = when.getHours() * 3600 + when.getMinutes() * 60 + when.getSeconds();
   const start = compact(date, sec);
-  wrap.innerHTML = 'Caut înregistrarea...';
+  wrap.textContent = t('Caut înregistrarea...');
   $('#hd-live').classList.remove('on');
-  $('#hd-when').textContent = `⏱ ${hms(sec)} (înregistrare)`;
+  $('#hd-when').textContent = t('⏱ {ora} (înregistrare)', { ora: hms(sec) });
   const d = await (await fetch(`/api/play?channel=${hdCam.id}&start=${start}${hdHeightParam()}`)).json();
   if (d.error) { wrap.innerHTML = html`<span class="hd-err">${d.error}</span>`; return; }
   wrap.innerHTML = '';
@@ -298,7 +298,8 @@ function drawHdBoxes(cv, st) {
     ctx.setLineDash([2, 3]);
     ctx.lineWidth = 2;
     ctx.strokeRect(x, y, w, h);
-    const txt = `parcat ${p.minute >= 60 ? Math.round(p.minute / 60) + 'h' : p.minute + 'min'}`;
+    const durata = p.minute >= 60 ? t('{n}h', { n: Math.round(p.minute / 60) }) : t('{n}min', { n: p.minute });
+    const txt = t('parcat {durata}', { durata });
     ctx.fillStyle = 'rgba(31,111,235,.85)';
     ctx.fillRect(x - 1, y + h + 1, ctx.measureText(txt).width + 8, 19);
     ctx.fillStyle = '#fff';
@@ -312,7 +313,7 @@ function drawHdBoxes(cv, st) {
     ctx.lineWidth = 2;
     ctx.strokeRect(x, y, w, h);
     const txt = `${b.lbl} ${Math.round(b.conf * 100)}%`
-      + (b.filtru ? ` · ${FILTRU_RO[b.filtru] || b.filtru}` : '');
+      + (b.filtru ? ` · ${t(FILTRU_RO[b.filtru] || b.filtru)}` : '');
     const tw = ctx.measureText(txt).width + 8;
     ctx.fillStyle = ok ? 'rgba(35,134,54,.85)' : 'rgba(90,98,108,.85)';
     ctx.fillRect(x - 1, Math.max(0, y - 19), tw, 19);
@@ -371,7 +372,7 @@ async function loadHdTimeline() {
       const dot = document.createElement('div');
       dot.className = 'evdot' + (DET_RO[it.label] ? ' det' : '');
       dot.style.left = ((h * 3600 + m * 60 + s) / 86400 * 100) + '%';
-      dot.title = `${it.time} — ${AL_RO[it.label] || it.label}`;
+      dot.title = `${it.time} — ${t(AL_RO[it.label] || it.label)}`;
       dot.onclick = (e) => { e.stopPropagation(); hdPlayAt(new Date(`${date}T${it.time}`)); };
       tl.appendChild(dot);
     }

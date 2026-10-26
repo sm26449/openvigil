@@ -4,7 +4,7 @@
    pe toate; importurile/exporturile sunt verificate de scripts/module_check.py (si in pytest).
    ==================================================================== */
 import { S } from './state.js';
-import { $, ADMIN, CAN_ACT, html, icon, toast } from './00-core.js';
+import { $, ADMIN, CAN_ACT, LIMBA, html, icon, t, toast } from './00-core.js';
 import { ZOOM_MAX_MS, pollEvents, post } from './10-live.js';
 import { closeHD, hdCam, openHD } from './20-hd.js';
 import { loadHarta } from './25-harta.js';
@@ -169,15 +169,16 @@ async function loadMod() {
     const d = await (await fetch('/api/mod')).json();
     modCurent = d.mod || 'acasa';
     for (const b of document.querySelectorAll('#mod-chip button')) b.classList.toggle('on', b.dataset.mod === modCurent);
-    const cand = d.de_cand ? new Date(d.de_cand * 1000).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short' }) : '';
-    $('#mod-chip').title = `Modul: ${d.nume ? d.nume[modCurent] : modCurent}${cand ? ` din ${cand}` : ''}${d.cine ? ` (${d.cine}, ${d.sursa || ''})` : ''}`;
+    const cand = d.de_cand ? new Date(d.de_cand * 1000).toLocaleString(LIMBA, { dateStyle: 'short', timeStyle: 'short' }) : '';
+    $('#mod-chip').title = [t('Modul: {mod}', { mod: d.nume ? d.nume[modCurent] : modCurent }),
+      cand ? t('din {cand}', { cand }) : '', d.cine ? `(${d.cine}, ${d.sursa || ''})` : ''].filter(Boolean).join(' ');
   } catch {}
 }
 $('#mod-chip').onclick = async (e) => {
   const b = e.target.closest('button[data-mod]');
   if (!b || !CAN_ACT || b.dataset.mod === modCurent) return;
   const d = await post('/api/mod', { mod: b.dataset.mod });
-  if (d && !d.error) { toast(`${MOD_ICO[d.mod]} Mod: ${b.textContent.trim().slice(2)}`); loadMod(); }
+  if (d && !d.error) { toast(`${MOD_ICO[d.mod]} ${t('Mod: {mod}', { mod: b.textContent.trim().slice(2) })}`); loadMod(); }
 };
 loadMod();
 setInterval(() => { if (!document.hidden) loadMod(); }, 20000);
@@ -207,10 +208,11 @@ async function pollPulse() {
       if (!b) return;
       b.className = 'pz' + (r.alarm ? ' alarm' : r.detect ? ' detect'
         : !r.rec ? ' down' : r.mode === 'motion' ? ' motion' : ' rec');
-      b.title = `${r.name} — ` + (r.alarm ? 'alarma acum'
-        : r.detect ? 'detecție AI acum'
-        : !r.rec ? 'NU înregistrează' + (r.age ? ` (de ${Math.round(r.age / 60)} min)` : '')
-        : r.mode === 'motion' ? 'înregistrează la mișcare' : 'înregistrează continuu');
+      const stare = r.alarm ? t('alarma acum')
+        : r.detect ? t('detecție AI acum')
+        : !r.rec ? (r.age ? t('NU înregistrează (de {min} min)', { min: Math.round(r.age / 60) }) : t('NU înregistrează'))
+        : r.mode === 'motion' ? t('înregistrează la mișcare') : t('înregistrează continuu');
+      b.title = `${r.name} — ${stare}`;
     });
   } catch {}
 }
@@ -237,15 +239,15 @@ async function loadLinks() {
       html`<a href="${url}" target="_blank" title="${title || url}">${txt}</a>`;
     // l.nvr lipseste cand NVR-ul e retras (Setari -> Sistem): nu-l mai aratam nicaieri
     $('#quick-links').innerHTML = html`${
-      mk(html`${icon('tools')} go2rtc`, l.go2rtc, 'Motorul de streaming (statusul fluxurilor)')} ${
-      l.nvr ? mk(html`${icon('server')} NVR`, l.nvr, 'Interfata NVR-ului Hikvision') : ''}`;
+      mk(html`${icon('tools')} go2rtc`, l.go2rtc, t('Motorul de streaming (statusul fluxurilor)'))} ${
+      l.nvr ? mk(html`${icon('server')} NVR`, l.nvr, t('Interfata NVR-ului Hikvision')) : ''}`;
     const rows = [
-      [html`${icon('tools')} go2rtc — statusul fluxurilor video`, l.go2rtc],
-      ...(l.nvr ? [[html`${icon('server')} NVR Hikvision (16 camere)`, l.nvr]] : []),
-      ...l.cameras.map((c) => [html`${icon('camera')} ${c.name} — interfața camerei`, c.url]),
+      [html`${icon('tools')} ${t('go2rtc — statusul fluxurilor video')}`, l.go2rtc],
+      ...(l.nvr ? [[html`${icon('server')} ${t('NVR Hikvision (16 camere)')}`, l.nvr]] : []),
+      ...l.cameras.map((c) => [html`${icon('camera')} ${t('{name} — interfața camerei', { name: c.name })}`, c.url]),
     ];
     $('#s-links').innerHTML = html`${rows
-      .map(([t, u]) => html`<a href="${u}" target="_blank">${t} ↗</a>`)}`;
+      .map(([txt, u]) => html`<a href="${u}" target="_blank">${txt} ↗</a>`)}`;
   } catch {}
 }
 loadLinks();

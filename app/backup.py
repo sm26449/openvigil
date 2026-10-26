@@ -9,6 +9,7 @@ de fete (sunt date, nu configuratie).
 import json
 import os
 import time
+from i18n import t
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FILES = {
@@ -49,7 +50,7 @@ def export_config(include_secrets=True):
 def import_config(payload):
     """Reface configuratia dintr-un fisier exportat. Face intai o copie a starii curente."""
     if not isinstance(payload, dict) or "date" not in payload:
-        raise ValueError("fișier de configurație nevalid")
+        raise ValueError(t("fișier de configurație nevalid"))
     stamp = time.strftime("%Y%m%d-%H%M%S")
     restored = []
     for name, path in FILES.items():

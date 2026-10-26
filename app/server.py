@@ -5,8 +5,8 @@
 - /api/play               -> inregistreaza un stream de playback/HD in go2rtc, intoarce numele
 Streaming-ul efectiv (MSE/WebRTC) e servit de go2rtc; frontend-ul vorbeste direct cu el.
 """
-import hmac, ipaddress, json, os, re, secrets, subprocess, sys, threading, time, urllib.parse
-from flask import (Flask, Response, redirect, request, jsonify,
+import hashlib, hmac, ipaddress, json, os, re, secrets, subprocess, sys, threading, time, urllib.parse
+from flask import (Flask, Response, g, redirect, request, jsonify,
                    send_from_directory, session)
 from flask.sessions import SecureCookieSessionInterface
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -24,6 +24,8 @@ import mqtt as mqtt_bridge
 import continuity
 import hooks
 import audit
+import i18n
+from i18n import t
 import jobs
 import jurnal
 import masca
@@ -174,7 +176,7 @@ def guard():
         return None          # forward-ul isi verifica singur sesiunea (401 fara redirect)
     if not users.load():     # prima pornire: totul duce la crearea contului admin
         if p.startswith("/api/"):
-            return jsonify({"error": "creează întâi contul de administrator"}), 401
+            return jsonify({"error": t("creează întâi contul de administrator")}), 401
         return redirect("/setup")
     u = current_user()
     if not u:
@@ -184,13 +186,13 @@ def guard():
         if "pre2fa" not in session:
             session.clear()
         if p.startswith("/api/"):
-            return jsonify({"error": "neautentificat"}), 401
+            return jsonify({"error": t("neautentificat")}), 401
         return redirect("/login")
     if request.method in ("POST", "PUT", "DELETE", "PATCH"):
         # CSRF: interfata trimite jetonul sesiunii in antetul X-CSRF la orice modificare
         if not hmac.compare_digest(request.headers.get("X-CSRF", ""),
                                    session.get("csrf", "")):
-            return jsonify({"error": "sesiune expirata — reîncarcă pagina"}), 403
+            return jsonify({"error": t("sesiune expirata — reîncarcă pagina")}), 403
         if u["role"] == "operator" and request.method == "POST":
             # paznicul actioneaza (sirena, vorbit, PTZ...) pe camerele lui, atat
             m = re.match(r"^/api/cam/(\d+)/([a-z-]+)$", p)
@@ -198,7 +200,7 @@ def guard():
                 vis = _visible_ids()
                 if vis is None or int(m[1]) in vis:
                     return None
-                return jsonify({"error": "nu ai acces la această camera"}), 403
+                return jsonify({"error": t("nu ai acces la această camera")}), 403
             # triajul incidentelor e treaba paznicului: confirma / marcheaza fals
             if re.match(r"^/api/incidents/[a-z0-9]+/stare$", p):
                 return None
@@ -221,17 +223,34 @@ def guard():
         if u["role"] == "operator" and p == "/api/mod":
             return None
         if u["role"] != "admin":
-            return jsonify({"error": "doar administratorul poate face modificări"}), 403
+            return jsonify({"error": t("doar administratorul poate face modificări")}), 403
     elif u["role"] != "admin" and p.startswith("/api/"):
         if not any(p == w or p.startswith(w) for w in VIEWER_GET):
-            return jsonify({"error": "nu ai acces la această sectiune"}), 403
+            return jsonify({"error": t("nu ai acces la această sectiune")}), 403
     # restrictia pe camere, pentru ORICE cerere a unui cont restrans (GET sau modificare):
     # id in cale, `channel`/`cam`/`camera` in query sau in corpul JSON (scoping.py)
     if u["role"] != "admin" and p.startswith("/api/"):
         vis = _visible_ids()
         if vis is not None and not scoping.permisa(p, request.args, request.get_json(silent=True), vis):
-            return jsonify({"error": "nu ai acces la această camera"}), 403
+            return jsonify({"error": t("nu ai acces la această camera")}), 403
     return None
+
+
+# limba interfetei: preferinta contului (Contul meu) cand exista o sesiune
+i18n.pref_utilizator = lambda: (current_user() or {}).get("lang")
+
+
+@app.after_request
+def _cookie_limba(resp):
+    """?lang=en (sau alegerea din Contul meu) ramane in cookie-ul `lang`, un an."""
+    limba = getattr(g, "limba_cookie", None)
+    if limba == "" and "lang" in request.cookies:
+        resp.delete_cookie("lang", domain=app.config.get("SESSION_COOKIE_DOMAIN") or None)
+    elif limba and request.cookies.get("lang") != limba:
+        resp.set_cookie("lang", limba, max_age=365 * 86400, httponly=True, samesite="Lax",
+                        secure=app.config["SESSION_COOKIE_SECURE"],
+                        domain=app.config.get("SESSION_COOKIE_DOMAIN") or None)
+    return resp
 
 
 @app.after_request
@@ -856,9 +875,45 @@ def healthz():
 
 
 # ---- fisiere statice ----
+_INDEX = {"mtime": 0, "text": ""}
+
+
+def _index_sursa():
+    """index.html, recitit cand se schimba pe disc (dezvoltare cu codul montat)."""
+    cale = os.path.join(STATIC, "index.html")
+    try:
+        mtime = os.stat(cale).st_mtime
+    except OSError:
+        return ""
+    if mtime != _INDEX["mtime"]:
+        with open(cale, encoding="utf-8") as f:
+            _INDEX["text"], _INDEX["mtime"] = f.read(), mtime
+    return _INDEX["text"]
+
+
 @app.route("/")
 def index():
-    return send_from_directory(STATIC, "index.html")
+    """Pagina aplicatiei, tradusa pe server in limba cererii (i18n.pagina): browserul primeste
+    direct textele limbii lui, fara sclipire; ETag pe continut, ca inainte (304 la recitire)."""
+    corp = i18n.pagina(_index_sursa(), i18n.limba_curenta())
+    # portul releului de flux (STREAM_PORT) ajunge in pagina: pe HTTP simplu browserul il
+    # deschide direct, iar instalarile pe alte porturi nu mai nimeresc 8076
+    corp = corp.replace('<meta charset="utf-8">',
+                        f'<meta charset="utf-8">\n<meta name="ov-stream-port" content="{int(C.STREAM_PORT)}">', 1)
+    resp = Response(corp, mimetype="text/html")
+    resp.set_etag(hashlib.sha1(corp.encode()).hexdigest()[:20])
+    return resp.make_conditional(request)
+
+
+@app.route("/i18n/<limba>.json")
+def i18n_dictionar(limba):
+    """Dictionarul limbii pentru JavaScript (t() din 00-core.js): aplicatie + data/i18n."""
+    if not i18n.limba_valida(limba):
+        return jsonify({"error": t("limbă necunoscută")}), 404
+    corp = json.dumps(i18n.dictionar(limba), ensure_ascii=False, separators=(",", ":"))
+    resp = Response(corp, mimetype="application/json")
+    resp.set_etag(hashlib.sha1(corp.encode()).hexdigest()[:20])
+    return resp.make_conditional(request)
 
 
 @app.route("/<path:p>")
@@ -958,7 +1013,7 @@ def api_internal_emit():
 
 def _api_guard():
     if not _token_ok():
-        return jsonify({"eroare": "jeton lipsa sau greșit"}), 401
+        return jsonify({"eroare": t("jeton lipsa sau greșit")}), 401
     return None
 
 
@@ -1019,13 +1074,13 @@ def v1_actiune(cam_id, actiune):
         return r
     cam = _cam_entry(cam_id)
     if not cam:
-        return jsonify({"eroare": "camera inexistenta"}), 404
+        return jsonify({"eroare": t("camera inexistenta")}), 404
     d = request.get_json(silent=True) or {}
     f = cam.get("features") or {}
     try:
         if actiune == "sirena":
             if not f.get("siren"):
-                return jsonify({"eroare": "camera nu are sirena"}), 400
+                return jsonify({"eroare": t("camera nu are sirena")}), 400
             snd = str(d.get("sunet", 1))
             drivers.trigger_siren(cam, audio_id=int(str(snd).lstrip("c")),
                                   volume=int(d.get("volum", 100)),
@@ -1034,21 +1089,21 @@ def v1_actiune(cam_id, actiune):
             hooks.emit("sirena", cam_id, motiv=["api"], automat=False)
         elif actiune == "strobo":
             if not f.get("strobe"):
-                return jsonify({"eroare": "camera nu are stroboscop"}), 400
+                return jsonify({"eroare": t("camera nu are stroboscop")}), 400
             drivers.set_strobe(cam, int(d.get("secunde", 10)))
         elif actiune == "releu":
             if not f.get("io_out"):
-                return jsonify({"eroare": "camera nu are ieșire de releu"}), 400
+                return jsonify({"eroare": t("camera nu are ieșire de releu")}), 400
             drivers.set_output(cam, int(d.get("port") or 1), bool(d.get("pornit", True)))
         elif actiune == "anunt":
             if not f.get("talk"):
-                return jsonify({"eroare": "camera nu are difuzor"}), 400
+                return jsonify({"eroare": t("camera nu are difuzor")}), 400
             text = (d.get("text") or "").strip()
             if not text:
-                return jsonify({"eroare": "lipsește textul"}), 400
+                return jsonify({"eroare": t("lipsește textul")}), 400
             rosteste(cam, text, int(d.get("repetari") or 1))
         else:
-            return jsonify({"eroare": f"acțiune necunoscută: {actiune}"}), 400
+            return jsonify({"eroare": t("acțiune necunoscută: {actiune}", actiune=actiune)}), 400
     except Exception as e:
         return jsonify({"eroare": str(e)[:200]}), 502
     audit.log("api", f"cam{cam_id}", {"actiune": actiune, **d})
@@ -1067,7 +1122,7 @@ def v1_poza(cam_id):
             return Response(r.content, mimetype="image/jpeg")
     except requests.RequestException:
         pass
-    return jsonify({"eroare": "nu am putut lua cadrul"}), 502
+    return jsonify({"eroare": t("nu am putut lua cadrul")}), 502
 
 
 def _register_blueprints():

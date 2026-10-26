@@ -4,8 +4,8 @@
    pe toate; importurile/exporturile sunt verificate de scripts/module_check.py (si in pytest).
    ==================================================================== */
 import { S } from './state.js';
-import { $, ADMIN, DET_RO, ME, esc, html, lista, raw, runJob, toast, fdia } from './00-core.js';
-import { post } from './10-live.js';
+import { $, ADMIN, DET_RO, LIMBA, ME, esc, html, lista, raw, runJob, t, toast, fdia } from './00-core.js';
+import { loadCameras, post } from './10-live.js';
 import { hdGoLive } from './20-hd.js';
 import { AL_ICO } from './40-evenimente.js';
 import { SOUND_RO } from './50-camere.js';
@@ -24,7 +24,7 @@ function checksHtml(containerId, checked) {
     cb.value = l;
     cb.checked = checked.includes(l);
     lab.appendChild(cb);
-    lab.append(` ${AL_ICO[l] || ''} ${DET_RO[l] || l}`);
+    lab.append(` ${AL_ICO[l] || ''} ${t(DET_RO[l] || l)}`);
     box.appendChild(lab);
   }
 }
@@ -89,8 +89,9 @@ async function loadSemantic() {
     const s = await (await fetch('/api/semantic/status')).json();
     $('#sem-on').checked = s.enabled;
     const b = s.backfill;
-    $('#sem-status').textContent = `${s.indexed} poze indexate din ${s.days} zile`
-      + (b.running ? ` — indexez istoricul: ${b.done}/${b.total}` : '');
+    const txt = t('{n} poze indexate din {zile} zile', { n: s.indexed, zile: s.days });
+    $('#sem-status').textContent = b.running
+      ? `${txt} — ${t('indexez istoricul: {done}/{total}', { done: b.done, total: b.total })}` : txt;
     clearInterval(semTimer);
     if (b.running && !document.hidden && !$('#set').classList.contains('hidden')) {
       semTimer = setInterval(loadSemantic, 3000);
@@ -100,7 +101,7 @@ async function loadSemantic() {
 $('#sem-on') && ($('#sem-on').onchange = async () => {
   await post('/api/semantic/config', { enabled: $('#sem-on').checked });
   flash('#sem-msg', $('#sem-on').checked
-    ? 'Pornită — istoricul se indexeaza în fundal ✓' : 'Oprită ✓');
+    ? t('Pornită — istoricul se indexeaza în fundal ✓') : t('Oprită ✓'));
   loadSemantic();
 });
 /* detectie pe regiuni: camerele alese (obiecte la distanta) */
@@ -114,11 +115,11 @@ async function loadTile() {
 $('#tl-save') && ($('#tl-save').onclick = async () => {
   const cams = [...$('#tl-cams').selectedOptions].map((o) => +o.value);
   const r = await post('/api/tile', { cams });
-  if (r && !r.error) flash('#tl-msg', 'Salvat ✓');
+  if (r && !r.error) flash('#tl-msg', t('Salvat ✓'));
 });
 $('#sem-backfill') && ($('#sem-backfill').onclick = async () => {
   const r = await post('/api/semantic/backfill', {});
-  flash('#sem-msg', r && r.started ? 'Indexarea a pornit ✓' : 'Indexarea rulează deja');
+  flash('#sem-msg', r && r.started ? t('Indexarea a pornit ✓') : t('Indexarea rulează deja'));
   loadSemantic();
 });
 
@@ -144,7 +145,7 @@ function buildCardTabs() {
     cards.forEach((c, i) => {
       const h = c.querySelector('h2');
       const b = document.createElement('button');
-      b.textContent = (h ? h.textContent : `Secțiunea ${i + 1}`).trim();
+      b.textContent = (h ? h.textContent : t('Secțiunea {n}', { n: i + 1 })).trim();
       if (c.hasAttribute('data-avansat')) b.dataset.avansat = '1';   // ascuns fara „avansate”
       b.onclick = () => activate(i, true);
       bar.appendChild(b);
@@ -175,7 +176,7 @@ function setCauta(q) {
     c.classList.toggle('q-hit', hit);
     if (hit) n++;
   }
-  if (!n) { const p = document.createElement('p'); p.className = 'q-niciun'; p.textContent = `Nicio setare pentru „${q}”.`; set.querySelector('.set-body').prepend(p); }
+  if (!n) { const p = document.createElement('p'); p.className = 'q-niciun'; p.textContent = t('Nicio setare pentru „{q}”.', { q }); set.querySelector('.set-body').prepend(p); }
 }
 $('#set-q') && ($('#set-q').oninput = () => setCauta($('#set-q').value));
 function setAvansat(on, save = true) {
@@ -203,7 +204,7 @@ function loadMqtt(s) {
   $('#mq-topic').value = s.mqtt_topic || 'nvr';
 }
 $('#mq-test') && ($('#mq-test').onclick = async () => {
-  $('#mq-status').textContent = 'Mă conectez...';
+  $('#mq-status').textContent = t('Mă conectez...');
   const r = await post('/api/mqtt/test', {
     mqtt_enabled: $('#mq-on').checked,
     mqtt_host: $('#mq-host').value.trim(),
@@ -213,55 +214,55 @@ $('#mq-test') && ($('#mq-test').onclick = async () => {
     mqtt_topic: $('#mq-topic').value.trim() || 'nvr',
   });
   $('#mq-status').textContent = r && !r.error
-    ? `Conectat la ${r.broker} ✓ — proba publicata pe „${$('#mq-topic').value || 'nvr'}/proba”`
-    : (r && r.error) || 'eroare';
+    ? t('Conectat la {broker} ✓ — proba publicata pe „{topic}/proba”', { broker: r.broker, topic: $('#mq-topic').value || 'nvr' })
+    : (r && r.error) || t('eroare');
 });
 
 /* ---------- utilizatori si roluri (doar adminul ajunge aici) ---------- */
 async function loadUsers() {
   try {
     const list = await (await fetch('/api/users')).json();
-    const rol = (u) => (u.role === 'admin' ? 'administrator'
-      : u.role === 'operator' ? 'operator' : 'vizualizare');
+    const rol = (u) => (u.role === 'admin' ? t('administrator')
+      : u.role === 'operator' ? t('operator') : t('vizualizare'));
     const scop = (u) => {
       const parti = [];
-      if (u.groups && u.groups.length) parti.push('grupuri: ' + u.groups.join(', '));
-      if (u.cameras && u.cameras.length) parti.push('camere: ' + u.cameras.join(', '));
-      return parti.length ? parti.join(' · ') : 'toate camerele';
+      if (u.groups && u.groups.length) parti.push(t('grupuri: {lista}', { lista: u.groups.join(', ') }));
+      if (u.cameras && u.cameras.length) parti.push(t('camere: {lista}', { lista: u.cameras.join(', ') }));
+      return parti.length ? parti.join(' · ') : t('toate camerele');
     };
     $('#u-list').innerHTML = lista(list, (u) => html`
       <div class="u-row" data-user="${u.user}">
         <b>${u.user}</b> <span class="u-role">${rol(u)}</span>
-        ${u.totp ? html`<span class="u-flag" title="autentificare in doi pasi activa">🔐 2FA</span>` : ''}
+        ${u.totp ? html`<span class="u-flag" title="${t('autentificare in doi pasi activa')}">🔐 2FA</span>` : ''}
         <span class="hint">${u.role === 'admin' ? '' : scop(u)}</span>
-        <button class="u-edit link-btn" title="Încarcă în formular">modifică</button>
-        <button class="u-revoke link-btn" title="Taie toate sesiunile contului (telefon pierdut, paznic plecat)">deconectează</button>
-        ${u.totp ? html`<button class="u-tfa link-btn" title="Scoate al doilea pas (telefon pierdut, fara coduri de recuperare)">scoate 2FA</button>` : ''}
-        ${u.user === ME.user ? '' : html`<button class="u-del link-btn">sterge</button>`}
-      </div>`, '<p class="hint">Niciun utilizator.</p>');
+        <button class="u-edit link-btn" title="${t('Încarcă în formular')}">${t('modifică')}</button>
+        <button class="u-revoke link-btn" title="${t('Taie toate sesiunile contului (telefon pierdut, paznic plecat)')}">${t('deconectează')}</button>
+        ${u.totp ? html`<button class="u-tfa link-btn" title="${t('Scoate al doilea pas (telefon pierdut, fara coduri de recuperare)')}">${t('scoate 2FA')}</button>` : ''}
+        ${u.user === ME.user ? '' : html`<button class="u-del link-btn">${t('sterge')}</button>`}
+      </div>`, html`<p class="hint">${t('Niciun utilizator.')}</p>`);
     for (const row of document.querySelectorAll('#u-list .u-row')) {
       const name = row.dataset.user;
       const u = list.find((x) => x.user === name);
       row.querySelector('.u-edit').onclick = () => fillUserForm(u);
       const del = row.querySelector('.u-del');
       if (del) del.onclick = async () => {
-        if (!confirm(`Ștergi utilizatorul "${name}"?`)) return;
+        if (!confirm(t('Ștergi utilizatorul "{name}"?', { name }))) return;
         const r = await fetch(`/api/users/${encodeURIComponent(name)}`, { method: 'DELETE' });
         const d = await r.json();
-        if (d.error) { alert('Eroare: ' + d.error); return; }
+        if (d.error) { alert(t('Eroare: {e}', { e: d.error })); return; }
         loadUsers();
       };
       row.querySelector('.u-revoke').onclick = async () => {
-        if (!confirm(`Deconectezi toate dispozitivele lui "${name}"?`)) return;
+        if (!confirm(t('Deconectezi toate dispozitivele lui "{name}"?', { name }))) return;
         const d = await post(`/api/users/${encodeURIComponent(name)}/revoca`);
-        if (d && !d.error) flash('#u-msg', `Sesiunile lui ${name} au fost tăiate ✓`);
+        if (d && !d.error) flash('#u-msg', t('Sesiunile lui {name} au fost tăiate ✓', { name }));
       };
       const tfa = row.querySelector('.u-tfa');
       if (tfa) tfa.onclick = async () => {
-        if (!confirm(`Scoți autentificarea în doi pași de pe "${name}"? Contul rămâne doar cu parola.`)) return;
+        if (!confirm(t('Scoți autentificarea în doi pași de pe "{name}"? Contul rămâne doar cu parola.', { name }))) return;
         const r = await fetch(`/api/users/${encodeURIComponent(name)}/2fa`, { method: 'DELETE' });
         const d = await r.json();
-        if (d.error) { alert('Eroare: ' + d.error); return; }
+        if (d.error) { alert(t('Eroare: {e}', { e: d.error })); return; }
         loadUsers();
       };
     }
@@ -269,21 +270,21 @@ async function loadUsers() {
   } catch {}
 }
 function fillUserForm(u) {
-  $('#u-form-title').textContent = `Modifici: ${u.user}`;
+  $('#u-form-title').textContent = t('Modifici: {nume}', { nume: u.user });
   $('#u-cancel').classList.remove('hidden');
   $('#u-name').value = u.user;
   $('#u-pass').value = '';
-  $('#u-pass').placeholder = 'parola noua (gol = neschimbata)';
+  $('#u-pass').placeholder = t('parola noua (gol = neschimbata)');
   $('#u-role').value = u.role;
   buildUserScope(u);
   window.scrollTo({ top: $('#u-form-title').offsetTop - 80 });
 }
 function clearUserForm() {
-  $('#u-form-title').textContent = 'Adaugă un utilizator';
+  $('#u-form-title').textContent = t('Adaugă un utilizator');
   $('#u-cancel').classList.add('hidden');
   $('#u-name').value = '';
   $('#u-pass').value = '';
-  $('#u-pass').placeholder = 'minim 6 caractere';
+  $('#u-pass').placeholder = t('minim 6 caractere');
   $('#u-role').value = 'viewer';
   buildUserScope();
 }
@@ -305,7 +306,7 @@ $('#u-role') && ($('#u-role').onchange = () => buildUserScope());
 
 $('#u-save') && ($('#u-save').onclick = async () => {
   const name = $('#u-name').value.trim();
-  if (!name) { alert('Scrie numele utilizatorului.'); return; }
+  if (!name) { alert(t('Scrie numele utilizatorului.')); return; }
   const body = {
     user: name,
     pass: $('#u-pass').value || undefined,
@@ -316,7 +317,7 @@ $('#u-save') && ($('#u-save').onclick = async () => {
   const d = await post('/api/users', body);
   if (d && !d.error) {
     clearUserForm();
-    flash('#u-msg', 'Utilizator salvat ✓');
+    flash('#u-msg', t('Utilizator salvat ✓'));
     loadUsers();
   }
 });
@@ -330,12 +331,32 @@ let pushSub = null;
 async function openMe() {
   if (!meDlg || typeof meDlg.showModal !== 'function') return;
   $('#me-user').textContent = `— ${ME.user}`;
+  limbiSelect();
   $('#tfa-pas1').classList.add('hidden'); $('#tfa-pas2').classList.add('hidden');
   $('#tfa-off-box').classList.add('hidden'); $('#tfa-btns').classList.remove('hidden');
   if (!meDlg.open) meDlg.showModal();
   await Promise.all([loadTfa(), loadPushState()]);
 }
 for (const b of document.querySelectorAll('.me-open')) b.onclick = openMe;
+
+// limba contului: optiunea goala = dupa browser; lista vine din /api/me (ME.limbi)
+function limbiSelect() {
+  const sel = $('#me-limba');
+  if (!sel || sel.dataset.gata) return;
+  sel.dataset.gata = '1';
+  for (const l of ME.limbi || []) {
+    const o = document.createElement('option');
+    o.value = l.cod; o.textContent = l.nume;
+    sel.appendChild(o);
+  }
+  sel.value = ME.lang_cont || '';
+  sel.onchange = async () => {
+    const d = await post('/api/me/limba', { limba: sel.value });
+    if (!d || !d.ok) return;
+    flash('#me-limba-msg', t('Limba salvată. Reîncarc pagina…'));
+    setTimeout(() => location.reload(), 600);
+  };
+}
 $('#me-close').onclick = () => meDlg.close();
 
 async function loadTfa() {
@@ -343,8 +364,8 @@ async function loadTfa() {
     const me = await (await fetch('/api/me')).json();
     ME.totp = !!me.totp;
     $('#tfa-stare').textContent = me.totp
-      ? 'Activă: la fiecare login, după parola, ti se cere codul din aplicația de autentificare.'
-      : 'Inactivă: contul e protejat doar de parola. Cu al doilea pas, o parola furată nu ajunge.';
+      ? t('Activă: la fiecare login, după parola, ti se cere codul din aplicația de autentificare.')
+      : t('Inactivă: contul e protejat doar de parola. Cu al doilea pas, o parola furată nu ajunge.');
     $('#tfa-on').classList.toggle('hidden', me.totp);
     $('#tfa-off').classList.toggle('hidden', !me.totp);
   } catch {}
@@ -369,9 +390,12 @@ $('#tfa-confirm').onclick = async () => {
 $('#tfa-cod').onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); $('#tfa-confirm').click(); } };
 $('#tfa-done').onclick = async () => {
   $('#tfa-pas2').classList.add('hidden'); $('#tfa-btns').classList.remove('hidden');
-  flash('#tfa-msg', 'Autentificarea în doi pași e activă ✓');
+  flash('#tfa-msg', t('Autentificarea în doi pași e activă ✓'));
   await loadTfa();
-  if (ME.user) $('#user-chip .me-open').textContent = `${ME.user}${ADMIN ? '' : ME.role === 'operator' ? ' (operator)' : ' (vizualizare)'} 🔐`;
+  if (ME.user) {
+    const rolTxt = ADMIN ? '' : ' (' + (ME.role === 'operator' ? t('operator') : t('vizualizare')) + ')';
+    $('#user-chip .me-open').textContent = `${ME.user}${rolTxt} 🔐`;
+  }
   if (ADMIN) loadUsers();
 };
 $('#tfa-off').onclick = () => { $('#tfa-parola').value = ''; $('#tfa-btns').classList.add('hidden'); $('#tfa-off-box').classList.remove('hidden'); $('#tfa-parola').focus(); };
@@ -380,14 +404,14 @@ $('#tfa-off-confirm').onclick = async () => {
   const d = await post('/api/me/2fa/dezactiveaza', { parola: $('#tfa-parola').value });
   if (!d || d.error) return;
   $('#tfa-off-box').classList.add('hidden'); $('#tfa-btns').classList.remove('hidden');
-  flash('#tfa-msg', 'Autentificarea în doi pași a fost dezactivată');
+  flash('#tfa-msg', t('Autentificarea în doi pași a fost dezactivată'));
   await loadTfa();
   if (ADMIN) loadUsers();
 };
 $('#sess-all').onclick = async () => {
-  if (!confirm('Deconectezi toate celelalte dispozitive ale contului tău? Aici rămâi logat.')) return;
+  if (!confirm(t('Deconectezi toate celelalte dispozitive ale contului tău? Aici rămâi logat.'))) return;
   const d = await post('/api/me/deconectare');
-  if (d && !d.error) flash('#sess-msg', 'Toate celelalte sesiuni au fost tăiate ✓');
+  if (d && !d.error) flash('#sess-msg', t('Toate celelalte sesiuni au fost tăiate ✓'));
 };
 
 // --- push pe acest dispozitiv ---
@@ -408,49 +432,51 @@ async function loadPushState() {
   pushSub = null;
   try {
     const d = await (await fetch('/api/push/cheie')).json();
-    if (!d.activ) { st.textContent = 'Serverul nu are cheile de push (lipsește pywebpush).'; return; }
+    if (!d.activ) { st.textContent = t('Serverul nu are cheile de push (lipsește pywebpush).'); return; }
     if (!('PushManager' in window) || !('Notification' in window)) {
-      st.textContent = 'Browserul asta nu știe notificari push (pe iPhone: instalează aplicația pe ecranul de start, din Safari).'; return;
+      st.textContent = t('Browserul asta nu știe notificari push (pe iPhone: instalează aplicația pe ecranul de start, din Safari).'); return;
     }
     if (!window.isSecureContext) {
-      st.textContent = `Notificarile push cer HTTPS: deschide interfata prin adresa https (ex. https://nvr.exemplu.ro), nu prin ${location.host}.`; return;
+      st.textContent = t('Notificarile push cer HTTPS: deschide interfata prin adresa https (ex. https://nvr.exemplu.ro), nu prin {host}.', { host: location.host }); return;
     }
     const reg = await pushReg();
-    if (!reg) { st.textContent = 'Service worker-ul nu s-a înregistrat (reîncarcă pagina).'; return; }
+    if (!reg) { st.textContent = t('Service worker-ul nu s-a înregistrat (reîncarcă pagina).'); return; }
     pushSub = await reg.pushManager.getSubscription();
     const al = pushSub && (d.abonamente || []).find((a) => a.endpoint === pushSub.endpoint);
     if (Notification.permission === 'denied') {
-      st.textContent = 'Notificarile sunt BLOCATE pentru acest site din setările browserului.'; return;
+      st.textContent = t('Notificarile sunt BLOCATE pentru acest site din setările browserului.'); return;
     }
     if (al) {
-      st.textContent = `Pornite pe acest dispozitiv (${al.nivel === 'atentie' ? 'toate incidentele' : 'doar critice'}). Alte dispozitive abonate pe contul tău: ${Math.max(0, (d.abonamente || []).length - 1)}.`;
+      st.textContent = t('Pornite pe acest dispozitiv ({nivel}). Alte dispozitive abonate pe contul tău: {altele}.', {
+        nivel: al.nivel === 'atentie' ? t('toate incidentele') : t('doar critice'),
+        altele: Math.max(0, (d.abonamente || []).length - 1) });
       $('#push-nivel').value = al.nivel;
       btnOff.classList.remove('hidden'); btnTest.classList.remove('hidden');
     } else {
       st.textContent = (d.abonamente || []).length
-        ? `Oprite aici; contul tău are ${d.abonamente.length} dispozitiv(e) abonat(e).`
-        : 'Oprite. Pornește-le ca incidentele să ajungă pe acest dispozitiv.';
+        ? t('Oprite aici; contul tău are {n} dispozitiv(e) abonat(e).', { n: d.abonamente.length })
+        : t('Oprite. Pornește-le ca incidentele să ajungă pe acest dispozitiv.');
       btnOn.classList.remove('hidden');
     }
-  } catch (e) { st.textContent = 'Nu pot citi starea notificarilor: ' + e; }
+  } catch (e) { st.textContent = t('Nu pot citi starea notificarilor: {e}', { e }); }
 }
 $('#push-on').onclick = async () => {
   try {
     const perm = await Notification.requestPermission();
-    if (perm !== 'granted') { flash('#push-msg', 'Nu ai permis notificarile', true); return; }
+    if (perm !== 'granted') { flash('#push-msg', t('Nu ai permis notificarile'), true); return; }
     const d = await (await fetch('/api/push/cheie')).json();
     const reg = await pushReg();
     const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64url(d.cheie) });
     const r = await post('/api/push/abonare', { abonament: sub.toJSON(), nivel: $('#push-nivel').value });
-    if (r && !r.error) flash('#push-msg', 'Notificarile sunt pornite pe acest dispozitiv ✓');
-  } catch (e) { flash('#push-msg', 'Nu am putut porni: ' + (e.message || e), true); }
+    if (r && !r.error) flash('#push-msg', t('Notificarile sunt pornite pe acest dispozitiv ✓'));
+  } catch (e) { flash('#push-msg', t('Nu am putut porni: {e}', { e: e.message || e }), true); }
   loadPushState();
   if (ADMIN) loadPushAdmin();
 };
 $('#push-nivel').onchange = async () => {
   if (!pushSub) return;
   const r = await post('/api/push/abonare', { abonament: pushSub.toJSON(), nivel: $('#push-nivel').value });
-  if (r && !r.error) flash('#push-msg', 'Nivel salvat ✓');
+  if (r && !r.error) flash('#push-msg', t('Nivel salvat ✓'));
   loadPushState();
 };
 $('#push-off').onclick = async () => {
@@ -460,14 +486,14 @@ $('#push-off').onclick = async () => {
         body: JSON.stringify({ endpoint: pushSub.endpoint }) });
       await pushSub.unsubscribe();
     }
-    flash('#push-msg', 'Notificarile sunt oprite pe acest dispozitiv');
-  } catch (e) { flash('#push-msg', 'Eroare: ' + e, true); }
+    flash('#push-msg', t('Notificarile sunt oprite pe acest dispozitiv'));
+  } catch (e) { flash('#push-msg', t('Eroare: {e}', { e }), true); }
   loadPushState();
   if (ADMIN) loadPushAdmin();
 };
 $('#push-test').onclick = async () => {
   const d = await post('/api/push/test');
-  if (d && !d.error) flash('#push-msg', `Trimisă pe ${d.trimise} dispozitiv(e) — ar trebui să apără în câteva secunde`);
+  if (d && !d.error) flash('#push-msg', t('Trimisă pe {n} dispozitiv(e) — ar trebui să apără în câteva secunde', { n: d.trimise }));
 };
 // Setari -> Notificari: adminul vede toate dispozitivele abonate si poate scoate unul
 async function loadPushAdmin() {
@@ -475,14 +501,14 @@ async function loadPushAdmin() {
   if (!box) return;
   try {
     const d = await (await fetch('/api/push/abonamente')).json();
-    const cand = (t) => (t ? new Date(t * 1000).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short' }) : '-');
+    const cand = (ts) => (ts ? new Date(ts * 1000).toLocaleString(LIMBA, { dateStyle: 'short', timeStyle: 'short' }) : '-');
     box.innerHTML = lista(d.abonamente || [], (a) => html`
       <div class="push-row" data-ep="${a.endpoint}">
-        <b>${a.user}</b> <span>${a.nivel === 'atentie' ? 'toate' : 'critice'}</span>
+        <b>${a.user}</b> <span>${a.nivel === 'atentie' ? t('toate') : t('critice')}</span>
         <span class="hint" title="${a.agent || ''}">${(a.agent || '').replace(/^Mozilla\/5\.0 /, '').slice(0, 60)}</span>
-        <span class="hint" title="abonat / ultima notificare">${cand(a.creat)}${a.ultima ? ' · ' + cand(a.ultima) : ''}${a.erori ? ' · erori: ' + a.erori : ''}</span>
-        <button class="push-del link-btn">scoate</button>
-      </div>`, '<p class="hint">Niciun dispozitiv abonat.</p>');
+        <span class="hint" title="${t('abonat / ultima notificare')}">${cand(a.creat)}${a.ultima ? ' · ' + cand(a.ultima) : ''}${a.erori ? ' · ' + t('erori: {n}', { n: a.erori }) : ''}</span>
+        <button class="push-del link-btn">${t('scoate')}</button>
+      </div>`, html`<p class="hint">${t('Niciun dispozitiv abonat.')}</p>`);
     for (const row of box.querySelectorAll('.push-row')) {
       row.querySelector('.push-del').onclick = async () => {
         await fetch('/api/push/abonare', { method: 'DELETE', headers: { 'Content-Type': 'application/json' },
@@ -547,20 +573,20 @@ async function loadKeyframes() {
     const vals = Object.values(k.per_cam).filter(Boolean);
     const uniq = [...new Set(vals)].sort((a, b) => a - b);
     $('#s-kf-status').textContent = uniq.length === 1
-      ? `Acum: ${(uniq[0] / 1000).toFixed(1)}s pe toate cele ${vals.length} camere.`
-      : `Acum: valori diferite (${uniq.map((v) => (v / 1000).toFixed(1) + 's').join(', ')}).`;
+      ? t('Acum: {s}s pe toate cele {n} camere.', { s: (uniq[0] / 1000).toFixed(1), n: vals.length })
+      : t('Acum: valori diferite ({lista}).', { lista: uniq.map((v) => (v / 1000).toFixed(1) + 's').join(', ') });
     if (k.common) $('#s-kf').value = String(k.common);
   } catch {}
 }
 $('#s-kf-apply').onclick = async () => {
   const btn = $('#s-kf-apply');
   btn.disabled = true;
-  flash('#s-msg-kf', 'Aplic pe toate camerele...');
+  flash('#s-msg-kf', t('Aplic pe toate camerele...'));
   const d = await post('/api/keyframes', { ms: +$('#s-kf').value });
   btn.disabled = false;
   if (d && !d.error) {
-    flash('#s-msg-kf', `Aplicat pe ${d.applied}/${d.total} camere ✓` +
-      (d.errors && d.errors.length ? ` (erori: ${d.errors.join('; ')})` : ''),
+    flash('#s-msg-kf', t('Aplicat pe {ok}/{total} camere ✓', { ok: d.applied, total: d.total }) +
+      (d.errors && d.errors.length ? ' ' + t('(erori: {lista})', { lista: d.errors.join('; ') }) : ''),
       !!(d.errors && d.errors.length));
   }
   loadKeyframes();
@@ -571,54 +597,54 @@ function fillSoundSelect(sel, current) {
   sel.innerHTML = '';
   for (const [id, name] of Object.entries(SOUND_RO)) {
     const o = document.createElement('option');
-    o.value = id; o.textContent = name;
+    o.value = id; o.textContent = t(name);
     sel.appendChild(o);
   }
   for (let i = 1; i <= 3; i++) {
     const o = document.createElement('option');
-    o.value = 'c' + i; o.textContent = `Sunetul meu ${i} (încărcat în camera)`;
+    o.value = 'c' + i; o.textContent = t('Sunetul meu {n} (încărcat în camera)', { n: i });
     sel.appendChild(o);
   }
   sel.value = String(current);
 }
 $('#s-auto-test').onclick = async () => {
   const cam = S.cameras.find((c) => (c.features || {}).siren);
-  if (!cam) { flash('#s-msg-auto', 'Nicio camera cu difuzor', true); return; }
+  if (!cam) { flash('#s-msg-auto', t('Nicio camera cu difuzor'), true); return; }
   const v = $('#s-auto-sound').value;
   await post(`/api/cam/${cam.id}/siren`, {
     sound: +String(v).replace('c', ''), volume: +$('#s-auto-vol').value,
     times: +$('#s-auto-times').value, custom: String(v).startsWith('c'),
   });
-  flash('#s-msg-auto', `Redat pe ${cam.name}`);
+  flash('#s-msg-auto', t('Redat pe {cam}', { cam: cam.name }));
 };
 $('#s-tts-play').onclick = async () => {
   const text = $('#s-tts-text').value.trim();
-  if (!text) { flash('#s-msg-tts', 'Scrie textul întâi', true); return; }
-  flash('#s-msg-tts', 'Generez...');
+  if (!text) { flash('#s-msg-tts', t('Scrie textul întâi'), true); return; }
+  flash('#s-msg-tts', t('Generez...'));
   const r = await fetch('/api/tts', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text, speed: +$('#s-tts-speed').value }),
   });
-  if (!r.ok) { flash('#s-msg-tts', 'Eroare: ' + (await r.json()).error, true); return; }
+  if (!r.ok) { flash('#s-msg-tts', t('Eroare: {e}', { e: (await r.json()).error }), true); return; }
   const a = $('#s-tts-audio');
   a.src = URL.createObjectURL(await r.blob());
   a.classList.remove('hidden');
   a.play();
-  flash('#s-msg-tts', 'Gata — ascultă și, dacă îți place, descarcă');
+  flash('#s-msg-tts', t('Gata — ascultă și, dacă îți place, descarcă'));
 };
 $('#s-tts-dl').onclick = async () => {
   const text = $('#s-tts-text').value.trim();
-  if (!text) { flash('#s-msg-tts', 'Scrie textul întâi', true); return; }
+  if (!text) { flash('#s-msg-tts', t('Scrie textul întâi'), true); return; }
   const r = await fetch('/api/tts', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text, speed: +$('#s-tts-speed').value, download: true }),
   });
-  if (!r.ok) { flash('#s-msg-tts', 'Eroare la generare', true); return; }
+  if (!r.ok) { flash('#s-msg-tts', t('Eroare la generare'), true); return; }
   const url = URL.createObjectURL(await r.blob());
   const a = document.createElement('a');
   a.href = url; a.download = 'anunt.wav'; a.click();
   setTimeout(() => URL.revokeObjectURL(url), 5000);
-  flash('#s-msg-tts', 'Descărcat — încarcă-l în camera, în Configurare → Audio');
+  flash('#s-msg-tts', t('Descărcat — încarcă-l în camera, în Configurare → Audio'));
 };
 
 /* starea serverului, copie de siguranta, ora camerelor, jurnal */
@@ -637,48 +663,49 @@ async function loadNoiseProfile() {
     box.innerHTML = html`${d.camere.map((c) => {
       const p = c.propunere;
       if (!p) return html`<div class="prof-cam"><div class="prof-head"><b>${c.name}</b>
-        <span class="prof-cov">se colecteaza…</span></div>
-        <p class="hint">Inca nu avem nicio ora completa. Primele cifre apar dupa o ora.</p></div>`;
+        <span class="prof-cov">${t('se colecteaza…')}</span></div>
+        <p class="hint">${t('Inca nu avem nicio ora completa. Primele cifre apar dupa o ora.')}</p></div>`;
       const ore = c.profil.filter((h) => h.n);
       const lo = Math.floor(Math.min(...ore.map((h) => h.min)) / 5) * 5;
       const hi = Math.ceil(Math.max(...ore.map((h) => h.max)) / 5) * 5;
       const y = (v) => ((v - lo) / (hi - lo)) * 100;
       const cols = c.profil.map((h) => {
-        if (!h.n) return html`<div class="prof-col empty" title="ora ${h.ora}: fara date"></div>`;
-        return html`<div class="prof-col" title="ora ${h.ora}:00 — fond ${h.l90} dB, mediu ${h.leq} dB, se remarca ${h.l10} dB, extreme ${h.min}…${h.max} dB (${h.zile} zile)">
+        if (!h.n) return html`<div class="prof-col empty" title="${t('ora {ora}: fara date', { ora: h.ora })}"></div>`;
+        return html`<div class="prof-col" title="${t('ora {ora}:00 — fond {l90} dB, mediu {leq} dB, se remarca {l10} dB, extreme {min}…{max} dB ({zile} zile)',
+          { ora: h.ora, l90: h.l90, leq: h.leq, l10: h.l10, min: h.min, max: h.max, zile: h.zile })}">
           <b style="bottom:${y(h.min)}%;height:${y(h.max) - y(h.min)}%"></b>
           <i style="bottom:${y(h.l90)}%;height:${Math.max(2, y(h.l10) - y(h.l90))}%"></i>
           <u style="bottom:${y(h.leq)}%"></u></div>`;
       });
       const zn = p.dif_zi_noapte === null ? ''
-        : ` Ziua e cu ${Math.abs(p.dif_zi_noapte)} dB mai ${p.dif_zi_noapte >= 0 ? 'zgomotoasa' : 'linistita'} decat noaptea.`;
+        : ' ' + (p.dif_zi_noapte >= 0
+          ? t('Ziua e cu {n} dB mai zgomotoasa decat noaptea.', { n: Math.abs(p.dif_zi_noapte) })
+          : t('Ziua e cu {n} dB mai linistita decat noaptea.', { n: Math.abs(p.dif_zi_noapte) }));
       return html`<div class="prof-cam">
         <div class="prof-head"><b>${c.name}</b>
-          <span class="prof-cov${p.gata ? ' ok' : ''}">${p.zile} din 7 zile</span></div>
+          <span class="prof-cov${p.gata ? ' ok' : ''}">${t('{n} din 7 zile', { n: p.zile })}</span></div>
         <div class="prof-chart">
           <div class="prof-y"><span>${hi}</span><span>${lo}</span></div>
           <div class="prof-cols">${cols}</div></div>
         <div class="prof-x">${c.profil.map((h) => html`<span>${h.ora % 3 ? '' : h.ora}</span>`)}</div>
-        <div class="prof-leg"><i class="lg-band"></i> nivelul obisnuit
-          <i class="lg-avg"></i> mediu <i class="lg-ext"></i> extreme</div>
-        <p class="hint">Fondul obisnuit e ${p.fond} dBFS, iar cel mai tare zgomot masurat
-          a fost ${p.varf_masurat} dBFS.${zn}
-          ${p.gata ? '' : ' Propunerea se schimba pe masura ce se aduna date.'}</p>
+        <div class="prof-leg"><i class="lg-band"></i> ${t('nivelul obisnuit')}
+          <i class="lg-avg"></i> ${t('mediu')} <i class="lg-ext"></i> ${t('extreme')}</div>
+        <p class="hint">${t('Fondul obisnuit e {fond} dBFS, iar cel mai tare zgomot masurat a fost {varf} dBFS.', { fond: p.fond, varf: p.varf_masurat })}${zn}
+          ${p.gata ? '' : ' ' + t('Propunerea se schimba pe masura ce se aduna date.')}</p>
         <button class="btn sm" data-thr="${p.prag_db}" data-spike="${p.spike_db}">
-          Pune pragul la ${p.prag_db} dB si varful la ${p.spike_db} dB</button>
+          ${t('Pune pragul la {prag} dB si varful la {varf} dB', { prag: p.prag_db, varf: p.spike_db })}</button>
       </div>`;
     })}`;
     if (d.camere.some((c) => c.propunere)) {
       box.insertAdjacentHTML('beforeend',
-        '<p class="hint"><a href="/api/noise/export.csv?days=30" download>Descarca masuratorile (CSV)</a>' +
-        ' — o linie pe ora, daca vrei sa le analizezi separat.</p>');
+        html`<p class="hint"><a href="/api/noise/export.csv?days=30" download>${t('Descarca masuratorile (CSV)')}</a> — ${t('o linie pe ora, daca vrei sa le analizezi separat.')}</p>`);
     }
     box.querySelectorAll('button[data-thr]').forEach((b) => {
       b.onclick = () => {
         $('#noise-thr').value = b.dataset.thr;
         $('#noise-spike').value = b.dataset.spike;
         checkDirty();
-        toast('Praguri completate — apasă Salvează ca să le aplici');
+        toast(t('Praguri completate — apasă Salvează ca să le aplici'));
       };
     });
   } catch {}
@@ -693,8 +720,7 @@ async function loadNoise() {
     $('#noise-sustain').value = d.reguli.noise_sustain_sec;
     $('#noise-spike').value = d.reguli.noise_spike_db;
     if (!d.camere.length) {
-      $('#noise-live').innerHTML = '<p class="hint">Nicio camera cu microfon conectat. ' +
-        'Camerele cu intrare de linie au nevoie de un microfon extern.</p>';
+      $('#noise-live').innerHTML = html`<p class="hint">${t('Nicio camera cu microfon conectat. Camerele cu intrare de linie au nevoie de un microfon extern.')}</p>`;
       return;
     }
     const thr = d.reguli.noise_threshold_db;
@@ -713,10 +739,10 @@ async function loadNoise() {
       return html`<div class="noise-cam">
         <div class="noise-head"><b>${c.name}</b>
           <span class="noise-now${c.db >= thr ? ' loud' : ''}">${c.db ?? '—'} dBFS</span>
-          <small>fond ${c.baseline ?? '—'} · prag ${thr}</small></div>
+          <small>${t('fond {fond} · prag {prag}', { fond: c.baseline ?? '—', prag: thr })}</small></div>
         <div class="noise-wrap">
           <div class="prof-y"><span>${hi}</span><span>${lo}</span></div>
-          <div class="noise-graph" title="ultimele minute">${bars}
+          <div class="noise-graph" title="${t('ultimele minute')}">${bars}
             <u style="bottom:${pos(thr)}%"></u></div></div></div>`;
     })}`;
   } catch {}
@@ -737,30 +763,30 @@ async function loadHooks() {
     $('#wh-secret').value = s.webhook_secret || '';
     $('#wh-token').value = s.api_token || '';
     const alese = new Set(s.webhook_events || Object.keys(w.evenimente));
-    $('#wh-events').innerHTML = html`<b>Ce evenimente trimitem</b>${
+    $('#wh-events').innerHTML = html`<b>${t('Ce evenimente trimitem')}</b>${
       Object.entries(w.evenimente).map(([k, txt]) =>
         html`<label class="inline"><input type="checkbox" data-ev="${k}"${alese.has(k) ? ' checked' : ''}>
           <span><code>${k}</code> — ${txt}</span></label>`)}`;
     for (const c of $('#wh-events').querySelectorAll('input')) c.onchange = checkDirty;
     $('#wh-log').innerHTML = lista(w.jurnal, (r) => html`<div class="wh-row ${r.ok ? 'ok' : 'rau'}">
-          <span>${r.t.slice(11)}</span><b>${r.ok ? 'trimis' : 'esuat'}</b>
-          <i>${r.detaliu}</i><u>${r.url}</u></div>`, '<p class="hint">Nicio livrare inca.</p>');
+          <span>${r.t.slice(11)}</span><b>${r.ok ? t('trimis') : t('esuat')}</b>
+          <i>${r.detaliu}</i><u>${r.url}</u></div>`, html`<p class="hint">${t('Nicio livrare inca.')}</p>`);
   } catch {}
 }
 $('#wh-test').onclick = async () => {
   const el = $('#wh-test-res');
-  el.textContent = 'Trimit...';
+  el.textContent = t('Trimit...');
   try {
     const r = await (await fetch('/api/webhooks/test', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).json();
-    if (r.eroare) { el.textContent = 'Nu a mers: ' + r.eroare; return; }
+    if (r.eroare) { el.textContent = t('Nu a mers: {e}', { e: r.eroare }); return; }
     const rez = Object.entries(r.rezultat);
-    el.textContent = rez.map(([u, ok]) => `${u}: ${ok ? 'a raspuns' : 'nu a raspuns'}`).join(' · ');
+    el.textContent = rez.map(([u, ok]) => `${u}: ${ok ? t('a raspuns') : t('nu a raspuns')}`).join(' · ');
     loadHooks();
-  } catch (e) { el.textContent = 'Nu a mers: ' + e.message; }
+  } catch (e) { el.textContent = t('Nu a mers: {e}', { e: e.message }); }
 };
 $('#wh-token-new').onclick = () => {
-  if (!confirm('Fluxurile care folosesc jetonul actual se vor opri. Generezi altul?')) return;
+  if (!confirm(t('Fluxurile care folosesc jetonul actual se vor opri. Generezi altul?'))) return;
   // jeton generat in browser: nu are nevoie sa treaca prin server ca sa fie bun
   const b = new Uint8Array(24);
   crypto.getRandomValues(b);
@@ -769,7 +795,7 @@ $('#wh-token-new').onclick = () => {
 };
 
 /* ---------- continuitatea inregistrarii ---------- */
-const nume2 = (d, cid) => (d.acum.find((c) => c.id === +cid) || {}).name || 'cam ' + cid;
+const nume2 = (d, cid) => (d.acum.find((c) => c.id === +cid) || {}).name || t('cam {id}', { id: cid });
 
 async function loadContinuity() {
   try {
@@ -778,40 +804,40 @@ async function loadContinuity() {
     // 1. cine scrie chiar acum
     const mute = d.acum.filter((c) => !c.scrie);
     $('#cont-live').innerHTML = html`<div class="cont-sum ${mute.length ? 'rau' : 'bun'}">${
-        mute.length ? `${mute.length} camere nu scriu pe disc` : `Toate cele ${d.acum.length} camere scriu pe disc`
+        mute.length ? t('{n} camere nu scriu pe disc', { n: mute.length }) : t('Toate cele {n} camere scriu pe disc', { n: d.acum.length })
       }</div><div class="cont-cams">${d.acum.map((c) => {
         const v = c.varsta === null ? '—' : c.varsta < 90 ? `${c.varsta}s` : `${Math.round(c.varsta / 60)} min`;
-        return html`<div class="cont-cam${c.scrie ? '' : ' mut'}" title="${c.name} — ultima scriere acum ${v}${
-          c.reporniri ? `, repornit de ${c.reporniri} ori` : ''}">
+        return html`<div class="cont-cam${c.scrie ? '' : ' mut'}" title="${t('{cam} — ultima scriere acum {v}', { cam: c.name, v })}${
+          c.reporniri ? ', ' + t('repornit de {n} ori', { n: c.reporniri }) : ''}">
           <b>${c.name}</b><span>${v}</span></div>`;
-      })}</div>${Object.keys(d.goluri_azi).length ? html`<div class="cont-goluri"><b>Goluri azi:</b> ${
+      })}</div>${Object.keys(d.goluri_azi).length ? html`<div class="cont-goluri"><b>${t('Goluri azi:')}</b> ${
         Object.entries(d.goluri_azi).map(([cid, gs]) => gs.map((g) =>
           html`<span>${nume2(d, cid)} ${g.de_la}–${g.pana_la} (${g.minute} min)</span>`))}</div>` : ''}`;
 
     // 2. acoperirea pe zile: o linie per camera, o celula per zi
     const zile = [...new Set(Object.values(d.jurnal).flat().map((r) => r.zi))].sort();
     const nume = Object.fromEntries(d.acum.map((c) => [c.id, c.name]));
-    $('#cont-cov').innerHTML = !zile.length ? '<p class="hint">Jurnalul se completeaza pe parcurs.</p>'
+    $('#cont-cov').innerHTML = !zile.length ? html`<p class="hint">${t('Jurnalul se completeaza pe parcurs.')}</p>`
       : html`<div class="cov-grid" style="grid-template-columns:150px repeat(${zile.length}, 1fr)">
           <span></span>${zile.map((z) => html`<i class="cov-zi">${z.slice(8)}</i>`)}
           ${Object.entries(d.jurnal).map(([cid, rows]) => {
             const byDay = Object.fromEntries(rows.map((r) => [r.zi, r]));
-            return html`<b class="cov-nume">${nume[cid] || 'cam ' + cid}</b>${zile.map((z) => {
+            return html`<b class="cov-nume">${nume[cid] || t('cam {id}', { id: cid })}</b>${zile.map((z) => {
               const r = byDay[z];
-              if (!r) return html`<span class="cov-cel gol" title="fara date"></span>`;
+              if (!r) return html`<span class="cov-cel gol" title="${t('fara date')}"></span>`;
               if (r.mod !== 'continuous') {
-                return html`<span class="cov-cel misc" title="${z}: mod la miscare, ${r.procent}% pastrat"></span>`;
+                return html`<span class="cov-cel misc" title="${t('{zi}: mod la miscare, {p}% pastrat', { zi: z, p: r.procent })}"></span>`;
               }
               const cls = r.procent >= 99 ? 'ok' : r.procent >= 90 ? 'part' : 'rau';
-              return html`<span class="cov-cel ${cls}" title="${z}: ${r.procent}% acoperit${
-                r.goluri ? `, ${r.goluri} goluri, cel mai mare ${Math.round(r.gol_max / 60)} min` : ''}"></span>`;
+              return html`<span class="cov-cel ${cls}" title="${t('{zi}: {p}% acoperit', { zi: z, p: r.procent })}${
+                r.goluri ? ', ' + t('{n} goluri, cel mai mare {max} min', { n: r.goluri, max: Math.round(r.gol_max / 60) }) : ''}"></span>`;
             })}`;
           })}
         </div>
-        <div class="cov-leg"><span><i class="cov-cel ok"></i> zi întreagă</span>
-          <span><i class="cov-cel part"></i> lipsesc sub 10%</span>
-          <span><i class="cov-cel rau"></i> lipsește mai mult</span>
-          <span><i class="cov-cel misc"></i> la mișcare</span></div>`;
+        <div class="cov-leg"><span><i class="cov-cel ok"></i> ${t('zi întreagă')}</span>
+          <span><i class="cov-cel part"></i> ${t('lipsesc sub 10%')}</span>
+          <span><i class="cov-cel rau"></i> ${t('lipsește mai mult')}</span>
+          <span><i class="cov-cel misc"></i> ${t('la mișcare')}</span></div>`;
 
     // 3. incape retentia?
     const s = d.spatiu, p = s.propunere;
@@ -819,20 +845,20 @@ async function loadContinuity() {
     const proc = Math.min(100, s.necesar_gb ? s.disponibil_gb / s.necesar_gb * 100 : 100);
     $('#cont-space').innerHTML = html`
       <div class="cont-sum ${s.incape ? 'bun' : 'rau'}">${s.incape
-        ? `Retentia configurata incape: cere ${tb(s.necesar_gb)} din ${tb(s.disponibil_gb)} disponibili.`
-        : `Retentia configurata nu incape. Cere ${tb(s.necesar_gb)}, dar avem loc de ${tb(s.disponibil_gb)}.`}</div>
+        ? t('Retentia configurata incape: cere {necesar} din {disponibil} disponibili.', { necesar: tb(s.necesar_gb), disponibil: tb(s.disponibil_gb) })
+        : t('Retentia configurata nu incape. Cere {necesar}, dar avem loc de {disponibil}.', { necesar: tb(s.necesar_gb), disponibil: tb(s.disponibil_gb) })}</div>
       <div class="sp-bar"><u style="width:${proc}%"></u></div>
-      <p class="hint">Scriem <b>${s.gb_pe_zi} GB pe zi</b>, iar ${s.cu_evenimente}% din segmente
-        conțin evenimente. Pastrand tot, discul ajunge pentru
-        <b>${s.zile_posibile} zile</b>.</p>
+      <p class="hint">${raw(t('Scriem {gbzi}, iar {p}% din segmente conțin evenimente. Pastrand tot, discul ajunge pentru {zile}.', {
+        gbzi: html`<b>${t('{gb} GB pe zi', { gb: s.gb_pe_zi })}</b>`, p: esc(s.cu_evenimente),
+        zile: html`<b>${t('{n} zile', { n: s.zile_posibile })}</b>` }))}</p>
       ${p && !s.incape ? html`<div class="sp-fix">
-        <p>Propunere care chiar se respecta: <b>${p.zile} zile</b> pentru tot.</p>
+        <p>${raw(t('Propunere care chiar se respecta: {zile} pentru tot.', { zile: html`<b>${t('{n} zile', { n: p.zile })}</b>` }))}</p>
         <p class="hint">${p.motiv}</p>
         <button class="btn sm" id="sp-apply" data-z="${p.zile}" data-e="${p.zile_evenimente}">
-          Pune retentia la ${p.zile} zile</button></div>` : ''}
-      <details class="sp-det"><summary>Cât scrie fiecare camera</summary>
-        <table class="sp-tab"><thead><tr><th>Camera</th><th>GB/zi</th>
-          <th>Cu evenimente</th><th>Cere</th></tr></thead><tbody>
+          ${t('Pune retentia la {n} zile', { n: p.zile })}</button></div>` : ''}
+      <details class="sp-det"><summary>${t('Cât scrie fiecare camera')}</summary>
+        <table class="sp-tab"><thead><tr><th>${t('Camera')}</th><th>${t('GB/zi')}</th>
+          <th>${t('Cu evenimente')}</th><th>${t('Cere')}</th></tr></thead><tbody>
           ${s.camere.map((c) => html`<tr><td>${c.name}</td><td>${c.gb_pe_zi}</td>
             <td>${c.cu_evenimente}%</td><td>${tb(c.necesar_gb)}</td></tr>`)}
         </tbody></table></details>`;
@@ -843,7 +869,7 @@ async function loadContinuity() {
         $('#ret-days').value = ap.dataset.z;
         $('#ret-ev').value = ap.dataset.e;
         checkDirty();
-        toast('Retenția completată — apasă Salvează ca să se aplice');
+        toast(t('Retenția completată — apasă Salvează ca să se aplice'));
       };
     }
   } catch {}
@@ -861,16 +887,16 @@ async function loadRetention() {
     $('#arh-zile').value = d.setari.arhiva_zile;
     $('#arh-free').value = d.setari.arhiva_min_free_gb;
     const a = d.arhiva || {};
-    $('#arh-report').innerHTML = !a.activ ? 'Oprit: segmentele cu evenimente se șterg după retenția lor.'
-      : !a.exista ? html`<b>Directorul nu există</b> (${a.dir}) — nimic nu se mută până nu apare.`
-      : !a.scriibil ? html`<b>Directorul nu se poate scrie</b> (${a.dir}) — verifică montarea/drepturile.`
-      : html`În arhiva: <b>${a.gb} GB</b>, ${a.segmente} segmente; liber acolo: <b>${a.liber_gb} GB</b>.`;
+    $('#arh-report').innerHTML = !a.activ ? esc(t('Oprit: segmentele cu evenimente se șterg după retenția lor.'))
+      : !a.exista ? raw(t('{titlu} ({dir}) — nimic nu se mută până nu apare.', { titlu: html`<b>${t('Directorul nu există')}</b>`, dir: esc(a.dir) }))
+      : !a.scriibil ? raw(t('{titlu} ({dir}) — verifică montarea/drepturile.', { titlu: html`<b>${t('Directorul nu se poate scrie')}</b>`, dir: esc(a.dir) }))
+      : raw(t('În arhiva: {gb}, {n} segmente; liber acolo: {liber}.', { gb: html`<b>${a.gb} GB</b>`, n: esc(a.segmente), liber: html`<b>${a.liber_gb} GB</b>` }));
     const zile = d.camere.length ? Math.max(...d.camere.map((c) => c.zile)) : 0;
     $('#ret-report').innerHTML =
-      html`Acum: <b>${d.total_gb} GB</b> de înregistrări, cel mai vechi material are ` +
-      html`<b>${zile} zile</b>. ` + (zile < d.setari.retention_days
-        ? 'Încă nu s-a atins limita de vârstă — spațiul decide.'
-        : 'Se șterge după vârstă, conform setărilor.');
+      raw(t('Acum: {gb} de înregistrări, cel mai vechi material are {zile}.', { gb: html`<b>${d.total_gb} GB</b>`, zile: html`<b>${t('{n} zile', { n: zile })}</b>` })) +
+      ' ' + esc(zile < d.setari.retention_days
+        ? t('Încă nu s-a atins limita de vârstă — spațiul decide.')
+        : t('Se șterge după vârstă, conform setărilor.'));
   } catch {}
 }
 
@@ -885,22 +911,22 @@ async function loadSystem() {
       <small>${txt}</small></div>`;
     const diskUsed = pct(s.disk_total_gb - s.disk_free_gb, s.disk_total_gb);
     $('#sys-stats').innerHTML = html`${
-      bar('Procesor', s.cpu, `${s.cpu}% din ${s.cores} nuclee · incarcare ${s.load[0]}`, s.cpu > 85)}${
-      bar('Memorie', pct(s.ram_used_gb, s.ram_total_gb), `${s.ram_used_gb} / ${s.ram_total_gb} GB`, false)}${
-      bar('Disc', diskUsed, `${s.disk_free_gb} GB liberi · inregistrari ${s.rec_gb} GB`, diskUsed > 90)}
-      <div class="sys-item"><span>Rețea</span><div class="sys-net">
-      <b>${s.net.in_mbps}</b> Mbps intră <b>${s.net.out_mbps}</b> Mbps ies</div>
-      <small>pornit de ${Math.round(s.uptime_h / 24)} zile</small></div>${notifStatusHtml(s.notificari)}${nvrStatusHtml(s.nvr)}${aiStatusHtml(s.ai)}`;
+      bar(t('Procesor'), s.cpu, t('{cpu}% din {cores} nuclee · incarcare {load}', { cpu: s.cpu, cores: s.cores, load: s.load[0] }), s.cpu > 85)}${
+      bar(t('Memorie'), pct(s.ram_used_gb, s.ram_total_gb), `${s.ram_used_gb} / ${s.ram_total_gb} GB`, false)}${
+      bar(t('Disc'), diskUsed, t('{free} GB liberi · inregistrari {rec} GB', { free: s.disk_free_gb, rec: s.rec_gb }), diskUsed > 90)}
+      <div class="sys-item"><span>${t('Rețea')}</span><div class="sys-net">
+      ${raw(t('{in} Mbps intră {out} Mbps ies', { in: html`<b>${s.net.in_mbps}</b>`, out: html`<b>${s.net.out_mbps}</b>` }))}</div>
+      <small>${t('pornit de {n} zile', { n: Math.round(s.uptime_h / 24) })}</small></div>${notifStatusHtml(s.notificari)}${nvrStatusHtml(s.nvr)}${aiStatusHtml(s.ai)}`;
   } catch (e) { console.error('[stare] starea sistemului nu s-a putut afișa:', e); }
 }
 
 // pe unde pot pleca alertele; rosu cand nu exista niciun canal (altfel totul ramane in jurnal)
 function notifStatusHtml(n) {
   if (!n) return '';
-  const el = (ok, t) => html`<b class="${ok ? 'ok' : 'off'}">${ok ? '✓' : '✗'} ${t}</b>`;
-  return html`<div class="sys-item ${n.canal ? '' : 'sys-alarm'}"><span>Notificări</span>
-    <div class="sys-net">${el(n.telegram, 'Telegram')} ${el(n.email, 'email')} ${el(n.push > 0, `push (${n.push} dispozitive)`)}</div>
-    <small>${n.canal ? 'alertele pot pleca' : 'NICIUN canal: alertele rămân doar în jurnal — Setări → Notificări'}</small></div>`;
+  const el = (ok, txt) => html`<b class="${ok ? 'ok' : 'off'}">${ok ? '✓' : '✗'} ${txt}</b>`;
+  return html`<div class="sys-item ${n.canal ? '' : 'sys-alarm'}"><span>${t('Notificări')}</span>
+    <div class="sys-net">${el(n.telegram, 'Telegram')} ${el(n.email, t('email'))} ${el(n.push > 0, t('push ({n} dispozitive)', { n: n.push }))}</div>
+    <small>${n.canal ? t('alertele pot pleca') : t('NICIUN canal: alertele rămân doar în jurnal — Setări → Notificări')}</small></div>`;
 }
 
 // NVR-ul Hikvision (istoricul vechi + exportul fara inregistrari locale trec prin el)
@@ -908,8 +934,8 @@ function nvrStatusHtml(n) {
   if (!n || !n.ip || n.retras) return '';   // retras din Setări → Sistem: nu mai e în peisaj
   const necunoscut = n.online === null || n.online === undefined;
   return html`<div class="sys-item ${n.online === false ? 'sys-alarm' : ''}"><span>NVR Hikvision</span>
-    <div class="sys-net"><b class="${n.online ? 'ok' : necunoscut ? '' : 'off'}">${n.online ? '✓ online' : necunoscut ? '… se verifică' : '✗ OFFLINE'}</b> ${n.ip}</div>
-    <small>${n.online === false ? 'istoricul de pe NVR și exporturile fără înregistrări locale nu merg' : 'istoric vechi și rezervă pentru export'}</small></div>`;
+    <div class="sys-net"><b class="${n.online ? 'ok' : necunoscut ? '' : 'off'}">${n.online ? t('✓ online') : necunoscut ? t('… se verifică') : t('✗ OFFLINE')}</b> ${n.ip}</div>
+    <small>${n.online === false ? t('istoricul de pe NVR și exporturile fără înregistrări locale nu merg') : t('istoric vechi și rezervă pentru export')}</small></div>`;
 }
 
 // --- Test viteza client<->server (bandwidth), pentru alegerea rezolutiei ----------------
@@ -983,12 +1009,12 @@ function hdBufferTarget() {
 }
 $('#speed-btn') && ($('#speed-btn').onclick = async () => {
   const btn = $('#speed-btn'), res = $('#speed-result');
-  btn.disabled = true; res.textContent = 'Masor...';
+  btn.disabled = true; res.textContent = t('Masor...');
   try {
     const r = await measureBandwidth();
     window.__bw = r;
-    res.innerHTML = html`<b>${r.mbps} Mbps</b> · recomandat: ${r.treapta.text} <span class="ai-on">${r.treapta.nume}</span>`;
-  } catch { res.textContent = 'Test eșuat — reîncearcă'; }
+    res.innerHTML = html`<b>${r.mbps} Mbps</b> · ${t('recomandat: {text}', { text: t(r.treapta.text) })} <span class="ai-on">${t(r.treapta.nume)}</span>`;
+  } catch { res.textContent = t('Test eșuat — reîncearcă'); }
   btn.disabled = false;
 });
 
@@ -1008,18 +1034,18 @@ for (const id of ['hd-quality', 'pb-quality']) {
 // starea subsistemelor AI si a puntii MQTT — dintr-o privire, in pagina Stare
 function aiStatusHtml(ai) {
   if (!ai) return '';
-  const st = (cfg, extra) => !cfg.pornit ? html`<i class="ai-off">oprit</i>`
-    : (cfg.model === false ? html`<i class="ai-warm">se încarcă</i>`
-       : html`<b class="ai-on">activ</b>${extra || ''}`);
+  const st = (cfg, extra) => !cfg.pornit ? html`<i class="ai-off">${t('oprit')}</i>`
+    : (cfg.model === false ? html`<i class="ai-warm">${t('se încarcă')}</i>`
+       : html`<b class="ai-on">${t('activ')}</b>${extra || ''}`);
   const bf = ai.semantic.backfill && ai.semantic.backfill.running
-    ? ` · indexez ${ai.semantic.backfill.done}/${ai.semantic.backfill.total}` : '';
-  const mq = !ai.mqtt.pornit ? html`<i class="ai-off">oprit</i>`
-    : ai.mqtt.connected ? html`<b class="ai-on">conectat</b> · ${ai.mqtt.broker}`
-    : html`<i class="ai-warm">neconectat (broker/user/parola?)</i>`;
+    ? ' · ' + t('indexez {done}/{total}', { done: ai.semantic.backfill.done, total: ai.semantic.backfill.total }) : '';
+  const mq = !ai.mqtt.pornit ? html`<i class="ai-off">${t('oprit')}</i>`
+    : ai.mqtt.connected ? html`<b class="ai-on">${t('conectat')}</b> · ${ai.mqtt.broker}`
+    : html`<i class="ai-warm">${t('neconectat (broker/user/parola?)')}</i>`;
   const mg = ai.motion_gate
     ? (ai.motion_gate.pornit
-        ? html`<b class="ai-on">pornit</b> · ${Math.round(ai.motion_gate.sarite * 100)}% scene statice sarite`
-        : html`<i class="ai-off">oprit</i>`)
+        ? html`<b class="ai-on">${t('pornit')}</b> · ${t('{p}% scene statice sarite', { p: Math.round(ai.motion_gate.sarite * 100) })}`
+        : html`<i class="ai-off">${t('oprit')}</i>`)
     : '';
   // metrici per model (faza 6): cine munceste si cat de repede — doar cele active recent
   const NUME_M = { detect: 'Detecție', tracking: 'Urmărire', tiling: 'Regiuni',
@@ -1029,19 +1055,19 @@ function aiStatusHtml(ai) {
   if (ai.metrici) {
     const parts = Object.entries(ai.metrici)
       .filter(([k, v]) => NUME_M[k] && v.pe_min > 0)
-      .map(([k, v]) => `${NUME_M[k]} ${v.pe_min}/min · ${v.ms_mediu}ms`);
-    if (ai.metrici.semantic_coada > 20) parts.push(`coada index: ${ai.metrici.semantic_coada}`);
+      .map(([k, v]) => `${t(NUME_M[k])} ${v.pe_min}/min · ${v.ms_mediu}ms`);
+    if (ai.metrici.semantic_coada > 20) parts.push(t('coada index: {n}', { n: ai.metrici.semantic_coada }));
     if (parts.length) {
-      met = html`<span class="ai-metrici" title="rata pe minut · latență medie per inferenta">
+      met = html`<span class="ai-metrici" title="${t('rata pe minut · latență medie per inferenta')}">
         ${raw(parts.map(esc).join(' &nbsp;|&nbsp; '))}</span>`;
     }
   }
   return html`<div class="sys-item ai-row"><span>AI</span><div class="ai-cells">
     <span>Face ID: ${st(ai.face)}</span>
     <span>LPR: ${st(ai.lpr)}</span>
-    <span>Căutare: ${st(ai.semantic, bf)}</span>
+    <span>${t('Căutare:')} ${st(ai.semantic, bf)}</span>
     <span>MQTT: ${mq}</span>
-    <span>Reguli active: <b>${ai.reguli}</b></span>
+    <span>${t('Reguli active:')} <b>${ai.reguli}</b></span>
     ${mg ? html`<span>Motion-gate: ${mg}</span>` : ''}
     ${met}</div></div>`;
 }
@@ -1056,22 +1082,25 @@ async function loadBackupNocturn() {
     $('#bn-keep').value = st.backup_pastreaza || 14;
     $('#bn-fete').checked = !!st.backup_fete;
     const u = (d.stare || {}).ultima;
-    const cand = (t) => (t ? new Date(t * 1000).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short' }) : '-');
-    $('#bn-stare').innerHTML = !d.stare || !d.stare.la ? 'Nicio copie încă.'
-      : d.stare.ok ? html`Ultima copie: <b>${u.fisier}</b> (${(u.octeti / 2 ** 20).toFixed(1)} MB, ${u.durata_s}s), la ${cand(d.stare.la)}; în afara: ${u.extern ? (u.extern.ok === null ? 'neconfigurat' : u.extern.ok ? 'trimisa ✓' : 'ESUAT: ' + u.extern.mesaj) : '-'}. Cheie: ${d.cheie_amprenta}. Director: ${d.director}`
-      : html`<b>Ultima copie a EȘUAT</b> la ${cand(d.stare.la)}: ${d.stare.eroare}`;
-    $('#bn-lista').innerHTML = lista((d.copii || []).slice(0, 8), (b) => html`<div class="push-row"><b>${b.creat}</b><span class="hint">${(b.octeti / 2 ** 20).toFixed(1)} MB · ${(b.continut || []).length} elemente</span></div>`, '');
+    const cand = (ts) => (ts ? new Date(ts * 1000).toLocaleString(LIMBA, { dateStyle: 'short', timeStyle: 'short' }) : '-');
+    $('#bn-stare').innerHTML = !d.stare || !d.stare.la ? esc(t('Nicio copie încă.'))
+      : d.stare.ok ? raw(t('Ultima copie: {fisier} ({mb} MB, {s}s), la {cand}; în afara: {extern}. Cheie: {cheie}. Director: {dir}', {
+        fisier: html`<b>${u.fisier}</b>`, mb: (u.octeti / 2 ** 20).toFixed(1), s: esc(u.durata_s), cand: esc(cand(d.stare.la)),
+        extern: esc(u.extern ? (u.extern.ok === null ? t('neconfigurat') : u.extern.ok ? t('trimisa ✓') : t('ESUAT: {e}', { e: u.extern.mesaj })) : '-'),
+        cheie: esc(d.cheie_amprenta), dir: esc(d.director) }))
+      : raw(t('{titlu} la {cand}: {e}', { titlu: html`<b>${t('Ultima copie a EȘUAT')}</b>`, cand: esc(cand(d.stare.la)), e: esc(d.stare.eroare) }));
+    $('#bn-lista').innerHTML = lista((d.copii || []).slice(0, 8), (b) => html`<div class="push-row"><b>${b.creat}</b><span class="hint">${t('{mb} MB · {n} elemente', { mb: (b.octeti / 2 ** 20).toFixed(1), n: (b.continut || []).length })}</span></div>`, '');
   } catch {}
 }
 $('#bn-acum').onclick = async () => {
   const j = await runJob('/api/backup/acum', { method: 'POST' }, { download: false });
-  if (j && j.stare === 'gata') { flash('#bn-msg', 'Copia e gata ✓'); loadBackupNocturn(); }
+  if (j && j.stare === 'gata') { flash('#bn-msg', t('Copia e gata ✓')); loadBackupNocturn(); }
 };
 $('#bn-cheie').onclick = async () => {
   const el = $('#bn-cheie-val');
   if (!el.classList.contains('hidden')) { el.classList.add('hidden'); el.textContent = ''; return; }
   const d = await (await fetch('/api/backup/cheie')).json();
-  if (d.error) { alert('Eroare: ' + d.error); return; }
+  if (d.error) { alert(t('Eroare: {e}', { e: d.error })); return; }
   el.textContent = `${d.cheie}
 
 ${d.nota}`;
@@ -1082,16 +1111,16 @@ $('#bk-safe').onclick = () => { window.location = '/api/backup?fara_parole=1'; }
 $('#bk-file').onchange = async (e) => {
   const f = e.target.files[0];
   if (!f) return;
-  if (!confirm('Refaci configurația din acest fișier?\nConfigurația curentă se păstrează ca fișier de rezerva.')) {
+  if (!confirm(t('Refaci configurația din acest fișier?\nConfigurația curentă se păstrează ca fișier de rezerva.'))) {
     e.target.value = ''; return;
   }
   try {
     const d = await post('/api/restore', JSON.parse(await f.text()));
     if (d && !d.error) {
-      flash('#bk-msg', `Refacut: ${d.sectiuni.join(', ')}. Reîncarc pagina...`);
+      flash('#bk-msg', t('Refacut: {sectiuni}. Reîncarc pagina...', { sectiuni: d.sectiuni.join(', ') }));
       setTimeout(() => location.reload(), 2000);
     }
-  } catch (err) { flash('#bk-msg', 'Fișier nevalid: ' + err, true); }
+  } catch (err) { flash('#bk-msg', t('Fișier nevalid: {e}', { e: err }), true); }
   e.target.value = '';
 };
 async function loadTimeStatus() {
@@ -1100,17 +1129,17 @@ async function loadTimeStatus() {
     const bad = d.cameras.filter((c) => c.error || c.drift === null || Math.abs(c.drift) > 60);
     $('#ntp-host').value = d.ntp || '';
     $('#time-status').innerHTML = bad.length
-      ? html`<span class="warn">${bad.length} camere cu ora greșită: ${bad.map((c) => c.name).join(', ')}</span>`
-      : html`Toate cele ${d.cameras.length} camere au ora corectă (abatere sub un minut).`;
+      ? html`<span class="warn">${t('{n} camere cu ora greșită: {lista}', { n: bad.length, lista: bad.map((c) => c.name).join(', ') })}</span>`
+      : html`${t('Toate cele {n} camere au ora corectă (abatere sub un minut).', { n: d.cameras.length })}`;
   } catch {}
 }
 $('#time-sync').onclick = async () => {
   const b = $('#time-sync');
   b.disabled = true;
-  flash('#time-msg', 'Sincronizez (durează ~30s)...');
+  flash('#time-msg', t('Sincronizez (durează ~30s)...'));
   const d = await post('/api/time/sync', { ntp: $('#ntp-host').value.trim() });
   b.disabled = false;
-  if (d && !d.error) flash('#time-msg', `Sincronizate ${d.reusite}/${d.total}`);
+  if (d && !d.error) flash('#time-msg', t('Sincronizate {ok}/{total}', { ok: d.reusite, total: d.total }));
   loadTimeStatus();
 };
 async function loadLog() {
@@ -1122,7 +1151,7 @@ async function loadLog() {
       <span class="log-g">${r.target || ''}</span>
       <span class="log-d">${r.detail ? JSON.stringify(r.detail) : ''}</span>
       <span class="log-w" title="${r.ip || ''}">${r.who || ''}</span></div>`,
-      '<p class="hint">Nicio modificare inregistrata inca.</p>');
+      html`<p class="hint">${t('Nicio modificare inregistrata inca.')}</p>`);
   } catch {}
 }
 $('#log-q').oninput = loadLog;
@@ -1134,13 +1163,11 @@ async function loadStorage() {
     const cb = $('#s-reencode');
     cb.disabled = !re.available;
     $('#s-storage').innerHTML =
-      html`Înregistrări pe disc: <b>${s.used_gb} GB</b> · spațiu liber: <b>${s.free_gb} GB</b>${
+      html`${raw(t('Înregistrări pe disc: {used} · spațiu liber: {free}', { used: html`<b>${s.used_gb} GB</b>`, free: html`<b>${s.free_gb} GB</b>` }))}${
       re.available
-        ? (re.running ? html`<br>Re-encodare in curs: ${re.done} fisiere, ${re.saved_mb} MB economisiti`
-                      : (re.done ? html`<br>Re-encodate: ${re.done} fisiere, ${re.saved_mb} MB economisiti` : ''))
-        : raw('<br><span class="warn">Re-encodarea nu e disponibila: placa video actuala ' +
-          '(Quadro M6000) nu are encoder HEVC/AV1. Cu un GPU modern (ex. RTX 2000 Ada) ' +
-          'optiunea se activeaza singura.</span>')}`;
+        ? (re.running ? html`<br>${t('Re-encodare in curs: {n} fisiere, {mb} MB economisiti', { n: re.done, mb: re.saved_mb })}`
+                      : (re.done ? html`<br>${t('Re-encodate: {n} fisiere, {mb} MB economisiti', { n: re.done, mb: re.saved_mb })}` : ''))
+        : html`<br><span class="warn">${t('Re-encodarea nu e disponibila: placa video actuala (Quadro M6000) nu are encoder HEVC/AV1. Cu un GPU modern (ex. RTX 2000 Ada) optiunea se activeaza singura.')}</span>`}`;
   } catch {}
 }
 function flash(id, txt, err) {
@@ -1151,9 +1178,9 @@ function flash(id, txt, err) {
 }
 /* Navigare pe sectiuni: o pagina de 14 carduri nu se poate parcurge; una pe sectiune, da. */
 $('#s-digest-now') && ($('#s-digest-now').onclick = async () => {
-  flash('#s-msg-digest', 'Trimit…');
+  flash('#s-msg-digest', t('Trimit…'));
   const d = await post('/api/digest/trimite', {});
-  flash('#s-msg-digest', d && d.ok ? 'Rezumatul a plecat ✓' : (d && d.error) || 'Eroare', !!(d && d.error));
+  flash('#s-msg-digest', d && d.ok ? t('Rezumatul a plecat ✓') : (d && d.error) || t('Eroare'), !!(d && d.error));
 });
 
 for (const b of document.querySelectorAll('.snav-item')) {
@@ -1178,7 +1205,7 @@ function checkDirty() {
   if (dirty) {
     const a = JSON.parse(savedSnapshot), b = JSON.parse(now);
     const n = Object.keys(b).filter((k) => JSON.stringify(a[k]) !== JSON.stringify(b[k])).length;
-    $('#set-dirty').textContent = n === 1 ? 'O modificare nesalvată' : `${n} modificări nesalvate`;
+    $('#set-dirty').textContent = n === 1 ? t('O modificare nesalvată') : t('{n} modificări nesalvate', { n });
   }
 }
 document.addEventListener('input', (e) => {
@@ -1192,15 +1219,15 @@ $('#s-save').onclick = async () => {
   if (d && !d.error) {
     savedSnapshot = snapshotSettings();
     checkDirty();
-    flash('#s-msg-save', 'Salvat');
-  } else flash('#s-msg-save', 'Eroare la salvare', true);
+    flash('#s-msg-save', t('Salvat'));
+  } else flash('#s-msg-save', t('Eroare la salvare'), true);
 };
 $('#s-revert').onclick = () => { loadSettings(); };
 for (const btn of document.querySelectorAll('.s-test')) {
   btn.onclick = async () => {
     const ch = btn.dataset.ch;
     btn.disabled = true;
-    flash('#s-msg-' + ch, 'Trimit...');
+    flash('#s-msg-' + ch, t('Trimit...'));
     try {
       const r = await fetch(`/api/settings/test/${ch}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1208,10 +1235,10 @@ for (const btn of document.querySelectorAll('.s-test')) {
       });
       const d = await r.json();
       flash('#s-msg-' + ch,
-        d.ok ? 'Trimis ✓ verifică ' + (ch === 'telegram' ? 'Telegram' : 'inboxul')
-             : 'Eroare: ' + d.error, !d.ok);
+        d.ok ? (ch === 'telegram' ? t('Trimis ✓ verifică Telegram') : t('Trimis ✓ verifică inboxul'))
+             : t('Eroare: {e}', { e: d.error }), !d.ok);
     } catch (e) {
-      flash('#s-msg-' + ch, 'Eroare: ' + e, true);
+      flash('#s-msg-' + ch, t('Eroare: {e}', { e }), true);
     } finally {
       btn.disabled = false;
     }
@@ -1223,23 +1250,23 @@ async function loadTrainStatus() {
   try {
     const s = await (await fetch('/api/train/status')).json();
     $('#s-train-status').innerHTML =
-      html`Cadre curate strânse: <b>${s.collected}</b> · în datasetul etichetat: <b>${s.finetune}</b><br>
-      Model activ din: <b>${s.model_date}</b>${
-      s.trained ? html` · ultimul antrenament: <b>${s.runs[0].nume}</b> (${s.trained_date})`
-                : ' · niciun antrenament încă'}${
-      s.backup ? html`<br>Backup disponibil (model anterior, din ${s.backup_date})` : ''}`;
+      html`${raw(t('Cadre curate strânse: {colectate} · în datasetul etichetat: {finetune}', { colectate: html`<b>${s.collected}</b>`, finetune: html`<b>${s.finetune}</b>` }))}<br>
+      ${raw(t('Model activ din: {data}', { data: html`<b>${s.model_date}</b>` }))}${
+      s.trained ? raw(' · ' + t('ultimul antrenament: {nume} ({data})', { nume: html`<b>${s.runs[0].nume}</b>`, data: esc(s.trained_date) }))
+                : ' · ' + t('niciun antrenament încă')}${
+      s.backup ? html`<br>${t('Backup disponibil (model anterior, din {data})', { data: s.backup_date })}` : ''}`;
     $('#s-train-revert').classList.toggle('hidden', !s.backup);
     const j = s.job, box = $('#s-train-job');
     if (j === null) {
       box.classList.remove('hidden');
-      box.textContent = 'nvr-ai nu rulează: datasetul și antrenarea au nevoie de el.';
+      box.textContent = t('nvr-ai nu rulează: datasetul și antrenarea au nevoie de el.');
     } else if (j && (j.activ || j.rc !== null)) {
       box.classList.remove('hidden');
       const cat = j.total ? ` ${Math.round(100 * j.progres / j.total)}%` : '';
       const durata = j.inceput ? Math.round(((j.sfarsit || Date.now() / 1000) - j.inceput) / 60) : 0;
-      box.innerHTML = html`<b>${j.tip === 'dataset' ? 'Dataset' : 'Antrenament'}${j.nume ? ' ' + j.nume : ''}</b>:
-        ${j.activ ? 'rulează' : (j.rc === 0 ? 'gata' : 'eșuat')} · ${j.mesaj}${cat} · ${durata} min${
-        j.log && j.log.length ? html`<details><summary>jurnal</summary><pre>${j.log.join('\n')}</pre></details>` : ''}`;
+      box.innerHTML = html`<b>${j.tip === 'dataset' ? t('Dataset') : t('Antrenament')}${j.nume ? ' ' + j.nume : ''}</b>:
+        ${j.activ ? t('rulează') : (j.rc === 0 ? t('gata') : t('eșuat'))} · ${j.mesaj}${cat} · ${durata} min${
+        j.log && j.log.length ? html`<details><summary>${t('jurnal')}</summary><pre>${j.log.join('\n')}</pre></details>` : ''}`;
     } else box.classList.add('hidden');
     $('#s-train-stop').classList.toggle('hidden', !(j && j.activ));
     for (const id of ['s-train-dataset', 's-train-run']) $('#' + id).disabled = !!(j && j.activ);
@@ -1250,38 +1277,41 @@ async function loadTrainStatus() {
 let trainTimer = null;
 $('#s-train-dataset') && ($('#s-train-dataset').onclick = async () => {
   const max = +$('#s-train-max').value || 0;
-  if (!confirm(`Construiești datasetul etichetat din ${max ? 'cel mult ' + max : 'toate'} cadre(le)?\nÎnlocuiește datasetul curent (setul de validare se reface) și ține GPU-ul ocupat.`)) return;
+  const intrebare = max
+    ? t('Construiești datasetul etichetat din cel mult {n} cadre?\nÎnlocuiește datasetul curent (setul de validare se reface) și ține GPU-ul ocupat.', { n: max })
+    : t('Construiești datasetul etichetat din toate cadrele?\nÎnlocuiește datasetul curent (setul de validare se reface) și ține GPU-ul ocupat.');
+  if (!confirm(intrebare)) return;
   const d = await post('/api/train/dataset', { max });
-  flash('#s-msg-train', d && !d.error ? 'Datasetul se construiește în fundal.' : (d && d.error) || 'Eroare', !!(d && d.error));
+  flash('#s-msg-train', d && !d.error ? t('Datasetul se construiește în fundal.') : (d && d.error) || t('Eroare'), !!(d && d.error));
   loadTrainStatus();
 });
 $('#s-train-run') && ($('#s-train-run').onclick = async () => {
   const epoci = +$('#s-train-epoci').value || 30;
-  if (!confirm(`Antrenezi un model nou, ${epoci} epoci?\nDurează ore și încetinește detecția cât rulează.`)) return;
+  if (!confirm(t('Antrenezi un model nou, {n} epoci?\nDurează ore și încetinește detecția cât rulează.', { n: epoci }))) return;
   const d = await post('/api/train/run', { epoci });
-  flash('#s-msg-train', d && !d.error ? `Antrenamentul ${d.nume} a pornit.` : (d && d.error) || 'Eroare', !!(d && d.error));
+  flash('#s-msg-train', d && !d.error ? t('Antrenamentul {nume} a pornit.', { nume: d.nume }) : (d && d.error) || t('Eroare'), !!(d && d.error));
   loadTrainStatus();
 });
 $('#s-train-stop') && ($('#s-train-stop').onclick = async () => {
-  if (!confirm('Oprești jobul de antrenament?')) return;
+  if (!confirm(t('Oprești jobul de antrenament?'))) return;
   await post('/api/train/stop');
   setTimeout(loadTrainStatus, 1500);
 });
 $('#s-train-revert').onclick = async () => {
-  if (!confirm('Schimbi modelul activ cu cel din backup?\n(Apăsând din nou revii la cel curent — e o comutare, nu o ștergere.)')) return;
+  if (!confirm(t('Schimbi modelul activ cu cel din backup?\n(Apăsând din nou revii la cel curent — e o comutare, nu o ștergere.)'))) return;
   const d = await post('/api/train/revert');
-  flash('#s-msg-train', d && !d.error ? 'Model comutat cu backup-ul ✓' : 'Eroare', !!(d && d.error));
+  flash('#s-msg-train', d && !d.error ? t('Model comutat cu backup-ul ✓') : t('Eroare'), !!(d && d.error));
   loadTrainStatus();
 };
 $('#s-train-harvest').onclick = async () => {
   const d = await post('/api/train/harvest');
-  if (d && !d.error) flash('#s-msg-train', 'Extragere pornită în fundal — revino în câteva minute și vezi contorul.');
+  if (d && !d.error) flash('#s-msg-train', t('Extragere pornită în fundal — revino în câteva minute și vezi contorul.'));
   setTimeout(loadTrainStatus, 4000);
 };
 $('#s-train-apply').onclick = async () => {
-  if (!confirm('Înlocuiești modelul de detecție cu ultimul antrenament local?\n(Se păstrează backup și se aplică instant.)')) return;
+  if (!confirm(t('Înlocuiești modelul de detecție cu ultimul antrenament local?\n(Se păstrează backup și se aplică instant.)'))) return;
   const d = await post('/api/train/apply');
-  flash('#s-msg-train', d && !d.error ? `Model aplicat: ${d.model} ✓` : 'Eroare', !!(d && d.error));
+  flash('#s-msg-train', d && !d.error ? t('Model aplicat: {model} ✓', { model: d.model }) : t('Eroare'), !!(d && d.error));
   loadTrainStatus();
 };
 
@@ -1290,11 +1320,11 @@ export { SET_LABELS, flash, hdBufferTarget, hdHeightParam, loadSettings, meDlg }
 /* ---------- mod demo: camere sintetice (Setari -> Unelte) ---------- */
 $('#s-demo-add') && ($('#s-demo-add').onclick = async () => {
   const d = await post('/api/demo/camere', { actiune: 'adauga' });
-  flash('#s-msg-demo', d && d.ok ? `Camere demo: ${d.demo.length}. Apar în Live în câteva secunde.` : (d && d.error) || 'Eroare', !(d && d.ok));
+  flash('#s-msg-demo', d && d.ok ? t('Camere demo: {n}. Apar în Live în câteva secunde.', { n: d.demo.length }) : (d && d.error) || t('Eroare'), !(d && d.ok));
   if (d && d.ok) loadCameras();
 });
 $('#s-demo-del') && ($('#s-demo-del').onclick = async () => {
   const d = await post('/api/demo/camere', { actiune: 'sterge' });
-  flash('#s-msg-demo', d && d.ok ? 'Camerele demo au fost scoase.' : (d && d.error) || 'Eroare', !(d && d.ok));
+  flash('#s-msg-demo', d && d.ok ? t('Camerele demo au fost scoase.') : (d && d.error) || t('Eroare'), !(d && d.ok));
   if (d && d.ok) loadCameras();
 });

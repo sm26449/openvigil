@@ -36,6 +36,7 @@ import reencode
 import rules
 import semantic
 import settings
+from i18n import t
 from server import (ROOT, _visible_ids, current_user, get_cameras, init_ext,
                     invalidate_cam_cache, load_ext, reload_streams)
 import users
@@ -138,7 +139,7 @@ def api_tts():
     b = request.get_json(silent=True) or {}
     text = (b.get("text") or "").strip()[:300]
     if not text:
-        return jsonify({"error": "scrie textul anunțului"}), 400
+        return jsonify({"error": t("scrie textul anunțului")}), 400
     speed = max(80, min(220, int(b.get("speed") or 150)))
     os.makedirs(os.path.join(ROOT, "data", "tmp"), exist_ok=True)
     tmp_raw = os.path.join(ROOT, "data", "tmp", "tts_raw.wav")
@@ -151,7 +152,7 @@ def api_tts():
                         "-ar", "8000", "-ac", "1", "-acodec", "pcm_s16le", out],
                        capture_output=True, timeout=30, check=True)
     except FileNotFoundError:
-        return jsonify({"error": "sinteza vocala nu e instalata pe server"}), 500
+        return jsonify({"error": t("sinteza vocala nu e instalata pe server")}), 500
     except subprocess.CalledProcessError as e:
         return jsonify({"error": e.stderr.decode(errors="ignore")[-160:]}), 500
     return send_file(out, mimetype="audio/wav", as_attachment=bool(b.get("download")),
@@ -450,7 +451,7 @@ def api_restore():
     reload_streams()
     detect.sync()
     return jsonify({"ok": True, "sectiuni": restored,
-                    "nota": "repornește serviciile dacă ceva nu se comporta corect"})
+                    "nota": t("repornește serviciile dacă ceva nu se comporta corect")})
 
 
 @bp.route("/api/pulse")
@@ -535,7 +536,7 @@ def api_views():
     b = request.get_json(silent=True) or {}
     name = (b.get("name") or "").strip()[:40]
     if not name:
-        return jsonify({"error": "vizualizarea are nevoie de un nume"}), 400
+        return jsonify({"error": t("vizualizarea are nevoie de un nume")}), 400
     views = [v for v in views if v.get("name") != name]
     if request.method == "POST":
         views.append({"name": name, "group": b.get("group") or "",

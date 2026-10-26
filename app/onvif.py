@@ -21,6 +21,8 @@ import xml.etree.ElementTree as ET
 import requests
 from requests.auth import HTTPDigestAuth
 
+from i18n import t
+
 TIMEOUT = 8
 NS = {
     "s": "http://www.w3.org/2003/05/soap-envelope",
@@ -93,19 +95,19 @@ def apel(url, user, pw, corp, timeout=TIMEOUT, run=None):
             r = run(url, data=_plic(None, None, corp).encode(), headers=hdr, timeout=timeout,
                     auth=HTTPDigestAuth(user, pw))
     except requests.RequestException as e:
-        raise EroareOnvif(f"nu răspunde: {str(e)[:100]}")
+        raise EroareOnvif(t("nu răspunde: {e}", e=str(e)[:100]))
     if r.status_code == 401:
-        raise EroareOnvif("autentificare esuata (user/parola)")
+        raise EroareOnvif(t("autentificare esuata (user/parola)"))
     try:
         root = ET.fromstring(r.content)
     except ET.ParseError:
-        raise EroareOnvif(f"răspuns ne-SOAP (HTTP {r.status_code})")
+        raise EroareOnvif(t("răspuns ne-SOAP (HTTP {cod})", cod=r.status_code))
     fault = gaseste(root, "Fault")
     if fault is not None or not r.ok:
         motiv = text(fault, "Text", "") or text(fault, "Reason", "") or f"HTTP {r.status_code}"
         if r.status_code == 401 or "NotAuthorized" in r.text or "Unauthorized" in r.text:
-            raise EroareOnvif("autentificare esuata (user/parola)")
-        raise EroareOnvif(f"SOAP: {motiv[:120]}")
+            raise EroareOnvif(t("autentificare esuata (user/parola)"))
+        raise EroareOnvif(t("SOAP: {motiv}", motiv=motiv[:120]))
     return root
 
 
@@ -161,7 +163,7 @@ class Camera:
         """[{token, nume, w, h, codec}] in ordinea raportata (de obicei main, sub)."""
         media = self.servicii().get("media")
         if not media:
-            raise EroareOnvif("camera nu expune serviciul Media")
+            raise EroareOnvif(t("camera nu expune serviciul Media"))
         r = self._apel(media, "<trt:GetProfiles/>")
         out = []
         for p in toate(r, "Profiles"):
@@ -172,7 +174,7 @@ class Camera:
                         "h": int(text(rez, "Height", 0) or 0) if rez is not None else 0,
                         "codec": (text(vec, "Encoding", "") if vec is not None else "").upper()})
         if not out:
-            raise EroareOnvif("camera nu are profiluri media")
+            raise EroareOnvif(t("camera nu are profiluri media"))
         return out
 
     def url_flux(self, token):
@@ -182,7 +184,7 @@ class Camera:
                               f'<trt:ProfileToken>{_esc(token)}</trt:ProfileToken></trt:GetStreamUri>')
         u = text(r, "Uri")
         if not u:
-            raise EroareOnvif("GetStreamUri fără Uri")
+            raise EroareOnvif(t("GetStreamUri fără Uri"))
         return u
 
     def url_poza(self, token):
@@ -222,7 +224,7 @@ class Camera:
     def _ptz(self):
         x = self.servicii().get("ptz")
         if not x:
-            raise EroareOnvif("camera nu are serviciu PTZ")
+            raise EroareOnvif(t("camera nu are serviciu PTZ"))
         return x
 
     def _token(self):
@@ -250,7 +252,7 @@ class Camera:
                 pid = int(tok)
             except ValueError:
                 pid = abs(hash(tok)) % 10000
-            out.append({"id": pid, "token": tok, "nume": text(p, "Name", "") or f"Pozitia {tok}"})
+            out.append({"id": pid, "token": tok, "nume": text(p, "Name", "") or t("Pozitia {id}", id=tok)})
         return out
 
     def presetare_salveaza(self, nume, token=None):
@@ -279,7 +281,7 @@ class Camera:
     def releu(self, token, on):
         x = self.servicii().get("deviceio")
         if not x:
-            raise EroareOnvif("camera nu are serviciu DeviceIO")
+            raise EroareOnvif(t("camera nu are serviciu DeviceIO"))
         self._apel(x, f"<tmd:SetRelayOutputState><tmd:RelayOutputToken>{_esc(token)}</tmd:RelayOutputToken>"
                       f"<tmd:LogicalState>{'active' if on else 'inactive'}</tmd:LogicalState></tmd:SetRelayOutputState>")
 
@@ -308,6 +310,6 @@ def identifica(ip, user, pw, port=80, run=None):
                 "serial": i.get("serial"), "firmware": i.get("firmware"),
                 "name": i.get("model") or "ONVIF"}
     except EroareOnvif as e:
-        if "autentificare" in str(e):
+        if str(e) == t("autentificare esuata (user/parola)"):
             return {"vendor": "onvif", "auth": False}
         return None

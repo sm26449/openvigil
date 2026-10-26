@@ -13,6 +13,7 @@ import time
 import uuid
 
 import jurnal
+from i18n import t
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS marcaje (
@@ -60,12 +61,12 @@ def _dict(row):
 def create(cam, start, end=None, eticheta="", nota="", who=None):
     """Un marcaj nou. `end` lipsa = moment punctual. Intoarce marcajul creat."""
     cam = int(cam)
-    t, ts = _norm_t(start)
-    t_end, ts_end = _norm_t(end) if end else (t, ts)
+    tx, ts = _norm_t(start)
+    t_end, ts_end = _norm_t(end) if end else (tx, ts)
     if ts_end < ts:
-        raise ValueError("sfarsitul e inaintea inceputului")
+        raise ValueError(t("sfarsitul e inaintea inceputului"))
     if ts_end - ts > MAX_DURATA:
-        raise ValueError("un marcaj ține cel mult 24 de ore")
+        raise ValueError(t("un marcaj ține cel mult 24 de ore"))
     eticheta = (eticheta or "").strip()[:60]
     nota = (nota or "").strip()[:500]
     mid = uuid.uuid4().hex[:12]
@@ -74,7 +75,7 @@ def create(cam, start, end=None, eticheta="", nota="", who=None):
     with jurnal.lock:
         c.execute("INSERT INTO marcaje (id, cam, ts, ts_end, t, t_end, eticheta, nota, "
                   "creat_de, creat) VALUES (?,?,?,?,?,?,?,?,?,?)",
-                  (mid, cam, ts, ts_end, t, t_end, eticheta, nota, who, creat))
+                  (mid, cam, ts, ts_end, tx, t_end, eticheta, nota, who, creat))
     return get(mid)
 
 
@@ -130,7 +131,7 @@ def update(mid, eticheta=None, nota=None, end=None):
     if end is not None:
         t_end, ts_end = _norm_t(end)
         if ts_end < jurnal._epoch(m["t"]) or ts_end - jurnal._epoch(m["t"]) > MAX_DURATA:
-            raise ValueError("sfârșit invalid")
+            raise ValueError(t("sfârșit invalid"))
         sets.append("t_end = ?")
         args.append(t_end)
         sets.append("ts_end = ?")

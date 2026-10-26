@@ -21,6 +21,7 @@ import semantic
 import settings
 import snaps
 import track
+from i18n import t
 from server import ROOT, _visible_ids, get_cameras, load_ext
 
 bp = Blueprint("analytics", __name__)
@@ -43,11 +44,11 @@ def api_relabel():
     p = _snap_path(b.get("url"))
     label = (b.get("label") or "").strip()
     if not p or not re.match(r"^[A-Za-z]{2,20}$", label):
-        return jsonify({"error": "cerere invalida"}), 400
+        return jsonify({"error": t("cerere invalida")}), 400
     d, fn = os.path.split(p)
     m = re.match(r"^(\d{6}_cam\d+_)(.+)\.jpg$", fn)
     if not m:
-        return jsonify({"error": "nume de fișier necunoscut"}), 400
+        return jsonify({"error": t("nume de fișier necunoscut")}), 400
     new = os.path.join(d, f"{m[1]}{label}.jpg")
     os.rename(p, new)
     return jsonify({"ok": True, "url": f"/snapshots/{os.path.basename(d)}/{os.path.basename(new)}"})
@@ -58,7 +59,7 @@ def api_alarm_delete():
     """Body: {url}. Sterge un snapshot gresit (detectie falsa)."""
     p = _snap_path((request.get_json(silent=True) or {}).get("url"))
     if not p:
-        return jsonify({"error": "cerere invalida"}), 400
+        return jsonify({"error": t("cerere invalida")}), 400
     os.remove(p)
     return jsonify({"ok": True})
 
@@ -74,8 +75,9 @@ def api_rules():
                       "io_out": bool((c.get("features") or {}).get("io_out"))}
             for c in load_ext()}
     return jsonify({"rules": sorted(rules.load(), key=lambda r: r.get("nume", "")),
-                    "triggers": rules.TRIGGER_TYPES, "actions": rules.ACTION_TYPES,
-                    "capabilities": caps, "zile": rules.ZILE,
+                    "triggers": {k: t(v) for k, v in rules.TRIGGER_TYPES.items()},
+                    "actions": {k: t(v) for k, v in rules.ACTION_TYPES.items()},
+                    "capabilities": caps, "zile": [t(z) for z in rules.ZILE],
                     "groups": sorted({c.get("group") or "Altele" for c in load_ext()}),
                     "persons": [p["name"] for p in faces.persons()],
                     "plates": sorted(plates.known())})
@@ -106,12 +108,12 @@ def api_rules_test(rule_id):
     """Declanseaza regula ACUM, ocolind conditiile — ca sa vezi ca actiunile merg."""
     r = next((x for x in rules.load() if x["id"] == rule_id), None)
     if not r:
-        return jsonify({"error": "regula nu există"}), 404
+        return jsonify({"error": t("regula nu există")}), 404
     cam_id = (r.get("camere") or [None])[0]
     if cam_id is None:
         cam_id = next((c["id"] for c in load_ext()), None)
     rules._run_actions(r, r["declansator"]["tip"], cam_id, {"proba": True})
-    return jsonify({"ok": True, "nota": "acțiunile au rulat; vezi jurnalul de evenimente"})
+    return jsonify({"ok": True, "nota": t("acțiunile au rulat; vezi jurnalul de evenimente")})
 
 
 @bp.route("/api/faces/history")
@@ -131,9 +133,9 @@ def api_ask():
     + aparitiile-dovada. Merge si pentru vieweri/operatori (pe camerele lor)."""
     q = (request.args.get("q") or "").strip()
     if not q:
-        return jsonify({"error": "scrie intrebarea"}), 400
+        return jsonify({"error": t("scrie intrebarea")}), 400
     if not semantic.enabled():
-        return jsonify({"error": "căutarea semantică nu e pornită (Setări → Detecție)"}), 409
+        return jsonify({"error": t("căutarea semantică nu e pornită (Setări → Detecție)")}), 409
     nume = {c["id"]: c["name"] for c in get_cameras()}
     vis = _visible_ids()
     cam = request.args.get("cam", type=int)
@@ -146,7 +148,7 @@ def api_ask():
     try:
         return jsonify(ask.answer(q, visible=vis, cam_names=nume, cam=cam))
     except Exception as e:
-        return jsonify({"error": f"întrebare eșuată: {str(e)[:100]}"}), 500
+        return jsonify({"error": t("întrebare eșuată: {e}", e=str(e)[:100])}), 500
 
 
 @bp.route("/api/search")
@@ -155,9 +157,9 @@ def api_search():
     Merge si pentru vieweri (rezultatele se filtreaza pe camerele lor)."""
     q = (request.args.get("q") or "").strip()
     if not q:
-        return jsonify({"error": "scrie ce cauti"}), 400
+        return jsonify({"error": t("scrie ce cauti")}), 400
     if not semantic.enabled():
-        return jsonify({"error": "căutarea semantică nu e pornită (Setări → Detecție)"}), 409
+        return jsonify({"error": t("căutarea semantică nu e pornită (Setări → Detecție)")}), 409
     days = min(90, max(1, request.args.get("days", 14, type=int)))
     limit = min(100, max(1, request.args.get("limit", 40, type=int)))
     vis = _visible_ids()
@@ -166,7 +168,7 @@ def api_search():
         try:
             rez = semantic.search(q, days=days, limit=limit, visible=vis)
         except Exception as e:
-            return jsonify({"error": f"căutare eșuată: {str(e)[:100]}"}), 500
+            return jsonify({"error": t("căutare eșuată: {e}", e=str(e)[:100])}), 500
     return jsonify({"q": q, "results": rez})
 
 
@@ -290,7 +292,7 @@ def api_plates_config():
         try:
             upd["lpr_alert_cams"] = sorted({int(c) for c in (b["alert_cams"] or [])})
         except (TypeError, ValueError):
-            return jsonify({"error": "alert_cams: listă de id-uri de camere"}), 400
+            return jsonify({"error": t("alert_cams: listă de id-uri de camere")}), 400
     settings.update(upd)
     if upd.get("lpr_enabled"):
         # modelul LPR sta in nvr-ai cand serviciul e viu, altfel local
@@ -336,7 +338,7 @@ def api_plates_clear():
 def api_plates_img(rel):
     p = plates.safe_path(rel)
     if not p or not os.path.isfile(p):
-        return jsonify({"error": "nu există"}), 404
+        return jsonify({"error": t("nu există")}), 404
     return send_file(p, mimetype="image/jpeg", max_age=60)
 
 

@@ -4,7 +4,7 @@
    pe toate; importurile/exporturile sunt verificate de scripts/module_check.py (si in pytest).
    ==================================================================== */
 import { S } from './state.js';
-import { $, ADMIN, CAN_ACT, DET_RO, EV_RO, HLS_SUFFIX, html, icon, lista, streamEl, talkStart, talkStop, toast } from './00-core.js';
+import { $, ADMIN, CAN_ACT, DET_RO, EV_RO, HLS_SUFFIX, html, icon, lista, streamEl, t, talkStart, talkStop, toast } from './00-core.js';
 import { camLinks } from './05-navigare.js';
 import { hdCam, openHD } from './20-hd.js';
 import { hartaEvents } from './25-harta.js';
@@ -28,7 +28,7 @@ function renderViews() {
   const box = $('#views');
   box.innerHTML = '';
   if (!views.length) {
-    box.innerHTML = '<span class="hint">Filtreaza si apasa "Salveaza vizualizarea"</span>';
+    box.innerHTML = html`<span class="hint">${t('Filtreaza si apasa "Salveaza vizualizarea"')}</span>`;
     return;
   }
   for (const v of views) {
@@ -37,18 +37,19 @@ function renderViews() {
     const b = document.createElement('button');
     b.className = 'view-go';
     b.textContent = v.name + (v.name === defaultView ? ' •' : '');
-    b.title = `${v.group || 'toate grupurile'}${v.q ? ', cauta "' + v.q + '"' : ''}, ` +
-              `${v.cols === 'auto' ? 'auto' : v.cols + ' coloane'}` +
-              (v.preview ? ', previzualizare' : '') +
-              (v.name === defaultView ? ' — se încarcă la pornire' : '');
+    const desc = [v.group || t('toate grupurile')];
+    if (v.q) desc.push(t('cauta "{q}"', { q: v.q }));
+    desc.push(v.cols === 'auto' ? 'auto' : t('{n} coloane', { n: v.cols }));
+    if (v.preview) desc.push(t('previzualizare'));
+    b.title = desc.join(', ') + (v.name === defaultView ? ` — ${t('se încarcă la pornire')}` : '');
     b.onclick = () => applyView(v);
     const del = document.createElement('button');
     del.className = 'view-del';
     del.innerHTML = icon('trash', 12);
-    del.title = 'Șterge vizualizarea';
+    del.title = t('Șterge vizualizarea');
     del.onclick = async (e) => {
       e.stopPropagation();
-      if (!confirm(`Ștergi vizualizarea "${v.name}"?`)) return;
+      if (!confirm(t('Ștergi vizualizarea "{name}"?', { name: v.name }))) return;
       await fetch('/api/views', { method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: v.name }) });
@@ -76,10 +77,10 @@ function applyView(v, silent) {
   if (!silent) $('#status').textContent += ` — ${v.name}`;
 }
 $('#view-save').onclick = async () => {
-  const name = prompt('Cum se numește vizualizarea?\n(ex. "Perete curte", "Intrări noaptea")',
-                      S.currentView || filt.live.g || 'Vizualizarea mea');
+  const name = prompt(t('Cum se numește vizualizarea?\n(ex. "Perete curte", "Intrări noaptea")'),
+                      S.currentView || filt.live.g || t('Vizualizarea mea'));
   if (!name) return;
-  const asDefault = confirm(`Vrei ca "${name}" să se încarce automat la deschiderea paginii?`);
+  const asDefault = confirm(t('Vrei ca "{name}" să se încarce automat la deschiderea paginii?', { name }));
   const d = await post('/api/views', {
     name, group: filt.live.g, q: filt.live.q,
     cols: localStorage.getItem('cols') || 'auto',
@@ -119,8 +120,9 @@ function renderGroupChips(boxId, key, onChange) {
     b.onclick = () => { filt[key].g = val; onChange(); };
     box.appendChild(b);
   };
-  mk('', 'Toate', S.cameras.length);
-  for (const g of Object.keys(counts).sort()) mk(g, g, counts[g]);
+  mk('', t('Toate'), S.cameras.length);
+  // „Altele” e valoarea stocata a grupului implicit; doar eticheta se traduce
+  for (const g of Object.keys(counts).sort()) mk(g, g === 'Altele' ? t('Altele') : g, counts[g]);
 }
 
 /* ---------- LIVE ---------- */
@@ -131,7 +133,7 @@ function buildLive() {
   renderGroupChips('#live-groups', 'live', buildLive);
   const shown = S.cameras.filter((c) => matches(c, filt.live));
   $('#status').textContent = shown.length === S.cameras.length
-    ? `${S.cameras.length} camere` : `${shown.length} din ${S.cameras.length} camere`;
+    ? t('{n} camere', { n: S.cameras.length }) : t('{n} din {total} camere', { n: shown.length, total: S.cameras.length });
   for (const c of shown) {
     const tile = document.createElement('div');
     tile.className = 'tile';
@@ -171,7 +173,7 @@ function buildLive() {
     const dot = document.createElement('div');
     dot.className = 'dot';
     tile.appendChild(dot);
-    tile.title = 'Click pentru HD';
+    tile.title = t('Click pentru HD');
     tile.tabIndex = 0;
     tile.onclick = () => openHD(c);
     tile.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openHD(c); } };
@@ -183,7 +185,7 @@ function buildLive() {
       const del = document.createElement('button');
       del.className = 'del';
       del.innerHTML = icon('trash', 14);
-      del.title = 'Șterge camera';
+      del.title = t('Șterge camera');
       del.onclick = (e) => { e.stopPropagation(); deleteCamera(c); };
       tile.appendChild(del);
     }
@@ -219,8 +221,8 @@ function mkBtn(inner, title, cls) {
 const ZOOM_MAX_MS = 4000;
 function zoomBtns(c, dupa) {
   const out = [];
-  for (const [ic, spd, txt] of [['zoomin', 60, 'Apropie'], ['zoomout', -60, 'Depărtează']]) {
-    const b = mkBtn(icon(ic), txt + ' (ține apăsat)');
+  for (const [ic, spd, txt] of [['zoomin', 60, 'Apropie (ține apăsat)'], ['zoomout', -60, 'Depărtează (ține apăsat)']]) {
+    const b = mkBtn(icon(ic), t(txt));
     let timer = null;
     const stop = async (e) => {
       if (e) e.stopPropagation();
@@ -258,7 +260,7 @@ function buildCtrls(c, container, full) {
   bar.onclick = (e) => e.stopPropagation();
 
   if (mic) {
-    const b = mkBtn(icon('listen'), 'Ascultă microfonul camerei');
+    const b = mkBtn(icon('listen'), t('Ascultă microfonul camerei'));
     b.onclick = (e) => {
       e.stopPropagation();
       const v = container.querySelector('video');
@@ -269,7 +271,7 @@ function buildCtrls(c, container, full) {
     bar.appendChild(b);
   }
   if (f.talk) {
-    const b = mkBtn(icon('talk'), 'Ține apăsat ca să vorbești prin difuzorul camerei');
+    const b = mkBtn(icon('talk'), t('Ține apăsat ca să vorbești prin difuzorul camerei'));
     const down = (e) => { e.stopPropagation(); e.preventDefault(); talkStart(c, b); };
     const up = (e) => { e.stopPropagation(); talkStop(); };
     b.onmousedown = down; b.onmouseup = up; b.onmouseleave = up;
@@ -277,7 +279,7 @@ function buildCtrls(c, container, full) {
     bar.appendChild(b);
   }
   if (f.siren) {
-    const b = mkBtn(icon('siren'), 'Redă sunetul de alarma (o data)');
+    const b = mkBtn(icon('siren'), t('Redă sunetul de alarma (o data)'));
     b.onclick = async (e) => {
       e.stopPropagation();
       b.disabled = true;
@@ -292,7 +294,7 @@ function buildCtrls(c, container, full) {
     if (full && (f.sounds || []).length) {
       const sel = document.createElement('select');
       sel.className = 'snd';
-      sel.title = 'Sunetul de alarma';
+      sel.title = t('Sunetul de alarma');
       for (const s of f.sounds) {
         const o = document.createElement('option');
         o.value = s.id; o.textContent = s.name;
@@ -301,12 +303,12 @@ function buildCtrls(c, container, full) {
       bar.appendChild(sel);
       const vol = document.createElement('input');
       vol.type = 'range'; vol.min = 1; vol.max = 100; vol.value = 50;
-      vol.className = 'vol'; vol.title = 'Volum sirena';
+      vol.className = 'vol'; vol.title = t('Volum sirena');
       bar.appendChild(vol);
     }
   }
   if (ADMIN && f.siren) {
-    const b = mkBtn(icon('alarm'), 'Sirena automată la câine (necesită detecția 🐾 pornită)');
+    const b = mkBtn(icon('alarm'), t('Sirena automată la câine (necesită detecția 🐾 pornită)'));
     b.classList.add('alarma');   // starea „pornit” e rosie doar la ce poate face zgomot/lumina
     b.classList.toggle('on', !!c.auto_siren);
     b.onclick = async (e) => {
@@ -318,7 +320,7 @@ function buildCtrls(c, container, full) {
     bar.appendChild(b);
   }
   if (f.strobe) {
-    const b = mkBtn(icon('strobe'), 'Stroboscop pornit/oprit (se stinge singur dupa 60s)');
+    const b = mkBtn(icon('strobe'), t('Stroboscop pornit/oprit (se stinge singur dupa 60s)'));
     b.classList.add('alarma');
     b.classList.toggle('on', !!strobeState[c.id]);
     b.onclick = async (e) => {
@@ -334,7 +336,7 @@ function buildCtrls(c, container, full) {
     bar.appendChild(b);
   }
   if (full && f.io_out) {
-    const b = mkBtn(icon('relay'), 'Releu (iesirea de alarma) pornit/oprit');
+    const b = mkBtn(icon('relay'), t('Releu (iesirea de alarma) pornit/oprit'));
     b.classList.toggle('on', !!outState[c.id]);
     b.onclick = async (e) => {
       e.stopPropagation();
@@ -348,18 +350,18 @@ function buildCtrls(c, container, full) {
     for (const b of zoomBtns(c)) bar.appendChild(b);
   }
   if (full && ADMIN) {
-    const bz = mkBtn(icon('zone'), 'Zona de detecție (desenează unde să se uite AI-ul)');
+    const bz = mkBtn(icon('zone'), t('Zona de detecție (desenează unde să se uite AI-ul)'));
     bz.classList.toggle('on', !!(c.zone && c.zone.length));
     bz.onclick = (e) => { e.stopPropagation(); openZoneEditor(c); };
     bar.appendChild(bz);
-    const bl = mkBtn('⳹', 'Linii de numarare / zone de intrare (numara treceri, viteza)');
+    const bl = mkBtn('⳹', t('Linii de numarare / zone de intrare (numara treceri, viteza)'));
     bl.onclick = (e) => { e.stopPropagation(); openCountEditor(c); };
     bar.appendChild(bl);
-    const bm = mkBtn(icon('lock'), 'Masca de confidențialitate (zone înnegrite pe live, redare și exporturi)');
+    const bm = mkBtn(icon('lock'), t('Masca de confidențialitate (zone înnegrite pe live, redare și exporturi)'));
     bm.classList.toggle('on', !!(c.mask && c.mask.length));
     bm.onclick = (e) => { e.stopPropagation(); openMaskEditor(c); };
     bar.appendChild(bm);
-    const bw = mkBtn(icon('external'), 'Deschide interfața web a camerei (login-ul ei propriu)');
+    const bw = mkBtn(icon('external'), t('Deschide interfața web a camerei (login-ul ei propriu)'));
     bw.onclick = (e) => {
       e.stopPropagation();
       const url = c.source === 'ext' ? camLinks[c.id] : camLinks.nvr;
@@ -368,7 +370,7 @@ function buildCtrls(c, container, full) {
     bar.appendChild(bw);
   }
   if (full) {
-    const bs = mkBtn(icon('camera'), 'Salvează cadrul curent ca imagine');
+    const bs = mkBtn(icon('camera'), t('Salvează cadrul curent ca imagine'));
     bs.onclick = (e) => {
       e.stopPropagation();
       shotFromVideo(container.querySelector('video'),
@@ -378,7 +380,7 @@ function buildCtrls(c, container, full) {
   }
   // detectie animale/persoane (YOLO pe server) — disponibila pe orice camera
   if (ADMIN) {
-    const bd = mkBtn(icon('paw'), 'Detectie animale/persoane pornita/oprita');
+    const bd = mkBtn(icon('paw'), t('Detectie animale/persoane pornita/oprita'));
     bd.classList.toggle('on', !!c.detect);
     bd.onclick = async (e) => {
       e.stopPropagation();
@@ -399,9 +401,9 @@ async function post(url, body) {
       body: JSON.stringify(body || {}),
     });
     const d = await r.json();
-    if (d.error) alert('Eroare: ' + d.error);
+    if (d.error) alert(t('Eroare: {e}', { e: d.error }));
     return d;
-  } catch (e) { alert('Eroare rețea: ' + e); }
+  } catch (e) { alert(t('Eroare rețea: {e}', { e })); }
 }
 
 /* ---------- evenimente de alarma + detectii (badge-uri pe tile) ---------- */
@@ -414,7 +416,7 @@ async function pollEvents() {
       const el = alertEls[id];
       if (!el) continue;
       if (st.active.length) {
-        el.innerHTML = html`${icon('warn', 12)} ${st.active.map((t) => EV_RO[t] || t).join(', ')}`;
+        el.innerHTML = html`${icon('warn', 12)} ${st.active.map((x) => t(EV_RO[x] || x)).join(', ')}`;
         el.classList.remove('hidden');
         el.parentElement.classList.add('alerting');
       } else {
@@ -426,7 +428,7 @@ async function pollEvents() {
     for (const [id, el] of Object.entries(detectEls)) {
       const st = (d.detect || {})[id];
       if (st && st.labels.length) {
-        el.innerHTML = html`${icon('paw', 12)} ${st.labels.map((l) => DET_RO[l] || l).join(', ')}`;
+        el.innerHTML = html`${icon('paw', 12)} ${st.labels.map((l) => t(DET_RO[l] || l)).join(', ')}`;
         el.classList.remove('hidden');
       } else {
         el.classList.add('hidden');
@@ -442,10 +444,10 @@ setInterval(() => {
 }, 3000);
 
 async function deleteCamera(c) {
-  if (!confirm(`Ștergi camera "${c.name}" (${c.ip})?`)) return;
+  if (!confirm(t('Ștergi camera "{name}" ({ip})?', { name: c.name, ip: c.ip }))) return;
   const r = await fetch(`/api/cameras/${c.id}`, { method: 'DELETE' });
   const d = await r.json();
-  if (d.error) { alert('Eroare: ' + d.error); return; }
+  if (d.error) { alert(t('Eroare: {e}', { e: d.error })); return; }
   await loadCameras();
 }
 
@@ -480,12 +482,12 @@ function buildIoPanel() {
   box.innerHTML = lista(cams, (c) => {
     const f = c.features || {};
     return html`<div class="io-row" data-id="${c.id}"><span class="nm" title="${c.name}">${c.id}. ${c.name}</span>
-      ${f.siren ? html`<button data-io="siren" title="Sirena (o data)">${icon('siren', 14)}</button>` : ''}
-      ${f.strobe ? html`<button data-io="strobe" class="${strobeState[c.id] ? 'on' : ''}" title="Stroboscop pornit/oprit">${icon('strobe', 14)}</button>` : ''}
-      ${f.io_out ? html`<button data-io="output" class="${outState[c.id] ? 'on' : ''}" title="Releu pornit/oprit">${icon('relay', 14)}</button>` : ''}
-      ${f.talk ? html`<button data-io="say" title="Rosteste textul de sus in difuzor">${icon('talk', 14)}</button>` : ''}
+      ${f.siren ? html`<button data-io="siren" title="${t('Sirena (o data)')}">${icon('siren', 14)}</button>` : ''}
+      ${f.strobe ? html`<button data-io="strobe" class="${strobeState[c.id] ? 'on' : ''}" title="${t('Stroboscop pornit/oprit')}">${icon('strobe', 14)}</button>` : ''}
+      ${f.io_out ? html`<button data-io="output" class="${outState[c.id] ? 'on' : ''}" title="${t('Releu pornit/oprit')}">${icon('relay', 14)}</button>` : ''}
+      ${f.talk ? html`<button data-io="say" title="${t('Rosteste textul de sus in difuzor')}">${icon('talk', 14)}</button>` : ''}
     </div>`;
-  }, '<p class="hint">Nicio camera cu sirena, stroboscop, releu sau difuzor (sau nu ai drept de actiune).</p>');
+  }, html`<p class="hint">${t('Nicio camera cu sirena, stroboscop, releu sau difuzor (sau nu ai drept de actiune).')}</p>`);
 }
 $('#io-toggle').onclick = () => {
   const p = $('#io-panel');
@@ -505,7 +507,7 @@ $('#io-list').onclick = async (e) => {
     else if (act === 'output') { outState[id] = !outState[id]; b.classList.toggle('on', outState[id]); await post(`/api/cam/${id}/output`, { on: outState[id] }); }
     else if (act === 'say') {
       const text = $('#io-text').value.trim();
-      if (!text) { toast('Scrie întâi textul anunțului', true); }
+      if (!text) { toast(t('Scrie întâi textul anunțului'), true); }
       else await post(`/api/cam/${id}/say`, { text });
     }
   } finally { setTimeout(() => { b.disabled = false; }, 800); }
@@ -547,7 +549,7 @@ document.addEventListener('keydown', (e) => {
 async function loadCameras() {
   const r = await fetch('/api/cameras');
   S.cameras = await r.json();
-  if (S.cameras.error) { $('#status').textContent = 'Eroare NVR: ' + S.cameras.error; return; }
+  if (S.cameras.error) { $('#status').textContent = t('Eroare NVR: {e}', { e: S.cameras.error }); return; }
   buildLive();
   buildPbCams();
   if (!views.length) loadViews(true);

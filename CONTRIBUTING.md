@@ -6,10 +6,17 @@ simple ca lucrurile să rămână coerente.
 
 ## Limba
 
-- Interfața, mesajele către utilizator, comentariile și commit-urile sunt în **română**
-  (cu diacritice în ce vede utilizatorul; cheile JSON și identificatorii rămân ASCII).
+- Codul, comentariile și commit-urile sunt în **română**; textul sursă al interfeței e tot
+  în română (cu diacritice), iar cheile JSON și identificatorii rămân ASCII.
+- Interfața e multilingvă (`app/i18n.py`, `t()` în `00-core.js`): **cheia unui text e
+  textul românesc**. Orice text nou vizibil utilizatorului se scrie `t("Text românesc")` în
+  Python sau `t('Text românesc')` în JavaScript, cu parametri `{x}` (nu f-string, nu bucăți
+  lipite), și primește o intrare în `app/static/i18n/en.json`. Textul din `index.html` e
+  tradus automat de server, nu are nevoie de marcaje. `python3 scripts/i18n_check.py`
+  (rulat și de pytest) spune ce lipsește din dicționare.
+- O limbă nouă = un fișier `app/static/i18n/<cod>.json` cu `_meta.nume` și toate cheile din
+  `en.json`; glosarul de termeni e în `docs/i18n.md`.
 - Documentația publică (`README.md`, acest fișier, `SECURITY.md`) e și în engleză.
-- O traducere a interfeței e un proiect în sine; deschide un issue înainte.
 
 ## Cum rulezi local
 

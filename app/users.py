@@ -23,6 +23,7 @@ import threading
 
 from werkzeug.security import check_password_hash, generate_password_hash
 
+from i18n import t
 import store
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -66,7 +67,7 @@ def public(u):
     """Ce are voie sa vada interfata despre un cont (fara hash)."""
     return {"user": u["user"], "role": u["role"],
             "cameras": u.get("cameras"), "groups": u.get("groups"),
-            "totp": bool(u.get("totp"))}
+            "totp": bool(u.get("totp")), "lang": u.get("lang")}
 
 
 def upsert(name, password=None, role=None, cameras=None, groups=None):
@@ -74,25 +75,25 @@ def upsert(name, password=None, role=None, cameras=None, groups=None):
     Refuza sa lase sistemul fara niciun administrator."""
     name = (name or "").strip()[:40]
     if not name or not name.replace("-", "").replace("_", "").replace(".", "").isalnum():
-        raise ValueError("nume de utilizator invalid (litere, cifre, - _ .)")
+        raise ValueError(t("nume de utilizator invalid (litere, cifre, - _ .)"))
     with _lock:      # tot RMW-ul sub lock: doua modificari concurente nu se mai pierd
         lst = load()
         u = next((x for x in lst if x["user"] == name), None)
         if u is None:
             if not password or len(password) < 6:
-                raise ValueError("parola trebuie să aibă minim 6 caractere")
+                raise ValueError(t("parola trebuie să aibă minim 6 caractere"))
             u = {"user": name}
             lst.append(u)
         elif password:
             if len(password) < 6:
-                raise ValueError("parola trebuie să aibă minim 6 caractere")
+                raise ValueError(t("parola trebuie să aibă minim 6 caractere"))
         if password:
             if u.get("hash"):          # parola SCHIMBATA: sesiunile vechi mor peste tot
                 u["sess_ver"] = sess_ver(u) + 1
             u["hash"] = generate_password_hash(password)
         if role is not None:
             if role not in ROLES:
-                raise ValueError(f"rol necunoscut: {role}")
+                raise ValueError(t("rol necunoscut: {rol}", rol=role))
             u["role"] = role
         u.setdefault("role", "viewer")
         if cameras is not None:
@@ -100,7 +101,22 @@ def upsert(name, password=None, role=None, cameras=None, groups=None):
         if groups is not None:
             u["groups"] = sorted({str(g).strip()[:30] for g in groups if str(g).strip()}) or None
         if not any(x.get("role") == "admin" for x in lst):
-            raise ValueError("trebuie să ramana cel puțin un administrator")
+            raise ValueError(t("trebuie să ramana cel puțin un administrator"))
+        _write(lst)
+    return u
+
+
+def set_lang(name, lang):
+    """Limba interfetei pentru acest cont (None = dupa browser / NVR_LANG)."""
+    with _lock:
+        lst = load()
+        u = next((x for x in lst if x["user"] == name), None)
+        if u is None:
+            raise ValueError(t("cont inexistent"))
+        if lang:
+            u["lang"] = str(lang)[:8]
+        else:
+            u.pop("lang", None)
         _write(lst)
     return u
 
@@ -110,9 +126,9 @@ def delete(name):
         lst = load()
         rest = [u for u in lst if u["user"] != name]
         if len(rest) == len(lst):
-            raise ValueError("utilizatorul nu există")
+            raise ValueError(t("utilizatorul nu există"))
         if not any(u.get("role") == "admin" for u in rest):
-            raise ValueError("nu poți șterge ultimul administrator")
+            raise ValueError(t("nu poți șterge ultimul administrator"))
         _write(rest)
 
 
@@ -142,7 +158,7 @@ def revoke(name):
         lst = load()
         u = next((x for x in lst if x["user"] == name), None)
         if u is None:
-            raise ValueError("utilizatorul nu există")
+            raise ValueError(t("utilizatorul nu există"))
         u["sess_ver"] = sess_ver(u) + 1
         _write(lst)
         return u["sess_ver"]
@@ -156,7 +172,7 @@ def set_totp(name, secret, coduri_recuperare):
         lst = load()
         u = next((x for x in lst if x["user"] == name), None)
         if u is None:
-            raise ValueError("utilizatorul nu există")
+            raise ValueError(t("utilizatorul nu există"))
         u["totp"] = {"secret": secret, "ultimul": 0,
                      "recuperare": [generate_password_hash(c) for c in coduri_recuperare]}
         _write(lst)
@@ -168,7 +184,7 @@ def clear_totp(name):
         lst = load()
         u = next((x for x in lst if x["user"] == name), None)
         if u is None:
-            raise ValueError("utilizatorul nu există")
+            raise ValueError(t("utilizatorul nu există"))
         avea = bool(u.pop("totp", None))
         _write(lst)
         return avea

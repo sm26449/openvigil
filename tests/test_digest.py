@@ -96,7 +96,7 @@ def test_text_cu_toate_sursele(monkeypatch):
     monkeypatch.setattr(server, "load_ext", lambda: [{"id": 13, "record": "continuous"}, {"id": 14, "record": "continuous"}])
     monkeypatch.setattr(snaps, "list_day", lambda day, limit=None: [{"cam": 3, "label": "shelteralarm"}] * 12 + [{"cam": 13, "label": "VMD"}])
     t = digest.text("2026-10-25")
-    assert "Rezumatul zilei 2026-10-25" in t and "42 evenimente" in t and "1 critice" in t
+    assert "Rezumatul zilei 2026-10-25" in t and "42 de evenimente" in t and "1 critice" in t
     assert "06:10–22:40" in t and "vârf la 18:00" in t and "Strada (20)" in t
     assert "văzuți: stefan×2" in t and "maria" not in t                    # doar ziua ceruta
     assert "mașini necunoscute: XX11YYY×1" in t and "B601RDN" not in t       # cunoscuta nu e „necunoscuta”

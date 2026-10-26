@@ -11,6 +11,7 @@ from flask import Blueprint, Response, jsonify, request
 
 import audit
 import hooks
+from i18n import t
 import mqtt as mqtt_bridge
 import rules
 import settings
@@ -79,4 +80,4 @@ def api_webhook_test():
 
 @bp.route("/api/webhooks")
 def api_webhooks():
-    return jsonify({"evenimente": hooks.EVENIMENTE, "jurnal": hooks.jurnal()})
+    return jsonify({"evenimente": {k: t(v) for k, v in hooks.EVENIMENTE.items()}, "jurnal": hooks.jurnal()})

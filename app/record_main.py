@@ -20,6 +20,7 @@ import notify
 import record
 import sdnotify
 import logare
+from i18n import t
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EXT_FILE = os.path.join(ROOT, "data", "cameras.json")
@@ -80,8 +81,8 @@ def asteapta_cheia():
     if not record.blocat():
         return False
     logare.warning("[record] in directorul de inregistrari nu se poate scrie — astept sa devina scriibil")
-    notify.send("🔒 Înregistrarea așteaptă: în directorul de înregistrări nu se poate scrie "
-                f"({record.REC_DIR}): verifică volumul, permisiunile sau cheia de criptare.",
+    notify.send(t("🔒 Înregistrarea așteaptă: în directorul de înregistrări nu se poate scrie ({dir}): verifică volumul, permisiunile sau cheia de criptare.",
+                  dir=record.REC_DIR),
                 key="rec_blocat")
     sdnotify.ready()
     while record.blocat():

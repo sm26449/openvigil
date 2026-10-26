@@ -7,7 +7,7 @@
    clasa (a selectiei sau cea curenta), Ctrl+Z = anuleaza, Esc = deselecteaza, Enter = salveaza.
    Modul ES al interfetei (app/static/js/); intrarea e app/static/app.js.
    ==================================================================== */
-import { $, html, lista } from './00-core.js';
+import { $, esc, html, lista, t } from './00-core.js';
 import { post } from './10-live.js';
 
 const CULORI = ['#3fb950', '#58a6ff', '#f0883e', '#d2a8ff', '#ffa657', '#79c0ff', '#ff7b72', '#a5d6ff', '#e3b341', '#7ee787', '#f778ba'];
@@ -31,15 +31,15 @@ async function loadAdnotare(pastreaza = false) {
   if (!d || d.error) return;
   adCadre = d.cadre || []; adClase = d.clase || []; adTotal = d.total || 0;
   $('#ad-count').textContent = ($('#ad-split').value === 'nesigure'
-    ? `${adTotal} cadre nesigure în coadă (cele mai nesigure primele)`
-    : `${adTotal} cadre (${d.verificate} verificate de om, ${d.nesigure || 0} în coada de nesigure)`) + (adTotal > adCadre.length ? `, primele ${adCadre.length}` : '');
+    ? t('{n} cadre nesigure în coadă (cele mai nesigure primele)', { n: adTotal })
+    : t('{n} cadre ({v} verificate de om, {u} în coada de nesigure)', { n: adTotal, v: d.verificate, u: d.nesigure || 0 })) + (adTotal > adCadre.length ? ', ' + t('primele {n}', { n: adCadre.length }) : '');
   $('#ad-ignore').classList.toggle('hidden', $('#ad-split').value !== 'nesigure');
   $('#ad-list').innerHTML = lista(adCadre, (c, i) => html`
     <div class="ad-row" data-i="${i}" title="${c.split}/${c.fn}">
       <span>${c.fn.replace(/\.jpg$/, '').replace(/^cam(\d+)-(\d{4})(\d\d)(\d\d)-(\d\d)(\d\d)(\d\d)$/, 'cam$1 $4.$3 $5:$6:$7')}</span>
-      ${c.verificat ? html`<span class="v" title="verificat de om">✓</span>` : ''}
+      ${c.verificat ? html`<span class="v" title="${t('verificat de om')}">✓</span>` : ''}
       <span class="n">${c.n < 0 ? '?' : c.n}</span>
-    </div>`, '<p class="hint">Niciun cadru. Construiește datasetul din Setări → Unelte.</p>');
+    </div>`, `<p class="hint">${esc(t('Niciun cadru. Construiește datasetul din Setări → Unelte.'))}</p>`);
   for (const row of document.querySelectorAll('#ad-list .ad-row')) {
     row.onclick = () => adDeschide(+row.dataset.i);
   }
@@ -50,7 +50,7 @@ async function loadAdnotare(pastreaza = false) {
 
 async function adDeschide(i) {
   if (i < 0 || i >= adCadre.length) return;
-  if (adDirty && !confirm('Ai modificări nesalvate pe cadrul curent. Le pierzi?')) return;
+  if (adDirty && !confirm(t('Ai modificări nesalvate pe cadrul curent. Le pierzi?'))) return;
   adDirty = false; adUndo = []; adSel = -1; adDrag = null; adTemp = null;
   adIdx = i;
   const c = adCadre[i];
@@ -63,22 +63,22 @@ async function adDeschide(i) {
   adImg = new Image();
   adImg.onload = adDeseneaza;
   adImg.src = `/api/adnotare/img/${c.split}/${encodeURIComponent(c.fn)}`;
-  $('#ad-info').textContent = `${c.split}/${c.fn} · ${d.w}×${d.h} · ${d.boxes.length} chenare${d.verificat ? ` · verificat ${d.verificat.t}${d.verificat.cine ? ' de ' + d.verificat.cine : ''}` : ''}`;
+  $('#ad-info').textContent = `${c.split}/${c.fn} · ${d.w}×${d.h} · ${t('{n} chenare', { n: d.boxes.length })}${d.verificat ? ' · ' + t('verificat {cand}', { cand: d.verificat.t }) + (d.verificat.cine ? ' ' + t('de {cine}', { cine: d.verificat.cine }) : '') : ''}`;
   adLegenda();
 }
 
 function adLegenda() {
   const nr = {};
   for (const b of (adCur ? adCur.boxes : [])) nr[b.cls] = (nr[b.cls] || 0) + 1;
-  $('#ad-legend').innerHTML = html`${adClase.map((n, i) => html`<span class="${i === adClasa ? 'on' : ''}" style="--c:${clasaCuloare(i)}" data-cls="${i}" title="tasta ${(i + 1) % 10}: clasa pentru chenarele noi sau pentru cel selectat">${n}${nr[i] ? ' ×' + nr[i] : ''}</span>`)}`;
+  $('#ad-legend').innerHTML = html`${adClase.map((n, i) => html`<span class="${i === adClasa ? 'on' : ''}" style="--c:${clasaCuloare(i)}" data-cls="${i}" title="${t('tasta {k}: clasa pentru chenarele noi sau pentru cel selectat', { k: (i + 1) % 10 })}">${n}${nr[i] ? ' ×' + nr[i] : ''}</span>`)}`;
   for (const el of document.querySelectorAll('#ad-legend span')) el.onclick = () => adSetClasa(+el.dataset.cls);
   adStare();
 }
 function adStare() {
   const b = $('#ad-confirm'); if (!b) return;
-  b.textContent = adDirty ? 'Salvează' : 'Confirmă';
-  b.title = adDirty ? 'Scrie etichetele modificate și marchează cadrul verificat (Enter)' : 'Etichetele sunt corecte: salvează și marchează verificat (Enter)';
-  const m = $('#ad-msg'); if (adDirty) m.textContent = 'modificat, nesalvat';
+  b.textContent = adDirty ? t('Salvează') : t('Confirmă');
+  b.title = adDirty ? t('Scrie etichetele modificate și marchează cadrul verificat (Enter)') : t('Etichetele sunt corecte: salvează și marchează verificat (Enter)');
+  const m = $('#ad-msg'); if (adDirty) m.textContent = t('modificat, nesalvat');
 }
 function adSetClasa(c) {
   if (!(c >= 0 && c < adClase.length)) return;
@@ -93,7 +93,7 @@ function adDeseneaza() {
   const g = cv.getContext('2d');
   if (!adCur || !adImg || !adImg.complete || !adImg.naturalWidth) {
     cv.width = 640; cv.height = 360; g.fillStyle = '#000'; g.fillRect(0, 0, cv.width, cv.height);
-    g.fillStyle = '#888'; g.font = '14px sans-serif'; g.fillText(adCadre.length ? 'se încarcă…' : 'niciun cadru', 20, 30);
+    g.fillStyle = '#888'; g.font = '14px sans-serif'; g.fillText(adCadre.length ? t('se încarcă…') : t('niciun cadru'), 20, 30);
     return;
   }
   const w = adImg.naturalWidth, h = adImg.naturalHeight;
@@ -205,37 +205,37 @@ function adScoateCurent(msg) {
   const row = document.querySelector(`#ad-list .ad-row[data-i="${adIdx}"]`); if (row) row.remove();
   for (const r of document.querySelectorAll('#ad-list .ad-row')) { const i = +r.dataset.i; if (i > adIdx) r.dataset.i = i - 1; }
   adCur = null; adSel = -1;
-  if (adCadre.length) adDeschide(Math.min(adIdx, adCadre.length - 1)); else { adDeseneaza(); $('#ad-info').textContent = 'coada e goală'; }
+  if (adCadre.length) adDeschide(Math.min(adIdx, adCadre.length - 1)); else { adDeseneaza(); $('#ad-info').textContent = t('coada e goală'); }
 }
 async function adIgnora() {
   if (!adCur || adCur.split !== 'nesigure') return;
   const d = await post(`/api/adnotare/cadru/nesigure/${encodeURIComponent(adCur.fn)}/ignora`, {});
-  if (d && d.ok) { adDirty = false; adUndo = []; adScoateCurent(`„${adCur.fn}” ignorat`); }
+  if (d && d.ok) { adDirty = false; adUndo = []; adScoateCurent(t('„{fn}” ignorat', { fn: adCur.fn })); }
 }
 let adScanTimer = null;
 async function adScanStare() {
   let d;
   try { d = await (await fetch('/api/adnotare/nesigure/stare')).json(); } catch { return; }
   const st = $('#ad-scan-st'), s = d.scan;
-  if (!s) { st.textContent = 'nvr-ai nu rulează: scanarea are nevoie de modelul lui.'; return; }
+  if (!s) { st.textContent = t('nvr-ai nu rulează: scanarea are nevoie de modelul lui.'); return; }
   if (s.activ) {
-    st.textContent = `scanez ${s.progres}/${s.total} cadre, ${s.gasite} nesigure…`;
+    st.textContent = t('scanez {p}/{total} cadre, {g} nesigure…', { p: s.progres, total: s.total, g: s.gasite });
     clearTimeout(adScanTimer); adScanTimer = setTimeout(adScanStare, 2000);
   } else if (s.t) {
-    st.textContent = s.eroare ? 'scanarea a eșuat: ' + s.eroare : `ultima scanare: ${s.total} cadre, ${s.gasite} nesigure · în coadă: ${d.in_coada}`;
+    st.textContent = s.eroare ? t('scanarea a eșuat: {eroare}', { eroare: s.eroare }) : t('ultima scanare: {total} cadre, {g} nesigure · în coadă: {q}', { total: s.total, g: s.gasite, q: d.in_coada });
     if (adScanTimer) { clearTimeout(adScanTimer); adScanTimer = null; if ($('#ad-split').value === 'nesigure') loadAdnotare(); }
-  } else st.textContent = d.in_coada ? `în coadă: ${d.in_coada}` : '';
+  } else st.textContent = d.in_coada ? t('în coadă: {q}', { q: d.in_coada }) : '';
 }
 async function adConfirma() {
   if (!adCur) return;
   const d = await post(`/api/adnotare/cadru/${adCur.split}/${encodeURIComponent(adCur.fn)}`, { boxes: adCur.boxes });
   if (d && d.ok) {
     adDirty = false; adUndo = [];
-    if (adCur.split === 'nesigure') { adScoateCurent(`„${adCur.fn}” a intrat în dataset: ${d.n} chenare, verificat ✓`); return; }
+    if (adCur.split === 'nesigure') { adScoateCurent(t('„{fn}” a intrat în dataset: {n} chenare, verificat ✓', { fn: adCur.fn, n: d.n })); return; }
     adCadre[adIdx].verificat = true;
     const row = document.querySelector(`#ad-list .ad-row[data-i="${adIdx}"]`);
-    if (row && !row.querySelector('.v')) row.insertAdjacentHTML('beforeend', '<span class="v" title="verificat de om">✓</span>');
-    $('#ad-msg').textContent = `„${adCur.fn}” salvat: ${d.n} chenare, verificat ✓`;
+    if (row && !row.querySelector('.v')) row.insertAdjacentHTML('beforeend', `<span class="v" title="${esc(t('verificat de om'))}">✓</span>`);
+    $('#ad-msg').textContent = t('„{fn}” salvat: {n} chenare, verificat ✓', { fn: adCur.fn, n: d.n });
     adStare();
     if (adIdx + 1 < adCadre.length) adDeschide(adIdx + 1);
   }
@@ -248,7 +248,7 @@ $('#ad-ignore') && ($('#ad-ignore').onclick = adIgnora);
 $('#ad-scan') && ($('#ad-scan').onclick = async () => {
   const n = +$('#ad-scan-n').value || 500;
   const d = await post('/api/adnotare/nesigure/scaneaza', { n });
-  if (d && !d.error) { $('#ad-scan-st').textContent = d.ok ? 'scanarea a pornit…' : 'o scanare rulează deja'; adScanTimer = setTimeout(adScanStare, 1500); }
+  if (d && !d.error) { $('#ad-scan-st').textContent = d.ok ? t('scanarea a pornit…') : t('o scanare rulează deja'); adScanTimer = setTimeout(adScanStare, 1500); }
 });
 for (const id of ['ad-split', 'ad-nev', 'ad-cam']) { const el = $('#' + id); if (el) el.onchange = () => loadAdnotare(); }
 window.addEventListener('resize', () => { if (!$('#aipane-adnot').classList.contains('hidden')) adDeseneaza(); });

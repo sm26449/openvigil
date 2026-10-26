@@ -20,6 +20,7 @@ import audit
 import describe
 import detect
 import faces
+from i18n import t
 import record
 import settings
 from server import ROOT, _visible_ids, current_user, load_ext
@@ -81,11 +82,11 @@ def api_train_dataset():
     """Construieste datasetul etichetat (teacher yolo11x + SigLIP pe specii) in nvr-ai.
     Body: {max?} — cel mult atatea cadre (esantion); 0 = toate (poate dura ore)."""
     if not ai_client.remote():
-        return jsonify({"error": "nvr-ai nu rulează: antrenamentul are nevoie de GPU-ul lui"}), 503
+        return jsonify({"error": t("nvr-ai nu rulează: antrenamentul are nevoie de GPU-ul lui")}), 503
     b = request.get_json(silent=True) or {}
     d = ai_client.train_start("dataset", maxim=b.get("max"))
     if d is None:
-        return jsonify({"error": "nvr-ai nu răspunde"}), 503
+        return jsonify({"error": t("nvr-ai nu răspunde")}), 503
     if d.get("error"):
         return jsonify(d), 409
     audit.log("dataset de antrenament pornit", detail={"max": b.get("max")})
@@ -96,17 +97,17 @@ def api_train_dataset():
 def api_train_run():
     """Antreneaza un model nou (data/finetune/runs/curte-vN) in nvr-ai. Body: {epoci?}."""
     if not ai_client.remote():
-        return jsonify({"error": "nvr-ai nu rulează: antrenamentul are nevoie de GPU-ul lui"}), 503
+        return jsonify({"error": t("nvr-ai nu rulează: antrenamentul are nevoie de GPU-ul lui")}), 503
     if not os.path.isfile(os.path.join(FINETUNE_DIR, "dataset.yaml")):
-        return jsonify({"error": "nu există dataset etichetat: construiește-l întâi"}), 400
+        return jsonify({"error": t("nu există dataset etichetat: construiește-l întâi")}), 400
     b = request.get_json(silent=True) or {}
     try:
         epoci = max(1, min(300, int(b.get("epoci") or 30)))
     except (TypeError, ValueError):
-        return jsonify({"error": "epoci: număr întreg între 1 și 300"}), 400
+        return jsonify({"error": t("epoci: număr întreg între 1 și 300")}), 400
     d = ai_client.train_start("antrenare", epoci=epoci)
     if d is None:
-        return jsonify({"error": "nvr-ai nu răspunde"}), 503
+        return jsonify({"error": t("nvr-ai nu răspunde")}), 503
     if d.get("error"):
         return jsonify(d), 409
     audit.log("antrenament pornit", d.get("nume") or "", detail={"epoci": epoci})
@@ -117,7 +118,7 @@ def api_train_run():
 def api_train_stop():
     d = ai_client.train_stop() if ai_client.remote() else None
     if d is None:
-        return jsonify({"error": "nvr-ai nu răspunde"}), 503
+        return jsonify({"error": t("nvr-ai nu răspunde")}), 503
     audit.log("job de antrenament oprit")
     return jsonify(d)
 
@@ -153,14 +154,14 @@ def _swap_formal(sursa):
     if ai_client.remote():
         v = ai_client.model_verifica(sursa)
         if v is None:
-            return {"error": "nvr-ai nu raspunde — nu schimb modelul pe nevazute"}, 503
+            return {"error": t("nvr-ai nu raspunde — nu schimb modelul pe nevazute")}, 503
         if v.get("error"):
-            return {"error": f"pre-flight picat: {v['error']}"}, 422
+            return {"error": t("pre-flight picat: {e}", e=v["error"])}, 422
     shutil.copy2(MODEL_PATH, MODEL_PATH + ".bak")
     shutil.copy2(sursa, MODEL_PATH)
     detect.reload_model()                     # fallback-ul local din web, la zi si el
     if not ai_client.remote():
-        return {"ok": True, "nota": "nvr-ai oprit — activat doar local (fallback)"}, 200
+        return {"ok": True, "nota": t("nvr-ai oprit — activat doar local (fallback)")}, 200
     r = ai_client.model_reincarca()
     if r and r.get("ok"):
         audit.log("model activat", os.path.basename(sursa),
@@ -170,8 +171,8 @@ def _swap_formal(sursa):
     shutil.copy2(MODEL_PATH + ".bak", MODEL_PATH)
     detect.reload_model()
     ai_client.model_reincarca()
-    motiv = (r or {}).get("error") or "nvr-ai nu a confirmat"
-    return {"error": f"activarea a picat ({motiv}) — modelul VECHI a fost repus"}, 502
+    motiv = (r or {}).get("error") or t("nvr-ai nu a confirmat")
+    return {"error": t("activarea a picat ({motiv}) — modelul VECHI a fost repus", motiv=motiv)}, 502
 
 
 def api_train_apply():
@@ -179,7 +180,7 @@ def api_train_apply():
     pre-flight in nvr-ai, swap, confirmare cu amprenta, rollback automat la esec."""
     best = _latest_trained()
     if not best:
-        return jsonify({"error": "nu există încă niciun antrenament în data/finetune/runs"}), 404
+        return jsonify({"error": t("nu există încă niciun antrenament în data/finetune/runs")}), 404
     rasp, cod = _swap_formal(best)
     if rasp.get("ok"):
         rasp.update(model=os.path.relpath(best, ROOT), backup="data/yolo11n.pt.bak")
@@ -192,7 +193,7 @@ def api_train_revert():
     aceeasi tranzactie verificata ca activarea."""
     bak = MODEL_PATH + ".bak"
     if not os.path.exists(bak):
-        return jsonify({"error": "nu există backup (nu s-a aplicat încă niciun model)"}), 404
+        return jsonify({"error": t("nu există backup (nu s-a aplicat încă niciun model)")}), 404
     # _swap_formal face el backup-ul curentului in .bak, deci schimbul devine simetric:
     # sursa = backupul de acum, iar dupa swap .bak = modelul de dinainte de revert
     tmp = MODEL_PATH + ".revert-sursa"
@@ -233,7 +234,7 @@ def api_adnotare_cadru(split, fn):
         audit.log("etichete verificate", fn, detail={"n": rez["n"]})
         return jsonify(rez)
     except FileNotFoundError:
-        return jsonify({"error": "cadrul nu există"}), 404
+        return jsonify({"error": t("cadrul nu există")}), 404
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
 
@@ -243,15 +244,15 @@ def api_adnotare_nesigure_scaneaza():
     """Body: {n} -> nvr-ai scaneaza cele mai noi n cadre brute cu modelul activ si pune in coada
     pe cele cu chenare de incredere mijlocie (0,30-0,55)."""
     if not ai_client.remote():
-        return jsonify({"error": "nvr-ai nu rulează: scanarea are nevoie de modelul lui"}), 503
+        return jsonify({"error": t("nvr-ai nu rulează: scanarea are nevoie de modelul lui")}), 503
     b = request.get_json(silent=True) or {}
     try:
         n = max(10, min(20000, int(b.get("n") or 500)))
     except (TypeError, ValueError):
-        return jsonify({"error": "n: număr întreg"}), 400
+        return jsonify({"error": t("n: număr întreg")}), 400
     d = ai_client.nesigure_start(n)
     if d is None:
-        return jsonify({"error": "nvr-ai nu răspunde"}), 503
+        return jsonify({"error": t("nvr-ai nu răspunde")}), 503
     audit.log("scanare cadre nesigure", detail={"n": n})
     return jsonify(d)
 
@@ -268,7 +269,7 @@ def api_adnotare_ignora(fn):
     """Cadrul nu e de interes: iese din coada fara sa intre in dataset."""
     import nesigure
     if not nesigure.scoate(fn):
-        return jsonify({"error": "cadrul nu e în coadă"}), 404
+        return jsonify({"error": t("cadrul nu e în coadă")}), 404
     return jsonify({"ok": True})
 
 
@@ -279,7 +280,7 @@ def api_adnotare_img(split, fn):
     except ValueError:
         p = None
     if not p:
-        return jsonify({"error": "cadrul nu există"}), 404
+        return jsonify({"error": t("cadrul nu există")}), 404
     return send_file(p, mimetype="image/jpeg", max_age=3600)
 
 
@@ -290,7 +291,7 @@ def api_reid_cauta():
     fie permis si operatorului/viewerului (VIEWER_GET); raspunde cu aparitiile corpului pe
     camerele vizibile contului, iar poza de interogare trebuie sa fie de pe o camera vizibila."""
     if not ai_client.remote():
-        return jsonify({"error": "nvr-ai nu rulează: căutarea are nevoie de modelul lui"}), 503
+        return jsonify({"error": t("nvr-ai nu rulează: căutarea are nevoie de modelul lui")}), 503
     b = request.args
     poza = (b.get("poza") or "")
     for pref in ("/snapshots/", "/api/flux/thumb/"):
@@ -299,25 +300,25 @@ def api_reid_cauta():
     try:
         zile = max(1, min(90, int(b.get("zile") or 7)))
     except (TypeError, ValueError):
-        return jsonify({"error": "zile: număr întreg"}), 400
+        return jsonify({"error": t("zile: număr întreg")}), 400
     body = {"zile": zile, "limit": 80}
     vis = _visible_ids()
     if b.get("crop_zi"):
         if not re.match(r"^\d{4}-\d{2}-\d{2}$", str(b["crop_zi"])) or not re.match(r"^\d{6}_cam\d+_\d+\.jpg$", str(b.get("crop_fn") or "")):
-            return jsonify({"error": "eșantion invalid"}), 400
+            return jsonify({"error": t("eșantion invalid")}), 400
         body.update(crop_zi=b["crop_zi"], crop_fn=b.get("crop_fn"))
     else:
         m = re.match(r"^\d{4}-\d{2}-\d{2}/\d{6}_cam(\d+)_[A-Za-z0-9_.-]+\.jpg$", poza)
         if not m:
-            return jsonify({"error": "poza invalidă"}), 400
+            return jsonify({"error": t("poza invalidă")}), 400
         if vis is not None and int(m[1]) not in vis:
-            return jsonify({"error": "nu ai acces la această camera"}), 403
+            return jsonify({"error": t("nu ai acces la această camera")}), 403
         body.update(poza=poza)
     if vis is not None:
         body["vizibile"] = sorted(vis)
     d = ai_client.reid_cauta(**body)
     if d is None:
-        return jsonify({"error": "nvr-ai nu răspunde"}), 503
+        return jsonify({"error": t("nvr-ai nu răspunde")}), 503
     if d.get("error"):
         return jsonify(d), 400
     nume = {c["id"]: c.get("name") or f"cam {c['id']}" for c in load_ext()}
@@ -332,12 +333,12 @@ def api_reid_crop(zi, fn):
     import reid_arhiva
     p = reid_arhiva.cale_crop(zi, fn)
     if not p:
-        return jsonify({"error": "nu există"}), 404
+        return jsonify({"error": t("nu există")}), 404
     vis = _visible_ids()
     if vis is not None:
         m = re.match(r"^\d{6}_cam(\d+)_", fn)
         if not m or int(m[1]) not in vis:
-            return jsonify({"error": "nu ai acces la această camera"}), 403
+            return jsonify({"error": t("nu ai acces la această camera")}), 403
     return send_file(p, mimetype="image/jpeg", max_age=86400)
 
 
@@ -375,11 +376,11 @@ def api_faces_regrupeaza():
         if ai_client.remote():
             d = ai_client.face_regrupeaza()
             if d is None:
-                return jsonify({"error": "nvr-ai nu răspunde"}), 503
+                return jsonify({"error": t("nvr-ai nu răspunde")}), 503
         else:
             d = faces.regrupeaza()
     except Exception as e:
-        return jsonify({"error": f"regruparea a eșuat: {str(e)[:120]}"}), 500
+        return jsonify({"error": t("regruparea a eșuat: {e}", e=str(e)[:120])}), 500
     return jsonify({"ok": True, "grupuri": len(d.get("grupuri", {})), "perechi": len(d.get("perechi", []))})
 
 
@@ -391,7 +392,7 @@ def api_faces_uneste(name):
         if ai_client.remote():
             d = ai_client.face_uneste(tinta, name)
             if d is None:   # nvr-ai e pornit dar a picat la mijloc: NU repetam local, pe jumatate
-                return jsonify({"error": "nvr-ai nu a răspuns; biblioteca nu a fost atinsă de web"}), 503
+                return jsonify({"error": t("nvr-ai nu a răspuns; biblioteca nu a fost atinsă de web")}), 503
         else:
             d = {"ok": True, **faces.uneste(tinta, name)}
         if d.get("error"):
@@ -445,14 +446,14 @@ def api_faces_enroll():
         if b.get("rel"):
             p = faces.safe_path(b["rel"])
             if not p or not os.path.isfile(p):
-                return jsonify({"error": "imaginea nu există"}), 404
+                return jsonify({"error": t("imaginea nu există")}), 404
             with open(p, "rb") as f:
                 data = f.read()
         elif b.get("data"):
             import base64
             data = base64.b64decode(b["data"].split(",")[-1], validate=False)
         else:
-            return jsonify({"error": "trimite rel sau data"}), 400
+            return jsonify({"error": t("trimite rel sau data")}), 400
         # inrolarea cere modelul de embeddings -> nvr-ai cand e viu, altfel local
         rez = ai_client.face_enroll(name, data) if ai_client.remote() else None
         if rez is None:
@@ -510,7 +511,7 @@ def api_faces_auto_residents():
         d = ai_client.face_auto_enroll() if ai_client.remote() else None
         rez = d.get("rezidenti", []) if d is not None else faces.auto_enroll_residents()
     except Exception as e:
-        return jsonify({"error": f"eșuat: {str(e)[:120]}"}), 500
+        return jsonify({"error": t("eșuat: {e}", e=str(e)[:120])}), 500
     audit.log("auto-inrolare rezidenți", detail={"nr": len(rez)})
     return jsonify({"ok": True, "rezidenti": rez})
 
@@ -523,7 +524,7 @@ def api_faces_groups():
         d = ai_client.face_groups() if ai_client.remote() else None
         grupuri = d.get("grupuri", []) if d is not None else faces.unknown_groups()
     except Exception as e:
-        return jsonify({"error": f"gruparea a eșuat: {str(e)[:120]}"}), 500
+        return jsonify({"error": t("gruparea a eșuat: {e}", e=str(e)[:120])}), 500
     for g in grupuri:
         g["mostre"] = [{"rel": r, "url": f"/api/faces/img/{r}"} for r in g.get("mostre", [])]
     return jsonify({"grupuri": grupuri,
@@ -541,13 +542,13 @@ def api_faces_groups_assign():
     actiune = b.get("actiune") or ""
     nume = (b.get("nume") or "").strip()
     if not poze:
-        return jsonify({"error": "niciun crop în grup"}), 400
+        return jsonify({"error": t("niciun crop în grup")}), 400
     if actiune not in ("persoana", "ignora"):
-        return jsonify({"error": "acțiune necunoscută"}), 400
+        return jsonify({"error": t("acțiune necunoscută")}), 400
     inrolate = 0
     if actiune == "persoana":
         if not nume:
-            return jsonify({"error": "scrie numele persoanei"}), 400
+            return jsonify({"error": t("scrie numele persoanei")}), 400
         pas = max(1, len(poze) // MAX_INROLATE)
         for rel in poze[::pas][:MAX_INROLATE]:
             p = faces.safe_path(rel)
@@ -566,7 +567,7 @@ def api_faces_groups_assign():
             except ValueError as e:
                 return jsonify({"error": str(e)}), 400
         if not inrolate:
-            return jsonify({"error": "nicio poză din grup nu a putut fi înrolată"}), 400
+            return jsonify({"error": t("nicio poză din grup nu a putut fi înrolată")}), 400
     for rel in poze:
         faces.delete_unknown(rel)
     audit.log("grup de fețe " + ("înrolat" if actiune == "persoana" else "ignorat"),
@@ -586,5 +587,5 @@ def api_faces_img(rel):
     """Pozele bibliotecii — sub /api/, deci vizibile doar administratorului."""
     p = faces.safe_path(rel)
     if not p or not os.path.isfile(p):
-        return jsonify({"error": "nu există"}), 404
+        return jsonify({"error": t("nu există")}), 404
     return send_file(p, mimetype="image/jpeg", max_age=60)

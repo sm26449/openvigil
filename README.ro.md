@@ -69,6 +69,20 @@ sudo ./install.sh --update            # git pull, rebuild, repornire
 docker compose run --rm --no-deps web test      # pytest
 ```
 
+## Limba
+
+Interfața e în **română și engleză**. Urmează implicit limba browserului; fiecare cont își
+poate fixa limba din *Contul meu → Limba*, iar pagina de login are un comutator (`?lang=en`).
+`NVR_LANG` din `.env` e limba implicită a serverului, folosită și pentru notificările
+Telegram/e-mail și pentru rezumatul zilnic.
+
+O limbă nouă sau o corectură nu cere cod: textul românesc e cheia, deci un dicționar e un
+JSON plat de la textul românesc la traducere. Un fișier `data/i18n/<cod>.json` lângă
+înregistrări suprascrie orice text sau adaugă o limbă
+(`{"_meta": {"nume": "Deutsch"}, "Adaugă camera": "Kamera hinzufügen", ...}`);
+`app/static/i18n/en.json` e referința completă, iar `python3 scripts/i18n_check.py` arată
+ce lipsește.
+
 ## Mod demo
 
 N-ai camere încă? **Setări → Unelte → Mod demo** adaugă patru camere sintetice (imaginea o

@@ -168,7 +168,7 @@
   <div class="pb-main">
     <div class="pb-left">
       <div id="player-wrap">
-        <div id="player"></div>
+        <div id="player" data-gol="Alege camera + data, apoi un moment pe timeline."></div>
       </div>
       <div id="pb-nav">
         <button id="pb-play" title="Pauză / redă (Space sau K)">⏸ Pauză</button>
@@ -1417,6 +1417,16 @@
         <button type="button" id="push-test" class="hidden">Trimite o notificare de proba</button>
       </div>
       <span class="s-msg" id="push-msg"></span>
+    </section>
+    <section>
+      <h3>Limba</h3>
+      <label>Limba interfeței pentru acest cont
+        <select id="me-limba" aria-label="Limba interfeței">
+          <option value="">Automat (după browser)</option>
+        </select></label>
+      <p class="hint">Se aplică la următoarea încărcare a paginii. Notificările (Telegram, e-mail) folosesc limba
+        serverului, din <code>.env</code>.</p>
+      <span class="s-msg" id="me-limba-msg"></span>
     </section>
     <section>
       <h3>Dispozitive</h3>

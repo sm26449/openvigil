@@ -31,6 +31,7 @@ from requests.auth import HTTPDigestAuth
 import settings
 import store
 import logare
+from i18n import t
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FACES_DIR = os.path.join(ROOT, "data", "faces")
@@ -103,8 +104,7 @@ def sanitize_name(name):
     s = unicodedata.normalize("NFKD", str(name or "")).encode("ascii", "ignore").decode()
     s = re.sub(r"[^a-z0-9-]+", "-", s.lower()).strip("-")
     if not re.match(r"^[a-z][a-z0-9-]{1,19}$", s):
-        raise ValueError("nume invalid (2-20 caractere, litere/cifre/liniuta, "
-                         "incepe cu litera)")
+        raise ValueError(t("nume invalid (2-20 caractere, litere/cifre/liniuta, incepe cu litera)"))
     return s
 
 
@@ -234,17 +234,17 @@ def enroll(name, jpeg_bytes):
     name = sanitize_name(name)
     img = cv2.imdecode(np.frombuffer(jpeg_bytes, np.uint8), cv2.IMREAD_COLOR)
     if img is None:
-        raise ValueError("imaginea nu poate fi citita")
+        raise ValueError(t("imaginea nu poate fi citita"))
     faces = _detect(img)
     if not faces:
-        raise ValueError("nicio față utilizabila în imagine (prea mica sau neclara)")
+        raise ValueError(t("nicio față utilizabila în imagine (prea mica sau neclara)"))
     f = max(faces, key=_face_size)
     d = os.path.join(PERSONS_DIR, name)
     os.makedirs(d, exist_ok=True)
     fn = time.strftime("%Y%m%d-%H%M%S") + f"-{int(time.time() * 1000) % 1000}.jpg"
     ok, buf = cv2.imencode(".jpg", _crop(img, f.bbox), [cv2.IMWRITE_JPEG_QUALITY, 92])
     if not ok:
-        raise ValueError("nu am putut salva crop-ul")
+        raise ValueError(t("nu am putut salva crop-ul"))
     with open(os.path.join(d, fn), "wb") as fh:
         fh.write(buf.tobytes())
     n = _rebuild_person(name)
@@ -445,7 +445,7 @@ def uneste(a, b):
     a, b = sanitize_name(a), sanitize_name(b)
     da, db = os.path.join(PERSONS_DIR, a), os.path.join(PERSONS_DIR, b)
     if a == b or not os.path.isdir(da) or not os.path.isdir(db):
-        raise ValueError("persoane necunoscute sau identice")
+        raise ValueError(t("persoane necunoscute sau identice"))
     import shutil
     mutate = 0
     for fn in sorted(os.listdir(db)):
@@ -513,9 +513,9 @@ def rename_person(vechi, nou):
     d_vechi = os.path.join(PERSONS_DIR, vechi)
     d_nou = os.path.join(PERSONS_DIR, nou)
     if not os.path.isdir(d_vechi):
-        raise ValueError(f"persoana '{vechi}' nu există")
+        raise ValueError(t("persoana '{nume}' nu există", nume=vechi))
     if os.path.exists(d_nou) or nou in _load_embeddings():
-        raise ValueError(f"numele '{nou}' există deja")
+        raise ValueError(t("numele '{nume}' există deja", nume=nou))
     os.rename(d_vechi, d_nou)
     data = _load_embeddings().copy()
     if vechi in data:
@@ -529,13 +529,13 @@ def delete_person(name, photo=None):
     name = sanitize_name(name)
     d = os.path.join(PERSONS_DIR, name)
     if not os.path.isdir(d):
-        raise ValueError("persoana nu există")
+        raise ValueError(t("persoana nu există"))
     if photo:
         if not re.match(r"^[\w.-]+\.jpg$", photo):
-            raise ValueError("nume de fișier invalid")
+            raise ValueError(t("nume de fișier invalid"))
         p = os.path.join(d, photo)
         if not os.path.isfile(p):
-            raise ValueError("poza nu există")
+            raise ValueError(t("poza nu există"))
         os.remove(p)
         if not any(f.endswith(".jpg") for f in os.listdir(d)):
             os.rmdir(d)

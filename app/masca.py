@@ -13,6 +13,8 @@ Limitare: o camera cu masca se reda la rezolutie nativa (treapta 720/1080 nu se 
 scalarea ar fi un al doilea -vf). Pozele de detectie pe HD (cadrul confirmat) raman
 nemascate: sunt interne, nu ies din sistem.
 """
+from i18n import t
+
 MAX_RECTS = 8
 
 
@@ -26,7 +28,7 @@ def normalizeaza(rects):
             x, y, w, h = (float(v) for v in (r if isinstance(r, (list, tuple)) else
                                               (r["x"], r["y"], r["w"], r["h"])))
         except (KeyError, TypeError, ValueError):
-            raise ValueError("dreptunghi invalid: [x, y, w, h] între 0 și 1")
+            raise ValueError(t("dreptunghi invalid: [x, y, w, h] între 0 și 1"))
         x, y = max(0.0, min(1.0, x)), max(0.0, min(1.0, y))
         w, h = max(0.0, min(1.0 - x, w)), max(0.0, min(1.0 - y, h))
         if w < 0.005 or h < 0.005:

@@ -24,6 +24,7 @@ import urllib.parse
 import config as C
 import json
 import logare
+from i18n import t
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REC_DIR = os.path.join(ROOT, "data", "recordings")
@@ -190,8 +191,8 @@ class Recorder(threading.Thread):
                 if self.rec_fails == 5:
                     try:
                         import notify
-                        notify.send(f"⚠️ Înregistrarea cam{self.cam['id']} pica in bucla "
-                                    f"(5 caderi sub 60s) — verifica camera/reteaua",
+                        notify.send(t("⚠️ Înregistrarea cam{id} pica in bucla (5 caderi sub 60s) — verifica camera/reteaua",
+                                      id=self.cam['id']),
                                     key=f"rec-fail-{self.cam['id']}")
                     except Exception as e:
                         logare.info(f"[record] cam{self.cam['id']} alerta fail: {str(e)[:60]}")
@@ -570,14 +571,14 @@ def prune():
         logare.error(f"[record] CURATAREA A ESUAT: {e}")
         try:
             import notify
-            notify.send(f"⚠️ Curatarea inregistrarilor a eșuat ({str(e)[:80]}) — "
-                        "reincerc peste o ora", key="prune-esuat")
+            notify.send(t("⚠️ Curatarea inregistrarilor a eșuat ({e}) — reincerc peste o ora", e=str(e)[:80]),
+                        key="prune-esuat")
         except Exception:
             pass
     finally:
-        t = threading.Timer(3600, prune)
-        t.daemon = True
-        t.start()
+        timer = threading.Timer(3600, prune)
+        timer.daemon = True
+        timer.start()
 
 
 def _arhiveaza(cid, t, p, fn):
@@ -666,12 +667,12 @@ def _prune_body():
     # Astea NU expirasera — le-a taiat lipsa de spatiu. Adica retentia scrisa in setari
     # nu se respecta, iar asta e exact genul de lucru care nu trebuie sa treaca in tacere.
     if fortat:
-        msg = (f"Spatiu insuficient: am sters {fortat} segmente care nu expirasera. "
-               f"Retentia configurata nu se poate respecta.")
-        logare.info(f"[record] {msg}")
+        logare.info(f"[record] Spatiu insuficient: am sters {fortat} segmente care nu expirasera. "
+                    f"Retentia configurata nu se poate respecta.")
         try:
             import notify
-            notify.send("⚠️ " + msg, key="retentie-fortata")
+            notify.send("⚠️ " + t("Spatiu insuficient: am sters {n} segmente care nu expirasera. Retentia configurata nu se poate respecta.", n=fortat),
+                        key="retentie-fortata")
         except Exception:
             pass
     # curata listele concat vechi

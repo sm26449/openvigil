@@ -8,6 +8,7 @@ import json
 import os
 import subprocess
 import time
+from i18n import t
 import urllib.parse
 
 
@@ -30,7 +31,7 @@ def check_stream(cam, channel=102, timeout=12):
         if r.returncode != 0:
             err = r.stderr.decode(errors="ignore").strip().splitlines()
             return {"ok": False, "secunde": dt,
-                    "eroare": (err[-1] if err else "flux indisponibil")[:120]}
+                    "eroare": (err[-1] if err else t("flux indisponibil"))[:120]}
         st = (json.loads(r.stdout or "{}").get("streams") or [{}])[0]
         fr = st.get("avg_frame_rate", "0/1")
         try:
@@ -41,7 +42,7 @@ def check_stream(cam, channel=102, timeout=12):
         return {"ok": True, "secunde": dt, "codec": st.get("codec_name"),
                 "latime": st.get("width"), "inaltime": st.get("height"), "fps": fps}
     except subprocess.TimeoutExpired:
-        return {"ok": False, "eroare": "camera nu a trimis imagine in timpul alocat"}
+        return {"ok": False, "eroare": t("camera nu a trimis imagine in timpul alocat")}
     except Exception as e:
         return {"ok": False, "eroare": str(e)[:120]}
 

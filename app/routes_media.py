@@ -19,8 +19,10 @@ import requests
 import audit
 import config as C
 import jobs
+import logare
 import masca
 import record
+from i18n import t
 from server import (HW, ROOT, _build_clip, _cam_entry, _ts, _visible_ids,
                     ai_token, current_user, get_cameras, go2rtc_src, hik_rtsp,
                     isapi, nvr_history_cam, register_stream, render_clip,
@@ -76,11 +78,11 @@ def api_clip_boxes():
 
 
 def _job_chenare(job):
-    job.progres(5, "pregatesc clipul")
+    job.progres(5, t("pregatesc clipul"))
     path, err = _build_clip(job.parametri["channel"], job.parametri["time"])
     if err:
         raise jobs.JobError(err[0])
-    job.progres(40, "detectez")
+    job.progres(40, t("detectez"))
     data = _chenare(path)
     try:
         with open(path[:-4] + ".boxes.json", "w") as f:
@@ -110,7 +112,7 @@ def _chenare(path):
             import cv2
             model = detect._get_model()
         except Exception as e:
-            raise jobs.JobError(f"model indisponibil: {str(e)[:80]}")
+            raise jobs.JobError(t("model indisponibil: {e}", e=str(e)[:80]))
         sample_fps = 2
         cap = cv2.VideoCapture(path)
         src_fps = cap.get(cv2.CAP_PROP_FPS) or 15
@@ -157,7 +159,7 @@ def api_thumb(cam_id):
             return resp
     except requests.RequestException:
         pass
-    return jsonify({"error": "indisponibil"}), 502
+    return jsonify({"error": t("indisponibil")}), 502
 
 
 DAY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -168,12 +170,12 @@ def snapshot_files(day, fn):
     # <day> intra direct in calea de pe disc: fara validare, "../" urca din data/snapshots
     # si serveste orice fisier al aplicatiei (secret_key, users.json, cameras.json).
     if not DAY_RE.match(day):
-        return jsonify({"error": "zi invalida"}), 404
+        return jsonify({"error": t("zi invalida")}), 404
     vis = _visible_ids()
     if vis is not None:
         m = re.match(r"^\d{6}_cam(\d+)_", fn)
         if not m or int(m[1]) not in vis:
-            return jsonify({"error": "nu ai acces la această camera"}), 403
+            return jsonify({"error": t("nu ai acces la această camera")}), 403
     return send_from_directory(os.path.join(ROOT, "data", "snapshots", day), fn)
 
 
@@ -186,23 +188,23 @@ def flux_thumb(day, fn):
     """Miniatura (latime 200 px) a unui snapshot, pentru fluxul de langa Live: 40 de poze
     intregi ar fi ~4 MB la fiecare incarcare. Aceleasi reguli de acces ca /snapshots."""
     if not DAY_RE.match(day) or not re.match(r"^\d{6}_cam(\d+)_[A-Za-z0-9_.-]+\.jpg$", fn):
-        return jsonify({"error": "cadru invalid"}), 404
+        return jsonify({"error": t("cadru invalid")}), 404
     vis = _visible_ids()
     if vis is not None and int(re.match(r"^\d{6}_cam(\d+)_", fn)[1]) not in vis:
-        return jsonify({"error": "nu ai acces la această camera"}), 403
+        return jsonify({"error": t("nu ai acces la această camera")}), 403
     key = (day, fn)
     data = _THUMB_CACHE.get(key)
     if data is None:
         import cv2
         img = cv2.imread(os.path.join(ROOT, "data", "snapshots", day, fn))
         if img is None:
-            return jsonify({"error": "nu există"}), 404
+            return jsonify({"error": t("nu există")}), 404
         h, w = img.shape[:2]
         k = 200 / max(1, w)
         img = cv2.resize(img, (200, max(1, int(h * k))), interpolation=cv2.INTER_AREA)
         ok, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 70])
         if not ok:
-            return jsonify({"error": "nu pot genera miniatura"}), 500
+            return jsonify({"error": t("nu pot genera miniatura")}), 500
         data = buf.tobytes()
         if len(_THUMB_CACHE) >= _THUMB_MAX:
             _THUMB_CACHE.pop(next(iter(_THUMB_CACHE)))
@@ -242,7 +244,7 @@ def api_recordings():
     start = request.args["start"]
     end = request.args["end"]
     if not (ISO_RE.match(start) and ISO_RE.match(end)):   # intra in XML-ul trimis camerei
-        return jsonify({"error": "interval invalid"}), 400
+        return jsonify({"error": t("interval invalid")}), 400
     # intai inregistrarile locale de pe server
     segments = record.list_segments(ch, start[:10]) if record.has_recordings(ch) else []
     if segments:
@@ -296,7 +298,7 @@ def api_play():
     start = request.args.get("start")
     end = request.args.get("end")
     if not _interval_valid(start, end):
-        return jsonify({"error": "interval invalid"}), 400
+        return jsonify({"error": t("interval invalid")}), 400
     height = request.args.get("height", type=int)
     if height not in (0, 720, 1080):
         height = None                       # orice altceva -> comportamentul global
@@ -321,7 +323,7 @@ def api_play():
     # curenta cadea pe ramura NVR si intorcea un flux gol, adica un player care se invarte
     # la nesfarsit fara sa spuna nimic.
     if start and _ts(start) > time.time() + 5:
-        return jsonify({"error": "momentul ales nu a venit încă"}), 404
+        return jsonify({"error": t("momentul ales nu a venit încă")}), 404
     if start and record.has_recordings(ch):
         # playback din inregistrarile locale: concat + inpoint, prin template-ul vodcat
         lst = record.build_playlist(ch, _ts(start), _ts(end) if end else None)
@@ -342,7 +344,7 @@ def api_play():
             register_stream(name, "#".join(parts))
             return jsonify({"stream": name})
         if not hist:
-            return jsonify({"error": "nu există înregistrări la acel moment"}), 404
+            return jsonify({"error": t("nu există înregistrări la acel moment")}), 404
         cam = hist  # istoricul dinainte de migrare: il luam de pe NVR
     if start:
         name = f"pb{ch}_{start}{hsuf}"
@@ -364,9 +366,9 @@ def api_export_report():
     start, end = request.args["start"], request.args["end"]
     t0, t1 = _ts(start), _ts(end)
     if not 0 < t1 - t0 <= 1800:
-        return jsonify({"error": "interval invalid (între 1 sec și 30 min)"}), 400
+        return jsonify({"error": t("interval invalid (între 1 sec și 30 min)")}), 400
     if not (record.has_recordings(ch) and record.build_playlist(ch, t0, t1)):
-        return jsonify({"error": "raportul se emite doar pentru înregistrări locale"}), 404
+        return jsonify({"error": t("raportul se emite doar pentru înregistrări locale")}), 404
     return jsonify(jobs.submit("raport", {"channel": ch, "start": start, "end": end},
                                who=_who(), cam=ch)), 202
 
@@ -377,15 +379,15 @@ def _job_raport(job):
     t0, t1 = _ts(start), _ts(end)
     exp_job, livrat = _export_livrat(ch, start, end)
     if livrat:
-        job.progres(50, "hash pe fișierul exportat")
-        sha, octeti, sursa = _sha256(livrat), os.path.getsize(livrat), f"exportul {exp_job['id']} (fisierul livrat)"
+        job.progres(50, t("hash pe fișierul exportat"))
+        sha, octeti, sursa = _sha256(livrat), os.path.getsize(livrat), t("exportul {id} (fisierul livrat)", id=exp_job["id"])
     else:
         tmp = job.cale("mp4")
         ok, err = render_clip(ch, start, end, tmp, wm=False, job=job)
         if not ok:
             raise jobs.JobError(err)
-        job.progres(95, "calculez SHA-256")
-        sha, octeti, sursa = _sha256(tmp), os.path.getsize(tmp), "regenerare identica (exportul nu mai era pe disc)"
+        job.progres(95, t("calculez SHA-256"))
+        sha, octeti, sursa = _sha256(tmp), os.path.getsize(tmp), t("regenerare identica (exportul nu mai era pe disc)")
         os.remove(tmp)                  # fisa e rezultatul; MP4-ul se descarca separat
     h = type("H", (), {"hexdigest": staticmethod(lambda: sha)})()
     lt = lambda x: time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(x))
@@ -412,11 +414,7 @@ def _job_raport(job):
         "segmente_sursa": surse,
         "generat": time.strftime("%Y-%m-%d %H:%M:%S"),
         "generat_de": job.creat_de,
-        "nota": "Hash-ul SHA-256 dovedeste ca fisierul MP4 nu a fost modificat dupa "
-                "export. Verificare: sha256sum <fisier>. `segmente_sursa` sunt fisierele brute "
-                "din care s-a taiat clipul, cu amprenta calculata de serviciul de inregistrare "
-                "la inchiderea fiecaruia si re-verificata la generarea fisei. `goluri_inregistrare` "
-                "sunt intervalele fara material: clipul le sare (timpul din clip NU e continuu acolo).",
+        "nota": t("Hash-ul SHA-256 dovedeste ca fisierul MP4 nu a fost modificat dupa export. Verificare: sha256sum <fisier>. `segmente_sursa` sunt fisierele brute din care s-a taiat clipul, cu amprenta calculata de serviciul de inregistrare la inchiderea fiecaruia si re-verificata la generarea fisei. `goluri_inregistrare` sunt intervalele fara material: clipul le sare (timpul din clip NU e continuu acolo)."),
     }
     audit.log("raport probatoriu", f"cam{ch} {start}-{end}",
               {"sha256": h.hexdigest()[:16]}, job.creat_de)
@@ -438,7 +436,7 @@ def api_export():
     end = request.args["end"]
     t0, t1 = _ts(start), _ts(end)
     if not 0 < t1 - t0 <= 1800:
-        return jsonify({"error": "interval invalid (între 1 sec și 30 min)"}), 400
+        return jsonify({"error": t("interval invalid (între 1 sec și 30 min)")}), 400
     resolve_camera(ch)
     return jsonify(jobs.submit("export", {"channel": ch, "start": start, "end": end,
                                           "watermark": bool(request.args.get("watermark"))},
@@ -462,7 +460,7 @@ def _job_export(job):
     if not ok:
         raise jobs.JobError(err)
     job.fisier(out, f"cam{p['channel']}_{p['start']}.mp4", "video/mp4")
-    job.progres(97, "calculez SHA-256")
+    job.progres(97, t("calculez SHA-256"))
     # hash-ul FISIERULUI LIVRAT, nu al unei regenerari: fisa probatorie il refoloseste
     sha = _sha256(out)
     try:   # registrul exporturilor: verificarea publica (/verifica) il regaseste dupa amprenta
