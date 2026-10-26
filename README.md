@@ -53,6 +53,30 @@ Taken on the built-in demo mode (synthetic cameras), so no real footage.
   their own; nightly encrypted backup of configuration and databases; everything in
   `data/` is plain files and SQLite you can read without the app.
 
+## Why OpenVigil
+
+- **Your cameras, your disk, your GPU.** Nothing leaves the house: no cloud account, no
+  subscription, no licence per camera, no phone-home. Remote access is whatever reverse
+  proxy you already trust.
+- **It works with the cameras you have.** Hikvision over ISAPI (including siren, strobe,
+  talk, PTZ and the camera's own settings from the same page) and anything that speaks
+  ONVIF/RTSP. Adding a camera is a network scan and a click, not a config file.
+- **AI that goes past "a person was detected".** Who it was (faces), the same person across
+  cameras even without a face (re-ID), what happened in words (descriptions you can search),
+  licence plates with known/unknown, and a detector you can fine-tune on your own frames
+  from the interface.
+- **Built for evidence, not just viewing.** Every segment has a SHA-256 in a chain of custody,
+  every export is registered and can be verified on a public page without an account, and
+  incidents go into case files you hand over as a ZIP.
+- **A complete system in one install.** Modes (home/away/night) with rules, Telegram alerts
+  and a daily digest, Web Push, MQTT and webhooks, accounts with per-camera roles and 2FA,
+  audit log, health checks and self-healing recorders, nightly encrypted backups. One Docker
+  stack, one script.
+- **Honest about what it is.** Written for one real installation and published as is: it
+  wants an NVIDIA GPU for the heavy models, it has one active author, and it will have rough
+  edges on hardware it has not seen. Everything in `data/` is plain files and SQLite, so you
+  are never locked in.
+
 ## Architecture
 
 ```

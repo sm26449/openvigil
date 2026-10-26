@@ -46,6 +46,30 @@ Făcute în modul demo (camere sintetice), deci fără imagini reale.
 - **Conturi**: admin și vizitatori restrânși pe camere, 2FA, sesiuni revocabile, CSRF, CSP
   strict, audit, pagina publică `/verifica` pentru confirmarea unei probe după amprentă.
 
+## De ce OpenVigil
+
+- **Camerele tale, discul tău, placa ta video.** Nimic nu iese din casă: fără cont în cloud,
+  fără abonament, fără licență pe cameră, fără „telefon acasă”. Accesul din afară e prin
+  reverse proxy-ul în care ai deja încredere.
+- **Merge cu camerele pe care le ai.** Hikvision prin ISAPI (inclusiv sirenă, stroboscop,
+  vorbit, PTZ și setările camerei din aceeași pagină) și orice vorbește ONVIF/RTSP. O cameră
+  se adaugă cu o scanare de rețea și un click, nu dintr-un fișier de configurare.
+- **AI care trece de „s-a detectat o persoană”.** Cine a fost (fețe), aceeași persoană pe mai
+  multe camere chiar fără față (re-ID), ce s-a întâmplat în cuvinte (descrieri în care poți
+  căuta), numere de înmatriculare cunoscute/necunoscute și un detector pe care îl antrenezi
+  pe cadrele tale, din interfață.
+- **Făcut pentru probe, nu doar pentru privit.** Fiecare segment are SHA-256 într-un lanț de
+  custodie, fiecare export e înregistrat și se poate verifica pe o pagină publică fără cont,
+  iar incidentele intră în dosare de caz pe care le predai ca ZIP.
+- **Un sistem complet dintr-o instalare.** Moduri (acasă/plecat/noapte) cu reguli, alerte
+  Telegram și rezumat zilnic, Web Push, MQTT și webhook-uri, conturi cu roluri pe camere și
+  2FA, jurnal de audit, verificări de sănătate și recordere care se repară singure, copii
+  nocturne criptate. Un stack Docker, un script.
+- **Sincer despre ce este.** Scris pentru o singură instalație reală și publicat așa cum e:
+  vrea o placă NVIDIA pentru modelele grele, are un singur autor activ și va avea colțuri
+  nefinisate pe hardware pe care nu l-a văzut. Tot ce e în `data/` sunt fișiere simple și
+  SQLite, deci nu ești niciodată legat de el.
+
 ## Instalare
 
 ```bash
