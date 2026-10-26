@@ -57,6 +57,26 @@ din container) și `BACKUP_DIR` (copiile nocturne, fără altă setare).
 - Spațiul pe disc: `RECORD_MIN_FREE_GB` din `.env` e garda sub care se șterg cele mai vechi
   segmente; `RECORD_KEEP_DAYS` e retenția dorită. Setări → Înregistrări arată cât încape de fapt.
 
+## Mutarea pe altă mașină
+
+Stack-ul e complet descris de depozit + `.env`; tot ce e al instalației stă în directoarele din
+`.env`. Pe mașina nouă ai nevoie de:
+
+| Ce | De unde |
+|---|---|
+| codul | `git clone` (aceeași versiune: `OPENVIGIL_VERSION` din `.env`) |
+| `.env` | copiat ca atare (0600); conține porturile, `DATA_DIR`, `RECORDINGS_DIR` etc. |
+| `DATA_DIR` | copiat cu `rsync -a` **cu stack-ul oprit** (bazele SQLite); dacă directorul e criptat pe gazdă (fscrypt), copiezi conținutul descuiat sau duci și cheia |
+| `RECORDINGS_DIR`, `ARHIVA_DIR`, `BACKUP_DIR` | copiate dacă vrei istoricul; altfel directoare goale, ale lui `PUID:PGID` |
+| `MODELS_DIR` | opțional; se descarcă din nou la prima pornire (~15 GB) |
+| Docker + Compose, `nvidia-container-toolkit` pe GPU | `install.sh` le pune |
+| accesul din afară | regula din reverse proxy-ul tău (nu e în depozit): `/api/ws` și `/api/frame.jpeg` → `STREAM_PORT`, restul → `WEB_PORT` |
+
+Secretele instalației nu sunt în `.env`, ci în `DATA_DIR`: parolele camerelor (`cameras.json`,
+`go2rtc.yaml`), conturile (`users.json`), Telegram, jetonul API și cel al nvr-ai
+(`settings.json`, `ai_token`), cheia copiilor (`backup_key`), cheile push. Pornirea:
+`sudo ./install.sh` (ia `.env`-ul existent), apoi verifici `/healthz` și că apar segmente noi.
+
 ## Porturi și acces
 
 | Port | Serviciu | Expus în LAN? |
