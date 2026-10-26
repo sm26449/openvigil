@@ -11,6 +11,19 @@ def _text(cheie, implicit=""):
     return os.environ.get(cheie, implicit).strip()
 
 
+def _secret(cheie, implicit=""):
+    """Valoarea din mediu sau, daca exista `<CHEIE>_FILE`, continutul fisierului (secret
+    Docker/un fisier 0600): asa nu apare in `docker inspect` si in mediul proceselor copil."""
+    cale = _text(cheie + "_FILE")
+    if cale:
+        try:
+            with open(cale, encoding="utf-8") as f:
+                return f.read().strip()
+        except OSError:
+            return implicit
+    return _text(cheie, implicit)
+
+
 def _int(cheie, implicit):
     try:
         return int(_text(cheie) or implicit)
@@ -63,10 +76,10 @@ PLAYBACK_HEIGHT = _int("PLAYBACK_HEIGHT", 0)
 NVR_IP = _text("NVR_IP")
 NVR_PORT = _int("NVR_PORT", 554)
 NVR_USER = _text("NVR_USER", "admin")
-NVR_PASS = _text("NVR_PASS")
+NVR_PASS = _secret("NVR_PASS")
 
 # doar valori de pornire; se seteaza din Setari -> Notificari (data/settings.json)
-TELEGRAM_TOKEN = _text("TELEGRAM_TOKEN")
+TELEGRAM_TOKEN = _secret("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = _text("TELEGRAM_CHAT_ID")
 NOTIFY_LABELS = _lista("NOTIFY_LABELS", ("person", "dog", "cat", "bear"))
 NOTIFY_COOLDOWN = _int("NOTIFY_COOLDOWN", 300)

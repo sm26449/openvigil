@@ -29,6 +29,7 @@ import traceback
 import uuid
 
 import jurnal
+import schema
 import logare
 from i18n import t
 
@@ -88,12 +89,15 @@ def register(tip, fn):
     _handlers[tip] = fn
 
 
+MIGRARI = {}      # migrari viitoare: {2: "ALTER TABLE ..."}
+
+
 def _db():
     global _gata
     c = jurnal.conexiune()
     if _gata is not c:
         with jurnal.lock:
-            c.executescript(SCHEMA)
+            schema.aplica(c, "jobs", SCHEMA, MIGRARI)
         _gata = c
     return c
 

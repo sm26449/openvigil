@@ -79,7 +79,8 @@ containerele primei. Pornește-o cu alt nume și alte porturi: `COMPOSE_PROJECT_
 
 `.env` (cu `NVR_PASS`, `TELEGRAM_TOKEN` dacă le pui acolo) ajunge în mediul tuturor
 containerelor, deci oricine poate rula `docker inspect` le vede; grupul `docker` e echivalent
-cu root pe gazdă. Parolele camerelor stau în `data/cameras.json` și `data/go2rtc.yaml` (0600),
+cu root pe gazdă. Dacă vrei să nu stea în mediu, folosește `NVR_PASS_FILE=` / `TELEGRAM_TOKEN_FILE=` cu calea unui
+fișier 0600 (sau un secret Docker). Parolele camerelor stau în `data/cameras.json` și `data/go2rtc.yaml` (0600),
 jetoanele în `data/` (0600). Copiile nocturne sunt criptate cu `data/backup_key`.
 
 ## Camere

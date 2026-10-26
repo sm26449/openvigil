@@ -13,6 +13,7 @@ import time
 import uuid
 
 import jurnal
+import schema
 from i18n import t
 
 SCHEMA = """
@@ -36,12 +37,15 @@ MAX_DURATA = 24 * 3600
 _gata = None      # conexiunea pe care am verificat schema (jurnal.reset() da una noua)
 
 
+MIGRARI = {}      # migrari viitoare: {2: "ALTER TABLE ..."}
+
+
 def _db():
     global _gata
     c = jurnal.conexiune()
     if _gata is not c:
         with jurnal.lock:
-            c.executescript(SCHEMA)
+            schema.aplica(c, "marcaje", SCHEMA, MIGRARI)
         _gata = c
     return c
 

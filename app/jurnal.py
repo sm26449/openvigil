@@ -29,6 +29,7 @@ import threading
 import time
 import uuid
 import logare
+import schema
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_FILE = os.path.join(ROOT, "data", "events.db")
@@ -54,6 +55,9 @@ CREATE INDEX IF NOT EXISTS ev_cam_ts ON events(cam, ts);
 CREATE INDEX IF NOT EXISTS ev_tip_ts ON events(tip, ts);
 CREATE INDEX IF NOT EXISTS ev_sev_ts ON events(sev, ts);
 """
+# migrari viitoare ale tabelelor de aici: {2: "ALTER TABLE events ADD COLUMN ...", 3: functie(conn)}
+MIGRARI = {}
+
 
 _lock = threading.RLock()
 lock = _lock             # si pentru modulele care tin tabele in aceeasi baza (marcaje)
@@ -81,7 +85,7 @@ def _connect():
                             timeout=5)
         c.execute("PRAGMA journal_mode=WAL")
         c.execute("PRAGMA synchronous=NORMAL")
-        c.executescript(SCHEMA)
+        schema.aplica(c, "jurnal", SCHEMA, MIGRARI)
         for f in (DB_FILE, DB_FILE + "-wal", DB_FILE + "-shm"):
             try:
                 os.chmod(f, 0o600)         # nume de persoane, numere de masini

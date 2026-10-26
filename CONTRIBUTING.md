@@ -40,6 +40,9 @@ go2rtc) cu variabilele din `.env` exportate.
 ## Reguli de cod
 
 - Python 3.12, fără framework-uri noi fără motiv; `requirements.lock` e sursa adevărului.
+- O schimbare de tabelă SQLite nu se face în `CREATE TABLE IF NOT EXISTS`, ci ca migrare
+  numerotată în `MIGRARI` din modulul respectiv (`app/schema.py` le aplică o singură dată,
+  în ordine); schema inițială rămâne cea completă, pentru bazele noi.
 - Interfața e în module ES simple (`app/static/js/*.js`), fără pas de build. Orice
   `innerHTML` nou trece prin `html\`\`` (escapare + CSP strict). `scripts/module_check.py`
   trebuie să afișeze `ok`.

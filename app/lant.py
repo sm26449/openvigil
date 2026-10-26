@@ -18,6 +18,7 @@ import sqlite3
 import threading
 import time
 import logare
+import schema
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_FILE = os.path.join(ROOT, "data", "segmente.db")
@@ -45,6 +46,9 @@ CREATE INDEX IF NOT EXISTS seg_cam_epoch ON segmente(cam, epoch);
 """
 
 
+MIGRARI = {}      # migrari viitoare ale tabelei segmente
+
+
 def _c():
     global _conn
     with _lock:
@@ -54,7 +58,7 @@ def _c():
                                 timeout=15)
             c.execute("PRAGMA journal_mode=WAL")
             c.execute("PRAGMA synchronous=NORMAL")
-            c.executescript(SCHEMA)
+            schema.aplica(c, "lant", SCHEMA, MIGRARI)
             # caile vechi, absolute (ale altei instalari sau ale gazdei, cand rulam in container),
             # devin relative la radacina proiectului: data/recordings/camN/nume.mp4
             c.execute("UPDATE segmente SET cale = substr(cale, instr(cale, '/data/recordings/') + 1) "

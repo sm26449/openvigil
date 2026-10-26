@@ -6,6 +6,9 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 ## [Nepublicat]
 
 ### Adăugat
+- Versiune de schemă în bazele SQLite (`app/schema.py`, tabela `schema_versiuni`): migrările
+  viitoare rulează o singură dată, în ordine. Secretele din `.env` pot veni din fișiere
+  (`NVR_PASS_FILE`, `TELEGRAM_TOKEN_FILE`).
 - Interfață multilingvă: română și engleză. Limba urmează browserul, poate fi fixată pe cont
   (Contul meu → Limba) sau din `?lang=`; `NVR_LANG` dă limba serverului (notificări, rezumat).
   Cheia unui text e textul românesc (`t()` în Python și JavaScript, `app/i18n.py`), pagina
