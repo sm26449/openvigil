@@ -68,6 +68,20 @@ suprascrie fără a atinge aplicația: `data/i18n/en.json` (sau `ro.json`) cu
 `{"textul românesc": "textul tău"}`; cheile sunt textele din `app/static/i18n/en.json`.
 După ce schimbi fișierul: `docker compose restart web`.
 
+## Două instalări pe aceeași gazdă
+
+Numele de proiect Compose e `openvigil`; o a doua instalare din alt director ar prelua
+containerele primei. Pornește-o cu alt nume și alte porturi: `COMPOSE_PROJECT_NAME=ovtest` în
+`.env` (sau `docker compose -p ovtest …`) și `WEB_PORT`, `STREAM_PORT`, `AI_PORT`,
+`WEBRTC_PORT`, `GO2RTC_API`, `GO2RTC_RTSP` diferite.
+
+## Ce e de știut despre secrete
+
+`.env` (cu `NVR_PASS`, `TELEGRAM_TOKEN` dacă le pui acolo) ajunge în mediul tuturor
+containerelor, deci oricine poate rula `docker inspect` le vede; grupul `docker` e echivalent
+cu root pe gazdă. Parolele camerelor stau în `data/cameras.json` și `data/go2rtc.yaml` (0600),
+jetoanele în `data/` (0600). Copiile nocturne sunt criptate cu `data/backup_key`.
+
 ## Camere
 
 - Adăugare: Camere → Adaugă camera (IP, cont, parolă) sau scanner-ul de rețea. Parola rămâne

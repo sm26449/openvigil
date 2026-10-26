@@ -153,3 +153,19 @@ def test_eroarea_ffmpeg_nu_scapa_parola_camerei():
     assert "Parola" not in curat and "admin:" not in curat
     assert "rtsp://***@192.168.1.253:554/Streaming/tracks/601" in curat
     assert "tcp://192.168.1.253:554?timeout=0 failed" in curat   # fara user:parola ramane cum e
+
+
+def test_plafon_joburi_grele_per_utilizator():
+    """Un cont nu poate pune la coada mai mult de MAX_ACTIVE_PER_USER joburi grele; alt cont da."""
+    poarta = threading.Event()
+    jobs.register("clip", lambda j: poarta.wait(5))
+    try:
+        for i in range(jobs.MAX_ACTIVE_PER_USER):
+            jobs.submit("clip", {"channel": 1, "time": 1000 + i}, who="ana")
+        with pytest.raises(jobs.PreaMulte):
+            jobs.submit("clip", {"channel": 1, "time": 2000}, who="ana")
+        assert jobs.submit("clip", {"channel": 1, "time": 2000}, who="ion")["stare"] in ("asteapta", "ruleaza")
+        # un job identic cu unul deja activ nu e refuzat: se intoarce acelasi
+        assert jobs.submit("clip", {"channel": 1, "time": 1000}, who="ana")["parametri"]["time"] == 1000
+    finally:
+        poarta.set()

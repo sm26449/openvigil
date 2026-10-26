@@ -11,6 +11,8 @@ import time
 from i18n import t
 import urllib.parse
 
+import logare
+
 
 def check_stream(cam, channel=102, timeout=12):
     """Se conecteaza la fluxul RTSP si citeste primul cadru. Intoarce ce a gasit."""
@@ -18,7 +20,7 @@ def check_stream(cam, channel=102, timeout=12):
     try:
         url = drivers.rtsp(cam, channel)      # main/sub dupa producator (Hikvision/ONVIF)
     except Exception as e:
-        return {"ok": False, "secunde": 0, "eroare": str(e)[:120]}
+        return {"ok": False, "secunde": 0, "eroare": logare.fara_parole(str(e))[:120]}
     try:
         t0 = time.time()
         r = subprocess.run(
@@ -31,7 +33,7 @@ def check_stream(cam, channel=102, timeout=12):
         if r.returncode != 0:
             err = r.stderr.decode(errors="ignore").strip().splitlines()
             return {"ok": False, "secunde": dt,
-                    "eroare": (err[-1] if err else t("flux indisponibil"))[:120]}
+                    "eroare": logare.fara_parole(err[-1] if err else t("flux indisponibil"))[:120]}
         st = (json.loads(r.stdout or "{}").get("streams") or [{}])[0]
         fr = st.get("avg_frame_rate", "0/1")
         try:
@@ -44,7 +46,7 @@ def check_stream(cam, channel=102, timeout=12):
     except subprocess.TimeoutExpired:
         return {"ok": False, "eroare": t("camera nu a trimis imagine in timpul alocat")}
     except Exception as e:
-        return {"ok": False, "eroare": str(e)[:120]}
+        return {"ok": False, "eroare": logare.fara_parole(str(e))[:120]}
 
 
 # ---- starea serverului ----

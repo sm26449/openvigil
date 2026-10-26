@@ -39,7 +39,8 @@ Făcute în modul demo (camere sintetice), deci fără imagini reale.
   chenare, time-lapse, heatmap, căutare pe regiune.
 - **AI local**: detecție YOLO11 (persoane, animale, vehicule, cu fine-tuning pe cadrele tale),
   recunoaștere de fețe, re-identificare după corp, numere de înmatriculare, descrieri în
-  limbaj natural (Qwen2.5-VL) și căutare semantică (SigLIP). Fără GPU rămâne detecția.
+  limbaj natural (Qwen2.5-VL) și căutare semantică (SigLIP). Fără GPU (driver ≥ 580) rămâne
+  detecția; restul merge pe CPU, dar mult prea încet ca să fie util.
 - **Operare**: moduri acasă/plecat/noapte cu reguli, alerte Telegram și rezumat zilnic, Web
   Push, punte MQTT (Home Assistant, Node-RED), webhook-uri, hartă, sirenă/strobo/difuzor pe
   camerele care le au, verificarea sănătății camerelor.
@@ -54,7 +55,7 @@ Făcute în modul demo (camere sintetice), deci fără imagini reale.
   calibrarea pragurilor, alarme de zgomot și anunțuri vocale (TTS) prin difuzorul camerei.
 - **Incidente și dosare**: panou de triaj (netratate / confirmate / false) cu sunet și pop-up
   la critic, dosare de caz care adună clipuri, poze și un manifest semnat.
-- **La redare**: marcaje pe înregistrări, redare sincronizată pe mai multe camere,
+- **La redare**: marcaje pe înregistrări, mai multe camere redate din același moment,
   vizualizări salvate și mod perete pentru grila live, panou I/O pentru relee.
 - **Evenimente mai deștepte**: episoade de prezență (o poveste în loc de cincizeci de cadre),
   episoade de vehicul parcat, obiect nou sau dispărut pe camere statice, a doua opinie cu un
@@ -64,8 +65,9 @@ Făcute în modul demo (camere sintetice), deci fără imagini reale.
   tale și fine-tuning din interfață, cu metrici per model.
 - **Operare**: comenzi prin botul Telegram (/acasa, /plecat, /noapte, /stare), API de
   automatizare cu jeton propriu (`/api/v1`) pentru Node-RED sau Home Assistant, forward-auth
-  pentru alte unelte în spatele aceluiași login, verificarea ceasului camerelor, trepte de
-  bandă per cameră, măști de confidențialitate, nivel de arhivă care recomprimă înregistrările
+  pentru alte unelte în spatele aceluiași login, verificarea ceasului camerelor, test de viteză
+  care alege rezoluția de redare, calitatea fluxului pe camerele Hikvision, măști de
+  confidențialitate, nivel de arhivă care recomprimă înregistrările
   vechi, grafice de acoperire și continuitate, PWA instalabilă pe telefon.
 
 ## De ce OpenVigil
@@ -169,15 +171,26 @@ Operarea de zi cu zi (jurnale, actualizare, copii, porturi, dezinstalare): [docs
 
 ## Documentație
 
-[docs/ro/manual.md](docs/ro/manual.md) este manualul complet, scris pe măsură ce sistemul a
-fost construit. Apoi [docs/nvr-ai.md](docs/nvr-ai.md), [docs/ai-contract.md](docs/ai-contract.md),
+[docs/ro/manual.md](docs/ro/manual.md) este jurnalul deciziilor, scris pe măsură ce sistemul a
+fost construit pentru instalația de origine; unele secțiuni descriu varianta de dinainte de
+Docker (servicii systemd, criptare pe gazdă) și nu se mai aplică ca atare. Apoi [docs/nvr-ai.md](docs/nvr-ai.md), [docs/ai-contract.md](docs/ai-contract.md),
 [docs/node-red.md](docs/node-red.md), [SECURITY.md](SECURITY.md), [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Licență
 
-AGPL-3.0 ([LICENSE](LICENSE)). Componentele terțe și licențele modelelor, inclusiv condițiile
-necomerciale ale modelelor de fețe InsightFace, sunt în [NOTICE.md](NOTICE.md). Proiectul nu
-este afiliat cu Hikvision, NVIDIA sau ONVIF.
+AGPL-3.0 ([LICENSE](LICENSE)). Componentele terțe și licențele modelelor sunt în
+[NOTICE.md](NOTICE.md). Două dintre modelele descărcate sunt licențiate **doar pentru uz
+necomercial**: modelele de fețe InsightFace și Qwen2.5-VL-3B (descrierile). O instalare
+comercială trebuie să dezactiveze fețele și descrierile sau să obțină licențe de la autorii lor.
+Proiectul nu este afiliat cu Hikvision, NVIDIA sau ONVIF.
+
+**Notă legală.** OpenVigil poate face recunoaștere facială, re-identificare de persoane și
+citire de numere de înmatriculare. Aceste funcții prelucrează date personale și, în cazul
+fețelor, date biometrice. Răspunderea pentru folosirea lor legală, pe proprietatea ta și conform
+legilor care ți se aplică (de exemplu GDPR în UE pentru date biometrice, temei legal și
+drepturile persoanelor, reglementările naționale privind supravegherea video și obligația de a
+semnaliza zonele supravegheate) îți aparține în întregime. Programul e oferit „așa cum este”,
+fără nicio garanție și fără răspundere pentru daune, conform secțiunilor 15 și 16 din AGPL-3.0.
 
 ## Autori
 

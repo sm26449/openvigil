@@ -62,16 +62,17 @@ Taken on the built-in demo mode (synthetic cameras), so no real footage.
   camera's speaker.
 - **Incidents and cases**: a triage panel (open / acknowledged / false alarm) with sound and
   pop-up on critical, and case files that bundle clips, snapshots and a signed manifest.
-- **Playback extras**: bookmarks on recordings, synchronized multi-camera playback, saved
+- **Playback extras**: bookmarks on recordings, several cameras played from the same moment, saved
   views and a wall mode for the live grid, an I/O panel for relays.
 - **Smarter events**: presence episodes (one story instead of fifty frames), parked-vehicle
   episodes, new or missing object on static cameras, a second opinion with a stock model
   before an "intruder" alert, counting lines and zones pushed to the cameras as smart events.
 - **Training loop**: a queue of uncertain frames, an annotation tool, a dataset built from
   your own cameras and fine-tuning from the UI, with per-model metrics.
-- **Operations**: Telegram bot commands (/home, /away, /night, /status), an automation API
+- **Operations**: Telegram bot commands (`/acasa`, `/plecat`, `/noapte`, `/stare`), an automation API
   with its own token (`/api/v1`) for Node-RED or Home Assistant, forward-auth for other tools
-  behind the same login, a camera clock check, bandwidth tiers per camera, privacy masks,
+  behind the same login, a camera clock check, a speed test that picks the playback
+  resolution, stream quality per Hikvision camera, privacy masks,
   an archive tier that recompresses old recordings, coverage and continuity charts, and an
   installable PWA for the phone.
 
@@ -124,14 +125,17 @@ All four containers share one image and the host network. Only `WEB_PORT` (UI) a
 
 ## Requirements
 
-- Linux host with Docker Engine and Compose v2 (`install.sh` installs them on Debian/Ubuntu).
+- Linux host with Docker Engine and Compose v2. `install.sh` installs them on Ubuntu
+  (22.04 or newer); on Debian and other distributions install Docker Engine with the Compose
+  plugin from Docker's own repository first, then run the script.
 - Disk for recordings: plan ~1 GB per camera per hour at 4 MP H.265, less with H.265+.
-- Optional but recommended: an NVIDIA GPU (driver ≥ 550). `install.sh` installs
-  `nvidia-container-toolkit` when it finds `nvidia-smi`. Without a GPU you get libx264
-  transcoding and CPU detection; faces, re-ID and descriptions stay off.
+- Optional but recommended: an NVIDIA GPU with driver ≥ 580 (the image ships PyTorch for
+  CUDA 13). `install.sh` installs `nvidia-container-toolkit` when it finds `nvidia-smi`.
+  Without a GPU you get libx264 transcoding and CPU detection; faces, re-ID, descriptions and
+  semantic search still run on the CPU but far too slowly to be useful, so turn them off.
 - Cameras on a LAN the host can reach. Hikvision cameras need ISAPI enabled and an
-  account with RTSP access; ONVIF cameras get live/record/snapshots but no siren, strobe,
-  talk or event hooks.
+  account with RTSP access; ONVIF cameras get live, recording, snapshots, PTZ and relays,
+  but no siren, strobe, talk or event hooks.
 
 ## Install
 
@@ -187,8 +191,13 @@ set in `.env`:
 
 ```
 HTTPS=true
-TRUSTED_PROXIES=127.0.0.0/8,::1/128,172.16.0.0/12
+TRUSTED_PROXIES=127.0.0.0/8,::1/128,172.18.0.0/16   # loopback + the proxy's Docker subnet
 ```
+
+`TRUSTED_PROXIES` must list only the addresses the proxy connects from: `X-Forwarded-For`
+and `X-Forwarded-Proto` are believed from those addresses alone (they drive the login rate
+limit, the audit log and the Secure cookie). The containers use the host network, so a LAN
+range here would let any LAN host spoof them.
 
 The proxy must forward `/api/ws` and `/api/frame.jpeg` to `STREAM_PORT` (the video relay)
 and everything else to `WEB_PORT`. `/api/auth/forward` is a forward-auth endpoint if you
@@ -241,8 +250,9 @@ Day-to-day operations (logs, updates, backups, ports, uninstall): [docs/operare.
 
 ## Documentation
 
-- [docs/ro/manual.md](docs/ro/manual.md): the full manual, in Romanian, written while
-  the system was built. The authoritative description of every feature and decision.
+- [docs/ro/manual.md](docs/ro/manual.md): the decision log, in Romanian, written while the
+  system was built for its original installation. Some sections describe the pre-Docker
+  setup (systemd services, host encryption) and no longer apply as is.
 - [docs/nvr-ai.md](docs/nvr-ai.md), [docs/ai-contract.md](docs/ai-contract.md): the AI
   service and the web ↔ ai contract.
 - [docs/node-red.md](docs/node-red.md): webhooks and MQTT with an example flow.
@@ -250,9 +260,19 @@ Day-to-day operations (logs, updates, backups, ports, uninstall): [docs/operare.
 
 ## Licence
 
-AGPL-3.0, see [LICENSE](LICENSE). Third-party components and model licences, including the
-non-commercial terms of the InsightFace face models, are listed in [NOTICE.md](NOTICE.md).
+AGPL-3.0, see [LICENSE](LICENSE). Third-party components and model licences are listed in
+[NOTICE.md](NOTICE.md). Two of the models it downloads are licensed for **non-commercial use
+only**: the InsightFace face models and Qwen2.5-VL-3B (descriptions). A commercial deployment
+has to disable faces and descriptions or obtain licences from their authors.
 Not affiliated with Hikvision, NVIDIA or ONVIF.
+
+**Legal notice.** OpenVigil can perform face recognition, person re-identification and
+licence-plate reading. These features process personal and, for faces, biometric data. You are
+solely responsible for using them lawfully on your own premises under the laws that apply to
+you: for example the GDPR in the EU (biometric data, lawful basis, data-subject rights),
+national video-surveillance rules and the obligation to signpost monitored areas. The software
+is provided "as is", without warranty of any kind and without liability for damages, as stated
+in sections 15 and 16 of the AGPL-3.0.
 
 ## Credits
 

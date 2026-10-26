@@ -50,9 +50,14 @@ NVENC = ("-c:v h264_nvenc -profile:v main -pix_fmt yuv420p -preset p4 -rc vbr -c
 
 
 def _asculta(url, port_implicit):
-    """'http://127.0.0.1:1984' -> '127.0.0.1:1984': go2rtc asculta exact unde il cauta clientii."""
+    """'http://127.0.0.1:1984' -> '127.0.0.1:1984': go2rtc asculta exact unde il cauta clientii.
+    Doar loopback: API-ul si RTSP-ul go2rtc n-au autentificare, pe LAN ar ocoli conturile."""
     u = urllib.parse.urlsplit(url)
-    return f"{u.hostname or '127.0.0.1'}:{u.port or port_implicit}"
+    gazda = u.hostname or "127.0.0.1"
+    if gazda not in ("127.0.0.1", "localhost", "::1"):
+        raise SystemExit(f"GO2RTC_API/GO2RTC_RTSP trebuie sa fie pe 127.0.0.1, nu pe {gazda}: "
+                         "go2rtc nu are autentificare si ar fi expus direct in retea")
+    return f"{gazda}:{u.port or port_implicit}"
 
 
 def generate():

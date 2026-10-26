@@ -102,6 +102,7 @@ def main():
     lant.start(lambda cam: [(t, p, fn) for t, p, fn in record._files(cam)],
                lambda: [c["id"] for c in all_cams()], record.SEGMENT)
     last = None
+    morti = 0        # bucle la rand cu un recorder mort: dupa cateva, iesim ca sa fim reporniti
     while True:
         cur = os.path.getmtime(EXT_FILE) if os.path.exists(EXT_FILE) else None
         if cur != last:
@@ -115,6 +116,12 @@ def main():
         # bataia de inima: cat timp bucla asta se invarte si recorderele pornite traiesc
         if all(r.is_alive() for r in record.recorders.values()):
             sdnotify.watchdog()
+            morti = 0
+        else:
+            morti += 1
+            if morti >= 6 and not os.environ.get("NOTIFY_SOCKET"):
+                logare.error("[record] un recorder e mort de un minut; ies ca sa fiu repornit")
+                os._exit(1)
         time.sleep(10)
 
 

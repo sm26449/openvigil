@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Re-ID pe corp (OSNet): "cine e omul asta?" fara sa-i vedem fata.
 
-Camerele sunt montate sus — fata se vede rar (practic doar la usa, cam101).
+Camerele sunt montate sus — fata se vede rar (practic doar la usa).
 OSNet scoate un embedding de infatisare (silueta + imbracaminte) din crop-ul
 intregului corp, la orice unghi. Regula de aur: FATA ancoreaza identitatea,
 CORPUL o propaga:
@@ -14,7 +14,7 @@ CORPUL o propaga:
      de pe strada au ~60-80px pe substream, prea putin; in HD au 3-4x), cu
      substreamul ca fallback;
   3. un track fara nume se compara cu galeria: peste PRAG primeste numele —
-     "stefan a mers de la poarta pe alee" fara sa se uite la camera.
+     "X a mers de la poarta pe alee" fara sa se uite la camera.
 
 Galeria traieste O ZI (in memorie): infatisarea = haine, iar hainele se
 schimba de la o zi la alta. A doua zi, prima recunoastere de fata o

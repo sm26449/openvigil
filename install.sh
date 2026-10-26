@@ -33,6 +33,12 @@ if [ "$(id -u)" -ne 0 ]; then
   exit 1
 fi
 UTILIZATOR="${SUDO_USER:-root}"
+if [ "$UTILIZATOR" = root ]; then
+  # rulat direct ca root (VPS): fisierele nu pot fi ale lui uid 0 in container (useradd -u 0
+  # esueaza), deci folosim un utilizator de sistem dedicat pe gazda
+  id openvigil >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin openvigil
+  UTILIZATOR=openvigil
+fi
 PUID_IMPLICIT="$(id -u "$UTILIZATOR")"
 PGID_IMPLICIT="$(id -g "$UTILIZATOR")"
 
@@ -81,7 +87,10 @@ if [ "$GPU" != "no" ] && command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi >/d
       apt-get update -q
       apt-get install -y -q nvidia-container-toolkit
       nvidia-ctk runtime configure --runtime=docker
-      systemctl restart docker
+      # runtimes din daemon.json se reincarca cu SIGHUP; restart-ul ar opri TOATE containerele gazdei
+      systemctl reload docker
+      sleep 2
+      docker info 2>/dev/null | grep -q nvidia || systemctl restart docker
     else
       avert "nvidia-container-toolkit lipseste si nu-l pot instala automat; continui FARA GPU."
       ARE_GPU=0
@@ -125,12 +134,14 @@ spune "4/5 Construire si pornire"
 if [ "$UPDATE" = 1 ] && [ -d .git ]; then
   # fara acces la depozit (privat, fara credentiale pentru acest utilizator) nu ne oprim:
   # construim din codul local si spunem clar ce s-a intamplat
-  if ! sudo -u "$UTILIZATOR" git pull --ff-only; then
+  PROPRIETAR="$(stat -c %U .git)"
+  if ! sudo -u "$PROPRIETAR" git -c safe.directory="$PWD" pull --ff-only; then
     avert "git pull a esuat (depozit inaccesibil sau modificari locale): construiesc din codul de pe disc"
   fi
 fi
 docker compose "${FISIERE_COMPOSE[@]}" up -d --build --remove-orphans
 printf 'COMPOSE_FILE=%s\n' "$(IFS=:; echo "${FISIERE_COMPOSE[*]//-f /}")" > .compose-files
+chown "$UTILIZATOR" .compose-files 2>/dev/null || true
 gata "containerele ruleaza: $(docker compose "${FISIERE_COMPOSE[@]}" ps --services --status running | tr '\n' ' ')"
 
 # ---------------------------------------------------------------- 5. verificare

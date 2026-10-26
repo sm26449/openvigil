@@ -16,6 +16,7 @@ cookie-urile vechi, nu doar pe cel curent.
 """
 import base64
 import secrets
+import threading
 import time
 
 from markupsafe import escape
@@ -100,6 +101,9 @@ def _pagina(sablon, **camp):
 
 # incercari esuate de login per IP: dupa 8 in 15 minute, 429 pana se scurge fereastra
 _login_fail = {}
+# /verifica e publica: cel mult 2 verificari deodata si 20 pe ora de la acelasi IP
+_verif_sem = threading.BoundedSemaphore(2)
+_verif_ip = {}
 
 
 def _too_many_fails(ip):
@@ -227,11 +231,25 @@ Primești confirmarea că a fost produs aici, când, de pe ce cameră, și că n
 @bp.route("/verifica", methods=["GET", "POST"])
 def verifica():
     """Pagina publica (fara login): un MP4 exportat sau un hash -> e al nostru si neatins?"""
+    if request.method == "GET":
+        return _pagina(VERIFICA_HTML, rez="")
+    # inainte de a citi corpul: marimea anuntata, rata per IP, cate verificari ruleaza deodata
+    if (request.content_length or 0) > 2 * 1024 ** 3:
+        return _pagina(VERIFICA_HTML, rez='<div class="rez nu">' + t("Fișierul e prea mare pentru verificare pe web (peste 2 GB): folosește {cmd} și lipește amprenta.", cmd="<code>sha256sum</code>") + '</div>'), 413
+    ip, acum = request.remote_addr, time.time()
+    _verif_ip[ip] = [x for x in _verif_ip.get(ip, []) if acum - x < 3600] + [acum]
+    if len(_verif_ip[ip]) > 20 or not _verif_sem.acquire(blocking=False):
+        return _pagina(VERIFICA_HTML, rez='<div class="rez nu">' + t("Prea multe verificări deodată; încearcă din nou în câteva minute.") + '</div>'), 429
+    try:
+        return _verifica_corp()
+    finally:
+        _verif_sem.release()
+
+
+def _verifica_corp():
     import html as _html
     import verificare
     from server import get_cameras
-    if request.method == "GET":
-        return _pagina(VERIFICA_HTML, rez="")
     sha = (request.form.get("sha256") or "").strip().lower()
     f = request.files.get("fisier")
     octeti = None

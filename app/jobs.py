@@ -71,6 +71,15 @@ _stop = threading.Event()
 _gata = None
 
 
+MAX_ACTIVE_PER_USER = 4   # joburi grele (media) in asteptare/rulare pe acelasi cont
+GRELE = ("clip", "chenare", "export", "raport", "timelapse", "dosar")
+TMP_TTL = 24 * 3600       # fisierele de lucru din data/tmp (clipuri cache, TTS) se sterg dupa o zi
+
+
+class PreaMulte(Exception):
+    """Contul are deja prea multe joburi grele active (server.py o face 429)."""
+
+
 class JobError(Exception):
     """Eroare de aratat utilizatorului (nu un bug): 'nu exista inregistrari in interval'."""
 
@@ -158,6 +167,11 @@ def submit(tip, parametri=None, who=None, cam=None, secret=None):
                         "AND stare IN ('asteapta', 'ruleaza') LIMIT 1", (tip, pj)).fetchone()
         if row:
             return _dict(row)
+        if who and tip in GRELE:
+            n = c.execute("SELECT COUNT(*) FROM jobs WHERE creat_de = ? AND stare IN ('asteapta', 'ruleaza') "
+                          "AND tip IN (%s)" % ",".join("?" * len(GRELE)), (who, *GRELE)).fetchone()[0]
+            if n >= MAX_ACTIVE_PER_USER:
+                raise PreaMulte(f"{n} joburi active")
         jid = uuid.uuid4().hex[:12]
         c.execute("INSERT INTO jobs (id, tip, parametri, creat_de, cam, creat) "
                   "VALUES (?,?,?,?,?,?)", (jid, tip, pj, who, cam, int(time.time())))
@@ -277,6 +291,16 @@ def curata(acum=None):
         for fn in os.listdir(DIR):
             p = os.path.join(DIR, fn)
             if acum - os.path.getmtime(p) > FILE_TTL:
+                os.remove(p)
+                fisiere += 1
+    except OSError:
+        pass
+    # fisierele de lucru din data/tmp (cache de clipuri, TTS): altfel cresc la nesfarsit
+    try:
+        tmp = os.path.dirname(DIR)
+        for fn in os.listdir(tmp):
+            p = os.path.join(tmp, fn)
+            if os.path.isfile(p) and acum - os.path.getmtime(p) > TMP_TTL:
                 os.remove(p)
                 fisiere += 1
     except OSError:

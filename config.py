@@ -53,7 +53,7 @@ WEBRTC_PORT = _int("WEBRTC_PORT", 8555)
 # clientului din X-Forwarded-For, dar numai de la proxy-urile de incredere
 HTTPS = _bool("HTTPS", False)
 COOKIE_DOMAIN = _text("COOKIE_DOMAIN") or None
-TRUSTED_PROXIES = _lista("TRUSTED_PROXIES", ("127.0.0.0/8", "::1/128", "172.16.0.0/12"))
+TRUSTED_PROXIES = _lista("TRUSTED_PROXIES", ("127.0.0.0/8", "::1/128"))
 
 # inaltimea fluxului HD/playback transcodat pentru browser; 0 = rezolutie nativa (recomandat
 # cu GPU). O valoare (ex. 1440) limiteaza banda pe legaturi lente, dar muta decodarea pe CPU.

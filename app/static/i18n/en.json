@@ -124,6 +124,7 @@
   "other": "{n} cameras added ✓"
  },
  "AI": "AI",
+ "ai deja prea multe joburi în lucru; așteaptă să se termine": "You already have too many jobs running; wait for them to finish",
  "Ai modificări nesalvate pe cadrul curent. Le pierzi?": "You have unsaved changes on the current frame. Discard them?",
  "al doilea pas": "second step",
  "alarma": "alarm",
@@ -1314,6 +1315,7 @@
  "Prag salvat ✓": "Threshold saved ✓",
  "Praguri completate — apasă Salvează ca să le aplici": "Thresholds filled in — press Save to apply them",
  "pre-flight picat: {e}": "pre-flight failed: {e}",
+ "Prea multe verificări deodată; încearcă din nou în câteva minute.": "Too many verifications at once; try again in a few minutes.",
  "Prea multe încercări — așteaptă 15 minute": "Too many attempts — wait 15 minutes",
  "pregatesc clipul": "preparing the clip",
  "presetarea nu există": "preset does not exist",

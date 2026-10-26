@@ -46,8 +46,13 @@ TOKEN = ""
 
 
 def _wait_token():
-    """Asteapta ca nvr-web sa creeze jetonul partajat (data/ai_token)."""
-    for _ in range(60):
+    """Asteapta ca nvr-web sa creeze jetonul partajat (data/ai_token) — oricat: fara jeton
+    serviciul nu are voie sa raspunda nimanui, deci nu are rost sa porneasca fara el."""
+    n = 0
+    while True:
+        n += 1
+        if n % 30 == 0:
+            logare.warning("[ai] astept data/ai_token de la nvr-web (web nu a pornit?)")
         try:
             with open(TOKEN_FILE) as f:
                 t = f.read().strip()
@@ -56,7 +61,6 @@ def _wait_token():
         except FileNotFoundError:
             pass
         time.sleep(2)
-    return ""
 
 
 SPOOL_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "ai_spool.jsonl")
@@ -190,6 +194,8 @@ def _guard():
     import hmac as _hmac
     if request.remote_addr not in ("127.0.0.1", "::1"):
         return jsonify({"error": "doar local"}), 403
+    if not TOKEN:
+        return jsonify({"error": "jeton neconfigurat"}), 503
     tok = request.args.get("token") or (request.get_json(silent=True) or {}).get("token", "")
     if not _hmac.compare_digest(str(tok or ""), TOKEN):
         return jsonify({"error": "jeton greșit"}), 401
@@ -288,6 +294,8 @@ def detect_clip():
     if request.remote_addr not in ("127.0.0.1", "::1"):
         return jsonify({"error": "doar local"}), 403
     b = request.get_json(silent=True) or {}
+    if not TOKEN:
+        return jsonify({"error": "jeton neconfigurat"}), 503
     if not _hmac.compare_digest(str(b.get("token", "")), TOKEN):
         return jsonify({"error": "jeton greșit"}), 401
     path = b.get("path")

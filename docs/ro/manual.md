@@ -1,5 +1,12 @@
 # Interfata OpenVigil — un singur sistem pentru toate camerele
 
+> **Document istoric.** Scris pe parcurs, in timp ce sistemul a fost construit pentru instalatia
+> de origine (18 camere Hikvision, un NVR Hikvision, servicii systemd, criptare fscrypt pe
+> gazda). Varianta publica ruleaza in Docker: vezi [README](../../README.ro.md) si
+> [docs/operare.md](../operare.md). Sectiunile „Servicii (systemd)”, „criptare” si referintele
+> la NVR-ul Hikvision, la Traefik sau la cai de pe gazda descriu etape vechi si nu se aplica
+> instalarii din Docker; sunt pastrate ca jurnal al deciziilor.
+
 **Serverul e recorderul principal**: toate cele 18 camere sunt inregistrate local, iar
 live-ul si inregistrarea se trag **direct de pe camere**, prin go2rtc (`camN` = substream,
 `camN_main` = mainstream brut; parolele camerelor stau doar in data/go2rtc.yaml, 0600, nu

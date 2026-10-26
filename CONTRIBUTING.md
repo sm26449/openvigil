@@ -32,7 +32,8 @@ cd tests && npm install && NVR_TEST_USER=admin NVR_TEST_PASS=... node ui-test.js
 python3 scripts/module_check.py                     # modulele ES ale interfeței
 ```
 
-Fără Docker: `python3 -m venv venv && venv/bin/pip install -r requirements.lock`, apoi
+Fără Docker (lock-ul trage PyTorch pentru CUDA 13 și onnxruntime-gpu, deci are sens doar pe o
+mașină cu placă NVIDIA): `python3 -m venv venv && venv/bin/pip install -r requirements.lock`, apoi
 `venv/bin/python app/server_main.py` (și `record_main.py`, `ai_main.py`, `gen_go2rtc.py` +
 go2rtc) cu variabilele din `.env` exportate.
 

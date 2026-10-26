@@ -5,8 +5,11 @@
 #
 #   docker compose build            # sau: docker build -t openvigil .
 #
-FROM ubuntu:24.04
+FROM ubuntu:24.04@sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90
 ARG GO2RTC_VERSION=1.9.14
+# SHA-256 al binarului go2rtc_linux_amd64 din release-ul de mai sus; la schimbarea versiunii se
+# actualizeaza impreuna (sha256sum pe fisierul descarcat)
+ARG GO2RTC_SHA256=32d616af226bd731678ffde328b94cfb94e30339bfefc469cfb76323144615a6
 ARG PUID=1000
 ARG PGID=1000
 ENV DEBIAN_FRONTEND=noninteractive PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 \
@@ -18,10 +21,11 @@ WORKDIR /opt/openvigil
 # ffmpeg din Ubuntu are h264_nvenc/hevc_nvenc si -hwaccel cuda: bibliotecile driverului vin
 # de la nvidia-container-toolkit la rulare. Fara GPU raman libx264 si decodarea pe CPU.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        python3 python3-venv ffmpeg curl ca-certificates tzdata libglib2.0-0 libgomp1 smartmontools procps \
+        python3 python3-venv ffmpeg curl ca-certificates tzdata libglib2.0-0 libgomp1 smartmontools procps espeak-ng \
     && rm -rf /var/lib/apt/lists/* \
     && curl -fsSL -o /usr/local/bin/go2rtc \
         "https://github.com/AlexxIT/go2rtc/releases/download/v${GO2RTC_VERSION}/go2rtc_linux_amd64" \
+    && echo "${GO2RTC_SHA256}  /usr/local/bin/go2rtc" | sha256sum -c - \
     && chmod +x /usr/local/bin/go2rtc \
     && (userdel -r ubuntu 2>/dev/null || true) \
     && (getent group "${PGID}" >/dev/null || groupadd -g "${PGID}" openvigil) \
@@ -32,7 +36,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Uneltele de compilare se scot in acelasi strat, ca sa nu ramana in imagine.
 COPY requirements.lock .
 RUN apt-get update && apt-get install -y --no-install-recommends python3-dev build-essential git \
-    && python3 -m venv venv && venv/bin/pip install --upgrade pip wheel \
+    && python3 -m venv venv && venv/bin/pip install --upgrade pip==26.2.2 wheel==0.48.0 \
     && venv/bin/pip install --no-deps -r requirements.lock \
     && apt-get purge -y --auto-remove python3-dev build-essential git \
     && rm -rf /var/lib/apt/lists/* /root/.cache

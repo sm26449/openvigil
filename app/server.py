@@ -65,7 +65,7 @@ app = Flask(__name__, static_folder=None)
 # TLS-ul). Un client din LAN care bate direct in :8079 nu poate astfel sa-si falsifice IP-ul
 # (rate-limit la login, audit) si nici sa para „https" ca sa primeasca cookie Secure.
 _PROXY_NETS = [ipaddress.ip_network(n) for n in
-               getattr(C, "TRUSTED_PROXIES", ("127.0.0.0/8", "::1/128", "172.16.0.0/12"))]
+               getattr(C, "TRUSTED_PROXIES", ("127.0.0.0/8", "::1/128"))]
 
 
 class _DinSpateleProxyului:
@@ -103,6 +103,7 @@ def _secret_key():
 
 app.secret_key = _secret_key()
 app.permanent_session_lifetime = 30 * 24 * 3600  # 30 de zile de la ultima folosire
+app.config["MAX_CONTENT_LENGTH"] = 2 * 1024 ** 3 + 16 * 1024 ** 2   # /verifica: MP4 pana la 2 GB
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax",
                   SESSION_COOKIE_SECURE=bool(getattr(C, "HTTPS", False)),
                   # optional (COOKIE_DOMAIN=".exemplu.ro" in .env) ca sesiunea sa fie valabila
@@ -143,6 +144,9 @@ def current_user():
     return u
 
 
+# GET-uri cu efect (creeaza joburi, pornesc fluxuri): cookie-ul Lax nu pleaca pe subresurse
+# cross-site, dar o navigare de pe alt site l-ar purta; browserul spune de unde vine cererea
+GET_CU_EFECT = ("/api/clip", "/api/export", "/api/timelapse", "/api/chenare", "/api/play", "/api/regiune", "/api/heatmap")
 # Ce are voie sa vada un viewer/operator (GET). Restul de /api/* e doar admin.
 VIEWER_GET = ("/api/me", "/api/cameras", "/api/events", "/api/pulse", "/api/recordings",
               "/api/play", "/api/clip", "/api/export", "/api/alarms", "/api/thumb/",
@@ -165,6 +169,11 @@ def _visible_ids():
     return users.allowed_ids(u, get_cameras())
 
 
+@app.errorhandler(jobs.PreaMulte)
+def _prea_multe_joburi(e):
+    return jsonify({"error": t("ai deja prea multe joburi în lucru; așteaptă să se termine")}), 429
+
+
 @app.before_request
 def guard():
     p = request.path
@@ -174,6 +183,9 @@ def guard():
         return None          # canalul nvr-ai (localhost + token, verificat in endpoint)
     if p in ("/login", "/login/2fa", "/setup", "/logout", "/healthz", "/api/auth/forward", "/verifica"):
         return None          # forward-ul isi verifica singur sesiunea (401 fara redirect)
+    if request.method == "GET" and request.headers.get("Sec-Fetch-Site") == "cross-site" \
+            and any(p == x or p.startswith(x + "/") for x in GET_CU_EFECT):
+        return jsonify({"error": "cerere din alt site"}), 403
     if not users.load():     # prima pornire: totul duce la crearea contului admin
         if p.startswith("/api/"):
             return jsonify({"error": t("creează întâi contul de administrator")}), 401
@@ -783,9 +795,7 @@ def _run_ffmpeg(cmd, durata=None, timeout=600, job=None):
 
 
 def _fara_parole(stderr):
-    """ffmpeg repeta URL-ul de intrare in erori („Error opening input file rtsp://user:parola@…”);
-    textul ajunge in mesajul jobului, in jurnal si pe ecran — parola camerei nu are ce cauta acolo."""
-    return re.sub(r"://[^/@\s]+@", "://***@", stderr.decode(errors="ignore"))
+    return logare.fara_parole(stderr)
 
 
 def render_clip(ch, start, end, out_path, wm=False, job=None):
@@ -992,7 +1002,9 @@ def ai_token():
 @app.route("/api/internal/emit", methods=["POST"])
 def api_internal_emit():
     """nvr-ai trimite un eveniment de inferenta; web-ul il emite (jurnal+reguli+MQTT)."""
-    if request.remote_addr not in ("127.0.0.1", "::1"):
+    # adresa socketului, nu cea din X-Forwarded-For (ProxyFix pastreaza originalul in environ)
+    orig = (request.environ.get("werkzeug.proxy_fix.orig") or {}).get("REMOTE_ADDR") or request.remote_addr
+    if orig not in ("127.0.0.1", "::1"):
         return jsonify({"error": "doar local"}), 403
     b = request.get_json(silent=True) or {}
     if not hmac.compare_digest(str(b.get("token", "")), ai_token()):

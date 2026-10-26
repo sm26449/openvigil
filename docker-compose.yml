@@ -8,7 +8,7 @@
 #   docker compose logs -f web        # jurnal
 #   docker compose run --rm --no-deps web test  # pytest
 
-name: openvigil
+name: ${COMPOSE_PROJECT_NAME:-openvigil}
 
 x-openvigil: &openvigil
   image: openvigil:local
@@ -45,6 +45,9 @@ services:
   web:
     <<: *openvigil
     command: web
+    volumes:
+      - ${DATA_DIR:-./data}:/opt/openvigil/data
+      - ${MODELS_DIR:-./models}:/home/openvigil/.cache
     depends_on:
       go2rtc:
         condition: service_healthy
@@ -58,9 +61,19 @@ services:
   record:
     <<: *openvigil
     command: record
+    environment:
+      TZ: ${TZ:-UTC}
+      OPENVIGIL_HEARTBEAT: /opt/openvigil/data/.heartbeat-record
     depends_on:
       go2rtc:
         condition: service_healthy
+    healthcheck:
+      # bataia de inima a buclei principale (sdnotify.watchdog): mai veche de 2 minute = blocat
+      test: ["CMD-SHELL", "find /opt/openvigil/data/.heartbeat-record -mmin -2 | grep -q ."]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
 
   ai:
     <<: *openvigil

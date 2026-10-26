@@ -19,6 +19,17 @@ if not _logger.handlers:
     _logger.propagate = False
 
 
+import re as _re
+
+
+def fara_parole(text):
+    """ffmpeg/ffprobe repeta URL-ul de intrare in erori („rtsp://user:parola@…”); textul ajunge in
+    mesaje de job, in jurnal si pe ecran — parola camerei nu are ce cauta acolo."""
+    if isinstance(text, bytes):
+        text = text.decode(errors="ignore")
+    return _re.sub(r"://[^/@\s]+@", "://***@", text or "")
+
+
 def info(*parti):
     _logger.info(" ".join(str(p) for p in parti))
 

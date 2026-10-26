@@ -65,7 +65,7 @@ RO = {"person": "om", "car": "masina", "motorcycle": "motocicleta", "bus": "auto
 VEHICLES = {"car", "motorcycle", "bus", "truck"}
 # Pasarile se confirma ca UN grup: modelul clipeste intre chicken/pigeon/bird la
 # ~50-55% incredere de la cadru la cadru, deci pe etichete separate confirmarea
-# de 2 cadre trecea aleator (sute de cadre-gunoi pe cam101, masurat 2026-09-09).
+# de 2 cadre trecea aleator (sute de cadre-gunoi pe o camera, masurat 2026-09-09).
 # Grupat, prezenta pasarii se confirma indiferent de aroma; eticheta raportata e
 # cea din cadrul curent (cea mai sigura), pozele raman specifice.
 BIRDS = {"bird", "pigeon", "chicken"}

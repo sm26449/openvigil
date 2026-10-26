@@ -8,7 +8,12 @@
 #   openvigil <cmd>    orice alta comanda (ex. bash)
 set -e
 cd /opt/openvigil
-mkdir -p data
+mkdir -p data 2>/dev/null || true
+if [ ! -w data ]; then
+  echo "data/ nu e scriibil de utilizatorul $(id -u):$(id -g) din container." >&2
+  echo "Pe gazda: chown PUID:PGID din .env pe DATA_DIR (sau ruleaza install.sh), apoi porneste din nou." >&2
+  exit 1
+fi
 
 case "${1:-web}" in
   web)    exec venv/bin/python app/server_main.py ;;

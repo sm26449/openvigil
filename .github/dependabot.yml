@@ -1,0 +1,15 @@
+# Actualizari automate ca PR-uri: actiunile GitHub (saptamanal) si pachetele Python (lunar,
+# pe requirements.lock; lock-ul se regenereaza manual dupa testare pe GPU).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels: [dependente]
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    labels: [dependente]
