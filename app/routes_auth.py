@@ -85,7 +85,7 @@ TOTP_HTML = ("""<!DOCTYPE html><html lang="ro"><head><meta charset="utf-8">
 
 # selectorul de limba de pe formulare: ?lang=xx ramane in cookie (server.py)
 _LIMBI_HTML = ('<p class="hint lang">' + " · ".join(
-    f'<a href="?lang={c}" style="color:#8b949e">{n}</a>' for c, n in i18n.disponibile()) + "</p>")
+    f'<a href="?lang={c}" style="color:#8b949e">{escape(n)}</a>' for c, n in i18n.disponibile()) + "</p>")
 
 
 def _pagina(sablon, **camp):

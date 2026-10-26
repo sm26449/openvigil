@@ -622,25 +622,25 @@ def _prune_body():
     for cid in cams:
         days, ev_days = _cam_retention(cid)
         ev = sorted(event_times(cid, days=ev_days + 1))
-        for t, p, fn in _files(cid, arhiva=False):
-            a, b = t - MOTION_PAD, t + SEGMENT + MOTION_PAD
+        for ts, p, fn in _files(cid, arhiva=False):
+            a, b = ts - MOTION_PAD, ts + SEGMENT + MOTION_PAD
             i = bisect.bisect_left(ev, a)
             has_event = i < len(ev) and ev[i] <= b
             # cu nivel de arhiva, segmentele cu evenimente parasesc primarul dupa
             # `retention_days` (ca cele goale) — dar se MUTA, nu se sterg; traiesc acolo
             # `arhiva_zile`. Fara arhiva: ca inainte, ev_days pe primar.
-            if has_event and archive_dir() and now - t > days * 86400:
-                if _arhiveaza(cid, t, p, fn):
+            if has_event and archive_dir() and now - ts > days * 86400:
+                if _arhiveaza(cid, ts, p, fn):
                     arhivate += 1
                     continue
             limit = (ev_days if has_event else days) * 86400
-            if now - t > limit:
+            if now - ts > limit:
                 try:
                     os.remove(p)
                 except OSError:
                     pass
             else:
-                (keep_ev if has_event else keep_plain).append((t, p))
+                (keep_ev if has_event else keep_plain).append((ts, p))
     if arhivate:
         logare.info(f"[record] {arhivate} segmente mutate in arhiva")
     _prune_arhiva(now)
@@ -653,10 +653,10 @@ def _prune_body():
         for bucket in (keep_plain, keep_ev):
             while bucket and shutil.disk_usage(REC_DIR).free < min_free:
                 try:
-                    t, p = bucket.pop(0)
+                    ts, p = bucket.pop(0)
                     # un segment cu evenimente scos de garda de spatiu merge in arhiva, nu la gunoi
                     if bucket is keep_ev and _arhiveaza(int(os.path.basename(os.path.dirname(p))[3:]),
-                                                        t, p, os.path.basename(p)):
+                                                        ts, p, os.path.basename(p)):
                         continue
                     os.remove(p)
                     fortat += 1

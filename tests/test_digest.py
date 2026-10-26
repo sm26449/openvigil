@@ -87,9 +87,9 @@ def test_text_cu_toate_sursele(monkeypatch):
         "critice": [{"ora": "23:10", "cam": 13, "tip": "intrus", "detaliu": "person", "de_cate_ori": 2}]})
     monkeypatch.setattr(digest, "_nume_camere", lambda: {13: "Strada", 14: "Poarta"})
     import faces, plates, continuity, snaps
-    monkeypatch.setattr(faces, "history", lambda limit=100, nume=None: [{"t": "2026-10-25 10:00:00", "nume": "stefan"}, {"t": "2026-10-25 11:00:00", "nume": "stefan"}, {"t": "2026-10-24 11:00:00", "nume": "maria"}])
-    monkeypatch.setattr(plates, "known", lambda: {"B601RDN": "noi"})
-    monkeypatch.setattr(plates, "reads", lambda limit=100: [{"t": "2026-10-25 09:00:00", "numar": "XX11YYY"}, {"t": "2026-10-25 09:30:00", "numar": "B601RDN", "nume": "noi"}])
+    monkeypatch.setattr(faces, "history", lambda limit=100, nume=None: [{"t": "2026-10-25 10:00:00", "nume": "ana"}, {"t": "2026-10-25 11:00:00", "nume": "ana"}, {"t": "2026-10-24 11:00:00", "nume": "ion"}])
+    monkeypatch.setattr(plates, "known", lambda: {"B321XYZ": "noi"})
+    monkeypatch.setattr(plates, "reads", lambda limit=100: [{"t": "2026-10-25 09:00:00", "numar": "XX11YYY"}, {"t": "2026-10-25 09:30:00", "numar": "B321XYZ", "nume": "noi"}])
     monkeypatch.setattr(continuity, "gaps", lambda cam, day: [{"sec": 600}] if cam == 13 else [])
     monkeypatch.setattr(continuity, "live", lambda: [{"id": 14, "mod": "continuous", "scrie": False}, {"id": 13, "mod": "continuous", "scrie": True}])
     import server
@@ -98,8 +98,8 @@ def test_text_cu_toate_sursele(monkeypatch):
     t = digest.text("2026-10-25")
     assert "Rezumatul zilei 2026-10-25" in t and "42 de evenimente" in t and "1 critice" in t
     assert "06:10–22:40" in t and "vârf la 18:00" in t and "Strada (20)" in t
-    assert "văzuți: stefan×2" in t and "maria" not in t                    # doar ziua ceruta
-    assert "mașini necunoscute: XX11YYY×1" in t and "B601RDN" not in t       # cunoscuta nu e „necunoscuta”
+    assert "văzuți: ana×2" in t and "ion" not in t                    # doar ziua ceruta
+    assert "mașini necunoscute: XX11YYY×1" in t and "B321XYZ" not in t       # cunoscuta nu e „necunoscuta”
     assert "goluri de înregistrare: Strada (1, 10 min)" in t
     assert "nu înregistrează acum: Poarta" in t
     assert "sabotaj raportat: cam 3×12" in t

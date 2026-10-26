@@ -264,10 +264,10 @@ def api_recordings():
         status = more = None
         items = 0
         for el in root.iter():
-            t = strip_ns(el.tag)
-            if t == "responseStatusStrg":
+            tag = strip_ns(el.tag)
+            if tag == "responseStatusStrg":
                 more = el.text
-            if t == "searchMatchItem":
+            if tag == "searchMatchItem":
                 items += 1
                 seg = {}
                 for c in el.iter():

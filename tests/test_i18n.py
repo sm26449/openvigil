@@ -46,7 +46,7 @@ def test_plural(en):
     assert i18n.t("{n} camere", "en", n=1) == "1 camera"
     assert i18n.t("{n} camere", "en", n=4) == "4 cameras"
     assert i18n.t("{n} camere", "ro", n=4) == "4 camere"
-    assert [i18n.plural("ro", n) for n in (1, 2, 19, 20, 101, 0)] == ["one", "few", "few", "other", "other", "few"]
+    assert [i18n.plural("ro", n) for n in (1, 2, 19, 20, 101, 0)] == ["one", "few", "few", "other", "few", "few"]
     assert [i18n.plural("en", n) for n in (1, 2, 0)] == ["one", "other", "other"]
 
 

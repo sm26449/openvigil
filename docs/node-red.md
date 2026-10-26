@@ -26,7 +26,7 @@ Forma mesajului:
   "eveniment": "detectie",
   "moment": "2026-08-04T10:33:46+0300",
   "sursa": "openvigil",
-  "camera": { "id": 4, "nume": "Alee intrare curte", "grup": "Intrari", "ip": "192.168.1.105" },
+  "camera": { "id": 4, "nume": "Curte", "grup": "Intrari", "ip": "192.168.1.105" },
   "eticheta": "person",
   "eticheta_ro": "om"
 }

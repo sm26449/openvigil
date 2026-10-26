@@ -1,24 +1,27 @@
 ---
-name: Problemă / Bug
-about: Ceva nu merge cum scrie în documentație
+name: Bug / Problemă
+about: Something does not work as documented · Ceva nu merge cum scrie în documentație
 labels: bug
 ---
 
-**Ce se întâmplă**
-Descrie clar ce ai făcut, ce te așteptai și ce s-a întâmplat.
+*English or Romanian, as you prefer. · Scrie în engleză sau în română, cum îți e mai ușor.*
 
-**Cum reproduc**
+**What happens · Ce se întâmplă**
+What you did, what you expected, what happened instead.
+
+**Steps to reproduce · Cum reproduc**
 1.
 2.
 
-**Mediul**
-- Versiunea OpenVigil (commit sau tag):
-- Instalare: Docker (`install.sh`) / clasică
-- Gazdă: distribuție + versiune, Docker `docker --version`, GPU (`nvidia-smi`, sau „fără”)
-- Camere: model + firmware (ex. DS-2CD2T65FWD-I8, V5.6.2), Hikvision sau ONVIF
+**Environment · Mediul**
+- OpenVigil version (commit or tag):
+- Install: Docker (`install.sh`) / manual
+- Host: distribution + version, `docker --version`, GPU (`nvidia-smi`, or "none")
+- Cameras: model + firmware (e.g. DS-2CD2T65FWD-I8, V5.6.2), Hikvision or ONVIF
+- Interface language: en / ro
 
-**Jurnale**
+**Logs · Jurnale**
 ```
 docker compose logs --since 30m web record ai go2rtc
 ```
-Scoate parolele și adresele pe care nu vrei să le publici; `rtsp://user:parola@` nu trebuie să apară.
+Remove passwords and addresses you do not want public; `rtsp://user:password@` must not appear.

@@ -50,12 +50,12 @@ function ptzOverlay(c) {
     const dir = [['↖', -60, 60], ['↑', 0, 60], ['↗', 60, 60],
                  ['←', -60, 0], ['', 0, 0], ['→', 60, 0],
                  ['↙', -60, -60], ['↓', 0, -60], ['↘', 60, -60]];
-    for (const [sg, p, t] of dir) {
+    for (const [sg, p, tl] of dir) {
       const b = document.createElement('button');
       if (!sg) { b.className = 'gol'; b.disabled = true; } else {
         b.textContent = sg;
         b.title = t('Ține apăsat ca să se rotească');
-        tine(b, { pan: p, tilt: t });
+        tine(b, { pan: p, tilt: tl });
       }
       pad.appendChild(b);
     }

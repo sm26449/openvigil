@@ -10,8 +10,9 @@ install command.
 **Website: [openvigil.dev](https://openvigil.dev)** · *Română: [README.ro.md](README.ro.md) · manual detaliat: [docs/ro/manual.md](docs/ro/manual.md)*
 
 > **Status.** Built for one real installation (18 Hikvision cameras, an NVIDIA RTX 2000 Ada,
-> running 24/7 since mid-2026) and published as is, under AGPL-3.0. The user interface and
-> the code comments are in Romanian. It is a working system, not a product: expect rough
+> running 24/7 since mid-2026) and published as is, under AGPL-3.0. The interface is in
+> English and Romanian; the code and its comments are in Romanian. It is a working system,
+> not a product: expect rough
 > edges outside the hardware it was built on, and read [NOTICE.md](NOTICE.md) for the
 > licences of the models it downloads.
 
@@ -98,7 +99,7 @@ The script explains each step: Docker, GPU toolkit, `.env` (time zone, ports, da
 directory, the uid that owns the files), then `docker compose up -d --build`. The first
 build pulls ~6 GB of Python wheels (PyTorch with CUDA) and takes a while; later builds
 reuse the layers. When the UI answers, open `http://<server-ip>:8079`, create the first
-account on `/setup`, then add cameras from **Camere → Adaugă camera** (there is a LAN
+account on `/setup`, then add cameras from **Cameras → Add camera** (there is a LAN
 scanner).
 
 Everything you may want to change by hand is in `.env` (see `.env.example`). Everything
@@ -128,7 +129,7 @@ reports missing keys. Contributions of new languages are welcome.
 
 ## Demo mode
 
-No cameras yet? **Setări → Unelte → Mod demo** adds four synthetic cameras (go2rtc generates
+No cameras yet? **Settings → Tools → Demo mode** adds four synthetic cameras (go2rtc generates
 the picture with ffmpeg's test sources). They stream, record and play back like real ones,
 so you can explore the interface, test an install, or take screenshots that show nobody's
 house. Remove them from the same card when you are done.
@@ -170,7 +171,7 @@ or fscrypt volume on the host. The app only notices when the directory is not wr
   don't see the GPU. Check `nvidia-smi` on the host, then `docker info | grep -i runtimes`
   must list `nvidia`; rerun `sudo ./install.sh` to install the toolkit, and make sure you start
   the stack with `-f docker-compose.gpu.yml`.
-- **Yellow banner "nu se poate scrie în directorul de înregistrări"**: the `DATA_DIR` on the
+- **Yellow banner "the recordings directory is not writable"**: the `DATA_DIR` on the
   host is not writable by `PUID:PGID` from `.env` (`chown`), or the volume is read-only.
 - **Port already in use**: change `WEB_PORT`, `STREAM_PORT`, `AI_PORT`, `WEBRTC_PORT` or the
   go2rtc addresses in `.env`, then `docker compose up -d`.

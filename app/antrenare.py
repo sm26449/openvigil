@@ -92,7 +92,7 @@ def porneste(tip, epoci=None, maxim=None):
         cmd, nume = _comanda(tip, epoci, maxim)
         _log.clear()
         stare.update(activ=True, tip=tip, nume=nume, inceput=time.time(), sfarsit=None,
-                     progres=0, total=0, mesaj=t("pornit"), log=[], rc=None, rezultat=None)
+                     progres=0, total=0, mesaj=t("pornit"), log=[], rc=None, rezultat=None, oprit=False)
         env = dict(os.environ, PYTHONUNBUFFERED="1")
         try:
             _proc = subprocess.Popen(cmd, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -115,7 +115,7 @@ def _urmareste(p):
         stare["log"] = list(_log)
     rc = p.wait()
     with _lock:
-        oprit = stare["mesaj"] == t("oprit de utilizator")
+        oprit = bool(stare.get("oprit"))      # steag, nu textul tradus al mesajului
         stare.update(activ=False, rc=rc, sfarsit=time.time(), log=list(_log))
         if oprit:
             pass                                   # oprirea ceruta nu e un esec
@@ -135,6 +135,7 @@ def opreste():
             os.killpg(os.getpgid(_proc.pid), 15)
         except OSError:
             return False
+        stare["oprit"] = True
         stare["mesaj"] = t("oprit de utilizator")
         return True
 

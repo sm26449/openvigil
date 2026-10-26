@@ -17,9 +17,9 @@ import plates   # noqa: E402
 def test_confirmata_cere_doua_citiri_in_fereastra():
     plates._pending.clear()
     t = 1000.0
-    assert plates.confirmata(13, "B601RDN", t) is False          # prima: retinuta
-    assert plates.confirmata(13, "B601RDN", t + 10) is True      # a doua, in 30 s: confirmata
-    assert plates.confirmata(13, "B601RDN", t + 20) is False     # consumata: o ia de la capat
+    assert plates.confirmata(13, "B321XYZ", t) is False          # prima: retinuta
+    assert plates.confirmata(13, "B321XYZ", t + 10) is True      # a doua, in 30 s: confirmata
+    assert plates.confirmata(13, "B321XYZ", t + 20) is False     # consumata: o ia de la capat
 
 
 def test_confirmata_expira_si_e_per_camera():
@@ -35,12 +35,12 @@ def test_stats_numara_pe_zile_si_necunoscute(tmp_path, monkeypatch):
     azi = time.strftime("%Y-%m-%d")
     ieri = time.strftime("%Y-%m-%d", time.localtime(time.time() - 86400))
     demult = "2020-01-01"
-    rows = [{"t": f"{azi} 10:00:00", "cam": 13, "numar": "B601RDN", "nume": "noi"},
+    rows = [{"t": f"{azi} 10:00:00", "cam": 13, "numar": "B321XYZ", "nume": "noi"},
             {"t": f"{azi} 11:00:00", "cam": 13, "numar": "XX11YYY"},
             {"t": f"{ieri} 09:00:00", "cam": 14, "numar": "XX11YYY"},
             {"t": f"{demult} 09:00:00", "cam": 14, "numar": "ZZ99ZZZ"}]
     monkeypatch.setattr(plates, "reads", lambda limit=100: rows)
-    monkeypatch.setattr(plates, "known", lambda: {"B601RDN": "noi"})
+    monkeypatch.setattr(plates, "known", lambda: {"B321XYZ": "noi"})
     st = plates.stats()
     assert st["azi"] == 2 and st["total7"] == 3 and st["necunoscute7"] == 2
     assert [d["zi"] for d in st["zile"]] == [ieri, azi]
@@ -68,7 +68,7 @@ def test_alerta_masina_necunoscuta_doar_pe_camerele_alese(monkeypatch):
     cfg["lpr_notify_unknown"] = False
     notify.plate(13, "XX11YYY")
     assert len(t) == 2                                           # oprit: tacere
-    notify.plate(13, "B601RDN", nume="noi")
+    notify.plate(13, "B321XYZ", nume="noi")
     assert len(t) == 3 and "noi" in t[2]                         # cunoscutele raman
 
 

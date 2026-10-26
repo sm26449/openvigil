@@ -17,6 +17,7 @@ simple ca lucrurile să rămână coerente.
 - O limbă nouă = un fișier `app/static/i18n/<cod>.json` cu `_meta.nume` și toate cheile din
   `en.json`; glosarul de termeni e în `docs/i18n.md`.
 - Documentația publică (`README.md`, acest fișier, `SECURITY.md`) e și în engleză.
+- Issue-urile și pull request-urile pot fi scrise în engleză sau în română.
 
 ## Cum rulezi local
 

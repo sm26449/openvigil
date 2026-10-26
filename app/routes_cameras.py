@@ -373,7 +373,7 @@ def api_demo_camere():
                 if tipar in existente:
                     continue
                 nid = next_cam_id(cams)
-                cams.append({"id": nid, "name": f"{nume} (demo)", "ip": f"demo-{tipar}", "port": 0,
+                cams.append({"id": nid, "name": t("{nume} (demo)", nume=t(nume)), "ip": f"demo-{tipar}", "port": 0,
                              "user": "", "pass": "", "model": "Demo", "vendor": "demo", "demo": tipar,
                              "playback": False, "record": "continuous",
                              "features": drivers.probe_features({"vendor": "demo"})})

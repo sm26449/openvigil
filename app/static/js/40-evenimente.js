@@ -366,7 +366,7 @@ $('#hd-close').onclick = () => closeHD();
 
 /* ---------- tabul Alarme (snapshot-uri salvate la detectii/alarme) ---------- */
 const AL_RO = {
-  attendedBaggage: 'Bagaj lăsat', unattendedBaggage: 'Obiect abandonat',
+  attendedBaggage: 'Obiect luat', unattendedBaggage: 'Obiect abandonat',
   parkingdetection: 'Parcare interzisă', loitering: 'Zăbovire', running: 'Alergare',
   peopleDetection: 'Persoana', vehicledetection: 'Vehicul', faceDetection: 'Față',
   audioexception: 'Zgomot', zgomot: 'Zgomot', diskfull: 'Disc plin',

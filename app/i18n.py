@@ -108,7 +108,7 @@ def plural(limba, n):
     if limba == SURSA:
         if n == 1 and intreg:
             return "one"
-        if not intreg or n == 0 or 1 < n % 100 < 20:
+        if not intreg or n == 0 or 1 <= n % 100 <= 19:
             return "few"
         return "other"
     if limba in ("fr", "pt"):
