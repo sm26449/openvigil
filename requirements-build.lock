@@ -1,0 +1,6 @@
+# Dependentele de BUILD ale lock-ului (singurul sdist, http_ece, e Python pur si cere
+# setuptools): instalate intai, cu hash, ca restul sa mearga cu --no-build-isolation.
+setuptools==84.0.0 \
+    --hash=sha256:51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670
+wheel==0.48.0 \
+    --hash=sha256:3217dcc807155e45db462d7ef2431f5ddda0d7273b700d05a67b271ceb1287ab

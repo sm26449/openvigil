@@ -34,10 +34,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # venv-ul: exact lock-ul (`pip freeze` complet), cu --no-deps ca pip sa nu adauge dependente
 # nepinuite (ex. onnxruntime CPU peste onnxruntime-gpu, care pierde providerul CUDA).
 # Uneltele de compilare se scot in acelasi strat, ca sa nu ramana in imagine.
-COPY requirements.lock .
+COPY requirements.lock requirements-build.lock ./
+# --require-hashes: fiecare fisier descarcat e verificat cu SHA-256 din lock (un wheel inlocuit
+# pe PyPI opreste build-ul); dependentele de build intra primele, apoi lock-ul fara izolare
 RUN apt-get update && apt-get install -y --no-install-recommends python3-dev build-essential git \
-    && python3 -m venv venv && venv/bin/pip install --upgrade pip==26.2.2 wheel==0.48.0 \
-    && venv/bin/pip install --no-deps -r requirements.lock \
+    && python3 -m venv venv && venv/bin/pip install --upgrade pip==26.2.2 \
+    && venv/bin/pip install --no-deps --require-hashes -r requirements-build.lock \
+    && venv/bin/pip install --no-deps --require-hashes --no-build-isolation -r requirements.lock \
     && apt-get purge -y --auto-remove python3-dev build-essential git \
     && rm -rf /var/lib/apt/lists/* /root/.cache
 
