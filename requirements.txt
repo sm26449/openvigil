@@ -14,7 +14,7 @@ onnxruntime-gpu==1.28.0
 fast-alpr==0.4.0
 # cautare semantica in alarme: SigLIP base multilingual (~1.4 GB, se descarca singur
 # la prima folosire in ~/.cache/huggingface)
-transformers==5.15.0
+transformers==5.20.2
 sentencepiece==0.2.2
 # puntea MQTT (evenimente publicate + actiunea "mqtt" din reguli)
 paho-mqtt==2.1.0
