@@ -3,9 +3,13 @@
 ## Raportare
 
 Dacă găsești o vulnerabilitate, **nu deschide un issue public**. Folosește „Report a vulnerability”
-din tab-ul Security al repo-ului (github.com/sm26449/openvigil) sau adresa de contact publicată pe
-[openvigil.dev](https://openvigil.dev). Primești răspuns în cel mult 7 zile; corecțiile se publică cu o notă în
+din tab-ul Security al repo-ului (github.com/sm26449/openvigil) sau scrie la
+**stefan@openvigil.dev**. Primești răspuns în cel mult 7 zile; corecțiile se publică cu o notă în
 `CHANGELOG.md`.
+
+*English:* please do not open a public issue for a vulnerability. Use „Report a vulnerability” on
+the repository's Security tab or e-mail **stefan@openvigil.dev**; you get an answer within 7 days
+and fixes are published with a note in `CHANGELOG.md`.
 
 ## Modelul de amenințare, pe scurt
 
