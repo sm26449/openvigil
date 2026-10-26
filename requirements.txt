@@ -7,7 +7,7 @@ ultralytics==8.4.115
 opencv-python-headless==5.0.0.93
 # recunoastere persoane (Face ID): SCRFD + ArcFace pe ONNX Runtime; modelul buffalo_l
 # se descarca singur la prima folosire in data/faces/insightface/
-insightface==1.0.1
+insightface==2.1
 onnxruntime-gpu==1.28.0
 # citire numere de inmatriculare (LPR): detector YOLOv9 + OCR CCT pe ONNX; modelele
 # (~10 MB) se descarca singure la prima folosire in ~/.cache
