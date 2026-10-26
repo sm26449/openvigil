@@ -916,7 +916,8 @@ async function loadSystem() {
       bar(t('Disc'), diskUsed, t('{free} GB liberi · inregistrari {rec} GB', { free: s.disk_free_gb, rec: s.rec_gb }), diskUsed > 90)}
       <div class="sys-item"><span>${t('Rețea')}</span><div class="sys-net">
       ${raw(t('{in} Mbps intră {out} Mbps ies', { in: html`<b>${s.net.in_mbps}</b>`, out: html`<b>${s.net.out_mbps}</b>` }))}</div>
-      <small>${t('pornit de {n} zile', { n: Math.round(s.uptime_h / 24) })}</small></div>${notifStatusHtml(s.notificari)}${nvrStatusHtml(s.nvr)}${aiStatusHtml(s.ai)}`;
+      <small>${t('pornit de {n} zile', { n: Math.round(s.uptime_h / 24) })}</small></div>
+      <div class="sys-item"><span>${t('Versiune')}</span><small>OpenVigil ${ME.versiune || 'dev'} · <a href="https://github.com/sm26449/openvigil/releases" target="_blank" rel="noopener">${t('release-uri')}</a></small></div>${notifStatusHtml(s.notificari)}${nvrStatusHtml(s.nvr)}${aiStatusHtml(s.ai)}`;
   } catch (e) { console.error('[stare] starea sistemului nu s-a putut afișa:', e); }
 }
 

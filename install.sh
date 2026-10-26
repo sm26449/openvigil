@@ -2,9 +2,11 @@
 # OpenVigil — instalare pe o gazda Linux cu Docker.
 #
 #   sudo ./install.sh            # instaleaza Docker si (daca e placa NVIDIA) toolkit-ul,
-#                                # creeaza .env, data/, models/, construieste si porneste
+#                                # creeaza .env, data/, models/, trage imaginea publicata
+#                                # (ghcr.io/sm26449/openvigil, ~11 GB) si porneste
+#   sudo ./install.sh --build    # construieste imaginea local, din codul de aici (~20 min, ~6 GB)
 #   sudo ./install.sh --no-gpu   # ignora placa video chiar daca exista
-#   sudo ./install.sh --update   # git pull + rebuild + repornire, cu .env-ul existent
+#   sudo ./install.sh --update   # git pull + imaginea noua (sau rebuild) + repornire, cu .env-ul existent
 #
 # Scriptul explica fiecare pas si nu atinge nimic in afara acestui director, Docker si,
 # optional, nvidia-container-toolkit. Se poate rula de mai multe ori.
@@ -14,11 +16,13 @@ AICI="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$AICI"
 GPU=auto
 UPDATE=0
+BUILD=0
 for arg in "$@"; do
   case "$arg" in
     --no-gpu) GPU=no ;;
     --gpu) GPU=yes ;;
     --update) UPDATE=1 ;;
+    --build) BUILD=1 ;;
     -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
     *) echo "argument necunoscut: $arg"; exit 2 ;;
   esac
@@ -36,7 +40,15 @@ UTILIZATOR="${SUDO_USER:-root}"
 if [ "$UTILIZATOR" = root ]; then
   # rulat direct ca root (VPS): fisierele nu pot fi ale lui uid 0 in container (useradd -u 0
   # esueaza), deci folosim un utilizator de sistem dedicat pe gazda
-  id openvigil >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin openvigil
+  # uid 1000 daca e liber: imaginea publicata ruleaza cu 1000:1000 (alt uid cere --build)
+  if ! id openvigil >/dev/null 2>&1; then
+    if ! getent passwd 1000 >/dev/null; then
+      groupadd -g 1000 openvigil 2>/dev/null || true
+      useradd -u 1000 -g 1000 --no-create-home --shell /usr/sbin/nologin openvigil
+    else
+      useradd --system --no-create-home --shell /usr/sbin/nologin openvigil
+    fi
+  fi
   UTILIZATOR=openvigil
 fi
 PUID_IMPLICIT="$(id -u "$UTILIZATOR")"
@@ -139,7 +151,21 @@ if [ "$UPDATE" = 1 ] && [ -d .git ]; then
     avert "git pull a esuat (depozit inaccesibil sau modificari locale): construiesc din codul de pe disc"
   fi
 fi
-docker compose "${FISIERE_COMPOSE[@]}" up -d --build --remove-orphans
+# imaginea publicata ruleaza ca 1000:1000; alt PUID/PGID inseamna constructie locala
+if grep -qE '^OPENVIGIL_IMAGE=openvigil$' .env; then BUILD=1; fi
+if [ "$BUILD" = 0 ] && { [ "${PUID:-1000}" != 1000 ] || [ "${PGID:-1000}" != 1000 ]; }; then
+  avert "PUID/PGID=${PUID:-1000}/${PGID:-1000} nu sunt 1000: imaginea publicata nu se potriveste, construiesc local"
+  BUILD=1
+fi
+if [ "$BUILD" = 1 ]; then
+  grep -qE '^OPENVIGIL_IMAGE=' .env || printf 'OPENVIGIL_IMAGE=openvigil\nOPENVIGIL_VERSION=local\n' >> .env
+  export OPENVIGIL_BUILD_VERSION="$(git describe --tags --always --dirty 2>/dev/null || echo local)"
+  spune "construiesc imaginea local (versiunea $OPENVIGIL_BUILD_VERSION)"
+  docker compose "${FISIERE_COMPOSE[@]}" up -d --build --remove-orphans
+else
+  docker compose "${FISIERE_COMPOSE[@]}" pull
+  docker compose "${FISIERE_COMPOSE[@]}" up -d --remove-orphans
+fi
 printf 'COMPOSE_FILE=%s\n' "$(IFS=:; echo "${FISIERE_COMPOSE[*]//-f /}")" > .compose-files
 chown "$UTILIZATOR" .compose-files 2>/dev/null || true
 gata "containerele ruleaza: $(docker compose "${FISIERE_COMPOSE[@]}" ps --services --status running | tr '\n' ' ')"

@@ -146,9 +146,11 @@ sudo ./install.sh
 ```
 
 The script explains each step: Docker, GPU toolkit, `.env` (time zone, ports, data
-directory, the uid that owns the files), then `docker compose up -d --build`. The first
-build pulls ~6 GB of Python wheels (PyTorch with CUDA) and takes a while; later builds
-reuse the layers. When the UI answers, open `http://<server-ip>:8079`, create the first
+directory, the uid that owns the files), then pulls the published image
+(`ghcr.io/sm26449/openvigil`, about 11 GB: PyTorch with CUDA is most of it) and starts the
+stack. `sudo ./install.sh --build` builds the image locally from the checkout instead
+(~20 minutes, ~6 GB of wheels); that is also what happens automatically when `PUID`/`PGID`
+are not 1000, because the published image runs as 1000:1000. When the UI answers, open `http://<server-ip>:8079`, create the first
 account on `/setup`, then add cameras from **Cameras → Add camera** (there is a LAN
 scanner).
 
@@ -159,7 +161,7 @@ Day-to-day:
 
 ```bash
 docker compose logs -f web            # add -f docker-compose.gpu.yml on GPU hosts
-sudo ./install.sh --update            # git pull, rebuild, restart
+sudo ./install.sh --update            # git pull, pull the new image (or rebuild), restart
 docker compose run --rm --no-deps web test      # pytest (350+ tests)
 ```
 

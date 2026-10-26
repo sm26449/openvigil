@@ -854,7 +854,8 @@ def sanatate():
     scrie (macar o camera cu segment proaspat, daca exista camere). Folosita de /healthz
     si de bataia de inima catre systemd."""
     out = {"go2rtc": False, "jurnal": False, "inregistrare": None,
-           "blocat": record.blocat()}   # directorul de inregistrari nu se poate scrie
+           "blocat": record.blocat(),    # directorul de inregistrari nu se poate scrie
+           "versiune": C.VERSIUNE}
     try:
         out["go2rtc"] = requests.get(f"{C.GO2RTC_API}/api/streams", timeout=4).ok
     except requests.RequestException:

@@ -3,9 +3,15 @@
 Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 [Conventional Commits](https://www.conventionalcommits.org/).
 
-## [Nepublicat]
+## [1.0.0] — 2026-10-26
+
+Prima versiune publicată.
 
 ### Adăugat
+- Release-uri cu imagine publicată în GitHub Container Registry (`ghcr.io/sm26449/openvigil:1.0.0`,
+  `:latest`; `:edge` din `main`); `install.sh` trage imaginea în loc să o construiască
+  (`--build` pentru construcție locală). Versiunea apare în Setări → Stare, în meniul de pe
+  telefon, în `/api/me` și `/healthz`.
 - Versiune de schemă în bazele SQLite (`app/schema.py`, tabela `schema_versiuni`): migrările
   viitoare rulează o singură dată, în ordine. Secretele din `.env` pot veni din fișiere
   (`NVR_PASS_FILE`, `TELEGRAM_TOKEN_FILE`).

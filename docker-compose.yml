@@ -2,16 +2,17 @@
 # doar pe 127.0.0.1, WebRTC pe :8555, iar scanarea de retea/ONVIF si WS-Discovery merg
 # fara NAT. Porturile se schimba din .env (WEB_PORT, STREAM_PORT, AI_PORT).
 #
-#   ./install.sh                      # prima instalare (Docker, GPU, .env, build, pornire)
-#   docker compose up -d --build      # fara GPU
-#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build   # cu NVIDIA
+#   ./install.sh                      # prima instalare (Docker, GPU, .env, imaginea din GHCR, pornire)
+#   docker compose up -d              # fara GPU, cu imaginea publicata (ghcr.io/sm26449/openvigil)
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d   # cu NVIDIA
+#   docker compose up -d --build      # construita local (OPENVIGIL_IMAGE=openvigil OPENVIGIL_VERSION=local in .env)
 #   docker compose logs -f web        # jurnal
 #   docker compose run --rm --no-deps web test  # pytest
 
 name: ${COMPOSE_PROJECT_NAME:-openvigil}
 
 x-openvigil: &openvigil
-  image: openvigil:local
+  image: ${OPENVIGIL_IMAGE:-ghcr.io/sm26449/openvigil}:${OPENVIGIL_VERSION:-latest}
   network_mode: host
   env_file: ${ENV_FILE:-.env}
   environment:
@@ -34,6 +35,7 @@ services:
       args:
         PUID: ${PUID:-1000}
         PGID: ${PGID:-1000}
+        OPENVIGIL_VERSION: ${OPENVIGIL_BUILD_VERSION:-dev}
     command: go2rtc
     healthcheck:
       test: ["CMD-SHELL", "curl -sf ${GO2RTC_API:-http://127.0.0.1:1984}/api"]

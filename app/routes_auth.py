@@ -314,6 +314,7 @@ def api_me():
                     "cameras": sorted(vis) if vis is not None else None,
                     "totp": bool(u.get("totp")), "https": request.is_secure,
                     "lang": i18n.limba_curenta(), "lang_cont": u.get("lang"),
+                    "versiune": C.VERSIUNE,
                     "limbi": [{"cod": c, "nume": n} for c, n in i18n.disponibile()]})
 
 

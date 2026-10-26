@@ -12,10 +12,18 @@ ARG GO2RTC_VERSION=1.9.14
 ARG GO2RTC_SHA256=32d616af226bd731678ffde328b94cfb94e30339bfefc469cfb76323144615a6
 ARG PUID=1000
 ARG PGID=1000
+# versiunea (tag-ul release-ului sau `git describe`), vizibila in interfata si in /healthz
+ARG OPENVIGIL_VERSION=dev
 ENV DEBIAN_FRONTEND=noninteractive PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1 \
     TZ=UTC HF_HOME=/home/openvigil/.cache/huggingface \
-    NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
+    NVIDIA_DRIVER_CAPABILITIES=compute,utility,video \
+    OPENVIGIL_VERSION=${OPENVIGIL_VERSION}
+LABEL org.opencontainers.image.title="OpenVigil" \
+      org.opencontainers.image.source="https://github.com/sm26449/openvigil" \
+      org.opencontainers.image.url="https://openvigil.dev" \
+      org.opencontainers.image.licenses="AGPL-3.0-only" \
+      org.opencontainers.image.version="${OPENVIGIL_VERSION}"
 WORKDIR /opt/openvigil
 
 # ffmpeg din Ubuntu are h264_nvenc/hevc_nvenc si -hwaccel cuda: bibliotecile driverului vin

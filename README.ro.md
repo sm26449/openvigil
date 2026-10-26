@@ -103,8 +103,11 @@ sudo ./install.sh
 ```
 
 Scriptul explică fiecare pas: Docker, toolkit-ul NVIDIA dacă există placă, `.env` (fus orar,
-porturi, directorul de date, utilizatorul care deține fișierele), apoi construirea și
-pornirea. Prima construire aduce ~6 GB de biblioteci Python (PyTorch cu CUDA). Când interfața
+porturi, directorul de date, utilizatorul care deține fișierele), apoi trage imaginea publicată
+(`ghcr.io/sm26449/openvigil`, ~11 GB, cea mai mare parte PyTorch cu CUDA) și pornește
+serviciile. `sudo ./install.sh --build` construiește imaginea local din codul descărcat (~20 min,
+~6 GB de biblioteci); la fel se întâmplă automat când `PUID`/`PGID` nu sunt 1000, pentru că
+imaginea publicată rulează ca 1000:1000. Când interfața
 răspunde, deschide `http://<ip-server>:8079`, creează primul cont pe `/setup` și adaugă
 camerele din **Camere → Adaugă camera** (există și un scanner de rețea).
 
@@ -113,7 +116,7 @@ ajunge în `data/settings.json`.
 
 ```bash
 docker compose logs -f web            # pe gazde cu GPU adaugă -f docker-compose.gpu.yml
-sudo ./install.sh --update            # git pull, rebuild, repornire
+sudo ./install.sh --update            # git pull, imaginea nouă (sau rebuild), repornire
 docker compose run --rm --no-deps web test      # pytest
 ```
 

@@ -27,11 +27,15 @@ Serviciile sunt `restart: unless-stopped`: după un reboot al gazdei pornesc sin
 ```bash
 sudo ./install.sh --update
 ```
-Face `git pull`, reconstruiește imaginea (prima dată ~15 min, apoi doar straturile schimbate)
-și recreează containerele. Înregistrarea se oprește cât durează recrearea (sub 30 s).
+Face `git pull`, trage imaginea nouă din GHCR (sau o reconstruiește, dacă instalația e pe
+`OPENVIGIL_IMAGE=openvigil`, adică `install.sh --build`) și recreează containerele.
+Înregistrarea se oprește cât durează recrearea (sub 30 s). Versiunea care rulează e în
+Setări → Stare și în `/healthz`.
 
-Revenire la o versiune anterioară: `git checkout <tag sau commit>` și din nou
-`sudo ./install.sh` (fără `--update`, ca să nu facă `git pull`).
+O versiune anume: `OPENVIGIL_VERSION=1.0.0` în `.env`, apoi `docker compose pull && docker
+compose up -d` (cu `-f docker-compose.gpu.yml` pe GPU). Revenire la una anterioară: aceeași
+cale, cu versiunea veche; imaginile publicate sunt pe
+[github.com/sm26449/openvigil/pkgs/container/openvigil](https://github.com/sm26449/openvigil/pkgs/container/openvigil).
 
 ## Date și copii
 

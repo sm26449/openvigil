@@ -4,7 +4,7 @@
    pe toate; importurile/exporturile sunt verificate de scripts/module_check.py (si in pytest).
    ==================================================================== */
 import { S } from './state.js';
-import { $, ADMIN, CAN_ACT, LIMBA, html, icon, t, toast } from './00-core.js';
+import { $, ADMIN, CAN_ACT, LIMBA, ME, html, icon, t, toast } from './00-core.js';
 import { ZOOM_MAX_MS, pollEvents, post } from './10-live.js';
 import { closeHD, hdCam, openHD } from './20-hd.js';
 import { loadHarta } from './25-harta.js';
@@ -54,6 +54,13 @@ function asazaNav() {
       navAcasa[id] = [el.parentElement, el.nextSibling];
       el.classList.add('in-foaie');
       foaie.appendChild(el);
+    }
+    // versiunea, la sfarsit, discret: pe desktop sta in Setari -> Stare
+    if (!$('#sheet-ver')) {
+      const v = document.createElement('div');
+      v.id = 'sheet-ver'; v.className = 'hint';
+      v.textContent = t('OpenVigil {v}', { v: ME.versiune || 'dev' });
+      foaie.appendChild(v);
     }
   } else {
     inchideFoaia();

@@ -45,6 +45,8 @@ def _lista(cheie, implicit):
 
 # numele sistemului: titlul interfetei, emitentul 2FA, prefixul notificarilor
 NUME = _text("NVR_NAME", "OpenVigil")
+# versiunea: pusa in imagine la build (git describe / tag-ul release-ului); "dev" in afara ei
+VERSIUNE = _text("OPENVIGIL_VERSION", "dev")
 # limba implicita a interfetei si a notificarilor (ro, en...); browserul si contul pot alege alta
 LIMBA = _text("NVR_LANG", "ro").lower() or "ro"
 
