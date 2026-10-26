@@ -26,7 +26,7 @@ uniface==3.7.1
 #   venv/bin/pip install torch==2.13.0+cpu --index-url https://download.pytorch.org/whl/cpu
 # si onnxruntime in loc de onnxruntime-gpu; codul cade singur pe CPU.
 torch==2.13.0
-torchvision==0.28.0
+torchvision==0.29.1
 # notificari push (Web Push cu VAPID) catre PWA; cheile se genereaza singure in
 # data/push_vapid.json. Fara pachet, butonul din „Contul meu" spune ca lipseste.
 pywebpush==2.5.0
