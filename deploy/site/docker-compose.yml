@@ -1,0 +1,38 @@
+# openvigil.dev — pagina proiectului, in spatele Traefik-ului masinii publice (acelasi model ca
+# multibus.dev: containerul intra in reteaua Docker `web`, nu publica niciun port; Traefik ia
+# certificatul Let's Encrypt prin DNS-01 Cloudflare pentru openvigil.dev si *.openvigil.dev).
+#
+#   cd /home/website/sites/openvigil && git pull --ff-only \
+#     && docker compose -f deploy/site/docker-compose.yml up -d --build
+services:
+  site:
+    build:
+      context: ../..
+      dockerfile: deploy/site/Dockerfile
+    image: openvigil-site:latest
+    container_name: openvigil-site
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    networks: [web]
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.openvigil.rule=Host(`openvigil.dev`) || Host(`www.openvigil.dev`)
+      - traefik.http.routers.openvigil.entrypoints=websecure
+      - traefik.http.routers.openvigil.tls.certresolver=cf
+      - traefik.http.routers.openvigil.tls.domains[0].main=openvigil.dev
+      - traefik.http.routers.openvigil.tls.domains[0].sans=*.openvigil.dev
+      - traefik.http.routers.openvigil.middlewares=openvigil-www,openvigil-hsts
+      - traefik.http.middlewares.openvigil-www.redirectregex.regex=^https://www\.openvigil\.dev/(.*)
+      - traefik.http.middlewares.openvigil-www.redirectregex.replacement=https://openvigil.dev/$${1}
+      - traefik.http.middlewares.openvigil-www.redirectregex.permanent=true
+      - traefik.http.middlewares.openvigil-hsts.headers.stsSeconds=31536000
+      - traefik.http.middlewares.openvigil-hsts.headers.stsIncludeSubdomains=true
+      - traefik.http.services.openvigil.loadbalancer.server.port=8080
+
+networks:
+  web:
+    external: true

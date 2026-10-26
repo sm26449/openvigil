@@ -16,7 +16,8 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   `scripts/i18n_check.py` verifică acoperirea.
 - Mod demo: patru camere sintetice (vendor `demo`, go2rtc `ffmpeg:virtual`), din Setări → Unelte;
   fără acțiuni, fără rețea, înregistrate doar prin go2rtc.
-- Site-ul proiectului: [openvigil.dev](https://openvigil.dev).
+- Site-ul proiectului: [openvigil.dev](https://openvigil.dev), servit de pe mașina noastră publică
+  (`deploy/site/`), nu de pe GitHub Pages.
 - CI pe GitHub Actions: pytest fără GPU (`requirements-ci.txt`), verificarea modulelor ES,
   shellcheck, validarea fișierelor Compose, căutarea de secrete; build-ul imaginii cu testele
   rulate în container (săptămânal și la schimbări de Dockerfile/lock). Template-uri de issue și PR.
