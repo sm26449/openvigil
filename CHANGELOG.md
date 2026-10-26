@@ -3,6 +3,12 @@
 Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [Nepublicat]
+
+### Adăugat
+- `RECORDINGS_DIR`: înregistrările pot sta pe alt disc decât restul datelor (bind separat
+  pentru `data/recordings`).
+
 ## [1.0.0] — 2026-10-26
 
 Prima versiune publicată.

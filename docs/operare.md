@@ -39,6 +39,11 @@ cale, cu versiunea veche; imaginile publicate sunt pe
 
 ## Date și copii
 
+Înregistrările pot sta pe alt disc decât restul datelor: `RECORDINGS_DIR=/cale/pe/discul/mare`
+în `.env` (apoi `docker compose up -d`). Mutarea de pe discul vechi: copiezi din mers cu
+`rsync -a`, oprești stack-ul, mai rulezi o dată rsync pentru diferență, pui variabila și
+pornești; lanțul de custodie ține căi relative, deci nu se pierde nimic.
+
 - `data/` (sau `DATA_DIR` din `.env`) conține tot: înregistrări, baze de date SQLite, setări,
   camere cu parole, conturi, modele AI locale. Backup-ul lui `data/` fără `recordings/` e mic
   și suficient pentru a reface instalarea.

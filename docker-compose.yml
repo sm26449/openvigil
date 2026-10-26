@@ -19,6 +19,8 @@ x-openvigil: &openvigil
     TZ: ${TZ:-UTC}
   volumes:
     - ${DATA_DIR:-./data}:/opt/openvigil/data
+    # inregistrarile pot sta pe alt disc (RECORDINGS_DIR in .env); implicit sub DATA_DIR
+    - ${RECORDINGS_DIR:-${DATA_DIR:-./data}/recordings}:/opt/openvigil/data/recordings
   restart: unless-stopped
   stop_grace_period: 25s
   logging:
@@ -49,6 +51,7 @@ services:
     command: web
     volumes:
       - ${DATA_DIR:-./data}:/opt/openvigil/data
+      - ${RECORDINGS_DIR:-${DATA_DIR:-./data}/recordings}:/opt/openvigil/data/recordings
       - ${MODELS_DIR:-./models}:/home/openvigil/.cache
     depends_on:
       go2rtc:
@@ -82,6 +85,7 @@ services:
     command: ai
     volumes:
       - ${DATA_DIR:-./data}:/opt/openvigil/data
+      - ${RECORDINGS_DIR:-${DATA_DIR:-./data}/recordings}:/opt/openvigil/data/recordings
       - ${MODELS_DIR:-./models}:/home/openvigil/.cache
     depends_on:
       web:
