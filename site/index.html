@@ -26,6 +26,7 @@ pre{background:var(--code);border:1px solid var(--line);border-radius:10px;paddi
 .btn.p{background:var(--acc);border-color:var(--acc);color:#fff}
 .note{background:var(--acc2);border-radius:10px;padding:12px 16px;font-size:14.5px}
 .shots{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin:16px 0}.shots figure{margin:0}.shots img{width:100%;border:1px solid var(--line);border-radius:10px;display:block}.shots figcaption{font-size:13px;color:var(--mut);margin-top:6px}.shots.tel{grid-template-columns:repeat(auto-fit,minmax(160px,1fr));max-width:620px}
+.why{padding-left:20px;margin:10px 0 0}.why li{margin:0 0 10px;max-width:72ch}.why b{color:var(--fg)}
 footer{margin-top:40px;color:var(--mut);font-size:13.5px;border-top:1px solid var(--line);padding-top:16px}
 h2{font-size:22px;margin:34px 0 10px}
 </style>
@@ -58,6 +59,16 @@ sudo ./install.sh</code></pre>
   <div class="card"><h3>Accounts and safety</h3><p>Admin and per‑camera viewers, 2FA, revocable sessions, CSRF, strict CSP, audit log; go2rtc never listens on the LAN.</p></div>
   <div class="card"><h3>Honest about its origin</h3><p>Built for one real installation (18 cameras, an RTX 2000 Ada) and published as is. UI in English and Romanian, other languages are a JSON file away. AGPL‑3.0; model licences in NOTICE.md.</p></div>
 </div>
+
+<h2>Why OpenVigil</h2>
+<ul class="why">
+  <li><b>Your cameras, your disk, your GPU.</b> Nothing leaves the house: no cloud account, no subscription, no licence per camera, no phone‑home. Remote access is whatever reverse proxy you already trust.</li>
+  <li><b>It works with the cameras you have.</b> Hikvision over ISAPI (siren, strobe, talk, PTZ and the camera's own settings from the same page) and anything that speaks ONVIF/RTSP. Adding a camera is a network scan and a click, not a config file.</li>
+  <li><b>AI that goes past “a person was detected”.</b> Who it was (faces), the same person across cameras even without a face (re‑ID), what happened in words (descriptions you can search), licence plates known/unknown, and a detector you fine‑tune on your own frames from the interface.</li>
+  <li><b>Built for evidence, not just viewing.</b> Every segment has a SHA‑256 in a chain of custody, every export is registered and verifiable on a public page without an account, and incidents go into case files you hand over as a ZIP.</li>
+  <li><b>A complete system in one install.</b> Modes with rules, Telegram alerts and a daily digest, Web Push, MQTT and webhooks, accounts with per‑camera roles and 2FA, audit log, self‑healing recorders, nightly encrypted backups. One Docker stack, one script.</li>
+  <li><b>Honest about what it is.</b> Written for one real installation and published as is: it wants an NVIDIA GPU for the heavy models, it has one active author, and it will have rough edges on hardware it has not seen. Everything in <code>data/</code> is plain files and SQLite, so you are never locked in.</li>
+</ul>
 
 <h2>Screenshots</h2>
 <p class="note">Taken on the built-in demo mode (synthetic cameras): no real footage, nobody's house.</p>

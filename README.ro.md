@@ -46,6 +46,28 @@ Făcute în modul demo (camere sintetice), deci fără imagini reale.
 - **Conturi**: admin și vizitatori restrânși pe camere, 2FA, sesiuni revocabile, CSRF, CSP
   strict, audit, pagina publică `/verifica` pentru confirmarea unei probe după amprentă.
 
+### Și încă
+
+- **Întrebi în cuvinte**: căsuța de căutare răspunde la întrebări ca „când a venit mașina
+  de gunoi?” din indexul semantic și din jurnal.
+- **Audio**: măsurarea continuă a zgomotului pe camerele cu microfon, profiluri orare pentru
+  calibrarea pragurilor, alarme de zgomot și anunțuri vocale (TTS) prin difuzorul camerei.
+- **Incidente și dosare**: panou de triaj (netratate / confirmate / false) cu sunet și pop-up
+  la critic, dosare de caz care adună clipuri, poze și un manifest semnat.
+- **La redare**: marcaje pe înregistrări, redare sincronizată pe mai multe camere,
+  vizualizări salvate și mod perete pentru grila live, panou I/O pentru relee.
+- **Evenimente mai deștepte**: episoade de prezență (o poveste în loc de cincizeci de cadre),
+  episoade de vehicul parcat, obiect nou sau dispărut pe camere statice, a doua opinie cu un
+  model stock înainte de alerta de „intrus”, linii de numărare și zone trimise camerelor ca
+  evenimente smart.
+- **Bucla de antrenare**: coadă de cadre nesigure, unealtă de adnotare, dataset din camerele
+  tale și fine-tuning din interfață, cu metrici per model.
+- **Operare**: comenzi prin botul Telegram (/acasa, /plecat, /noapte, /stare), API de
+  automatizare cu jeton propriu (`/api/v1`) pentru Node-RED sau Home Assistant, forward-auth
+  pentru alte unelte în spatele aceluiași login, verificarea ceasului camerelor, trepte de
+  bandă per cameră, măști de confidențialitate, nivel de arhivă care recomprimă înregistrările
+  vechi, grafice de acoperire și continuitate, PWA instalabilă pe telefon.
+
 ## De ce OpenVigil
 
 - **Camerele tale, discul tău, placa ta video.** Nimic nu iese din casă: fără cont în cloud,

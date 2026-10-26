@@ -53,6 +53,28 @@ Taken on the built-in demo mode (synthetic cameras), so no real footage.
   their own; nightly encrypted backup of configuration and databases; everything in
   `data/` is plain files and SQLite you can read without the app.
 
+### Also in the box
+
+- **Ask in plain words**: the search box answers questions like "when did the garbage truck
+  come?" from the semantic index and the event log.
+- **Audio**: continuous noise measurement on cameras with a microphone, hourly noise profiles
+  to calibrate thresholds, noise alarms, and text-to-speech announcements through the
+  camera's speaker.
+- **Incidents and cases**: a triage panel (open / acknowledged / false alarm) with sound and
+  pop-up on critical, and case files that bundle clips, snapshots and a signed manifest.
+- **Playback extras**: bookmarks on recordings, synchronized multi-camera playback, saved
+  views and a wall mode for the live grid, an I/O panel for relays.
+- **Smarter events**: presence episodes (one story instead of fifty frames), parked-vehicle
+  episodes, new or missing object on static cameras, a second opinion with a stock model
+  before an "intruder" alert, counting lines and zones pushed to the cameras as smart events.
+- **Training loop**: a queue of uncertain frames, an annotation tool, a dataset built from
+  your own cameras and fine-tuning from the UI, with per-model metrics.
+- **Operations**: Telegram bot commands (/home, /away, /night, /status), an automation API
+  with its own token (`/api/v1`) for Node-RED or Home Assistant, forward-auth for other tools
+  behind the same login, a camera clock check, bandwidth tiers per camera, privacy masks,
+  an archive tier that recompresses old recordings, coverage and continuity charts, and an
+  installable PWA for the phone.
+
 ## Why OpenVigil
 
 - **Your cameras, your disk, your GPU.** Nothing leaves the house: no cloud account, no
