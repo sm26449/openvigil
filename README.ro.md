@@ -132,3 +132,11 @@ fost construit. Apoi [docs/nvr-ai.md](docs/nvr-ai.md), [docs/ai-contract.md](doc
 AGPL-3.0 ([LICENSE](LICENSE)). Componentele terțe și licențele modelelor, inclusiv condițiile
 necomerciale ale modelelor de fețe InsightFace, sunt în [NOTICE.md](NOTICE.md). Proiectul nu
 este afiliat cu Hikvision, NVIDIA sau ONVIF.
+
+## Autori
+
+OpenVigil a fost făcut de **Stefan Maldaianu** ([@sm26449](https://github.com/sm26449)), care
+l-a gândit în jurul instalației lui și îl folosește zi de zi, împreună cu **Claude** (modelul
+Claude Fable 5.1 de la Anthropic), care a scris cea mai mare parte a codului în sesiuni de
+programare în pereche conduse, testate pe hardware real și revizuite de Stefan.
+Contact: stefan@openvigil.dev.

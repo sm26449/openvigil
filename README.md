@@ -207,3 +207,10 @@ Day-to-day operations (logs, updates, backups, ports, uninstall): [docs/operare.
 AGPL-3.0, see [LICENSE](LICENSE). Third-party components and model licences, including the
 non-commercial terms of the InsightFace face models, are listed in [NOTICE.md](NOTICE.md).
 Not affiliated with Hikvision, NVIDIA or ONVIF.
+
+## Credits
+
+OpenVigil was built by **Stefan Maldaianu** ([@sm26449](https://github.com/sm26449)), who
+designed it around his own installation and runs it every day, together with **Claude**
+(Anthropic's Claude Fable 5.1), which wrote most of the code in pair-programming sessions that
+Stefan directed, tested on real hardware and reviewed. Contact: stefan@openvigil.dev.
