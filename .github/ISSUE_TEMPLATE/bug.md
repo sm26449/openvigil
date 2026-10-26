@@ -24,4 +24,4 @@ What you did, what you expected, what happened instead.
 ```
 docker compose logs --since 30m web record ai go2rtc
 ```
-Remove passwords and addresses you do not want public; `rtsp://user:password@` must not appear.
+Remove passwords and addresses you do not want public; `rtsp://user:pass@` must not appear.
