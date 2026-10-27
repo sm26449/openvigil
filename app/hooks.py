@@ -37,6 +37,7 @@ EVENIMENTE = {
     "detectie": "Obiect detectat de inteligenta artificiala (om, caine, pisica...)",
     "alarma_camera": "Alarma raportata de camera (miscare, linie trecuta, intrare in zona)",
     "zgomot": "Prag de zgomot depasit",
+    "scena_candidat": "Ceva nou in scena unei camere (detectie pe schimbare), cu eticheta propusa",
     "camera_offline": "O camera nu mai raspunde",
     "camera_online": "O camera a revenit",
     "gol_inregistrare": "Gol in inregistrarea unei camere",

@@ -6,13 +6,16 @@ fluxului, config, bulk, health/reprobe/reboot si controlul PTZ. Helper-urile par
 vin din `server`; invalidarea cache-ului de camere se face prin invalidate_cam_cache()
 (un `global _cams` aici ar atinge modulul acesta, nu server-ul).
 """
+import json
 import os
+import re
 import subprocess
+import threading
 import time
 import xml.etree.ElementTree as ET
 
 import requests
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, send_from_directory
 from requests.auth import HTTPDigestAuth
 
 import audit
@@ -785,3 +788,121 @@ def api_reboot(cam_id):
         return jsonify({"ok": True})
     except requests.RequestException as e:
         return jsonify({"error": str(e)[:100]}), 502
+
+
+# ---- detectie pe schimbare (scena.py, in nvr-ai): fisa camerei ----
+SCENA_DIR = os.path.join(ROOT, "data", "scena")
+_SCENA_FN = re.compile(r"^(\d{8}-\d{6}-\d+\.jpg|fundal\.jpg|instabil\.png)$")
+_FEEDBACK = os.path.join(SCENA_DIR, "feedback.jsonl")
+_fb_lock = threading.Lock()
+
+
+def _scena_feedback(cam_id=None):
+    """{id eveniment: {verdict, eticheta, cine, t}} din feedback.jsonl (ultimul cuvant conteaza)."""
+    out = {}
+    try:
+        with open(_FEEDBACK, encoding="utf-8") as f:
+            for ln in f:
+                try:
+                    r = json.loads(ln)
+                except ValueError:
+                    continue
+                if cam_id is None or r.get("cam") == cam_id:
+                    out[r["id"]] = r
+    except OSError:
+        pass
+    return out
+
+
+def _vocabular():
+    try:
+        import scena_clasa
+        return scena_clasa.vocabular()
+    except Exception:
+        return [str(x) for x in (settings.get("scena_vocabular") or [])]
+
+
+@bp.route("/api/cam/<int:cam_id>/scena")
+def api_cam_scena(cam_id):
+    """Starea detectiei pe schimbare pe o camera: activ?, harta fundalului, candidatii
+    recenti (cu feedback-ul omului), vocabularul, cifre."""
+    import jurnal
+    if not any(c["id"] == cam_id for c in get_cameras()):
+        return jsonify({"error": t("camera inexistenta")}), 404
+    d = os.path.join(SCENA_DIR, str(cam_id))
+    stare = {}
+    try:
+        with open(os.path.join(d, "stare.json"), encoding="utf-8") as f:
+            stare = json.load(f)
+    except (OSError, ValueError):
+        pass
+    limit = min(200, max(1, int(request.args.get("limit", 60))))
+    candidati = jurnal.query(limit=limit, tip="scena_candidat", cam=cam_id)
+    fb = _scena_feedback(cam_id)
+    etichete, verdicte = {}, {"ok": 0, "gresit": 0, "necunoscut": 0}
+    for c in candidati:
+        c["feedback"] = fb.get(c["id"])
+        etichete[c.get("eticheta") or "?"] = etichete.get(c.get("eticheta") or "?", 0) + 1
+    for r in fb.values():
+        verdicte[r.get("verdict", "necunoscut")] = verdicte.get(r.get("verdict", "necunoscut"), 0) + 1
+    return jsonify({
+        "activ": cam_id in {int(x) for x in (settings.get("scena_cams") or [])},
+        "urmarita": cam_id in {int(x) for x in (settings.get("track_cams") or [])},
+        "stare": stare,
+        "fundal": os.path.exists(os.path.join(d, "fundal.jpg")),
+        "instabil": os.path.exists(os.path.join(d, "instabil.png")),
+        "candidati": candidati, "etichete": etichete, "verdicte": verdicte,
+        "vocabular": _vocabular()})
+
+
+@bp.route("/api/cam/<int:cam_id>/scena", methods=["POST"])
+def api_cam_scena_set(cam_id):
+    """{activ: true|false} porneste/opreste detectia pe schimbare pe camera (si o pune
+    in track_cams, de unde vin cadrele)."""
+    if not any(c["id"] == cam_id for c in get_cameras()):
+        return jsonify({"error": t("camera inexistenta")}), 404
+    b = request.get_json(silent=True) or {}
+    activ = bool(b.get("activ"))
+    sc = {int(x) for x in (settings.get("scena_cams") or [])}
+    tr = {int(x) for x in (settings.get("track_cams") or [])}
+    if activ:
+        sc.add(cam_id)
+        tr.add(cam_id)
+    else:
+        sc.discard(cam_id)
+    settings.update({"scena_cams": sorted(sc), "track_cams": sorted(tr)})
+    audit.log("detectie pe schimbare " + ("pornita" if activ else "oprita"), str(cam_id))
+    return jsonify({"ok": True, "activ": activ})
+
+
+@bp.route("/api/cam/<int:cam_id>/scena/fisier/<fn>")
+def api_cam_scena_fisier(cam_id, fn):
+    """Decupajele candidatilor, harta fundalului, masca instabilitatii (nume stricte)."""
+    if not _SCENA_FN.match(fn):
+        return jsonify({"error": t("fișier inexistent")}), 404
+    vis = _visible_ids()
+    if vis is not None and cam_id not in vis:
+        return jsonify({"error": t("nu ai acces la această camera")}), 403
+    resp = send_from_directory(os.path.join(SCENA_DIR, str(cam_id)), fn)
+    if fn in ("fundal.jpg", "instabil.png"):
+        resp.headers["Cache-Control"] = "no-cache"
+    return resp
+
+
+@bp.route("/api/cam/<int:cam_id>/scena/feedback", methods=["POST"])
+def api_cam_scena_feedback(cam_id):
+    """Verdictul omului pe un candidat: {id, verdict: ok|gresit|necunoscut, eticheta?}.
+    Se adauga in data/scena/feedback.jsonl — materia prima a antrenamentului."""
+    b = request.get_json(silent=True) or {}
+    eid = str(b.get("id") or "")[:32]
+    verdict = b.get("verdict")
+    if not eid or verdict not in ("ok", "gresit", "necunoscut"):
+        return jsonify({"error": t("cerere invalida")}), 400
+    r = {"cam": cam_id, "id": eid, "verdict": verdict,
+         "eticheta": (str(b.get("eticheta") or "")[:60] or None),
+         "poza": (str(b.get("poza") or "")[:60] or None),
+         "cine": (current_user() or {}).get("user"), "t": time.strftime("%Y-%m-%d %H:%M:%S")}
+    os.makedirs(SCENA_DIR, exist_ok=True)
+    with _fb_lock, open(_FEEDBACK, "a", encoding="utf-8") as f:
+        f.write(json.dumps(r, ensure_ascii=False) + "\n")
+    return jsonify({"ok": True, "feedback": r})

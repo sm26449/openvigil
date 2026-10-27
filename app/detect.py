@@ -691,7 +691,8 @@ class BatchLoop(threading.Thread):
                             # _get_model aici -> hot-reload dupa fine-tune
                             results = _get_model().predict(
                                 [img for _, img, _ in lot], imgsz=640, conf=CONF,
-                                classes=list(CLASSES), device=_device, verbose=False)
+                                classes=list(CLASSES), device=_device, verbose=False,
+                                quantize=("fp16" if str(_device) not in ("cpu", "None") else None))   # FP16 pe GPU
                         for (cid, img, st), res in zip(lot, results):
                             try:
                                 st.process(img, res, now)

@@ -24,7 +24,7 @@ RO = {"person": "om", "car": "masina", "motorcycle": "motocicleta", "bus": "auto
       "horse": "cal", "sheep": "oaie", "cow": "vaca", "bear": "urs",
       "chicken": "gaina", "pigeon": "porumbel"}
 
-FRAME_INTERVAL = 0.25   # ~4 inferente/s — destul ca ByteTrack sa lege ID-urile
+FRAME_INTERVAL = 0.4    # ~2,5 inferente/s: cu 18 camere in lot, 4/s satura GPU-ul (masurat 2026-10-27); ByteTrack leaga ID-urile si asa
 CONF = 0.5
 MIN_FRAMES = 6          # un track confirmat = vazut in minim 6 cadre (~1,5s)
 LOST_TTL = 2.5          # secunde fara ID -> obiectul a iesit din cadru

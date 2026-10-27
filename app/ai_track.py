@@ -15,16 +15,20 @@ Asa cei ~475ms/ciclu (2.1 fps) devin ~batch-predict (63ms/5) -> tinta de 4 fps a
 curat. Bookkeeping-ul (numarare, directie) e din track.py; peste el, analitica (linii,
 zone, viteza). Evenimentele pleaca prin callback la nvr-web.
 """
+import os
 import threading
 import time
 
 import ai_analytics
 import ai_scene
 import detect
+import scena
+import scena_clasa
 import settings
 import track
 import logare
 
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONF = track.CONF
 FRAME_INTERVAL = track.FRAME_INTERVAL
 RTSP = track.RTSP
@@ -259,6 +263,8 @@ class BatchLoop(threading.Thread):
         self.readers = {}              # cam_id -> FrameReader
         self.cams = {}                 # cam_id -> CamTrack
         self.scenes = {}               # cam_id -> SceneWatcher (obiect nou/disparut)
+        self.schimbare = {}            # cam_id -> scena.Scena (detectie pe schimbare)
+        self._scena_scris = {}         # cam_id -> cand am scris ultima data harta pe disc
 
     def _sync(self, want):
         for c in list(self.readers):
@@ -288,6 +294,10 @@ class BatchLoop(threading.Thread):
             for c in list(self.scenes):
                 if c not in scene_cams:
                     del self.scenes[c]
+            schimbare_cams = {int(x) for x in (settings.get("scena_cams") or [])} & set(ids)
+            for c in list(self.schimbare):
+                if c not in schimbare_cams:
+                    del self.schimbare[c]
             if not ids:
                 time.sleep(1)
                 continue
@@ -305,8 +315,10 @@ class BatchLoop(threading.Thread):
                 import metrici
                 with metrici.cronometru("tracking"), _predict_lock:
                     # lock partajat cu clip_detect (nu doua predict simultan)
+                    # half: FP16 pe GPU (pe placile Ada ~1,7x mai rapid, aceeasi precizie la
+                    # detectie); ultralytics cade singur pe FP32 cand nu e CUDA
                     results = model.predict([f for _, f in valid], imgsz=640, conf=CONF,
-                                            classes=list(_clase), verbose=False)
+                                            classes=list(_clase), verbose=False, quantize=_fp16())
             except Exception as e:
                 logare.info(f"[ai-track] predict: {str(e)[:80]}")
                 time.sleep(0.3)
@@ -358,6 +370,12 @@ class BatchLoop(threading.Thread):
                             self.emit_fn(ev["tip"], c, ev["date"])
                     except Exception as e:
                         logare.info(f"[ai-scene] cam{c}: {str(e)[:70]}")
+                # detectie pe schimbare: fundal + regiuni noi, clasificate pe decupaj
+                if c in schimbare_cams:
+                    try:
+                        self._schimbare(c, frame, now, model)
+                    except Exception as e:
+                        logare.info(f"[scena] cam{c}: {str(e)[:80]}")
             dt = time.time() - t0
             if dt < FRAME_INTERVAL:
                 time.sleep(FRAME_INTERVAL - dt)
@@ -365,6 +383,69 @@ class BatchLoop(threading.Thread):
             r.stop_flag = True
         logare.info("[ai-track] bucla batch oprita")
 
+
+def _fp16():
+    """'fp16' pe GPU (ultralytics 8.4: `quantize`), None pe CPU."""
+    try:
+        import torch
+        return "fp16" if torch.cuda.is_available() else None
+    except Exception:
+        return None
+
+
+def _dir_scena(cam_id):
+    d = os.path.join(ROOT, "data", "scena", str(int(cam_id)))
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+def _scena_schimbare(self, c, frame, now, model):
+    """Pasul de detectie pe schimbare al unei camere: hraneste motorul, clasifica
+    candidatii maturi pe decupaj, emite `scena_candidat`, scrie harta pe disc la un minut."""
+    import cv2
+    sc = self.schimbare.get(c)
+    if sc is None:
+        sc = scena.Scena(c)
+        self.schimbare[c] = sc
+    maturi = sc.feed(frame, now)
+    for cand in maturi:
+        nbox = cand.nbox(sc.w, sc.h)
+        crop = scena.decupaj(frame, nbox)
+        if crop is None:
+            continue
+        with _predict_lock:
+            rez = scena_clasa.clasifica(crop, model, _clase, _fp16())
+        cand.clasificat = rez
+        cand.ultima_clasificare = now
+        fn = f"{time.strftime('%Y%m%d-%H%M%S', time.localtime(now))}-{cand.id}.jpg"
+        cale = os.path.join(_dir_scena(c), fn)
+        ok, buf = cv2.imencode(".jpg", crop, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        if ok:
+            with open(cale, "wb") as f:
+                f.write(buf.tobytes())
+        self.emit_fn("scena_candidat", c, {
+            "candidat": cand.id, "eticheta": rez["eticheta"], "incredere": rez["incredere"],
+            "sursa": rez["sursa"], "yolo": rez["yolo"], "vocab": rez["vocab"],
+            "regiune": list(nbox), "cadre": cand.cadre, "durata": round(now - cand.t0, 1),
+            "poza": fn if ok else None, "model": detect.amprenta()})
+    if now - self._scena_scris.get(c, 0) >= 60:
+        self._scena_scris[c] = now
+        d = _dir_scena(c)
+        bg = sc.fundal()
+        if bg is not None:
+            cv2.imwrite(os.path.join(d, "fundal.jpg"), bg, [cv2.IMWRITE_JPEG_QUALITY, 80])
+        inst = sc.instabil()
+        if inst is not None:
+            cv2.imwrite(os.path.join(d, "instabil.png"), inst)
+        try:
+            import json
+            with open(os.path.join(d, "stare.json"), "w") as f:
+                json.dump({**sc.stare(), "t": now}, f)
+        except OSError:
+            pass
+
+
+BatchLoop._schimbare = _scena_schimbare
 
 _loop = None
 

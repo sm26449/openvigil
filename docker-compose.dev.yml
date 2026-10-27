@@ -1,12 +1,25 @@
-# Suprapunere pentru dezvoltare: codul din repo e montat in containerul web, deci schimbarile
-# din app/static se vad imediat (reincarca pagina), iar cele din Python dupa `restart web`.
-# Nu e pentru productie: imaginea ramane sursa adevarului la `install.sh`.
+# Suprapunere pentru dezvoltare: codul din repo e montat in containerele web si ai, deci
+# schimbarile din app/static se vad imediat (reincarca pagina), iar cele din Python dupa
+# `restart web` / `restart ai`. Nu e pentru productie: imaginea ramane sursa adevarului la
+# `install.sh`. Listele de volume le repeta pe cele din docker-compose.yml (o lista `volumes:`
+# de aici le INLOCUIESTE pe cele de baza, nu le completeaza).
 #
-#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml -f docker-compose.dev.yml up -d web
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml -f docker-compose.dev.yml up -d web ai
+
+x-dev-volumes: &dev-volumes
+  - ${DATA_DIR:-./data}:/opt/openvigil/data
+  - ${RECORDINGS_DIR:-${DATA_DIR:-./data}/recordings}:/opt/openvigil/data/recordings
+  - ${ARHIVA_DIR:-${DATA_DIR:-./data}/arhiva}:/opt/openvigil/data/arhiva
+  - ${BACKUP_DIR:-${DATA_DIR:-./data}/backup}:/opt/openvigil/data/backup
+  - ${MODELS_DIR:-./models}:/home/openvigil/.cache
+  - ./app:/opt/openvigil/app:ro
+  - ./config.py:/opt/openvigil/config.py:ro
+  - ./gen_go2rtc.py:/opt/openvigil/gen_go2rtc.py:ro
+  - ./scripts:/opt/openvigil/scripts:ro
+  - ./tests:/opt/openvigil/tests:ro
 
 services:
   web:
-    volumes:
-      - ${DATA_DIR:-./data}:/opt/openvigil/data
-      - ./app:/opt/openvigil/app:ro
-      - ./tests:/opt/openvigil/tests:ro
+    volumes: *dev-volumes
+  ai:
+    volumes: *dev-volumes

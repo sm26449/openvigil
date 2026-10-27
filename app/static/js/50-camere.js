@@ -4,7 +4,7 @@
    pe toate; importurile/exporturile sunt verificate de scripts/module_check.py (si in pytest).
    ==================================================================== */
 import { S } from './state.js';
-import { $, GO2RTC, JOB_STARE_RO, html, icon, lista, runJob, t, toast } from './00-core.js';
+import { $, DET_RO, GO2RTC, JOB_STARE_RO, html, icon, lista, raw, runJob, t, toast } from './00-core.js';
 import { show } from './05-navigare.js';
 import { buildLive, deleteCamera, filt, loadCameras, matches, post, renderGroupChips, renderViews, zoomBtns } from './10-live.js';
 import { openHD } from './20-hd.js';
@@ -833,6 +833,7 @@ function openCamPanel(c) {
   };
   maint.append(reprobe, reboot);
   body.appendChild(section(t('Întreținere'), maint));
+  body.appendChild(scenaSection(c));
 
   if (c.id >= 101) {
     const del = document.createElement('button');
@@ -930,6 +931,82 @@ $('#scan-add').onclick = async () => {
     buildCamsTable();
   }
 };
+
+/* ---------- Invata scena: detectie pe schimbare, in proba, cu feedback ----------
+   Fundalul invatat de nvr-ai (scena.py), zonele instabile, candidatii „ceva nou” cu eticheta
+   propusa si butoanele omului: corect / gresit (cu numele adevarat). Fiecare verdict intra in
+   data/scena/feedback.jsonl, materia prima a antrenamentului urmator. */
+function scenaSection(c) {
+  const box = document.createElement('div');
+  box.className = 'scena';
+  box.innerHTML = html`<p class="hint schelet">${t('Se încarcă…')}</p>`;
+  renderScena(c, box);
+  return section(t('Învață scena'), box);
+}
+const numeEticheta = (l) => t(DET_RO[l] || l || 'necunoscut');
+async function renderScena(c, box) {
+  let d;
+  try { d = await (await fetch(`/api/cam/${c.id}/scena?limit=48`)).json(); } catch { d = null; }
+  if (!d || d.error) { box.innerHTML = html`<p class="hint">${t('Nu am putut citi starea scenei.')}</p>`; return; }
+  const st = d.stare || {};
+  const ts = Date.now();
+  const card = (e) => {
+    const fb = e.feedback;
+    const pct = e.incredere ? Math.round(e.incredere * (e.sursa === 'vocabular' ? 1000 : 100)) : 0;
+    return html`<figure class="scena-card${fb ? ' ' + fb.verdict : ''}" data-id="${e.id}" data-poza="${e.poza || ''}">
+      ${e.poza ? html`<img src="/api/cam/${c.id}/scena/fisier/${e.poza}" loading="lazy" alt="">` : html`<div class="scena-fara"></div>`}
+      <figcaption><b>${numeEticheta(e.eticheta)}</b> <small>${e.sursa === 'vocabular' ? t('vocabular') : e.sursa === 'yolo' ? 'YOLO' : e.sursa === 'yolo-nesigur' ? t('YOLO nesigur') : ''}${pct ? ' · ' + pct : ''}</small>
+        <span class="hint">${(e.t || '').slice(11, 16)} · ${t('{n} cadre', { n: e.cadre || 0 })}</span>
+        ${fb ? html`<span class="scena-verdict">${fb.verdict === 'ok' ? '✓ ' + t('corect') : fb.verdict === 'gresit' ? '✕ ' + (fb.eticheta ? numeEticheta(fb.eticheta) : t('greșit')) : '? ' + t('nu știu')}</span>`
+             : html`<span class="scena-fb"><button class="fb-ok" title="${t('Eticheta e corectă')}">✓</button><button class="fb-nu" title="${t('Nu e asta: spune ce e')}">✕</button><button class="fb-ns" title="${t('Nu se vede clar')}">?</button></span>`}
+      </figcaption></figure>`;
+  };
+  const etichete = Object.entries(d.etichete || {}).sort((a, b) => b[1] - a[1]);
+  box.innerHTML = html`
+    <label class="inline"><input type="checkbox" class="scena-activ" ${d.activ ? 'checked' : ''}>
+      ${t('Detecție pe schimbare, în probă: învață fundalul camerei și îți arată ce e nou, fără să dea alarme')}</label>
+    ${d.fundal ? html`<div class="scena-harta" title="${t('Fundalul învățat; în roșu zonele instabile (frunze, apă), ignorate')}">
+        <img src="/api/cam/${c.id}/scena/fisier/fundal.jpg?t=${ts}" alt="${t('Fundalul învățat')}">
+        ${d.instabil ? html`<img class="scena-instabil" src="/api/cam/${c.id}/scena/fisier/instabil.png?t=${ts}" alt="">` : ''}</div>`
+      : d.activ ? html`<p class="hint">${t('Fundalul se învață în primele minute; revino puțin mai târziu.')}</p>` : ''}
+    ${d.activ ? html`<p class="hint">${t('{cadre} cadre · {cand} candidați acum · {inst}% zonă instabilă · {zg} cadre sărite (ploaie/zgomot) · {res} reînvățări (lumină)',
+        { cadre: st.cadre || 0, cand: st.candidati || 0, inst: st.instabil_pct || 0, zg: st.cadre_zgomot || 0, res: st.resetari || 0 })}</p>` : ''}
+    ${etichete.length ? html`<p class="hint">${t('Până acum')}: ${etichete.map(([k, n]) => `${numeEticheta(k)} ${n}`).join(' · ')} · ${t('verdicte')}: ✓ ${d.verdicte.ok} ✕ ${d.verdicte.gresit} ? ${d.verdicte.necunoscut}</p>` : ''}
+    ${lista(d.candidati || [], card, d.activ ? `<p class="hint">${t('Niciun candidat încă: când ceva nou apare în cadru, îl vezi aici cu eticheta propusă.')}</p>` : '')}
+    <details class="scena-vocab"><summary>${t('Vocabularul numelor (comun tuturor camerelor), un nume pe rând')}</summary>
+      <textarea rows="5">${(d.vocabular || []).join('\n')}</textarea>
+      <div class="s-btns row"><button type="button" class="vocab-save">${t('Salvează')}</button><span class="hint">${t('Numele se compară cu imaginea prin SigLIP: cuvinte simple, în română („cal cu căruță”, „tractor”, „frunze mișcate de vânt”)')}</span></div>
+    </details>`;
+  box.querySelector('.scena-activ').onchange = async (ev) => {
+    const r = await post(`/api/cam/${c.id}/scena`, { activ: ev.target.checked });
+    if (r && r.ok) { toast(ev.target.checked ? t('Detecția pe schimbare a pornit; fundalul se învață în câteva minute.') : t('Detecția pe schimbare s-a oprit.')); setTimeout(() => renderScena(c, box), 800); }
+  };
+  box.querySelector('.vocab-save').onclick = async () => {
+    const lines = box.querySelector('.scena-vocab textarea').value.split('\n').map((x) => x.trim()).filter(Boolean);
+    const r = await post('/api/settings', { scena_vocabular: lines });
+    if (r && !r.error) toast(t('Vocabular salvat ({n} nume)', { n: lines.length }));
+  };
+  const trimite = async (fig, verdict, eticheta) => {
+    const r = await post(`/api/cam/${c.id}/scena/feedback`, { id: fig.dataset.id, verdict, eticheta, poza: fig.dataset.poza });
+    if (r && r.ok) renderScena(c, box);
+  };
+  for (const fig of box.querySelectorAll('.scena-card')) {
+    const ok = fig.querySelector('.fb-ok'), nu = fig.querySelector('.fb-nu'), ns = fig.querySelector('.fb-ns');
+    if (ok) ok.onclick = () => trimite(fig, 'ok');
+    if (ns) ns.onclick = () => trimite(fig, 'necunoscut');
+    if (nu) nu.onclick = () => {
+      const sel = document.createElement('select');
+      sel.innerHTML = html`<option value="">${t('ce e de fapt?')}</option>${(d.vocabular || []).map((v) => html`<option value="${v}">${t(v)}</option>`)}<option value="__alt">${t('altceva…')}</option>`;
+      sel.onchange = async () => {
+        let v = sel.value;
+        if (v === '__alt') v = (prompt(t('Ce e în imagine? (un nume scurt)')) || '').trim();
+        if (v) await trimite(fig, 'gresit', v);
+      };
+      fig.querySelector('.scena-fb').replaceWith(sel);
+      sel.focus();
+    };
+  }
+}
 
 export { SOUND_RO, buildCamsTable, openCountEditor, openZoneEditor, pulseData };
 

@@ -118,6 +118,11 @@ DEFAULTS = {
     # Detectie de obiect nou/disparut pe camere STATICE (nvr-ai): fundal-median lent +
     # persistenta. Camerele alese emit "obiect_nou"/"obiect_disparut" cand ceva e lasat sau
     # luat si ramane asa peste prag. Trebuie sa fie si in track_cams (de acolo iau cadrele).
+    # Detectie pe schimbare (scena.py): fundalul camerei + clasificarea regiunilor noi pe
+    # decupaj, cu vocabular deschis (SigLIP). In umbra: emite "scena_candidat" (info) pentru
+    # fisa camerei, nu alarme. Camerele trebuie sa fie in track_cams.
+    "scena_cams": [],
+    "scena_vocabular": [],       # gol = lista implicita din scena_clasa.VOCABULAR_IMPLICIT
     "scene_cams": [],
     "scene_persist_min": 30,     # cate minute trebuie sa persiste schimbarea ca s-o raportam
     "scene_roi_top": 0.35,       # fractia de sus a cadrului ignorata (cer/copaci = fals-pozitive)
