@@ -93,3 +93,16 @@ def test_fundalul_si_decupajul():
 
 def test_uneste_cutii():
     assert scena._uneste([(0, 0, 10, 10), (5, 5, 10, 10), (50, 50, 5, 5)]) == [(0, 0, 15, 15), (50, 50, 5, 5)]
+
+
+def test_uniunea_prea_mare_nu_e_candidat():
+    f = _fundal()
+    s = scena.Scena(1, {"istoric": 200, "arie_max": 0.3})
+    t = _antreneaza(s, f)
+    maturi = []
+    for i in range(12):                     # doua petice mari, suprapuse, care impreuna trec de arie_max
+        g = _cu_obiect(f, 40 + i * 8, 20, w=W // 2, h=H // 2)
+        g = _cu_obiect(g, 200 + i * 8, 120, w=W // 2, h=H // 2)
+        maturi += s.feed(g, now=t)
+        t += 0.25
+    assert not maturi

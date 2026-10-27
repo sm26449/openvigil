@@ -345,12 +345,14 @@ def expand_region(region, margin=TILE_MARGIN):
             min(1.0, x2 + mx), min(1.0, y2 + my))
 
 
-def _fetch_frame(cam_id):
+def _fetch_frame(cam_id, sufix=""):
+    """Un cadru JPEG de la go2rtc: substream-ul (implicit) sau, cu sufix="_main", fluxul
+    principal (HD) — pentru decupajele care cer rezolutie."""
     import cv2
     import numpy as np
     try:
         r = requests.get(f"{C.GO2RTC_API}/api/frame.jpeg",
-                         params={"src": f"cam{cam_id}"}, timeout=8)
+                         params={"src": f"cam{cam_id}{sufix}"}, timeout=8)
         if r.ok and r.content:
             return cv2.imdecode(np.frombuffer(r.content, np.uint8), cv2.IMREAD_COLOR)
     except requests.RequestException:

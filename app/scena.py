@@ -188,7 +188,8 @@ class Scena:
             # Nu e „ceva nou”, iar candidatii n-ar fi decat picaturi: sarim cadrul.
             self.cadre_zgomot += 1
             return []
-        boxes = _uneste(boxes)
+        # dupa unire, o puzderie de petice lipite (ploaie pe tot cadrul) poate depasi arie_max
+        boxes = [b for b in _uneste(boxes) if b[2] * b[3] <= cfg["arie_max"] * arie_cadru]
         # potrivire cu candidatii existenti (IoU), cei mai mari intai
         vazuti = set()
         for b in sorted(boxes, key=lambda b: -(b[2] * b[3])):

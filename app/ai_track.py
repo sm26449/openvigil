@@ -264,6 +264,7 @@ class BatchLoop(threading.Thread):
         self.cams = {}                 # cam_id -> CamTrack
         self.scenes = {}               # cam_id -> SceneWatcher (obiect nou/disparut)
         self.schimbare = {}            # cam_id -> scena.Scena (detectie pe schimbare)
+        self._hd = {}                  # cam_id -> (t, cadru HD) pentru decupajele scenei
         self._scena_scris = {}         # cam_id -> cand am scris ultima data harta pe disc
 
     def _sync(self, want):
@@ -408,9 +409,18 @@ def _scena_schimbare(self, c, frame, now, model):
         sc = scena.Scena(c)
         self.schimbare[c] = sc
     maturi = sc.feed(frame, now)
+    hd = None
+    if maturi:
+        # decupajul din fluxul principal: un om la 30 m are 15 px pe substream si 100+ pe HD;
+        # cadrul HD se cere o data la 2 s per camera (go2rtc il decodeaza din fluxul deja deschis)
+        t_hd, img_hd = self._hd.get(c, (0, None))
+        if now - t_hd > 2:
+            img_hd = detect._fetch_frame(c, "_main")
+            self._hd[c] = (now, img_hd)
+        hd = img_hd
     for cand in maturi:
         nbox = cand.nbox(sc.w, sc.h)
-        crop = scena.decupaj(frame, nbox)
+        crop = scena.decupaj(hd if hd is not None else frame, nbox)
         if crop is None:
             continue
         with _predict_lock:
@@ -426,7 +436,7 @@ def _scena_schimbare(self, c, frame, now, model):
         self.emit_fn("scena_candidat", c, {
             "candidat": cand.id, "eticheta": rez["eticheta"], "incredere": rez["incredere"],
             "sursa": rez["sursa"], "yolo": rez["yolo"], "vocab": rez["vocab"],
-            "regiune": list(nbox), "cadre": cand.cadre, "durata": round(now - cand.t0, 1),
+            "regiune": list(nbox), "cadre": cand.cadre, "durata": round(now - cand.t0, 1), "hd": hd is not None,
             "poza": fn if ok else None, "model": detect.amprenta()})
     if now - self._scena_scris.get(c, 0) >= 60:
         self._scena_scris[c] = now
