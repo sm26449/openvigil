@@ -159,7 +159,8 @@ if [ "$BUILD" = 0 ] && { [ "${PUID:-1000}" != 1000 ] || [ "${PGID:-1000}" != 100
 fi
 if [ "$BUILD" = 1 ]; then
   grep -qE '^OPENVIGIL_IMAGE=' .env || printf 'OPENVIGIL_IMAGE=openvigil\nOPENVIGIL_VERSION=local\n' >> .env
-  export OPENVIGIL_BUILD_VERSION="$(git describe --tags --always --dirty 2>/dev/null || echo local)"
+  OPENVIGIL_BUILD_VERSION="$(git describe --tags --always --dirty 2>/dev/null || echo local)"
+  export OPENVIGIL_BUILD_VERSION
   spune "construiesc imaginea local (versiunea $OPENVIGIL_BUILD_VERSION)"
   docker compose "${FISIERE_COMPOSE[@]}" up -d --build --remove-orphans
 else
