@@ -528,8 +528,9 @@ $('#al-cam').onchange = renderAlarms;
 // arata textul a intrebare? (oglinda parserului din app/ask.py)
 function esteIntrebare(q) {
   const p = q.toLowerCase();
-  return q.endsWith('?') || /^(cand|când|cine|cate|câte|de cate|de câte)\b/.test(p)
-    || p.includes('ultima data') || p.includes('ultima dată') || p.includes('de câte ori');
+  return q.endsWith('?') || /^(cand|când|cine|cate|câte|de cate|de câte|when|who|how many|how often|what time|did|has|have|was|were)\b/.test(p)
+    || p.includes('ultima data') || p.includes('ultima dată') || p.includes('de câte ori')
+    || p.includes('last time') || p.includes('last seen');
 }
 async function askQuestion(q) {
   $('#al-info').textContent = t('Mă uit în poze...');

@@ -453,7 +453,7 @@ function buildRuleValueList() {
   if (tip === 'alarma_camera') {
     dl.innerHTML = html`${['VMD', 'linedetection', 'fielddetection', 'regionEntrance',
                            'regionExiting', 'shelteralarm', 'tamperdetection', 'scenechangedetection']
-      .map((v) => html`<option value="${v}">${t(EV_RO[v.toLowerCase()] || v)}</option>`)}`;
+      .map((v) => html`<option value="${v}">${t(EV_RO[v] || EV_RO[v.toLowerCase()] || v)}</option>`)}`;
   } else if (tip === 'persoana') {
     dl.innerHTML = html`${ruMeta.persons.map((p) => html`<option value="${p}">`)}`;
   } else if (tip === 'numar') {

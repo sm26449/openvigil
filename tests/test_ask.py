@@ -141,3 +141,16 @@ def test_appearances_grupare_si_prag(monkeypatch, tmp_path):
     assert grupuri[0]["inceput"].startswith("2026-08-15")   # cele mai noi primele
     assert grupuri[1]["camere"] == [4, 5] and grupuri[1]["poze"] == 2
     assert top > 0.99
+
+
+def test_intrebari_in_engleza():
+    assert ask.is_question("when did the garbage truck come?")
+    assert ask.is_question("How many cars passed today")
+    assert ask.is_question("last time the postman was here")
+    assert not ask.is_question("white van")
+    p = ask.parse("When did the garbage truck last come by this week?")
+    assert p["concept"] == "garbage truck" and p["mod"] == "cand" and p["days"] == 7
+    p = ask.parse("how many cars passed yesterday?")
+    assert p["label"] == "car" and p["mod"] == "cate" and p["days"] == 2
+    p = ask.parse("has anyone been here today?")
+    assert p["label"] == "person" and p["days"] == 1

@@ -6,6 +6,8 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 ## [Nepublicat]
 
 ### Adăugat
+- Întrebările în limbaj natural („when did the garbage truck come?”) merg și în engleză, cu
+  răspunsuri în limba interfeței.
 - `RECORDINGS_DIR`, `ARHIVA_DIR`, `BACKUP_DIR`: înregistrările, nivelul de arhivă și copiile
   nocturne pot sta pe alt disc decât restul datelor (bind-uri separate).
 

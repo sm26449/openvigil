@@ -334,9 +334,6 @@ $('#bulk-apply').onclick = async () => {
 };
 
 /* ---------- tabul Camere (administrare) ---------- */
-const HW_RO = { mic: [icon('talk', 13), 'microfon'], talk: [icon('listen', 13), 'difuzor'],
-                siren: [icon('siren', 13), 'sirena'], strobe: [icon('strobe', 13), 'stroboscop'],
-                zoom: [icon('zoomin', 13), 'zoom optic'], aac: null };
 const SMART_RO = { motion: 'Mișcare', line: 'Trecere linie', field: 'Intruziune',
                    enter: 'Intrare zona', exit: 'Ieșire zona', scene: 'Schimbare scena' };
 // Cele 12 sunete din firmware, traduse. Sunt rostite in engleza de catre camera;

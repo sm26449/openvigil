@@ -6,7 +6,8 @@
   modul       — "cand" (ultima aparitie) sau "cate" (numarare)
   fereastra   — azi / ieri / saptamana / luna (implicit 30 de zile)
 apoi semantic.appearances() gaseste si grupeaza aparitiile, iar answer() formuleaza
-raspunsul in romana, cu pozele-dovada alaturi.
+raspunsul (in limba interfetei, prin t()), cu pozele-dovada alaturi. Intrebarile merg in
+romana si in engleza: aceleasi liste, cu expresiile ambelor limbi.
 
 Parserul e intentionat simplu: liste de expresii de scos si de ferestre de timp,
 fara modele de limbaj — intrebarile despre camere au o structura foarte previzibila,
@@ -15,6 +16,8 @@ si un parser previzibil poate fi TESTAT.
 import re
 import time
 import unicodedata
+
+from i18n import t
 
 ZILE_RO = ["luni", "marti", "miercuri", "joi", "vineri", "sambata", "duminica"]
 
@@ -26,6 +29,13 @@ _STOP = [
     "a aparut", "au aparut", "a trecut", "au trecut", "a fost", "au fost",
     "pe la noi", "la noi", "pe aici", "pe acasa", "pe strada", "prin fata",
     "cand", "cine", "cate", "cati", "oare", "vazut", "vazuta",
+    # engleza
+    "when did", "when was", "when were", "when has", "when have", "what time did",
+    "the last time", "last time", "last seen", "how many times", "how many", "how often",
+    "show up", "showed up", "come by", "came by", "come", "came", "arrive", "arrived",
+    "appear", "appeared", "pass by", "passed by", "pass", "passed", "visit", "visited",
+    "been here", "at our place", "around here", "here", "did", "does", "was", "were",
+    "has", "have", "when", "who", "seen", "see", "last", "first", "ever", "again", "lately",
 ]
 
 # Conceptele care sunt chiar etichetele detectiei YOLO: pentru ele raspunsul vine
@@ -45,13 +55,26 @@ for _forme, _lbl in [
     (("vaca", "vaci"), "cow"), (("urs", "ursi"), "bear"),
     (("gaina", "gaini", "gainile"), "chicken"),
     (("porumbel", "porumbei", "porumbeii"), "pigeon"),
+    # engleza
+    (("car", "cars", "vehicle", "vehicles"), "car"),
+    (("truck", "trucks", "lorry", "lorries", "van", "vans"), "truck"),
+    (("motorcycle", "motorcycles", "motorbike", "motorbikes", "scooter", "scooters"), "motorcycle"),
+    (("bus", "buses"), "bus"),
+    (("person", "people", "someone", "somebody", "man", "woman", "anyone"), "person"),
+    (("dog", "dogs"), "dog"), (("cat", "cats"), "cat"), (("bird", "birds"), "bird"),
+    (("horse", "horses"), "horse"), (("sheep",), "sheep"), (("cow", "cows"), "cow"),
+    (("bear", "bears"), "bear"), (("chicken", "chickens", "hen", "hens"), "chicken"),
+    (("pigeon", "pigeons"), "pigeon"),
 ]:
     for _f in _forme:
         _LABELS[_f] = _lbl
-_ARTICOLE = ("o ", "un ", "niste ", "vreo ", "vreun ")
+_ARTICOLE = ("o ", "un ", "niste ", "vreo ", "vreun ", "the ", "a ", "an ", "some ", "any ")
 _FERESTRE = [("azi", 1), ("astazi", 1), ("ieri", 2), ("alaltaieri", 3),
              ("saptamana asta", 7), ("saptamana trecuta", 14), ("saptamana", 7),
-             ("luna asta", 31), ("luna trecuta", 62), ("luna", 31)]
+             ("luna asta", 31), ("luna trecuta", 62), ("luna", 31),
+             ("today", 1), ("yesterday", 2), ("this week", 7), ("last week", 14),
+             ("past week", 7), ("this month", 31), ("last month", 62), ("past month", 31),
+             ("week", 7), ("month", 31)]
 
 
 def _plat(s):
@@ -67,14 +90,16 @@ def is_question(q):
         return False
     if str(q).strip().endswith("?"):
         return True
-    return bool(re.match(r"^(cand|cine|cate|de cate|cati)\b", p)
-                or "ultima data" in p or "ultima oara" in p or "de cate ori" in p)
+    return bool(re.match(r"^(cand|cine|cate|de cate|cati|when|who|how many|how often|what time|did|has|have|was|were)\b", p)
+                or "ultima data" in p or "ultima oara" in p or "de cate ori" in p
+                or "last time" in p or "last seen" in p)
 
 
 def parse(q):
     """{"concept", "mod": "cand"|"cate", "days": int} dintr-o intrebare libera."""
     p = _plat(q)
-    mod = "cate" if ("de cate ori" in p or re.match(r"^cate\b", p)) else "cand"
+    mod = "cate" if ("de cate ori" in p or re.match(r"^cate\b", p)
+                     or "how many" in p or "how often" in p) else "cand"
     days = 30
     for expr, d in _FERESTRE:
         if expr in p:
@@ -84,32 +109,33 @@ def parse(q):
     for expr in _STOP:
         p = re.sub(r"\b" + re.escape(expr) + r"\b", " ", p)
     concept = re.sub(r"\s+", " ", p).strip(" .,")
+    for art in _ARTICOLE:          # articolul nu face parte din concept („the garbage truck”)
+        if concept.startswith(art):
+            concept = concept[len(art):]
+            break
     gol = concept
-    for art in _ARTICOLE:
-        if gol.startswith(art):
-            gol = gol[len(art):]
     return {"concept": concept, "mod": mod, "days": days,
             "label": _LABELS.get(gol)}
 
 
-def _fmt(t):
+def _fmt(cand):
     """'2026-08-15 09:12:33' -> 'azi 09:12' / 'ieri 09:12' / 'vineri 15.08 09:12'."""
-    st = time.strptime(t, "%Y-%m-%d %H:%M:%S")
+    st = time.strptime(cand, "%Y-%m-%d %H:%M:%S")
     azi = time.strftime("%Y-%m-%d")
     ieri = time.strftime("%Y-%m-%d", time.localtime(time.time() - 86400))
     hhmm = time.strftime("%H:%M", st)
-    if t[:10] == azi:
-        return f"azi {hhmm}"
-    if t[:10] == ieri:
-        return f"ieri {hhmm}"
-    return f"{ZILE_RO[st.tm_wday]} {st.tm_mday:02d}.{st.tm_mon:02d} {hhmm}"
+    if cand[:10] == azi:
+        return t("azi {ora}", ora=hhmm)
+    if cand[:10] == ieri:
+        return t("ieri {ora}", ora=hhmm)
+    return f"{t(ZILE_RO[st.tm_wday])} {st.tm_mday:02d}.{st.tm_mon:02d} {hhmm}"
 
 
 VEHICLE_LABELS = {"car", "truck", "bus", "motorcycle"}
 
 
-def _epoch(t):
-    return time.mktime(time.strptime(t, "%Y-%m-%d %H:%M:%S"))
+def _epoch(cand):
+    return time.mktime(time.strptime(cand, "%Y-%m-%d %H:%M:%S"))
 
 
 def answer(q, visible=None, cam_names=None, cam=None):
@@ -128,12 +154,12 @@ def answer(q, visible=None, cam_names=None, cam=None):
     if cam:
         visible = {cam} if visible is None else (visible & {cam})
     if not p["concept"]:
-        return {**p, "raspuns": "Nu am inteles ce cauti — incearca de exemplu: "
-                                "„cand a venit masina de gunoi?”", "aparitii": []}
-    fereastra = ("azi" if p["days"] == 1 else
-                 f"in ultimele {p['days']} zile" if p["days"] > 2 else "de ieri incoace")
+        return {**p, "raspuns": t("Nu am inteles ce cauti — incearca de exemplu: „cand a venit masina de gunoi?”"),
+                "aparitii": []}
+    fereastra = (t("azi") if p["days"] == 1 else
+                 t("in ultimele {n} zile", n=p["days"]) if p["days"] > 2 else t("de ieri incoace"))
     if cam:
-        fereastra += f", pe {nume.get(cam) or f'camera {cam}'}"
+        fereastra += ", " + t("pe {cam}", cam=nume.get(cam) or t("camera {id}", id=cam))
 
     def unde(g):
         return ", ".join(str(nume.get(c) or f"cam {c}") for c in g["camere"])
@@ -154,11 +180,11 @@ def answer(q, visible=None, cam_names=None, cam=None):
                 dirs[d] = dirs.get(d, 0) + 1
             dir_txt = ", ".join(f"{n} {d}" for d, n in
                                 sorted(dirs.items(), key=lambda x: -x[1]) if d != "?")
-            text = (f"„{p['concept']}”: exact {len(urmarite)} {fereastra}, numarate "
-                    f"bucata cu bucata prin urmarire"
+            text = (t("„{concept}”: exact {n} {fereastra}, numarate bucata cu bucata prin urmarire",
+                      concept=p["concept"], n=len(urmarite), fereastra=fereastra)
                     + (f" ({dir_txt})" if dir_txt else "") + ". "
-                    f"Ultima: {_fmt(ultima['t'])} "
-                    f"({nume.get(ultima.get('cam')) or 'cam ' + str(ultima.get('cam'))}).")
+                    + t("Ultima: {cand} ({unde}).", cand=_fmt(ultima["t"]),
+                        unde=nume.get(ultima.get("cam")) or "cam " + str(ultima.get("cam"))))
             grupuri = [{"inceput": e["t"], "sfarsit": e["t"],
                         "camere": [e.get("cam")], "poze": e.get("cadre", 1),
                         "scor": 1.0, "coperta": None, "durata": e.get("durata", 0)}
@@ -168,18 +194,16 @@ def answer(q, visible=None, cam_names=None, cam=None):
                if e["detaliu"] == p["label"] and _epoch(e["inceput"]) >= cutoff
                and (visible is None or e.get("cam") in visible)]
         if not eps:
-            return {**p, "raspuns": f"Nicio trecere de „{p['concept']}” {fereastra}.",
+            return {**p, "raspuns": t("Nicio trecere de „{concept}” {fereastra}.", concept=p["concept"], fereastra=fereastra),
                     "aparitii": [], "top": 1.0}
         grupuri = [{"inceput": e["inceput"], "sfarsit": e["sfarsit"],
                     "camere": [e["cam"]], "poze": e["evenimente"],
                     "scor": 1.0, "coperta": None, "durata": e["durata"]}
                    for e in eps]
         ultima = grupuri[0]
-        text = (f"„{p['concept']}”: {len(eps)} treceri {fereastra} (din jurnalul de "
-                f"detectii). Ultima: {_fmt(ultima['inceput'])} ({unde(ultima)})."
-                " Nota: masinile care trec una dupa alta la sub cateva minute se vad"
-                " ca o singura trecere — pentru numaratoarea bucata cu bucata,"
-                " porneste urmarirea pe camera respectiva (AI → Masini).")
+        text = (t("„{concept}”: {n} treceri {fereastra} (din jurnalul de detectii).", concept=p["concept"], n=len(eps), fereastra=fereastra)
+                + " " + t("Ultima: {cand} ({unde}).", cand=_fmt(ultima["inceput"]), unde=unde(ultima))
+                + " " + t("Nota: masinile care trec una dupa alta la sub cateva minute se vad ca o singura trecere — pentru numaratoarea bucata cu bucata, porneste urmarirea pe camera respectiva (AI → Masini)."))
         return {**p, "raspuns": text, "aparitii": grupuri[:20], "top": 1.0}
 
     # calea 2/3: SigLIP — cu filtru de eticheta si grupare fina daca apare un vehicul
@@ -193,22 +217,21 @@ def answer(q, visible=None, cam_names=None, cam=None):
     grupuri, top = semantic.appearances(p["concept"], days=p["days"],
                                         visible=visible, gap=gap, labels=labels)
     if not grupuri:
-        text = (f"Nu am gasit „{p['concept']}” {fereastra}. "
-                "Conceptul se cauta in pozele salvate la detectii — daca nu declanseaza "
-                "detectia, nu are cum sa apara aici.")
+        text = (t("Nu am gasit „{concept}” {fereastra}.", concept=p["concept"], fereastra=fereastra) + " "
+                + t("Conceptul se cauta in pozele salvate la detectii — daca nu declanseaza detectia, nu are cum sa apara aici."))
         return {**p, "raspuns": text, "aparitii": [], "top": top}
     ultima = grupuri[0]
     if p["mod"] == "cate":
-        text = (f"„{p['concept']}”: aproximativ {len(grupuri)} aparitii distincte "
-                f"{fereastra}. Ultima: {_fmt(ultima['inceput'])} ({unde(ultima)}).")
+        text = (t("„{concept}”: aproximativ {n} aparitii distincte {fereastra}.", concept=p["concept"], n=len(grupuri), fereastra=fereastra)
+                + " " + t("Ultima: {cand} ({unde}).", cand=_fmt(ultima["inceput"]), unde=unde(ultima)))
     else:
-        text = f"Ultima data: {_fmt(ultima['inceput'])} ({unde(ultima)})."
+        text = t("Ultima data: {cand} ({unde}).", cand=_fmt(ultima["inceput"]), unde=unde(ultima))
         if len(grupuri) > 1:
-            text += f" Inainte de asta: {_fmt(grupuri[1]['inceput'])}."
-        text += f" In total {len(grupuri)} aparitii {fereastra}."
+            text += " " + t("Inainte de asta: {cand}.", cand=_fmt(grupuri[1]["inceput"]))
+        text += " " + t("In total {n} aparitii {fereastra}.", n=len(grupuri), fereastra=fereastra)
     # Onestitate: sub pragul asta, SigLIP potriveste si "girafa cu elicopterul" pe
     # cate ceva (masurat: nonsensul da ~0.075, potrivirile bune 0.08+). Mai bine
     # spunem ca nu suntem siguri decat sa raspundem cu aplomb la orice.
     if top < 0.08:
-        text += " ⚠ Potrivirea e slaba — verifica pozele, s-ar putea sa ma insel."
+        text += " " + t("⚠ Potrivirea e slaba — verifica pozele, s-ar putea sa ma insel.")
     return {**p, "raspuns": text, "aparitii": grupuri[:20], "top": top}
