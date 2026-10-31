@@ -173,6 +173,22 @@ def describe_crop(img_pil, prompt=PROMPT):
     return " ".join(text.split()).strip(" .") + "."
 
 
+def text(prompt, max_tokens=24):
+    """Un raspuns scurt doar din text (fara imagine) — ex. traducerea unui nume din vocabular
+    pentru YOLO-World. Acelasi model, aceeasi incarcare lenesa."""
+    import torch
+    model, proc = _get_model()
+    msgs = [{"role": "user", "content": [{"type": "text", "text": prompt}]}]
+    with _lock, torch.no_grad():
+        inputs = proc.apply_chat_template(msgs, add_generation_prompt=True, tokenize=True,
+                                          return_dict=True, return_tensors="pt").to(model.device)
+        out = model.generate(**inputs, max_new_tokens=max_tokens, do_sample=False)
+        txt = proc.decode(out[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True)
+    global _last_use
+    _last_use = time.time()
+    return " ".join(txt.split())
+
+
 def process(cam_id, img_bgr, boxes):
     """Descrie persoanele dintr-un cadru (async-friendly: chemata dintr-un thread).
 

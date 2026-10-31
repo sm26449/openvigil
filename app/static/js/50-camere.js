@@ -955,7 +955,7 @@ async function renderScena(c, box) {
     const pct = e.incredere ? Math.round(e.incredere * (e.sursa === 'vocabular' ? 1000 : 100)) : 0;
     return html`<figure class="scena-card${fb ? ' ' + fb.verdict : ''}" data-id="${e.id}" data-poza="${e.poza || ''}">
       ${e.poza ? html`<img src="/api/cam/${c.id}/scena/fisier/${e.poza}" loading="lazy" alt="">` : html`<div class="scena-fara"></div>`}
-      <figcaption><b>${numeEticheta(e.eticheta)}</b> <small>${e.sursa === 'vocabular' ? t('vocabular') : e.sursa === 'yolo' ? 'YOLO' : e.sursa === 'yolo-nesigur' ? t('YOLO nesigur') : ''}${pct ? ' · ' + pct : ''}</small>
+      <figcaption><b>${numeEticheta(e.eticheta)}</b> <small>${e.sursa === 'vocabular' ? t('vocabular') : e.sursa === 'yolo' ? 'YOLO' : e.sursa === 'yolo-world' ? 'YOLO-World' : e.sursa === 'yolo-nesigur' ? t('YOLO nesigur') : ''}${pct ? ' · ' + pct : ''}</small>
         <span class="hint">${(e.t || '').slice(11, 16)} · ${t('{n} cadre', { n: e.cadre || 0 })}</span>
         ${e.analiza ? html`<span class="scena-analiza" title="${e.analiza.vlm ? 'VLM: ' + e.analiza.vlm : ''}">🔍 ${numeEticheta(e.analiza.eticheta)}${e.analiza.vlm && e.analiza.vlm !== e.analiza.eticheta ? html` <i>„${e.analiza.vlm}”</i>` : ''}</span>` : ''}
         ${fb ? html`<span class="scena-verdict">${fb.verdict === 'ok' ? '✓ ' + (fb.eticheta ? numeEticheta(fb.eticheta) : t('corect')) : fb.verdict === 'gresit' ? '✕ ' + (fb.eticheta ? numeEticheta(fb.eticheta) : t('greșit')) : '? ' + t('nu știu')}</span>`
@@ -978,7 +978,7 @@ async function renderScena(c, box) {
     ${lista(d.candidati || [], card, d.activ ? `<p class="hint">${t('Niciun candidat încă: când ceva nou apare în cadru, îl vezi aici cu eticheta propusă.')}</p>` : '')}
     <details class="scena-vocab"><summary>${t('Vocabularul numelor (comun tuturor camerelor), un nume pe rând')}</summary>
       <textarea rows="5">${(d.vocabular || []).join('\n')}</textarea>
-      <div class="s-btns row"><button type="button" class="vocab-save">${t('Salvează')}</button><span class="hint">${t('Numele se compară cu imaginea prin SigLIP: cuvinte simple, în română („cal cu căruță”, „tractor”, „frunze mișcate de vânt”)')}</span></div>
+      <div class="s-btns row"><button type="button" class="vocab-save">${t('Salvează')}</button><span class="hint">${t('Numele se compară cu imaginea prin SigLIP și YOLO-World: cuvinte simple, în română („cal cu căruță”, „tractor”); pentru un nume pe care interfața nu-l știe în engleză poți scrie „nume = english name”')}</span></div>
     </details>`;
   box.querySelector('.scena-activ').onchange = async (ev) => {
     const r = await post(`/api/cam/${c.id}/scena`, { activ: ev.target.checked });

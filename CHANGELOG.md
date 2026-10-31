@@ -13,6 +13,11 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   Opțional, candidații pleacă pe Telegram ca poză cu butoane (✓ corect, ✕ ce e de fapt,
   🔍 reanalizează); 🔍 cere o analiză adâncă (YOLO la 640, tot vocabularul, modelul de limbaj
   Qwen2.5-VL) și răspunde în același chat. Evenimente noi: `scena_candidat`, `scena_analiza`.
+  Vocabularul trece și prin YOLO-World (detector cu vocabular deschis, `yolov8m-worldv2`,
+  descărcat la prima pornire în `data/modele/`): vede obiectul din decupaj, nu fundalul, și
+  câștigă când YOLO-ul antrenat nu e sigur. Numele românești primesc forma engleză pentru
+  CLIP din dicționarul interfeței, din „nume = english name” scris în vocabular sau printr-o
+  traducere memorată; setarea `scena_lume` îl oprește.
 - Întrebările în limbaj natural („when did the garbage truck come?”) merg și în engleză, cu
   răspunsuri în limba interfeței.
 - `RECORDINGS_DIR`, `ARHIVA_DIR`, `BACKUP_DIR`: înregistrările, nivelul de arhivă și copiile

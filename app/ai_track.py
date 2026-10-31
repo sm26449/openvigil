@@ -435,7 +435,7 @@ def _scena_schimbare(self, c, frame, now, model):
                 f.write(buf.tobytes())
         self.emit_fn("scena_candidat", c, {
             "candidat": cand.id, "eticheta": rez["eticheta"], "incredere": rez["incredere"],
-            "sursa": rez["sursa"], "yolo": rez["yolo"], "vocab": rez["vocab"],
+            "sursa": rez["sursa"], "yolo": rez["yolo"], "lume": rez.get("lume"), "vocab": rez["vocab"],
             "regiune": list(nbox), "cadre": cand.cadre, "durata": round(now - cand.t0, 1), "hd": hd is not None,
             "poza": fn if ok else None, "model": detect.amprenta()})
     if now - self._scena_scris.get(c, 0) >= 60:

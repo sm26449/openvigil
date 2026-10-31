@@ -123,6 +123,7 @@ DEFAULTS = {
     # fisa camerei, nu alarme. Camerele trebuie sa fie in track_cams.
     "scena_cams": [],
     "scena_vocabular": [],       # gol = lista implicita din scena_clasa.VOCABULAR_IMPLICIT
+    "scena_lume": True,          # YOLO-World pe decupaj (detector cu vocabularul; greutati descarcate la prima pornire)
     "scena_telegram": False,     # candidatii (fara ploaie/umbra/frunze) pe Telegram, cu butoane
     "scena_telegram_cooldown": 300,   # secunde intre doi candidati trimisi de pe aceeasi camera
     "scene_cams": [],

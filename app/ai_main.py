@@ -865,6 +865,9 @@ def warmup():
     if b.get("semantic"):
         import semantic
         semantic.warmup_async()
+    if b.get("scena_lume"):
+        import scena_lume
+        scena_lume.warmup_async()
     return jsonify({"ok": True})
 
 
@@ -979,6 +982,7 @@ def capabilities():
         "serviciu": "nvr-ai", "contract": CONTRACT,
         "pornit_de_s": int(time.time() - START),
         "vram": _vram(),
+        "scena_lume": __import__("scena_lume").stare(),
         "permisiuni": ["cadre:go2rtc+isapi", "evenimente:web:/api/internal/emit",
                        "index:web:/api/internal/index",
                        "fs:data/snapshots,data/faces,data/plates,data/tmp"],
@@ -1034,6 +1038,9 @@ def main():
                 describe._get_model()
             except Exception as e:
                 logare.info(f"[nvr-ai] warmup describe: {str(e)[:80]}")
+        if settings.get("scena_cams"):
+            import scena_lume                 # YOLO-World + CLIP (fp32), tot in afara ferestrei bf16
+            scena_lume.pregateste()
         ai_track.sync(emit)                   # urmaritorii dupa track_cams
         import detect
         detect.sync()                         # bucla de detectie (#9 pas 2) — AICI

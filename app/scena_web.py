@@ -273,6 +273,9 @@ def text_analiza(r):
     y = r.get("yolo")
     if y:
         parti.append(f"YOLO: {_eticheta_text(y.get('eticheta'))} {round((y.get('incredere') or 0) * 100)}%")
+    w = r.get("lume")
+    if w:
+        parti.append(f"YOLO-World: {t(w.get('eticheta') or '')} {round((w.get('incredere') or 0) * 100)}%")
     v = r.get("vocab") or []
     if v:
         parti.append(t("vocabular: {lista}", lista=", ".join(f"{t(x['nume'])} {round(x['scor'] * 1000)}" for x in v[:3])))

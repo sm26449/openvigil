@@ -12,6 +12,8 @@ celorlalte; altfel „necunoscut” — si exact necunoscutele sunt cele pe care
 in fisa camerei, ca sa ne spuna ce sunt (feedback-ul intra la antrenament).
 Textele vocabularului sunt in romana (SigLIP e multilingv); interfata le traduce la afisare.
 """
+import json
+import os
 import re
 import threading
 
@@ -21,6 +23,7 @@ import logare
 import settings
 
 PRAG_YOLO = 0.5          # increderea YOLO de la care nu mai intrebam vocabularul
+PRAG_LUME = 0.3          # increderea YOLO-World (detector pe vocabular) de la care o credem
 PRAG_VOCAB = 0.05        # scorul SigLIP (cosinus) sub care nu credem niciun nume
 MARJA_VOCAB = 0.01       # cat trebuie sa fie peste al doilea nume ca sa fie „clar”
 
@@ -34,10 +37,58 @@ _lock = threading.Lock()
 _vocab_cache = {"chei": None, "emb": None}
 
 
-def vocabular():
+def _linii():
     v = settings.get("scena_vocabular")
-    v = [str(x).strip() for x in (v or []) if str(x).strip()]
-    return v or list(VOCABULAR_IMPLICIT)
+    return [str(x).strip() for x in (v or []) if str(x).strip()] or list(VOCABULAR_IMPLICIT)
+
+
+def _desparte(linie):
+    """„cal cu căruță = horse cart” -> („cal cu căruță”, „horse cart”); fara „=” -> (nume, None)."""
+    ro, _, en = linie.partition("=")
+    return ro.strip(), (en.strip() or None)
+
+
+def vocabular():
+    """Numele (romana) din vocabular — ce vede omul si ce compara SigLIP."""
+    return [ro for ro, _ in (_desparte(x) for x in _linii()) if ro]
+
+
+_EN_CACHE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                         "data", "scena", "vocab_en.json")
+
+
+def engleza(nume):
+    """Forma engleza a unui nume din vocabular, pentru CLIP (YOLO-World): cea scrisa explicit
+    („nume = english”), altfel dictionarul interfetei (en.json), altfel o traducere prin
+    Qwen memorata in data/scena/vocab_en.json; in ultima instanta numele ca atare."""
+    for ro, en in (_desparte(x) for x in _linii()):
+        if ro == nume and en:
+            return en
+    import i18n
+    if nume in i18n.dictionar("en"):          # stiut de interfata (chiar daca e identic: „tractor”)
+        return i18n.t(nume, "en")
+    cache = {}
+    try:
+        with open(_EN_CACHE, encoding="utf-8") as f:
+            cache = json.load(f)
+    except (OSError, ValueError):
+        pass
+    if nume in cache:
+        return cache[nume]
+    try:
+        import describe
+        tr = describe.text(f"Translate to English, answer with the translation only, 1-4 words: {nume}")
+        tr = tr.strip(" .\n\"'").lower()
+        if 0 < len(tr) <= 40:
+            cache[nume] = tr
+            os.makedirs(os.path.dirname(_EN_CACHE), exist_ok=True)
+            with open(_EN_CACHE, "w", encoding="utf-8") as f:
+                json.dump(cache, f, ensure_ascii=False, indent=1)
+            logare.info(f"[scena] tradus pentru YOLO-World: {nume} -> {tr}")
+            return tr
+    except Exception as e:
+        logare.info(f"[scena] traducere {nume}: {str(e)[:80]}")
+    return nume
 
 
 def _embeddings_vocab(nume):
@@ -82,9 +133,16 @@ def _vocab(crop_bgr, n=3):
     return [{"nume": nume[i], "scor": round(float(scoruri[i]), 4)} for i in ordine]
 
 
+def _lume(crop_bgr, imgsz=320, quantize=None):
+    import scena_lume
+    return scena_lume.detecteaza(crop_bgr, imgsz=imgsz, quantize=quantize)
+
+
 def clasifica(crop_bgr, model=None, clase=None, quantize=None):
-    """{eticheta, incredere, sursa, yolo, vocab} pentru un decupaj BGR."""
-    rez = {"eticheta": "necunoscut", "incredere": 0.0, "sursa": "-", "yolo": None, "vocab": None}
+    """{eticheta, incredere, sursa, yolo, lume, vocab} pentru un decupaj BGR.
+    Trei pareri: YOLO-ul instalatiei (clasele antrenate), YOLO-World (detector pe vocabular)
+    si SigLIP (tot decupajul fata de vocabular); decizia in _decide."""
+    rez = {"eticheta": "necunoscut", "incredere": 0.0, "sursa": "-", "yolo": None, "lume": None, "vocab": None}
     if crop_bgr is None or crop_bgr.size == 0:
         return rez
     if model is not None:
@@ -93,12 +151,24 @@ def clasifica(crop_bgr, model=None, clase=None, quantize=None):
         except Exception as e:
             logare.info(f"[scena] yolo pe decupaj: {str(e)[:80]}")
     try:
+        rez["lume"] = _lume(crop_bgr, quantize=quantize)
+    except Exception as e:
+        logare.info(f"[scena] yolo-world: {str(e)[:80]}")
+    try:
         rez["vocab"] = _vocab(crop_bgr)
     except Exception as e:
         logare.info(f"[scena] vocabular: {str(e)[:80]}")
-    y, v = rez["yolo"], rez["vocab"]
+    return _decide(rez)
+
+
+def _decide(rez):
+    """YOLO-ul antrenat cand e sigur; altfel YOLO-World (vede obiectul, nu fundalul);
+    altfel SigLIP daca un nume iese clar in fata; altfel YOLO nesigur; altfel necunoscut."""
+    y, w, v = rez.get("yolo"), rez.get("lume"), rez.get("vocab")
     if y and y["incredere"] >= PRAG_YOLO:
         rez.update(eticheta=y["eticheta"], incredere=y["incredere"], sursa="yolo")
+    elif w and w["incredere"] >= PRAG_LUME:
+        rez.update(eticheta=w["eticheta"], incredere=w["incredere"], sursa="yolo-world")
     elif v and v[0]["scor"] >= PRAG_VOCAB and (len(v) < 2 or v[0]["scor"] - v[1]["scor"] >= MARJA_VOCAB):
         rez.update(eticheta=v[0]["nume"], incredere=v[0]["scor"], sursa="vocabular")
     elif y:
@@ -150,7 +220,8 @@ def analiza_adanca(crop_bgr, model=None, clase=None, quantize=None, lock=None):
     (modelul partajat cu urmarirea); VLM-ul are lacatul lui si nu blocheaza camerele.
     Decizia: VLM-ul primeaza (vede contextul, nu doar forma); daca raspunsul contine un nume
     din vocabular, eticheta e acel nume (ramane antrenabil); altfel textul lui, scurtat."""
-    rez = {"eticheta": "necunoscut", "incredere": 0.0, "sursa": "-", "yolo": None, "vocab": None, "vlm": None}
+    rez = {"eticheta": "necunoscut", "incredere": 0.0, "sursa": "-", "yolo": None, "lume": None,
+           "vocab": None, "vlm": None}
     if crop_bgr is None or crop_bgr.size == 0:
         return rez
     if model is not None:
@@ -162,6 +233,10 @@ def analiza_adanca(crop_bgr, model=None, clase=None, quantize=None, lock=None):
                 rez["yolo"] = _yolo(crop_bgr, model, clase or {}, quantize, imgsz=640)
         except Exception as e:
             logare.info(f"[scena] analiza yolo: {str(e)[:80]}")
+    try:
+        rez["lume"] = _lume(crop_bgr, imgsz=640, quantize=quantize)
+    except Exception as e:
+        logare.info(f"[scena] analiza yolo-world: {str(e)[:80]}")
     try:
         rez["vocab"] = _vocab(crop_bgr, n=5)
     except Exception as e:
@@ -179,12 +254,9 @@ def analiza_adanca(crop_bgr, model=None, clase=None, quantize=None, lock=None):
 
 
 def _decide_adanc(rez):
-    y, v, vlm = rez["yolo"], rez["vocab"], rez["vlm"]
+    vlm = rez.get("vlm")
     nume = _din_vocabular(vlm, vocabular()) if vlm else None
     if vlm and (nume or not _vlm_e_nimic(vlm)):
         rez.update(eticheta=nume or vlm, incredere=1.0, sursa="vlm")
-    elif y and y["incredere"] >= PRAG_YOLO:
-        rez.update(eticheta=y["eticheta"], incredere=y["incredere"], sursa="yolo")
-    elif v and v[0]["scor"] >= PRAG_VOCAB and (len(v) < 2 or v[0]["scor"] - v[1]["scor"] >= MARJA_VOCAB):
-        rez.update(eticheta=v[0]["nume"], incredere=v[0]["scor"], sursa="vocabular")
-    return rez
+        return rez
+    return _decide(rez)

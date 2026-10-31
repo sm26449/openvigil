@@ -125,3 +125,33 @@ def test_decizia_analizei_adanci(monkeypatch):
     assert (r["eticheta"], r["sursa"]) == ("mașină albă", "vlm")        # nu e in vocabular: textul lui
     r = scena_clasa._decide_adanc({**baza, "vlm": "pământ, copaci, clădire, vânt, vânt, vânt", "yolo": None})
     assert (r["eticheta"], r["sursa"]) == ("om", "vocabular")           # insiruire = nu e eticheta
+
+
+def test_vocabular_cu_forma_engleza(monkeypatch, tmp_path):
+    import scena_clasa
+    monkeypatch.setattr(scena_clasa.settings, "get",
+                        lambda k, d=None: ["om", "cal cu căruță = horse cart", "tractor", "bou"] if k == "scena_vocabular" else d)
+    monkeypatch.setattr(scena_clasa, "_EN_CACHE", str(tmp_path / "vocab_en.json"))
+    assert scena_clasa.vocabular() == ["om", "cal cu căruță", "tractor", "bou"]
+    assert scena_clasa.engleza("cal cu căruță") == "horse cart"       # scrisa explicit
+    assert scena_clasa.engleza("om") == "person"                       # din en.json
+    import describe
+    monkeypatch.setattr(describe, "text", lambda p, max_tokens=24: "Ox.")
+    assert scena_clasa.engleza("bou") == "ox"                          # tradus si memorat
+    monkeypatch.setattr(describe, "text", lambda p, max_tokens=24: (_ for _ in ()).throw(RuntimeError("x")))
+    assert scena_clasa.engleza("bou") == "ox"                          # din cache, fara Qwen
+    assert scena_clasa.engleza("zimbru") == "zimbru"                   # nimic nu stie: ca atare
+
+
+def test_decizia_cu_yolo_world():
+    import scena_clasa
+    baza = {"eticheta": "necunoscut", "incredere": 0.0, "sursa": "-", "yolo": None, "lume": None, "vocab": None}
+    r = scena_clasa._decide({**baza, "lume": {"eticheta": "om pe bicicletă", "incredere": 0.41},
+                             "vocab": [{"nume": "umbră", "scor": 0.09}, {"nume": "om", "scor": 0.05}]})
+    assert (r["eticheta"], r["sursa"]) == ("om pe bicicletă", "yolo-world")   # detectorul bate fundalul
+    r = scena_clasa._decide({**baza, "yolo": {"eticheta": "person", "incredere": 0.7},
+                             "lume": {"eticheta": "om pe bicicletă", "incredere": 0.9}})
+    assert r["sursa"] == "yolo"                                                # modelul antrenat, cand e sigur
+    r = scena_clasa._decide({**baza, "lume": {"eticheta": "tractor", "incredere": 0.2},
+                             "vocab": [{"nume": "tractor", "scor": 0.09}, {"nume": "om", "scor": 0.05}]})
+    assert (r["eticheta"], r["sursa"]) == ("tractor", "vocabular")             # YOLO-World nesigur: SigLIP
