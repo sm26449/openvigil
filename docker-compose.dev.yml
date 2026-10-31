@@ -25,3 +25,4 @@ services:
     volumes: *dev-volumes
     environment:
       TORCH_DISABLE_NATIVE_JIT: "1"   # ca in Dockerfile; codul montat poate fi mai nou decat imaginea
+      PYTORCH_CUDA_ALLOC_CONF: "expandable_segments:True"

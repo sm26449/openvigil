@@ -18,6 +18,15 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 - `RECORDINGS_DIR`, `ARHIVA_DIR`, `BACKUP_DIR`: înregistrările, nivelul de arhivă și copiile
   nocturne pot sta pe alt disc decât restul datelor (bind-uri separate).
 
+### Reparat
+- Modelul de limbaj (descrieri de persoane/vehicule, analiza „ceva nou”) pica în imaginea
+  Docker cu „Failed to find C compiler”: torch 2.13 trecea unele operații prin nuclee Triton,
+  care cer un compilator. `TORCH_DISABLE_NATIVE_JIT=1` în imagine ține torch pe nucleele clasice.
+- După descărcarea modelului de limbaj, torch rămânea cu ~8 GB de VRAM rezervați dar
+  nefolosiți (fragmentare), iar următoarea încărcare pica cu „VRAM insuficient”.
+  `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` în imagine (se pierduse la mutarea de pe
+  systemd). Raportul `/capabilities` al nvr-ai arată acum VRAM-ul pe modele și fragmentarea.
+
 ## [1.0.0] — 2026-10-26
 
 Prima versiune publicată.

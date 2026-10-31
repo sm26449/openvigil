@@ -883,9 +883,45 @@ def _vram():
         rez = torch.cuda.memory_reserved()
         return {"liber_mb": free // 2**20, "total_mb": total // 2**20,
                 "torch_alocat_mb": aloc // 2**20, "torch_rezervat_mb": rez // 2**20,
-                "folosit_de_altii_mb": (total - free - rez) // 2**20}
+                "folosit_de_altii_mb": (total - free - rez) // 2**20,
+                "modele_mb": _vram_modele(), **_vram_fragmentare()}
     except Exception:
         return None
+
+
+def _vram_fragmentare():
+    """Cat din rezervarea torch e cache inutilizabil: `inactive_split` = bucati libere din
+    segmente partial ocupate (nu pot fi date inapoi driverului fara expandable_segments)."""
+    try:
+        import torch
+        st = torch.cuda.memory_stats()
+        return {"fragmente_inactive_mb": int(st.get("inactive_split_bytes.all.current", 0)) // 2**20,
+                "alocator": os.environ.get("PYTORCH_CUDA_ALLOC_CONF") or "implicit"}
+    except Exception:
+        return {}
+
+
+def _vram_modele():
+    """Cat tin parametrii fiecarui model PyTorch incarcat (MB), ca sa se vada cine ocupa
+    VRAM-ul: YOLO al detectiei, YOLO al urmaririi (copie separata), YOLO stoc (a doua
+    opinie), SigLIP, Qwen. Restul pana la torch_alocat = activari/cache de inferenta."""
+    import sys
+    out = {}
+    surse = {"yolo_detect": ("detect", "_model"), "yolo_track": ("ai_track", "_model"),
+             "yolo_verify": ("verify", "_model"), "siglip": ("semantic", "_model"),
+             "qwen": ("describe", "_model")}
+    for nume, (mod, attr) in surse.items():
+        m = getattr(sys.modules.get(mod), attr, None) if mod in sys.modules else None
+        if m is None:
+            continue
+        net = getattr(m, "model", m)          # ultralytics YOLO tine nn.Module-ul in .model
+        try:
+            octeti = sum(p.numel() * p.element_size() for p in net.parameters() if p.is_cuda)
+            octeti += sum(b.numel() * b.element_size() for b in net.buffers() if b.is_cuda)
+        except Exception:
+            continue
+        out[nume] = octeti // 2**20
+    return out
 
 
 _sha_cache = {}
@@ -906,6 +942,25 @@ def _sha(path):
                 h.update(chunk)
         _sha_cache[path] = (key, h.hexdigest())
     return _sha_cache[path][1]
+
+
+@app.route("/vram/curata", methods=["POST"])
+def vram_curata():
+    """Diagnostic: gc + empty_cache, cu VRAM-ul inainte/dupa — arata daca rezervarea torch
+    e cache eliberabil sau fragmentare care nu se mai da inapoi."""
+    err = _guard()
+    if err:
+        return err
+    import gc
+    inainte = _vram()
+    gc.collect()
+    try:
+        import torch
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except Exception as e:
+        return jsonify({"error": str(e)[:120]}), 500
+    return jsonify({"ok": True, "inainte": inainte, "dupa": _vram()})
 
 
 @app.route("/capabilities")

@@ -19,7 +19,12 @@ ENV DEBIAN_FRONTEND=noninteractive PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 
     TZ=UTC HF_HOME=/home/openvigil/.cache/huggingface \
     NVIDIA_DRIVER_CAPABILITIES=compute,utility,video \
     TORCH_DISABLE_NATIVE_JIT=1 \
+    PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
     OPENVIGIL_VERSION=${OPENVIGIL_VERSION}
+# PYTORCH_CUDA_ALLOC_CONF=expandable_segments: fara ea, dupa descarcarea lui Qwen (~7 GB) torch
+# ramanea cu ~8 GB rezervati dar nefolositi (segmente fragmentate pe care empty_cache nu le
+# poate da inapoi), iar urmatoarea incarcare pica cu „VRAM insuficient” (masurat 2026-10-31:
+# rezervat 9,4 GB, alocat 1,6 GB). Unitatea systemd de dinainte de Docker o avea.
 # TORCH_DISABLE_NATIVE_JIT: torch 2.13 ruleaza unele operatii (ex. rotary in Qwen2.5-VL) prin
 # nuclee Triton compilate la prima folosire, iar Triton cere un compilator C — imaginea nu are
 # (uneltele de build se scot). Cu variabila, torch ramane pe nucleele clasice; fara ea, VLM-ul
