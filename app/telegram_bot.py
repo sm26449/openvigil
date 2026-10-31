@@ -48,8 +48,9 @@ def _buton(cq, cfg):
         return
     try:
         rasp = scena_web.callback(cq, cfg)
+        logare.info(f"[telegram] buton {str(cq.get('data'))[:40]} -> {str(rasp)[:40]}")
     except Exception as e:
-        logare.info(f"[telegram] buton: {str(e)[:80]}")
+        logare.info(f"[telegram] buton {str(cq.get('data'))[:40]}: {str(e)[:80]}")
         rasp = t("Eroare: {e}", e=str(e)[:80])
     try:
         requests.post(f"https://api.telegram.org/bot{cfg['telegram_token']}/answerCallbackQuery",

@@ -63,6 +63,18 @@ def feedback_adauga(cam, eid, verdict, eticheta=None, poza=None, cine=None, surs
     return r
 
 
+def _eticheta_analiza(cam, eid):
+    """Eticheta ultimei analize a candidatului, din jurnal (cand memoria procesului e goala)."""
+    try:
+        import jurnal
+        for e in jurnal.query(limit=300, tip="scena_analiza", cam=int(cam)):
+            if e.get("candidat") == eid:
+                return e.get("eticheta")
+    except Exception as e:
+        logare.info(f"[scena] jurnal analize: {str(e)[:80]}")
+    return None
+
+
 def _eveniment(cam, eid):
     """Evenimentul scena_candidat cu id-ul dat (din jurnal), sau None."""
     try:
@@ -242,7 +254,7 @@ def callback(cq, cfg):
         scrie(cfg, msg, t("✓ corect ({cine})", cine=cine.split(":", 1)[1]))
         return t("Mulțumesc, notat.")
     if act == "okA":
-        et = _analize.get((cam, eid))
+        et = _analize.get((cam, eid)) or _eticheta_analiza(cam, eid)   # si dupa un restart al web
         feedback_adauga(cam, eid, "gresit" if et else "ok", eticheta=et, poza=poza, cine=cine, sursa="analiza")
         scrie(cfg, msg, t("✓ {ce} ({cine})", ce=_eticheta_text(et), cine=cine.split(":", 1)[1]))
         return t("Mulțumesc, notat.")
