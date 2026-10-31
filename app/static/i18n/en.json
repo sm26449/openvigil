@@ -2301,5 +2301,10 @@
  "; detalii în": "; details in",
  "Întreb modelul…": "Asking the model…",
  "Răspunde: „{txt}”": "It answers: “{txt}”",
- "Nu răspunde: {e}": "No answer: {e}"
+ "Nu răspunde: {e}": "No answer: {e}",
+ "Nimic nou (doar fundal)": "Nothing new (just background)",
+ "∅ nimic nou, doar fundal ({cine})": "∅ nothing new, just background ({cine})",
+ "Notat: doar fundal.": "Noted: just background.",
+ "nimic nou (doar fundal)": "nothing new (just background)",
+ "doar fundal": "just background"
 }

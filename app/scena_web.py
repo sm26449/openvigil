@@ -11,7 +11,8 @@
     parerea ei, din nou cu butoane. Tot ce apasa omul ajunge in acelasi feedback.jsonl.
 
 callback_data (Telegram: cel mult 64 de octeti): `sc|<actiune>|<cam>|<id>|<poza fara .jpg>`;
-actiunea e ok / nu / ns / inapoi / re / okA (acceptarea analizei) / et<index in vocabular>.
+actiunea e ok / nu / ns / nm (nimic nou, doar fundal) / inapoi / re / okA (acceptarea
+analizei) / et<index in vocabular>.
 """
 import json
 import os
@@ -27,7 +28,8 @@ from i18n import t
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCENA_DIR = os.path.join(ROOT, "data", "scena")
 FEEDBACK = os.path.join(SCENA_DIR, "feedback.jsonl")
-NEUTRE = {"ploaie", "umbră", "frunze mișcate de vânt"}   # vremea nu merita un mesaj
+NEUTRE = {"ploaie", "umbră", "frunze mișcate de vânt", "nimic"}   # vremea / fundalul nu merita un mesaj
+NIMIC = "nimic"          # verdictul „e doar fundalul”: intra in dataset ca negativ (feedback_dataset)
 VERDICTE = ("ok", "gresit", "necunoscut")
 
 _fb_lock = threading.Lock()
@@ -152,6 +154,7 @@ def _taste_vocabular(cam, eid, poza):
             rnd = []
     if rnd:
         taste.append(rnd)
+    taste.append([{"text": "∅ " + t("Nimic nou (doar fundal)"), "callback_data": _date("nm", cam, eid, poza)}])
     taste.append([{"text": "? " + t("Nu se vede clar"), "callback_data": _date("ns", cam, eid, poza)},
                   {"text": "↩ " + t("Înapoi"), "callback_data": _date("inapoi", cam, eid, poza)}])
     return {"inline_keyboard": taste}
@@ -258,6 +261,10 @@ def callback(cq, cfg):
         feedback_adauga(cam, eid, "gresit" if et else "ok", eticheta=et, poza=poza, cine=cine, sursa="analiza")
         scrie(cfg, msg, t("✓ {ce} ({cine})", ce=_eticheta_text(et), cine=cine.split(":", 1)[1]))
         return t("Mulțumesc, notat.")
+    if act == "nm":
+        feedback_adauga(cam, eid, "gresit", eticheta=NIMIC, poza=poza, cine=cine)
+        scrie(cfg, msg, t("∅ nimic nou, doar fundal ({cine})", cine=cine.split(":", 1)[1]))
+        return t("Notat: doar fundal.")
     if act == "ns":
         feedback_adauga(cam, eid, "necunoscut", poza=poza, cine=cine)
         scrie(cfg, msg, t("? nu se vede clar ({cine})", cine=cine.split(":", 1)[1]))

@@ -987,7 +987,7 @@ async function renderScena(c, box) {
       <figcaption><b>${numeEticheta(e.eticheta)}</b> <small>${e.sursa === 'vocabular' ? t('vocabular') : e.sursa === 'yolo' ? 'YOLO' : e.sursa === 'yolo-world' ? 'YOLO-World' : e.sursa === 'yolo-nesigur' ? t('YOLO nesigur') : ''}${pct ? ' · ' + pct : ''}</small>
         <span class="hint">${(e.t || '').slice(11, 16)} · ${t('{n} cadre', { n: e.cadre || 0 })}</span>
         ${e.analiza ? html`<span class="scena-analiza" title="${e.analiza.vlm ? 'VLM: ' + e.analiza.vlm : ''}">🔍 ${numeEticheta(e.analiza.eticheta)}${e.analiza.vlm && e.analiza.vlm !== e.analiza.eticheta ? html` <i>„${e.analiza.vlm}”</i>` : ''}</span>` : ''}
-        ${fb ? html`<span class="scena-verdict">${fb.verdict === 'ok' ? '✓ ' + (fb.eticheta ? numeEticheta(fb.eticheta) : t('corect')) : fb.verdict === 'gresit' ? '✕ ' + (fb.eticheta ? numeEticheta(fb.eticheta) : t('greșit')) : '? ' + t('nu știu')}</span>`
+        ${fb ? html`<span class="scena-verdict">${fb.verdict === 'ok' ? '✓ ' + (fb.eticheta ? numeEticheta(fb.eticheta) : t('corect')) : fb.verdict === 'gresit' ? (fb.eticheta === 'nimic' ? '∅ ' + t('doar fundal') : '✕ ' + (fb.eticheta ? numeEticheta(fb.eticheta) : t('greșit'))) : '? ' + t('nu știu')}</span>`
              : html`<span class="scena-fb"><button class="fb-ok" title="${t('Eticheta e corectă')}">✓</button><button class="fb-nu" title="${t('Nu e asta: spune ce e')}">✕</button><button class="fb-ns" title="${t('Nu se vede clar')}">?</button>${e.poza && !e.analiza ? html`<button class="fb-re" title="${t('Reanalizează: YOLO la rezoluție mare, tot vocabularul și modelul de limbaj (câteva secunde)')}">🔍</button>` : ''}</span>`}
       </figcaption></figure>`;
   };
@@ -1038,7 +1038,7 @@ async function renderScena(c, box) {
     if (ns) ns.onclick = () => trimite(fig, 'necunoscut');
     if (nu) nu.onclick = () => {
       const sel = document.createElement('select');
-      sel.innerHTML = html`<option value="">${t('ce e de fapt?')}</option>${(d.vocabular || []).map((v) => html`<option value="${v}">${t(v)}</option>`)}<option value="__alt">${t('altceva…')}</option>`;
+      sel.innerHTML = html`<option value="">${t('ce e de fapt?')}</option><option value="nimic">∅ ${t('nimic nou (doar fundal)')}</option>${(d.vocabular || []).map((v) => html`<option value="${v}">${t(v)}</option>`)}<option value="__alt">${t('altceva…')}</option>`;
       sel.onchange = async () => {
         let v = sel.value;
         if (v === '__alt') v = (prompt(t('Ce e în imagine? (un nume scurt)')) || '').trim();

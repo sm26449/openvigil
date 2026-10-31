@@ -87,6 +87,11 @@ def test_butoanele_scriu_feedback(_izolare):
     assert scena_web.feedback_citeste(14)["id2"]["eticheta"] == "pisică"
     scena_web.callback(_cq("ns", eid="id3"), CFG)
     assert scena_web.feedback_citeste(14)["id3"]["verdict"] == "necunoscut"
+    assert any(b["callback_data"].startswith("sc|nm|") for r in randuri for b in r)   # „nimic nou”
+    scena_web.callback(_cq("nm", eid="id6"), CFG)
+    r6 = scena_web.feedback_citeste(14)["id6"]
+    assert (r6["verdict"], r6["eticheta"]) == ("gresit", "nimic")
+    assert not scena_web.de_trimis({"cam": 1, "id": "z", "poza": "p.jpg", "eticheta": "nimic"}, now=1)
     assert "schimbat" in scena_web.callback(_cq("et9", eid="id4"), CFG)
     assert scena_web.callback({"data": "nu e al nostru"}, CFG) is None
 
