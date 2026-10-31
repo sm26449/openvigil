@@ -164,3 +164,29 @@ def detecteaza(crop_bgr, imgsz=320, quantize=None):
             best = {"eticheta": _nume.get(int(b.cls), "?"), "incredere": round(conf, 3)}
     return best
 
+
+
+def detecteaza_nume(crop_bgr, nume_en, imgsz=640, conf=0.1):
+    """Chenarul celui mai sigur obiect numit `nume_en` (engleza, o singura clasa) din decupaj:
+    {xyxy, incredere} sau None. Pentru construirea datasetului din feedback (chenarul
+    obiectului pe care omul l-a numit). Lasa vocabularul invalidat: urmatorul `detecteaza`
+    il reseteaza."""
+    global _clase
+    if crop_bgr is None or crop_bgr.size == 0:
+        return None
+    with _lock:
+        m = _get_model()
+        feats = _text_feats([nume_en]).to(next(m.model.parameters()).device)
+        m.model.txt_feats = feats
+        m.model.model[-1].nc = 1
+        m.model.names = {0: nume_en}
+        if m.predictor:
+            m.predictor.model.names = {0: nume_en}
+        _clase = None
+        res = m.predict(crop_bgr, imgsz=imgsz, conf=conf, verbose=False)[0]
+    best = None
+    for b in res.boxes:
+        c = float(b.conf)
+        if best is None or c > best["incredere"]:
+            best = {"xyxy": [float(v) for v in b.xyxy[0].tolist()], "incredere": round(c, 3)}
+    return best

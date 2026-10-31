@@ -140,6 +140,27 @@ stock; dacă stock vede clar un vehicul/animal (≥0.45), corectează eticheta.
 - Chenarele de pe clipuri folosesc `detect.CONF` (0.50), la fel ca detecția de
   incidente — nu 0.35 (care lăsa ghiceli slabe să apară).
 
+## „Învață scena” → dataset → curte-vN (faza C, 2026-10-31)
+
+Verdictele omului pe candidații „ceva nou” (`data/scena/feedback.jsonl`, din fișa camerei sau
+de pe Telegram) sunt materia primă a antrenamentului următor:
+
+- `scripts/feedback_dataset.py` (jobul **feedback** din `antrenare.py`, butonul „Adaugă
+  verdictele…” din Setări → Unelte → Model): fiecare decupaj HD cu verdict devine o imagine
+  `fb-<cam>-<poza>` în `data/finetune/images/{train,val}` (15% val, fix după hash).
+  ✓ / „e de fapt X” cu X ființă sau vehicul → pozitiv, cu chenarul pus de YOLO-World pentru
+  numele ales (altfel chenarul din mijloc, fără marginea de context); „ploaie / umbră /
+  frunze” → fundal fără chenare; „nu se vede clar” → nu intră. Numele românești trec în
+  engleză (`scena_clasa.engleza`); cele care nu sunt între cele 11 clase ale datasetului
+  devin clase noi doar cu ≥ `MIN_POZITIVE` exemple, cu id-uri stabile în
+  `data/finetune/clase.json`. Fișierele `fb-` se refac la fiecare rulare.
+- `scripts/antreneaza.py --baza m|l`: yolo11m (rețeta curte-v1) sau yolo11l; la final rulează
+  `scripts/evalueaza.py` pe val-ul fix, pe clase, și scrie `runs/<nume>/evaluare.json`
+  (global + per clasă P/R/mAP50). Un model cu alte clase decât datasetul e evaluat pe
+  clasele comune (etichetele de val se filtrează într-un `eval_tmp/`, cu hardlink-uri).
+- Containerul `ai` are `shm_size: 2gb`: dataloader-ele trec loturile prin `/dev/shm`, iar cei
+  64 MB impliciți ai Docker opresc evaluarea/antrenamentul la primul lot.
+
 ## Rollout pe faze (fiecare testabilă, nu strică precedenta)
 
 1. ✅ **Schelet nvr-ai + tracking cu model partajat.** `ai_main.py` (serviciu) +

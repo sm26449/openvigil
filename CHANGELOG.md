@@ -20,6 +20,13 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   traducere memorată; setarea `scena_lume` îl oprește. În analiza adâncă, eticheta modelului
   de limbaj e crezută doar dacă o confirmă YOLO-World, SigLIP sau YOLO-ul antrenat; altfel
   rămâne afișată ca neconfirmată și decide restul.
+- Verdictele din „Învață scena” intră în datasetul de antrenament (Setări → Unelte → Model):
+  decupajele confirmate devin exemple pozitive, cu chenarul obiectului pus de YOLO-World,
+  iar „e doar ploaie / umbră / frunze” devin fundaluri fără obiecte; numele noi din vocabular
+  cu destule exemple devin clase noi (`data/finetune/clase.json` ține id-urile stabile).
+  Antrenamentul se poate porni pe yolo11m sau yolo11l și e evaluat automat pe clase, pe
+  setul de validare fix (`scripts/evalueaza.py`, `runs/<nume>/evaluare.json`), iar
+  rezultatele apar în cardul de antrenament.
 - Întrebările în limbaj natural („when did the garbage truck come?”) merg și în engleză, cu
   răspunsuri în limba interfeței.
 - `RECORDINGS_DIR`, `ARHIVA_DIR`, `BACKUP_DIR`: înregistrările, nivelul de arhivă și copiile

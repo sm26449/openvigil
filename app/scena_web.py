@@ -48,10 +48,31 @@ def feedback_adauga(cam, eid, verdict, eticheta=None, poza=None, cine=None, surs
          "t": time.strftime("%Y-%m-%d %H:%M:%S")}
     if sursa:
         r["sursa"] = sursa
+    ev = _eveniment(cam, eid)
+    if ev:
+        # ce propusese sistemul si unde era, ca datasetul sa stie eticheta unui „✓ corect”
+        r["eticheta_initiala"] = ev.get("eticheta")
+        r["sursa_initiala"] = ev.get("sursa")
+        if isinstance(ev.get("regiune"), list):
+            r["regiune"] = ev["regiune"]
+        if not r["poza"] and ev.get("poza"):
+            r["poza"] = ev["poza"]
     os.makedirs(SCENA_DIR, exist_ok=True)
     with _fb_lock, open(FEEDBACK, "a", encoding="utf-8") as f:
         f.write(json.dumps(r, ensure_ascii=False) + "\n")
     return r
+
+
+def _eveniment(cam, eid):
+    """Evenimentul scena_candidat cu id-ul dat (din jurnal), sau None."""
+    try:
+        import jurnal
+        for e in jurnal.query(limit=600, tip="scena_candidat", cam=int(cam)):
+            if e.get("id") == eid:
+                return e
+    except Exception as e:
+        logare.info(f"[scena] jurnal: {str(e)[:80]}")
+    return None
 
 
 def feedback_citeste(cam_id=None):

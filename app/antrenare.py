@@ -6,7 +6,8 @@ Un singur job odata (GPU-ul e unul). Starea e un dict simplu, servit de /train/s
   {activ, tip, nume, inceput, sfarsit, progres, total, mesaj, log (ultimele linii), rc, rezultat}
 Tipuri:
   dataset   -> scripts/finetune_dataset.py [--max N]   (teacher yolo11x + SigLIP pe specii)
-  antrenare -> scripts/antreneaza.py --nume curte-vN --epoci E   (ultralytics, pe GPU)
+  feedback  -> scripts/feedback_dataset.py   (verdictele din „Invata scena” -> dataset, rapid)
+  antrenare -> scripts/antreneaza.py --nume curte-vN --epoci E --baza m|l   (ultralytics, pe GPU)
   proba     -> doar pentru teste: un proces care tipareste progres si iese
 Liniile de progres au formatul "[dataset] i/N" / "[train] epoca i/N ..." / "[train] gata ...".
 """
@@ -66,16 +67,18 @@ def nume_urmator():
     return f"curte-v{n + 1}"
 
 
-def _comanda(tip, epoci=None, maxim=None):
+def _comanda(tip, epoci=None, maxim=None, baza=None):
     if tip == "dataset":
         cmd = [PY, os.path.join(ROOT, "scripts", "finetune_dataset.py")]
         if maxim:
             cmd += ["--max", str(int(maxim))]
         return cmd, None
+    if tip == "feedback":
+        return [PY, os.path.join(ROOT, "scripts", "feedback_dataset.py")], None
     if tip == "antrenare":
         nume = nume_urmator()
         return [PY, os.path.join(ROOT, "scripts", "antreneaza.py"), "--nume", nume,
-                "--epoci", str(int(epoci or 30))], nume
+                "--epoci", str(int(epoci or 30)), "--baza", baza if baza in ("m", "l") else "m"], nume
     if tip == "proba":
         return [PY, "-u", "-c",
                 "import time\nfor i in range(1,4):\n print(f'[train] epoca {i}/3 mAP50=0.5',flush=True); time.sleep(0.2)\n"
@@ -83,13 +86,13 @@ def _comanda(tip, epoci=None, maxim=None):
     raise ValueError(t("tip de job necunoscut: {tip}", tip=tip))
 
 
-def porneste(tip, epoci=None, maxim=None):
+def porneste(tip, epoci=None, maxim=None, baza=None):
     """Porneste jobul daca nu ruleaza altul. Intoarce starea (sau ridica RuntimeError)."""
     global _proc
     with _lock:
         if stare["activ"]:
             raise RuntimeError(t("rulează deja un job ({tip})", tip=stare['tip']))
-        cmd, nume = _comanda(tip, epoci, maxim)
+        cmd, nume = _comanda(tip, epoci, maxim, baza)
         _log.clear()
         stare.update(activ=True, tip=tip, nume=nume, inceput=time.time(), sfarsit=None,
                      progres=0, total=0, mesaj=t("pornit"), log=[], rc=None, rezultat=None, oprit=False)

@@ -1054,18 +1054,24 @@
         <button id="s-train-harvest">Extrage cadre din înregistrări</button>
         <label>Dataset din cel mult <input id="s-train-max" type="number" min="0" step="500" value="8000" style="width:90px" aria-label="Numărul maxim de cadre din dataset (0 = toate)"> cadre
           <button id="s-train-dataset">Construiește datasetul etichetat</button></label>
-        <label>Antrenează <input id="s-train-epoci" type="number" min="1" max="300" value="30" style="width:70px" aria-label="Numărul de epoci"> epoci
+        <button id="s-train-feedback">Adaugă verdictele din „Învață scena” în dataset</button>
+        <label>Antrenează <input id="s-train-epoci" type="number" min="1" max="300" value="60" style="width:70px" aria-label="Numărul de epoci"> epoci
+          <select id="s-train-baza" aria-label="Mărimea modelului"><option value="m">yolo11m (ca până acum)</option><option value="l">yolo11l (mai precis, de 2× mai lent)</option></select>
           <button id="s-train-run">Antrenează un model nou</button></label>
         <button id="s-train-stop" class="hidden">Oprește jobul</button>
         <button id="s-train-apply">Aplică ultimul model antrenat</button>
         <button id="s-train-revert" class="hidden">Revino la modelul anterior</button>
       </div>
       <div id="s-train-job" class="hint hidden" aria-live="polite"></div>
+      <div id="s-train-runs" class="hint"></div>
       <p class="hint">Flux local, fără unelte externe: 1) cadrele curate se strâng singure la
         detecții (și din înregistrări, cu butonul) → 2) datasetul: modelul mare (teacher
-        yolo11x) etichetează cadrele și SigLIP desparte păsările pe specii; apoi antrenarea
-        (ultralytics, pe GPU; rulează în nvr-ai și încetinește detecția cât durează, deci
-        noaptea) → 3) aplici modelul aici (fără restart, cu backup și revenire).</p>
+        yolo11x) etichetează cadrele și SigLIP desparte păsările pe specii; verdictele tale
+        din „Învață scena” (✓ ✕ din fișa camerei sau de pe Telegram) intră ca decupaje
+        pozitive și ca fundaluri, cu butonul de mai sus; apoi antrenarea (ultralytics, pe
+        GPU; rulează în nvr-ai și încetinește detecția cât durează, deci noaptea), evaluată
+        automat pe clase pe setul de validare fix → 3) aplici modelul aici (fără restart,
+        cu backup și revenire).</p>
       <span class="s-msg" id="s-msg-train"></span>
     </div>
 

@@ -88,6 +88,9 @@ services:
   ai:
     <<: *openvigil
     command: ai
+    # dataloader-ele PyTorch (antrenament, evaluare) trec loturile prin /dev/shm; cei 64 MB
+    # impliciti ai Docker dau „unable to allocate shared memory” la primul lot
+    shm_size: "2gb"
     volumes:
       - ${DATA_DIR:-./data}:/opt/openvigil/data
       - ${RECORDINGS_DIR:-${DATA_DIR:-./data}/recordings}:/opt/openvigil/data/recordings

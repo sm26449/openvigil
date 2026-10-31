@@ -7,6 +7,7 @@ MODEL_PATH; cele de faces gestioneaza biblioteca de fete. Globale/helper-uri par
 Restul rutelor AI (semantic, plates, ask, search, rules, track) sunt in routes_analytics.
 """
 import glob
+import json
 import os
 import re
 import shutil
@@ -37,10 +38,29 @@ def _runs():
     cele mai noi primele."""
     out = []
     for best in glob.glob(f"{FINETUNE_DIR}/runs/*/weights/best.pt"):
-        out.append({"nume": os.path.basename(os.path.dirname(os.path.dirname(best))),
+        d = os.path.dirname(os.path.dirname(best))
+        ev = None
+        try:
+            with open(os.path.join(d, "evaluare.json"), encoding="utf-8") as f:
+                ev = json.load(f)
+        except (OSError, ValueError):
+            pass
+        out.append({"nume": os.path.basename(d),
                     "data": time.strftime("%Y-%m-%d %H:%M", time.localtime(os.path.getmtime(best))),
-                    "best": best})
+                    "best": best, "evaluare": ev})
     return sorted(out, key=lambda r: r["data"], reverse=True)
+
+
+def _feedback_cifre():
+    """Cate verdicte din „Invata scena” exista si cate decupaje fb- sunt deja in dataset."""
+    import scena_web
+    vd = scena_web.feedback_citeste()
+    in_ds = 0
+    for sub in ("train", "val"):
+        d = os.path.join(FINETUNE_DIR, "images", sub)
+        in_ds += sum(1 for f in os.listdir(d) if f.startswith("fb-")) if os.path.isdir(d) else 0
+    return {"verdicte": len(vd), "utile": sum(1 for r in vd.values() if r.get("verdict") != "necunoscut"),
+            "in_dataset": in_ds}
 
 
 def _latest_trained():
@@ -69,7 +89,8 @@ def api_train_status():
         "model_date": time.strftime("%Y-%m-%d %H:%M", time.localtime(os.path.getmtime(MODEL_PATH))),
         "trained": bool(runs),
         "trained_date": runs[0]["data"] if runs else None,
-        "runs": [{"nume": r["nume"], "data": r["data"]} for r in runs],
+        "runs": [{"nume": r["nume"], "data": r["data"], "evaluare": r["evaluare"]} for r in runs],
+        "feedback": _feedback_cifre(),
         "backup": os.path.exists(bak),
         "backup_date": (time.strftime("%Y-%m-%d %H:%M", time.localtime(os.path.getmtime(bak)))
                         if os.path.exists(bak) else None),
@@ -105,12 +126,28 @@ def api_train_run():
         epoci = max(1, min(300, int(b.get("epoci") or 30)))
     except (TypeError, ValueError):
         return jsonify({"error": t("epoci: număr întreg între 1 și 300")}), 400
-    d = ai_client.train_start("antrenare", epoci=epoci)
+    baza = b.get("baza") if b.get("baza") in ("m", "l") else "m"
+    d = ai_client.train_start("antrenare", epoci=epoci, baza=baza)
     if d is None:
         return jsonify({"error": t("nvr-ai nu răspunde")}), 503
     if d.get("error"):
         return jsonify(d), 409
-    audit.log("antrenament pornit", d.get("nume") or "", detail={"epoci": epoci})
+    audit.log("antrenament pornit", d.get("nume") or "", detail={"epoci": epoci, "baza": baza})
+    return jsonify(d)
+
+
+@bp.route("/api/train/feedback", methods=["POST"])
+def api_train_feedback():
+    """Verdictele din „Invata scena” (data/scena/feedback.jsonl) intra in dataset, in nvr-ai
+    (scripts/feedback_dataset.py: decupaje pozitive cu chenar de la YOLO-World, fundaluri)."""
+    if not ai_client.remote():
+        return jsonify({"error": t("nvr-ai nu rulează: antrenamentul are nevoie de GPU-ul lui")}), 503
+    d = ai_client.train_start("feedback")
+    if d is None:
+        return jsonify({"error": t("nvr-ai nu răspunde")}), 503
+    if d.get("error"):
+        return jsonify(d), 409
+    audit.log("verdictele din scena adaugate in dataset")
     return jsonify(d)
 
 

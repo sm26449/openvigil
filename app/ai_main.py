@@ -692,7 +692,7 @@ def train_start():
     b = request.get_json(silent=True) or {}
     try:
         return jsonify({"ok": True, **antrenare.porneste(b.get("tip") or "", b.get("epoci"),
-                                                          b.get("max"))})
+                                                          b.get("max"), b.get("baza"))})
     except (RuntimeError, ValueError) as e:
         return jsonify({"error": str(e)}), 409
 

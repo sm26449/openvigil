@@ -1257,6 +1257,17 @@ async function loadTrainStatus() {
                 : ' · ' + t('niciun antrenament încă')}${
       s.backup ? html`<br>${t('Backup disponibil (model anterior, din {data})', { data: s.backup_date })}` : ''}`;
     $('#s-train-revert').classList.toggle('hidden', !s.backup);
+    const fb = s.feedback || {};
+    const evalRow = (r) => {
+      const e = r.evaluare;
+      if (!e) return html`<li><b>${r.nume}</b> (${r.data}) · ${t('neevaluat')}</li>`;
+      const cls = Object.entries(e.clase || {}).sort((a, b) => b[1].map50 - a[1].map50)
+        .map(([c, v]) => `${t(DET_RO[c] || c)} ${Math.round(v.p * 100)}/${Math.round(v.r * 100)}`).join(' · ');
+      return html`<li><b>${r.nume}</b> (${r.data}) · mAP50 <b>${e.global.map50}</b> · P ${e.global.p} · R ${e.global.r}
+        <span class="hint">${t('pe clase (precizie/recall %)')}: ${cls}</span></li>`;
+    };
+    $('#s-train-runs').innerHTML = html`${t('Verdicte din „Învață scena”: {n} ({utile} utile), în dataset: {ds}', { n: fb.verdicte || 0, utile: fb.utile || 0, ds: fb.in_dataset || 0 })}${
+      (s.runs || []).length ? html`<ul class="s-runs">${lista(s.runs, evalRow)}</ul>` : ''}`;
     const j = s.job, box = $('#s-train-job');
     if (j === null) {
       box.classList.remove('hidden');
@@ -1265,12 +1276,12 @@ async function loadTrainStatus() {
       box.classList.remove('hidden');
       const cat = j.total ? ` ${Math.round(100 * j.progres / j.total)}%` : '';
       const durata = j.inceput ? Math.round(((j.sfarsit || Date.now() / 1000) - j.inceput) / 60) : 0;
-      box.innerHTML = html`<b>${j.tip === 'dataset' ? t('Dataset') : t('Antrenament')}${j.nume ? ' ' + j.nume : ''}</b>:
+      box.innerHTML = html`<b>${j.tip === 'dataset' ? t('Dataset') : j.tip === 'feedback' ? t('Verdicte în dataset') : t('Antrenament')}${j.nume ? ' ' + j.nume : ''}</b>:
         ${j.activ ? t('rulează') : (j.rc === 0 ? t('gata') : t('eșuat'))} · ${j.mesaj}${cat} · ${durata} min${
         j.log && j.log.length ? html`<details><summary>${t('jurnal')}</summary><pre>${j.log.join('\n')}</pre></details>` : ''}`;
     } else box.classList.add('hidden');
     $('#s-train-stop').classList.toggle('hidden', !(j && j.activ));
-    for (const id of ['s-train-dataset', 's-train-run']) $('#' + id).disabled = !!(j && j.activ);
+    for (const id of ['s-train-dataset', 's-train-run', 's-train-feedback']) $('#' + id).disabled = !!(j && j.activ);
     clearTimeout(trainTimer);
     if (j && j.activ) trainTimer = setTimeout(loadTrainStatus, 5000);
   } catch {}
@@ -1286,10 +1297,16 @@ $('#s-train-dataset') && ($('#s-train-dataset').onclick = async () => {
   flash('#s-msg-train', d && !d.error ? t('Datasetul se construiește în fundal.') : (d && d.error) || t('Eroare'), !!(d && d.error));
   loadTrainStatus();
 });
+$('#s-train-feedback') && ($('#s-train-feedback').onclick = async () => {
+  const d = await post('/api/train/feedback', {});
+  flash('#s-msg-train', d && !d.error ? t('Verdictele intră în dataset în fundal.') : (d && d.error) || t('Eroare'), !!(d && d.error));
+  loadTrainStatus();
+});
 $('#s-train-run') && ($('#s-train-run').onclick = async () => {
   const epoci = +$('#s-train-epoci').value || 30;
+  const baza = $('#s-train-baza').value || 'm';
   if (!confirm(t('Antrenezi un model nou, {n} epoci?\nDurează ore și încetinește detecția cât rulează.', { n: epoci }))) return;
-  const d = await post('/api/train/run', { epoci });
+  const d = await post('/api/train/run', { epoci, baza });
   flash('#s-msg-train', d && !d.error ? t('Antrenamentul {nume} a pornit.', { nume: d.nume }) : (d && d.error) || t('Eroare'), !!(d && d.error));
   loadTrainStatus();
 });

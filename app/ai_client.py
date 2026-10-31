@@ -148,8 +148,8 @@ def train_stare():
         return None
 
 
-def train_start(tip, epoci=None, maxim=None):
-    return _post_json("/train/start", timeout=20, tip=tip, epoci=epoci, max=maxim)
+def train_start(tip, epoci=None, maxim=None, baza=None):
+    return _post_json("/train/start", timeout=20, tip=tip, epoci=epoci, max=maxim, baza=baza)
 
 
 def train_stop():

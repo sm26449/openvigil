@@ -2239,5 +2239,15 @@
  "Candidații nu mai pleacă pe Telegram.": "Candidates no longer go to Telegram.",
  "Analiză gata": "Analysis done",
  "Numele se compară cu imaginea prin SigLIP și YOLO-World: cuvinte simple, în română („cal cu căruță”, „tractor”); pentru un nume pe care interfața nu-l știe în engleză poți scrie „nume = english name”": "Names are matched against the image by SigLIP and YOLO-World: simple words (“horse and cart”, “tractor”); for a name the interface does not know in English you can write “name = english name”",
- "(neconfirmat de alt model)": "(not confirmed by another model)"
+ "(neconfirmat de alt model)": "(not confirmed by another model)",
+ "Adaugă verdictele din „Învață scena” în dataset": "Add the “Learn the scene” verdicts to the dataset",
+ "Mărimea modelului": "Model size",
+ "yolo11m (ca până acum)": "yolo11m (as before)",
+ "yolo11l (mai precis, de 2× mai lent)": "yolo11l (more accurate, 2× slower)",
+ "Flux local, fără unelte externe: 1) cadrele curate se strâng singure la detecții (și din înregistrări, cu butonul) → 2) datasetul: modelul mare (teacher yolo11x) etichetează cadrele și SigLIP desparte păsările pe specii; verdictele tale din „Învață scena” (✓ ✕ din fișa camerei sau de pe Telegram) intră ca decupaje pozitive și ca fundaluri, cu butonul de mai sus; apoi antrenarea (ultralytics, pe GPU; rulează în nvr-ai și încetinește detecția cât durează, deci noaptea), evaluată automat pe clase pe setul de validare fix → 3) aplici modelul aici (fără restart, cu backup și revenire).": "Local pipeline, no external tools: 1) clean frames are collected on detections (and from recordings, with the button) → 2) the dataset: the big model (teacher yolo11x) labels the frames and SigLIP splits birds by species; your “Learn the scene” verdicts (✓ ✕ from the camera panel or Telegram) go in as positive crops and as backgrounds, with the button above; then training (ultralytics, on the GPU; runs in nvr-ai and slows detection while it lasts, so at night), evaluated automatically per class on the fixed validation set → 3) apply the model here (no restart, with backup and revert).",
+ "neevaluat": "not evaluated",
+ "pe clase (precizie/recall %)": "per class (precision/recall %)",
+ "Verdicte din „Învață scena”: {n} ({utile} utile), în dataset: {ds}": "“Learn the scene” verdicts: {n} ({utile} usable), in the dataset: {ds}",
+ "Verdicte în dataset": "Verdicts into dataset",
+ "Verdictele intră în dataset în fundal.": "The verdicts are going into the dataset in the background."
 }
