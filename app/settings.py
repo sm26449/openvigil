@@ -132,6 +132,15 @@ DEFAULTS = {
     "llm_model": "",
     "llm_key": "",
     "episod_llm": False,
+    # Locatia (vreme.py): gasita dupa numele localitatii (geocodare Open-Meteo), vremea de afara
+    # se citeste la 5 min; vreme_prag > 0 = pragul de incredere al detectiei pe vreme rea
+    # (ploaie, ninsoare, ceata, furtuna), 0 = neschimbat; scena_telegram_ploaie = trimitem si
+    # candidatii „necunoscut” pe vreme rea (implicit nu: sunt picaturi)
+    "locatie_nume": "",
+    "locatie_lat": None,
+    "locatie_lon": None,
+    "vreme_prag": 0.0,
+    "scena_telegram_ploaie": False,
     "scene_cams": [],
     "scene_persist_min": 30,     # cate minute trebuie sa persiste schimbarea ca s-o raportam
     "scene_roi_top": 0.35,       # fractia de sus a cadrului ignorata (cer/copaci = fals-pozitive)

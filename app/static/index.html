@@ -1094,6 +1094,21 @@
         <code>scripts/openvigil_mcp.py</code>; detalii în <code>docs/mcp.md</code>.</p>
     </div>
 
+    <div class="set-card" id="vreme-card">
+      <h2 data-ic="cloud">Locație și vreme</h2>
+      <p class="hint">Vremea de afară (Open-Meteo, gratuit, fără cheie) plus ce estimează camerele
+        (ploaie din cadrele sărite, vânt din zonele instabile, ceață din contrast) intră în fiecare
+        eveniment din jurnal și pot ridica pragul detecției pe vreme rea.</p>
+      <label>Localitatea <input id="vreme-q" type="text" placeholder="ex. Lipia" autocomplete="off">
+        <button type="button" id="vreme-cauta" class="btn sm">Caută</button></label>
+      <div id="vreme-rezultate" class="hint"></div>
+      <div id="vreme-locatie" class="hint"></div>
+      <label>Prag de încredere pe vreme rea <input id="vreme-prag" type="number" min="0" max="0.95" step="0.05" style="width:80px" aria-label="Prag pe vreme rea"> <span class="hint">0 = neschimbat; ex. 0,6 când plouă, ninge sau e ceață</span></label>
+      <label class="inline"><input id="vreme-tg-ploaie" type="checkbox"> Trimite pe Telegram și candidații „necunoscut” când e vreme rea (altfel pe ploaie pleacă doar cei cu nume)</label>
+      <div class="s-btns"><button id="vreme-save">Salvează</button><span class="s-msg" id="s-msg-vreme"></span></div>
+      <div id="vreme-acum" class="hint"></div>
+    </div>
+
     <div class="set-card" id="demo-card">
       <h2 data-ic="camera">Mod demo</h2>
       <p class="hint">Patru camere sintetice (imaginea o generează go2rtc, fără nicio cameră

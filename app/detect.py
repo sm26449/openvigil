@@ -400,6 +400,16 @@ class CamState:
             e_noapte = bool(prag_noapte) and rules._is_night()
         except Exception:
             e_noapte = False
+        # prag pe vreme rea (global, din Setari): ploaia/ceata umplu cadrul de siluete nesigure
+        prag_vreme = 0.0
+        try:
+            prag_vreme = float(settings.get("vreme_prag") or 0)
+            if prag_vreme:
+                import vreme
+                if not vreme.citeste().get("rea"):
+                    prag_vreme = 0.0
+        except Exception:
+            prag_vreme = 0.0
         h, w = img.shape[:2]
         hits = set()
         vazute = []      # TOATE chenarele + de ce au fost aruncate — overlay-ul (faza 6)
@@ -419,6 +429,9 @@ class CamState:
                 continue
             if e_noapte and box["conf"] < prag_noapte:
                 box["filtru"] = "noapte"
+                continue
+            if prag_vreme and box["conf"] < prag_vreme:
+                box["filtru"] = "vreme"
                 continue
             # lipit de marginea cadrului = obiect taiat sau artefact
             if (nx1 < EDGE_MARGIN or ny1 < EDGE_MARGIN

@@ -63,6 +63,8 @@ def feedback_adauga(cam, eid, verdict, eticheta=None, poza=None, cine=None, surs
         r["sursa_initiala"] = ev.get("sursa")
         if isinstance(ev.get("regiune"), list):
             r["regiune"] = ev["regiune"]
+        if ev.get("vreme"):
+            r["vreme"] = ev["vreme"]
         if not r["poza"] and ev.get("poza"):
             r["poza"] = ev["poza"]
     os.makedirs(SCENA_DIR, exist_ok=True)
@@ -194,6 +196,13 @@ def de_trimis(entry, now=None):
         return False
     if (entry.get("eticheta") or "") in _neutre():
         return False
+    if (entry.get("eticheta") or "necunoscut") == "necunoscut" and not settings.get("scena_telegram_ploaie"):
+        try:
+            import vreme
+            if vreme.acum().get("rea"):
+                return False             # pe ploaie/ceata, necunoscutele sunt picaturi: nu deranjam omul
+        except Exception:
+            pass
     now = now or time.time()
     cd = int(settings.get("scena_telegram_cooldown") or 0)
     cam = int(entry["cam"])

@@ -1225,6 +1225,8 @@ def main():
     notify.start_watchdog()   # camera/NVR cazut(a)/revenit(a), disc plin -> Telegram
     mod.start()               # noaptea automata (daca e pornita) + modul pe MQTT
     telegram_bot.start()      # /acasa /plecat /noapte /stare (daca e pornit din Setari)
+    import vreme
+    vreme.start()             # vremea (Open-Meteo + camere) -> data/vreme.json, campul `vreme` din jurnal
     backup_nocturn.start()    # copia criptata zilnica la backup_ora (+ trimitere externa)
     import digest
     digest.start()            # rezumatul zilei pe Telegram, la digest_ora (daca e pornit)

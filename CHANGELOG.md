@@ -41,6 +41,15 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   compatibil OpenAI (Ollama, LM Studio, vLLM) din Setări → Unelte, cu buton de test.
   Rezumatele episoadelor de prezență pot fi scrise de el (o propoziție, numai din fapte;
   șablonul rămâne ca `text_sablon`). Jurnalul se poate filtra după text.
+- Vremea (Setări → Unelte → Locație și vreme): localitatea se caută după nume (geocodare
+  Open-Meteo, fără cheie), vremea de afară se citește la 5 minute și se combină cu ce
+  estimează camerele (ploaie din cadrele sărite ale scenei, vânt din zonele instabile, ceață
+  din contrastul fundalului). Fiecare eveniment din jurnal primește câmpul `vreme`; un prag de
+  încredere opțional (`vreme_prag`) se aplică detecției pe ploaie, ninsoare, ceață sau
+  furtună; pe vreme rea candidații „necunoscut” nu mai pleacă pe Telegram (comutabil).
+  Unealta MCP `vreme`; `data/vreme.json` e citit de nvr-ai fără rețea.
+- Verdict nou în „Învață scena”: „∅ Nimic nou (doar fundal)”, pe Telegram și în fișă; „copac”
+  în vocabularul implicit ca nume neutru.
 - Întrebările în limbaj natural („when did the garbage truck come?”) merg și în engleză, cu
   răspunsuri în limba interfeței.
 - `RECORDINGS_DIR`, `ARHIVA_DIR`, `BACKUP_DIR`: înregistrările, nivelul de arhivă și copiile

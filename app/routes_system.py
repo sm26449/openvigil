@@ -573,3 +573,31 @@ def api_settings_test(channel):
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 502
+
+
+# ---- vremea (vreme.py): starea curenta si geocodarea localitatii ----
+@bp.route("/api/vreme")
+def api_vreme():
+    import vreme
+    d = vreme.acum()
+    return jsonify({**d, "text": vreme.text(d) if d else vreme.text({}), "locatie_setata": bool(vreme.locatie())})
+
+
+@bp.route("/api/vreme/cauta")
+def api_vreme_cauta():
+    """?q=Lipia -> localitatile care se potrivesc (nume, judet, tara, lat, lon)."""
+    import vreme
+    from i18n import limba_curenta
+    try:
+        return jsonify({"localitati": vreme.cauta_localitate(request.args.get("q") or "", limba_curenta())})
+    except Exception as e:
+        return jsonify({"error": t("căutarea nu a mers: {e}", e=str(e)[:80])}), 502
+
+
+@bp.route("/api/vreme/acum", methods=["POST"])
+def api_vreme_acum():
+    """O citire imediata (dupa ce s-a salvat locatia), nu la urmatorul ciclu de 5 minute."""
+    import vreme
+    d = vreme.actualizeaza()
+    return jsonify({**d, "text": vreme.text(d)})
+

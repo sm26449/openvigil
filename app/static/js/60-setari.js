@@ -1266,6 +1266,34 @@ $('#llm-test') && ($('#llm-test').onclick = async () => {
 });
 loadLlm();
 
+/* locatie + vreme (vreme.py) */
+let vremeAles = null;
+async function loadVreme() {
+  try {
+    const [s, v] = await Promise.all([(await fetch('/api/settings')).json(), (await fetch('/api/vreme')).json()]);
+    $('#vreme-prag').value = s.vreme_prag || 0; $('#vreme-tg-ploaie').checked = !!s.scena_telegram_ploaie;
+    $('#vreme-locatie').innerHTML = s.locatie_lat ? html`${t('Locația salvată')}: <b>${s.locatie_nume || ''}</b> (${s.locatie_lat}, ${s.locatie_lon})` : html`${t('Nicio locație salvată: caută localitatea și alege-o din listă.')}`;
+    $('#vreme-acum').innerHTML = v && v.stare ? html`${t('Acum')}: <b>${v.text}</b> · ${t('sursa')}: ${v.sursa || '-'}${v.rea ? ' · ' + t('vreme rea: pragul pe vreme e activ') : ''}` : '';
+  } catch {}
+}
+$('#vreme-cauta') && ($('#vreme-cauta').onclick = async () => {
+  const q = $('#vreme-q').value.trim(); if (!q) return;
+  $('#vreme-rezultate').textContent = t('Caut…');
+  const d = await (await fetch(`/api/vreme/cauta?q=${encodeURIComponent(q)}`)).json().catch(() => null);
+  const l = (d && d.localitati) || [];
+  if (!l.length) { $('#vreme-rezultate').textContent = (d && d.error) || t('Nimic găsit; încearcă alt nume.'); return; }
+  $('#vreme-rezultate').innerHTML = lista(l, (x, i) => html`<label class="inline"><input type="radio" name="vreme-loc" value="${i}"> ${x.nume}${x.judet ? ', ' + x.judet : ''}${x.tara ? ', ' + x.tara : ''} <small>(${x.lat}, ${x.lon})</small></label>`);
+  for (const r of $('#vreme-rezultate').querySelectorAll('input[type=radio]')) r.onchange = () => { vremeAles = l[+r.value]; };
+});
+$('#vreme-save') && ($('#vreme-save').onclick = async () => {
+  const body = { vreme_prag: +$('#vreme-prag').value || 0, scena_telegram_ploaie: $('#vreme-tg-ploaie').checked };
+  if (vremeAles) Object.assign(body, { locatie_nume: [vremeAles.nume, vremeAles.judet].filter(Boolean).join(', '), locatie_lat: vremeAles.lat, locatie_lon: vremeAles.lon });
+  const d = await post('/api/settings', body);
+  if (d && !d.error) { flash('#s-msg-vreme', t('Salvat ✓')); await post('/api/vreme/acum'); vremeAles = null; loadVreme(); }
+  else flash('#s-msg-vreme', (d && d.error) || t('Eroare'), true);
+});
+loadVreme();
+
 /* antrenament local (data/dataset -> data/finetune -> model activ) */
 async function loadTrainStatus() {
   try {

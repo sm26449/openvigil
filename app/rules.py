@@ -286,6 +286,13 @@ def _journal(tip, cam_id, date):
              "sev": severity(tip, date, _is_night())}
     if cam_id is not None:
         entry["cam"] = cam_id
+    try:
+        import vreme
+        v = vreme.stare_scurta()
+        if v:
+            entry["vreme"] = v           # in ce conditii s-a intamplat (carduri, rezumate, antrenament)
+    except Exception:
+        pass
     # doar campurile plate, serializabile si scurte — jurnalul e istorie, nu depozit.
     # "tip" din date (subtipul alarmei de camera: VMD, linedetection...) nu are voie
     # sa suprascrie tipul evenimentului — devine "subtip".

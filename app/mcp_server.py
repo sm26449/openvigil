@@ -135,6 +135,12 @@ def _poza(a):
     return {"_imagine": base64.b64encode(r.content).decode(), "mime": "image/jpeg"}
 
 
+def _vreme(_a):
+    import vreme
+    d = vreme.acum()
+    return {**d, "text": vreme.text(d)} if d else {"stare": "necunoscut", "text": vreme.text({})}
+
+
 def _recomandari(a):
     import recomandari
     return recomandari.pentru_camera(int(a["camera"]))
@@ -171,6 +177,8 @@ UNELTE = {
                  {"type": "object", "properties": {"intrebare": {"type": "string"}, "camera": {"type": "integer"}}, "required": ["intrebare"]}),
     "poza": (_poza, t("Cadrul curent al unei camere (JPEG)."),
              {"type": "object", "properties": {"camera": {"type": "integer"}}, "required": ["camera"]}),
+    "vreme": (_vreme, t("Vremea acum (de afara si estimata din camere): stare, vant, noapte, temperatura."),
+              {"type": "object", "properties": {}}),
     "recomandari": (_recomandari, t("Ce ar imbunatati detectia pe o camera, cu actiuni aplicabile din interfata."),
                     {"type": "object", "properties": {"camera": {"type": "integer"}}, "required": ["camera"]}),
     "mod": (_mod, t("Modul casei: citeste, sau comuta cu `mod` = acasa | plecat | noapte."),
