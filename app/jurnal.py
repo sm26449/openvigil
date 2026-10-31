@@ -177,15 +177,18 @@ def _day_range(day):
         return None
 
 
-def query(limit=200, tip=None, cam=None, day=None, min_sev=None, since=None, until=None):
+def query(limit=200, tip=None, cam=None, day=None, min_sev=None, since=None, until=None, text=None):
     """Cele mai noi evenimente, cele mai noi primele, cu filtre optionale:
     tip, cam (id), day ('YYYY-MM-DD' local), min_sev ('atentie' = atentie+critic),
-    since/until (epoch, [since, until)). Intoarce dictionare plate ca in JSONL-ul vechi,
-    plus `ts` (epoch)."""
+    since/until (epoch, [since, until)), text (fragment cautat in campurile evenimentului).
+    Intoarce dictionare plate ca in JSONL-ul vechi, plus `ts` (epoch)."""
     cond, args = [], []
     if tip:
         cond.append("tip = ?")
         args.append(tip)
+    if text:
+        cond.append("date LIKE ? ESCAPE '\\'")
+        args.append("%" + str(text)[:80].replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%")
     if cam is not None:
         cond.append("cam = ?")
         args.append(int(cam))

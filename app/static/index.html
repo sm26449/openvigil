@@ -1075,6 +1075,25 @@
       <span class="s-msg" id="s-msg-train"></span>
     </div>
 
+    <div class="set-card" id="llm-card">
+      <h2 data-ic="brain">Model de limbaj și asistent</h2>
+      <p class="hint">Rezumatele episoadelor și traducerile vocabularului le scrie modelul de
+        limbaj local (Qwen, în nvr-ai). Opțional, un server compatibil OpenAI (Ollama, LM Studio,
+        vLLM) de pe altă mașină: adresa cu <code>/v1</code> la coadă, numele modelului și cheia
+        dacă cere.</p>
+      <label>Adresă <input id="llm-url" type="text" placeholder="gol = Qwen local; ex. http://192.168.1.50:11434/v1"></label>
+      <label>Model <input id="llm-model" type="text" placeholder="ex. qwen2.5:7b"></label>
+      <label>Cheie <input id="llm-key" type="password" placeholder="doar dacă serverul cere"></label>
+      <label class="inline"><input id="llm-episod" type="checkbox"> Rezumatul fiecărui episod de prezență îl scrie modelul de limbaj (o propoziție, din fapte)</label>
+      <div class="s-btns"><button id="llm-save">Salvează</button><button id="llm-test">Testează modelul</button><span class="s-msg" id="s-msg-llm"></span></div>
+      <h3 class="wh-h3">Asistent (MCP)</h3>
+      <p class="hint">Un asistent (Claude, un agent din Node-RED) poate întreba sistemul ce s-a
+        întâmplat, căuta în poze, cere un cadru, vedea recomandările și comuta modul, prin
+        <code>POST /mcp</code> cu jetonul din Automatizări (<code>X-Token</code> sau
+        <code>Authorization: Bearer</code>). Pentru Claude Desktop e puntea
+        <code>scripts/openvigil_mcp.py</code>; detalii în <code>docs/mcp.md</code>.</p>
+    </div>
+
     <div class="set-card" id="demo-card">
       <h2 data-ic="camera">Mod demo</h2>
       <p class="hint">Patru camere sintetice (imaginea o generează go2rtc, fără nicio cameră

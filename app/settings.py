@@ -126,6 +126,12 @@ DEFAULTS = {
     "scena_lume": True,          # YOLO-World pe decupaj (detector cu vocabularul; greutati descarcate la prima pornire)
     "scena_telegram": False,     # candidatii (fara ploaie/umbra/frunze) pe Telegram, cu butoane
     "scena_telegram_cooldown": 300,   # secunde intre doi candidati trimisi de pe aceeasi camera
+    # Model de limbaj (llm.py): gol = Qwen-ul local din nvr-ai; altfel un server compatibil
+    # OpenAI (Ollama: http://gazda:11434/v1). episod_llm: rezumatul episoadelor scris de el.
+    "llm_url": "",
+    "llm_model": "",
+    "llm_key": "",
+    "episod_llm": False,
     "scene_cams": [],
     "scene_persist_min": 30,     # cate minute trebuie sa persiste schimbarea ca s-o raportam
     "scene_roi_top": 0.35,       # fractia de sus a cadrului ignorata (cer/copaci = fals-pozitive)

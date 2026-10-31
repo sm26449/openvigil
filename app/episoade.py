@@ -177,21 +177,110 @@ def tick(cam, now):
     nume = sorted(set(_nume(cam, t0, t1)) | e.get("cine", set()))
     semnalmente = _semnalmente(cam, t0, t1)
     fapta = comportament(t1 - t0, e.get("traseu"), e.get("dwell"))
+    date = dict(text=_text(e, nume, semnalmente, fapta),
+                inceput=time.strftime("%H:%M:%S", time.localtime(t0)),
+                durata_sec=int(t1 - t0),
+                persoane_max=e["max_simultan"],
+                aparitii=e["aparitii"],
+                zone=sorted(e["zone"]),
+                directii=sorted(e["directii"]),
+                nume=nume,
+                comportament=fapta,
+                traseu=_subesantion(e["traseu"]) if e.get("traseu") else None)
+    if _llm_pornit():
+        # modelul de limbaj dureaza secunde: nu in firul de urmarire; emitem din firul lui
+        import threading
+        threading.Thread(target=_emite_cu_descriere, args=(cam, date, t0, t1),
+                         daemon=True, name="episod-llm").start()
+    else:
+        _emite(cam, date)
+
+
+def _emite(cam, date):
     try:
         import hooks
-        hooks.emit("episod", cam,
-                   text=_text(e, nume, semnalmente, fapta),
-                   inceput=time.strftime("%H:%M:%S", time.localtime(t0)),
-                   durata_sec=int(t1 - t0),
-                   persoane_max=e["max_simultan"],
-                   aparitii=e["aparitii"],
-                   zone=sorted(e["zone"]),
-                   directii=sorted(e["directii"]),
-                   nume=nume,
-                   comportament=fapta,
-                   traseu=_subesantion(e["traseu"]) if e.get("traseu") else None)
+        hooks.emit("episod", cam, **date)
     except Exception as ex:
         logare.info(f"[episoade] emit cam{cam}: {str(ex)[:60]}")
+
+
+def _llm_pornit():
+    try:
+        import settings
+        return bool(settings.get("episod_llm"))
+    except Exception:
+        return False
+
+
+def _nume_cam(cam):
+    try:
+        import notify
+        return notify._cam_name(cam)
+    except Exception:
+        return f"cam {cam}"
+
+
+def _vazute_in_scena(cam, t0, t1):
+    """Ce a mai etichetat „Invata scena” pe camera in fereastra episodului (fara vreme)."""
+    try:
+        import jurnal
+        neutre = {"ploaie", "umbră", "frunze mișcate de vânt", "necunoscut"}
+        return sorted({e.get("eticheta") for e in jurnal.query(limit=200, tip="scena_candidat", cam=cam)
+                       if t0 <= _epoch(e.get("t")) <= t1 and e.get("eticheta") not in neutre} - {None})
+    except Exception:
+        return []
+
+
+def prompt_descriere(cam_nume, date, limba, vazute=()):
+    """Faptele episodului -> cererea catre modelul de limbaj: o singura propozitie, in limba
+    interfetei, fara inventii (doar ce e in fapte)."""
+    en = limba == "en"
+    et = (lambda ro, eng: eng if en else ro)  # noqa: E731
+    fapte = [f"{et('camera', 'camera')}: {cam_nume}", f"{et('ora', 'time')}: {date.get('inceput')}",
+             f"{et('durata', 'duration')}: {date.get('durata_sec')} s",
+             f"{et('persoane simultan', 'people at once')}: {date.get('persoane_max')}",
+             f"{et('aparitii', 'appearances')}: {date.get('aparitii')}"]
+    if date.get("nume"):
+        fapte.append(et("recunoscuti", "recognised") + ": " + ", ".join(date["nume"]))
+    if date.get("zone"):
+        fapte.append(et("zone", "zones") + ": " + ", ".join(date["zone"]))
+    if date.get("directii"):
+        fapte.append(et("directii", "directions") + ": " + ", ".join(date["directii"]))
+    if date.get("comportament"):
+        fapte.append(et("comportament", "behaviour") + ": " + t(str(date["comportament"]), limba))
+    if vazute:
+        fapte.append(et("vazute si", "also seen") + ": " + ", ".join(t(v, limba) for v in vazute))
+    fapte.append(et("rezumat-sablon", "template summary") + ": " + str(date.get("text") or ""))
+    if en:
+        return ("Write one sentence in English (at most 90 characters) that summarises this "
+                "surveillance episode for the owner. Use only the facts below, no assumptions, "
+                "no preamble.\n" + "\n".join(fapte))
+    return ("Scrie o singură propoziție în limba română (cel mult 90 de caractere) care rezumă "
+            "acest episod de supraveghere pentru proprietar. Folosește doar faptele de mai jos, "
+            "fără presupuneri, fără introducere.\n" + "\n".join(fapte))
+
+
+def scurteaza(txt, maxim=118):
+    """Jurnalul tine valorile pana in 120 de caractere: taiem la cuvant, cu „…”."""
+    txt = " ".join((txt or "").split()).strip(" \"„”")
+    if len(txt) <= maxim:
+        return txt
+    taiat = txt[:maxim - 1].rsplit(" ", 1)[0]
+    return taiat.rstrip(",;:") + "…"
+
+
+def _emite_cu_descriere(cam, date, t0, t1):
+    try:
+        import llm
+        from i18n import limba_curenta
+        txt = llm.completeaza(prompt_descriere(_nume_cam(cam), date, limba_curenta(), _vazute_in_scena(cam, t0, t1)),
+                              max_tokens=80, timeout=90)
+        txt = scurteaza(txt)
+        if len(txt) > 10:
+            date = {**date, "text_sablon": date["text"], "text": txt}
+    except Exception as ex:
+        logare.info(f"[episoade] descriere llm cam{cam}: {str(ex)[:80]}")
+    _emite(cam, date)
 
 
 def snapshot():

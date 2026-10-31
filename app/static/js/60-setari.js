@@ -1246,6 +1246,26 @@ for (const btn of document.querySelectorAll('.s-test')) {
   };
 }
 
+/* model de limbaj (llm.py): spate extern optional + rezumatele episoadelor */
+async function loadLlm() {
+  try {
+    const s = await (await fetch('/api/settings')).json();
+    $('#llm-url').value = s.llm_url || ''; $('#llm-model').value = s.llm_model || '';
+    $('#llm-key').value = s.llm_key || ''; $('#llm-episod').checked = !!s.episod_llm;
+  } catch {}
+}
+$('#llm-save') && ($('#llm-save').onclick = async () => {
+  const d = await post('/api/settings', { llm_url: $('#llm-url').value.trim(), llm_model: $('#llm-model').value.trim(),
+    llm_key: $('#llm-key').value.trim(), episod_llm: $('#llm-episod').checked });
+  flash('#s-msg-llm', d && !d.error ? t('Salvat ✓') : (d && d.error) || t('Eroare'), !!(d && d.error));
+});
+$('#llm-test') && ($('#llm-test').onclick = async () => {
+  flash('#s-msg-llm', t('Întreb modelul…'));
+  const d = await post('/api/llm/proba');
+  flash('#s-msg-llm', d && d.ok ? t('Răspunde: „{txt}”', { txt: d.text }) : t('Nu răspunde: {e}', { e: (d && d.text) || (d && d.error) || '?' }), !(d && d.ok));
+});
+loadLlm();
+
 /* antrenament local (data/dataset -> data/finetune -> model activ) */
 async function loadTrainStatus() {
   try {

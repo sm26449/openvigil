@@ -177,8 +177,8 @@ def _prea_multe_joburi(e):
 @app.before_request
 def guard():
     p = request.path
-    if p.startswith("/api/v1/"):
-        return None          # API-ul de automatizari are jetonul lui (X-Token)
+    if p.startswith("/api/v1/") or p == "/mcp":
+        return None          # API-ul de automatizari si MCP au jetonul lor (X-Token / Bearer)
     if p.startswith("/api/internal/"):
         return None          # canalul nvr-ai (localhost + token, verificat in endpoint)
     if p in ("/login", "/login/2fa", "/setup", "/logout", "/healthz", "/api/auth/forward", "/verifica"):
@@ -972,6 +972,10 @@ def _token_ok():
         return False
     # doar in antet: un jeton in query string ajunge in loguri, istoricul browserului, proxy-uri
     dat = request.headers.get("X-Token") or ""
+    if not dat:
+        auth = request.headers.get("Authorization") or ""
+        if auth.lower().startswith("bearer "):
+            dat = auth[7:].strip()          # clientii MCP trimit Authorization: Bearer
     return hmac.compare_digest(str(dat), str(tok))
 
 

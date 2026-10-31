@@ -33,6 +33,14 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   mai mare noaptea când ai respins „om” de mai multe ori (reglaj nou, per cameră:
   `conf_noapte`), pornirea urmăririi sau a scenei, nume noi în vocabular. Aplicările se
   auditează.
+- Server MCP (`POST /mcp`, cu jetonul API ca `X-Token` sau `Authorization: Bearer`): un
+  asistent poate întreba sistemul ce s-a întâmplat (evenimente cu filtru de text, episoade,
+  candidați), căuta în poze, cere cadrul unei camere, vedea recomandările și comuta modul.
+  Puntea stdio `scripts/openvigil_mcp.py` pentru Claude Desktop / Claude Code; `docs/mcp.md`.
+- Model de limbaj configurabil (`llm.py`): Qwen-ul local din nvr-ai sau, opțional, un server
+  compatibil OpenAI (Ollama, LM Studio, vLLM) din Setări → Unelte, cu buton de test.
+  Rezumatele episoadelor de prezență pot fi scrise de el (o propoziție, numai din fapte;
+  șablonul rămâne ca `text_sablon`). Jurnalul se poate filtra după text.
 - Întrebările în limbaj natural („when did the garbage truck come?”) merg și în engleză, cu
   răspunsuri în limba interfeței.
 - `RECORDINGS_DIR`, `ARHIVA_DIR`, `BACKUP_DIR`: înregistrările, nivelul de arhivă și copiile

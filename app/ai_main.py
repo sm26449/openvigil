@@ -505,6 +505,24 @@ def scena_reanalizeaza():
     return jsonify({"ok": True, **date})
 
 
+@app.route("/describe/text", methods=["POST"])
+def describe_text():
+    """JSON {token, prompt, max_tokens?} -> {text}: un raspuns scurt doar din text (llm.py)."""
+    err = _guard()
+    if err:
+        return err
+    import describe
+    b = request.get_json(silent=True) or {}
+    prompt = str(b.get("prompt") or "")[:4000]
+    if not prompt:
+        return jsonify({"error": "prompt lipsa"}), 400
+    try:
+        txt = describe.text(prompt, max_tokens=max(1, min(400, int(b.get("max_tokens") or 120))))
+    except Exception as e:
+        return jsonify({"error": str(e)[:160]}), 503
+    return jsonify({"ok": True, "text": txt})
+
+
 # ---- hot-swap formal (faza 6): schimbarea modelului e o tranzactie verificata ----
 @app.route("/model/verifica", methods=["POST"])
 def model_verifica():
@@ -1007,6 +1025,8 @@ def capabilities():
 
 def main():
     global TOKEN
+    import llm
+    llm.IN_AI = True                          # modelul de limbaj local e in acest proces
     TOKEN = _wait_token()
     logare.info(f"[nvr-ai] pornit pe :{AI_PORT}, jeton={'OK' if TOKEN else 'LIPSA'}")
     _shim_output_plane()                      # evenimentele/indexarea -> web, nu local

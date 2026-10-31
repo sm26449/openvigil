@@ -136,6 +136,14 @@ def api_train_run():
     return jsonify(d)
 
 
+@bp.route("/api/llm/proba", methods=["POST"])
+def api_llm_proba():
+    """Butonul „Testeaza modelul”: un apel scurt prin spatele configurat (extern sau Qwen local)."""
+    import llm
+    ok, text = llm.proba()
+    return jsonify({"ok": ok, "text": text})
+
+
 @bp.route("/api/train/feedback", methods=["POST"])
 def api_train_feedback():
     """Verdictele din „Invata scena” (data/scena/feedback.jsonl) intra in dataset, in nvr-ai

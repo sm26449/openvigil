@@ -258,6 +258,8 @@ Day-to-day operations (logs, updates, backups, ports, uninstall): [docs/operare.
 - [docs/nvr-ai.md](docs/nvr-ai.md), [docs/ai-contract.md](docs/ai-contract.md): the AI
   service and the web ↔ ai contract.
 - [docs/node-red.md](docs/node-red.md): webhooks and MQTT with an example flow.
+- [docs/mcp.md](docs/mcp.md): the MCP server (Claude Desktop, Claude Code, agents) and the
+  optional external language model (Ollama / OpenAI-compatible).
 - [SECURITY.md](SECURITY.md), [CONTRIBUTING.md](CONTRIBUTING.md), [NOTICE.md](NOTICE.md).
 
 ## Licence

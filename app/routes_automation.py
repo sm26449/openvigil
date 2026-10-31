@@ -81,3 +81,25 @@ def api_webhook_test():
 @bp.route("/api/webhooks")
 def api_webhooks():
     return jsonify({"evenimente": {k: t(v) for k, v in hooks.EVENIMENTE.items()}, "jurnal": hooks.jurnal()})
+
+
+# ---- MCP: asistentul (Claude, un agent) peste sistem, cu jetonul API ----
+@bp.route("/mcp", methods=["POST", "GET", "DELETE"])
+def mcp():
+    """Streamable HTTP, varianta JSON: POST cu un mesaj JSON-RPC, raspuns JSON (202 gol pentru
+    notificari). GET (fluxul SSE server->client) nu e oferit: 405, clientii trec peste."""
+    from server import _token_ok
+    if request.method != "POST":
+        return jsonify({"error": "doar POST"}), 405
+    if not _token_ok():
+        return jsonify({"jsonrpc": "2.0", "id": None,
+                        "error": {"code": -32001, "message": t("jeton lipsa sau greșit")}}), 401
+    import mcp_server
+    corp = request.get_json(silent=True)
+    if corp is None:
+        return jsonify({"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "JSON invalid"}}), 400
+    r, cod = mcp_server.trateaza_corp(corp)
+    if r is None:
+        return ("", cod)
+    return jsonify(r), cod
+

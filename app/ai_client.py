@@ -184,6 +184,11 @@ def describe_vehicle(cam_id, jpeg, boxes, moment=None):
                  boxes=json.dumps(boxes), moment=moment or "")
 
 
+def text(prompt, max_tokens=120, timeout=60):
+    """Un raspuns scurt doar din text, de la Qwen-ul din nvr-ai (llm.py, spatele local)."""
+    return _post_json("/describe/text", timeout=timeout, prompt=prompt, max_tokens=max_tokens)
+
+
 def scena_reanalizeaza(cam, candidat, poza):
     """Analiza adanca a unui candidat „ceva nou” (YOLO 640 + vocabular + VLM), in nvr-ai.
     Lenta (VLM-ul se incarca la nevoie): de chemat dintr-un job, nu din cerere."""
