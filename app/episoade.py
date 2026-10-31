@@ -224,7 +224,8 @@ def _vazute_in_scena(cam, t0, t1):
     """Ce a mai etichetat „Invata scena” pe camera in fereastra episodului (fara vreme)."""
     try:
         import jurnal
-        neutre = {"ploaie", "umbră", "frunze mișcate de vânt", "necunoscut"}
+        import scena_clasa
+        neutre = scena_clasa.NEUTRE
         return sorted({e.get("eticheta") for e in jurnal.query(limit=200, tip="scena_candidat", cam=cam)
                        if t0 <= _epoch(e.get("t")) <= t1 and e.get("eticheta") not in neutre} - {None})
     except Exception:

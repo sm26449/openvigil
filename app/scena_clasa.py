@@ -24,14 +24,17 @@ import settings
 
 PRAG_YOLO = 0.5          # increderea YOLO de la care nu mai intrebam vocabularul
 PRAG_LUME = 0.3          # increderea YOLO-World (detector pe vocabular) de la care o credem
-PRAG_VOCAB = 0.05        # scorul SigLIP (cosinus) sub care nu credem niciun nume
+PRAG_VOCAB = 0.06        # scorul SigLIP (cosinus) sub care nu credem niciun nume (0,05 dadea „ploaie” pe o tuia)
 MARJA_VOCAB = 0.01       # cat trebuie sa fie peste al doilea nume ca sa fie „clar”
 
 VOCABULAR_IMPLICIT = [
     "om", "om pe bicicletă", "om cu cărucior", "copil", "mașină", "camion", "tractor",
     "autobuz", "motocicletă", "cal", "cal cu căruță", "câine", "pisică", "găină", "porumbel",
-    "pasăre", "vulpe", "mistreț", "oaie", "vacă", "frunze mișcate de vânt", "umbră", "ploaie",
+    "pasăre", "vulpe", "mistreț", "oaie", "vacă", "frunze mișcate de vânt", "umbră", "ploaie", "copac",
 ]
+# numele care inseamna „nu e nimic de etichetat”: nu pleaca pe Telegram, intra in dataset ca
+# fundal fara chenare, nu apar in rezumatele episoadelor (un singur loc, importat de ceilalti)
+NEUTRE = {"ploaie", "umbră", "frunze mișcate de vânt", "copac", "nimic", "necunoscut"}
 
 _lock = threading.Lock()
 _vocab_cache = {"chei": None, "emb": None}

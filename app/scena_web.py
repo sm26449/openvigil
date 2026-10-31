@@ -28,8 +28,14 @@ from i18n import t
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCENA_DIR = os.path.join(ROOT, "data", "scena")
 FEEDBACK = os.path.join(SCENA_DIR, "feedback.jsonl")
-NEUTRE = {"ploaie", "umbră", "frunze mișcate de vânt", "nimic"}   # vremea / fundalul nu merita un mesaj
 NIMIC = "nimic"          # verdictul „e doar fundalul”: intra in dataset ca negativ (feedback_dataset)
+
+
+def _neutre():
+    """Numele care nu merita un mesaj (vreme, fundal) — din scena_clasa; „necunoscut” PLEACA:
+    exact pe el vrem verdictul omului."""
+    import scena_clasa
+    return scena_clasa.NEUTRE - {"necunoscut"}
 VERDICTE = ("ok", "gresit", "necunoscut")
 
 _fb_lock = threading.Lock()
@@ -186,7 +192,7 @@ def de_trimis(entry, now=None):
     """Pleaca pe Telegram candidatul asta? Pornit, nu e vreme, poza exista, cooldown pe camera."""
     if not activ() or not entry.get("poza") or entry.get("cam") is None:
         return False
-    if (entry.get("eticheta") or "") in NEUTRE:
+    if (entry.get("eticheta") or "") in _neutre():
         return False
     now = now or time.time()
     cd = int(settings.get("scena_telegram_cooldown") or 0)

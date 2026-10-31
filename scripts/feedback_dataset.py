@@ -35,7 +35,7 @@ CLASSES = ["person", "car", "truck", "bus", "motorcycle",
            "cat", "dog", "horse", "bird", "chicken", "pigeon"]     # ca in finetune_dataset.py
 ALIAS = {"child": "person", "kid": "person", "man": "person", "woman": "person",
          "hen": "chicken", "rooster": "chicken", "dove": "pigeon", "van": "truck", "lorry": "truck"}
-NEUTRE_RO = {"ploaie", "umbră", "frunze mișcate de vânt", "nimic", "fundal"}
+NEUTRE_RO = {"ploaie", "umbră", "frunze mișcate de vânt", "copac", "nimic", "fundal"}   # + scena_clasa.NEUTRE la rulare
 MIN_POZITIVE = 10        # un nume nou devine clasa doar cu atatea exemple (altfel modelul nu invata nimic)
 VAL_FRACTION = 0.15
 MARGINE = 0.25           # marginea decupajului (scena.decupaj) -> chenarul din mijloc, ca rezerva
@@ -76,7 +76,13 @@ def clasa_pentru(nume_ro, engleza):
     """(clasa engleza, e_fundal). Numele neutre -> fundal; restul -> clasa (cu aliasuri)."""
     if not nume_ro:
         return None, False
-    if nume_ro in NEUTRE_RO:
+    neutre = set(NEUTRE_RO)
+    try:
+        import scena_clasa
+        neutre |= scena_clasa.NEUTRE - {"necunoscut"}
+    except Exception:
+        pass
+    if nume_ro in neutre:
         return None, True
     en = (engleza(nume_ro) or nume_ro).strip().lower()
     en = ALIAS.get(en, en)
