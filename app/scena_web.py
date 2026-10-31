@@ -190,10 +190,14 @@ def de_trimis(entry, now=None):
         return False
     now = now or time.time()
     cd = int(settings.get("scena_telegram_cooldown") or 0)
+    cam = int(entry["cam"])
     with _ultim_lock:
-        if now - _ultim.get(entry["cam"], 0) < cd:
+        de_cand = now - _ultim.get(cam, 0)
+        if de_cand < cd:
+            logare.info(f"[scena] telegram cam{cam}: sarit, ultimul acum {int(de_cand)} s (cooldown {cd} s)")
             return False
-        _ultim[entry["cam"]] = now
+        _ultim[cam] = now
+    logare.info(f"[scena] telegram cam{cam}: trimit {entry.get('eticheta')} ({entry.get('id')})")
     return True
 
 
