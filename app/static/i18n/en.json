@@ -2333,5 +2333,6 @@
  "sursa": "source",
  "vreme rea: pragul pe vreme e activ": "bad weather: the weather threshold is active",
  "Caut…": "Searching…",
- "Nimic găsit; încearcă alt nume.": "Nothing found; try another name."
+ "Nimic găsit; încearcă alt nume.": "Nothing found; try another name.",
+ "Noaptea urmează soarele: apus {apus}, răsărit {rasarit} (orele fixe din Notificări rămân pentru evenimentele vechi)": "Night follows the sun: sunset {apus}, sunrise {rasarit} (the fixed hours in Notifications remain for old events)"
 }

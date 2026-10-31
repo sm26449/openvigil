@@ -140,6 +140,7 @@ DEFAULTS = {
     "locatie_lat": None,
     "locatie_lon": None,
     "vreme_prag": 0.0,
+    "noapte_din_soare": True,    # cu locatia setata, „noaptea” = de la apus la rasarit (nu orele fixe)
     "scena_telegram_ploaie": False,
     "scene_cams": [],
     "scene_persist_min": 30,     # cate minute trebuie sa persiste schimbarea ca s-o raportam

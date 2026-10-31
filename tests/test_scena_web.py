@@ -23,6 +23,8 @@ def _izolare(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "load", lambda: dict(CFG))
     monkeypatch.setattr(settings, "get", lambda k, d=None: CFG.get(k, d))
     monkeypatch.setattr(scena_web, "_nume_cam", lambda c: f"cam{c}")
+    import vreme
+    monkeypatch.setattr(vreme, "acum", lambda: {})          # fara vremea reala a instalatiei
     scena_web._ultim.clear()
     scena_web._analize.clear()
     apeluri = []

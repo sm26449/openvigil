@@ -98,3 +98,18 @@ def test_geocodare_si_exterior(monkeypatch):
     assert e["stare"] == "ploaie" and e["vant"] is True and e["vizibilitate_m"] == 600 and e["e_zi"] is False
     assert apel[vreme.URL_VREME]["latitude"] == 45.26
     assert vreme.text({"stare": "ploaie", "vant": True, "exterior": e, "camere": {"ploaie_pct": 40}, "locatie": "Lipia"}).startswith("ploaie, 7°C, rafale 44 km/h, 40%")
+
+
+def test_noaptea_din_soare(monkeypatch):
+    import time
+    import rules
+    monkeypatch.setattr(rules.settings, "get", lambda k: {"night_start": "22:00", "night_end": "06:00", "noapte_din_soare": True}.get(k))
+    vreme._stare.clear()
+    vreme._stare.update({"stare": "senin", "exterior": {"e_zi": True}, "t": time.time()})
+    assert rules._is_night() is False                       # 23:30 dupa ceas, dar Open-Meteo zice zi (test)
+    vreme._stare.update({"exterior": {"e_zi": False}})
+    assert rules._is_night() is True
+    assert rules._is_night("12:00") is False                # ora data: intervalul fix, pentru istoric
+    vreme._stare.update({"t": time.time() - 7200})
+    assert rules._is_night("23:30") is True and rules._is_night("12:00") is False   # vreme veche: orele
+    vreme._stare.clear()

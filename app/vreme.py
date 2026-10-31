@@ -98,7 +98,7 @@ def exterior(loc=None):
         "latitude": loc["lat"], "longitude": loc["lon"], "timezone": "auto",
         "current": "temperature_2m,is_day,precipitation,rain,snowfall,weather_code,cloud_cover,"
                    "wind_speed_10m,wind_gusts_10m",
-        "hourly": "visibility", "forecast_days": 1}, timeout=15)
+        "hourly": "visibility", "daily": "sunrise,sunset", "forecast_days": 1}, timeout=15)
     r.raise_for_status()
     d = r.json()
     c = d.get("current") or {}
@@ -116,7 +116,11 @@ def exterior(loc=None):
     stare = cod_stare(cod)
     if stare in ("senin", "innorat") and viz is not None and viz < 1000:
         stare = "ceata"
+    zi = d.get("daily") or {}
+    rasarit = (zi.get("sunrise") or [None])[0]
+    apus = (zi.get("sunset") or [None])[0]
     return {"stare": stare, "cod": cod, "temperatura": c.get("temperature_2m"),
+            "rasarit": rasarit[11:16] if rasarit else None, "apus": apus[11:16] if apus else None,
             "precipitatii_mm": c.get("precipitation"), "nori_pct": c.get("cloud_cover"),
             "vant_kmh": c.get("wind_speed_10m"), "rafale_kmh": c.get("wind_gusts_10m"),
             "vizibilitate_m": viz, "e_zi": bool(c.get("is_day")),

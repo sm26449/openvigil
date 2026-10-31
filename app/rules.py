@@ -273,7 +273,19 @@ def event_severity(e):
 
 
 def _is_night(now_hhmm=None):
+    """Noapte? Pentru „acum” (fara ora data), cu locatia setata si vremea proaspata, noaptea
+    vine de la apus/rasarit (Open-Meteo `is_day`), nu de la orele fixe; pentru o ora data
+    (severitatea recalculata a evenimentelor vechi) ramane intervalul din Setari."""
     import settings
+    if now_hhmm is None and settings.get("noapte_din_soare") is not False:
+        try:
+            import vreme
+            d = vreme.acum()
+            e = d.get("exterior") or {}
+            if "e_zi" in e and time.time() - float(d.get("t") or 0) < 3 * vreme.INTERVAL:
+                return not e["e_zi"]
+        except Exception:
+            pass
     interval = [settings.get("night_start") or "22:00",
                 settings.get("night_end") or "06:00"]
     return _in_interval(interval, now_hhmm or time.strftime("%H:%M"))

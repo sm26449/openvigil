@@ -42,6 +42,8 @@ def stare(monkeypatch):
     monkeypatch.setattr(detect.plates, "enabled", lambda: False)
     monkeypatch.setattr(detect.describe, "enabled", lambda: False)
     monkeypatch.setattr(detect, "_moment", lambda: "zi")
+    import vreme
+    monkeypatch.setattr(vreme, "citeste", lambda *a, **k: {})    # fara vremea reala (prag pe vreme rea)
     st = detect.CamState(999)
     st._maybe_siren = lambda fresh: None
     return st

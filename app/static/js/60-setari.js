@@ -1273,7 +1273,9 @@ async function loadVreme() {
     const [s, v] = await Promise.all([(await fetch('/api/settings')).json(), (await fetch('/api/vreme')).json()]);
     $('#vreme-prag').value = s.vreme_prag || 0; $('#vreme-tg-ploaie').checked = !!s.scena_telegram_ploaie;
     $('#vreme-locatie').innerHTML = s.locatie_lat ? html`${t('Locația salvată')}: <b>${s.locatie_nume || ''}</b> (${s.locatie_lat}, ${s.locatie_lon})` : html`${t('Nicio locație salvată: caută localitatea și alege-o din listă.')}`;
-    $('#vreme-acum').innerHTML = v && v.stare ? html`${t('Acum')}: <b>${v.text}</b> · ${t('sursa')}: ${v.sursa || '-'}${v.rea ? ' · ' + t('vreme rea: pragul pe vreme e activ') : ''}` : '';
+    const ex = (v && v.exterior) || {};
+    $('#vreme-acum').innerHTML = v && v.stare ? html`${t('Acum')}: <b>${v.text}</b> · ${t('sursa')}: ${v.sursa || '-'}${v.rea ? ' · ' + t('vreme rea: pragul pe vreme e activ') : ''}${
+      ex.rasarit ? html`<br>${t('Noaptea urmează soarele: apus {apus}, răsărit {rasarit} (orele fixe din Notificări rămân pentru evenimentele vechi)', { apus: ex.apus, rasarit: ex.rasarit })}` : ''}` : '';
   } catch {}
 }
 $('#vreme-cauta') && ($('#vreme-cauta').onclick = async () => {
