@@ -833,6 +833,7 @@ function openCamPanel(c) {
   };
   maint.append(reprobe, reboot);
   body.appendChild(section(t('Întreținere'), maint));
+  body.appendChild(recomandariSection(c));
   body.appendChild(scenaSection(c));
 
   if (c.id >= 101) {
@@ -931,6 +932,34 @@ $('#scan-add').onclick = async () => {
     buildCamsTable();
   }
 };
+
+/* ---------- Recomandari per camera (recomandari.py): deduse din jurnal, candidati, verdicte,
+   harta de instabilitate; fiecare cu butonul ei „Aplica” pe reglajele existente. ---------- */
+function recomandariSection(c) {
+  const box = document.createElement('div');
+  box.className = 'recom';
+  renderRecomandari(c, box);
+  return section(t('Recomandări'), box);
+}
+const RECOM_ICO = { rezolutie: '🔍', zona: '🗺️', prag: '🌙', scena: '🧩', urmarire: '🎯', vocabular: '📖', info: 'ℹ️' };
+async function renderRecomandari(c, box) {
+  let d;
+  try { d = await (await fetch(`/api/cam/${c.id}/recomandari`)).json(); } catch { d = null; }
+  const lst = (d && d.recomandari) || [];
+  if (!lst.length) { box.innerHTML = html`<p class="hint">${t('Nimic de recomandat acum: reglajele camerei se potrivesc cu ce a văzut sistemul.')}</p>`; return; }
+  box.innerHTML = lista(lst, (r) => html`<div class="recom-card" data-id="${r.id}">
+      <b>${RECOM_ICO[r.tip] || '•'} ${r.titlu}</b><p>${r.text}</p>
+      ${r.actiune ? html`<button type="button" class="recom-aplica">${t('Aplică')}</button>` : ''}</div>`);
+  for (const card of box.querySelectorAll('.recom-card')) {
+    const b = card.querySelector('.recom-aplica');
+    if (b) b.onclick = async () => {
+      b.disabled = true;
+      const r = await post(`/api/cam/${c.id}/recomandari/aplica`, { id: card.dataset.id });
+      if (r && r.ok) { toast(t('Aplicat: {ce}', { ce: r.aplicata.titlu })); renderRecomandari(c, box); }
+      else { b.disabled = false; toast((r && r.error) || t('Eroare'), true); }
+    };
+  }
+}
 
 /* ---------- Invata scena: detectie pe schimbare, in proba, cu feedback ----------
    Fundalul invatat de nvr-ai (scena.py), zonele instabile, candidatii „ceva nou” cu eticheta

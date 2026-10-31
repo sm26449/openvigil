@@ -514,8 +514,34 @@ def api_detect(cam_id):
     b = request.get_json(silent=True) or {}
     detect.set_detect(cam_id,
                       on=b.get("on") if "on" in b else None,
-                      auto_siren=b.get("auto_siren") if "auto_siren" in b else None)
+                      auto_siren=b.get("auto_siren") if "auto_siren" in b else None,
+                      conf_noapte=b.get("conf_noapte") if "conf_noapte" in b else None)
     return jsonify({"ok": True, **detect.cam_cfg(cam_id)})
+
+
+@bp.route("/api/cam/<int:cam_id>/recomandari")
+def api_cam_recomandari(cam_id):
+    """Recomandarile camerei (recomandari.py): ce ar imbunatati detectia, cu actiune aplicabila."""
+    if not any(c["id"] == cam_id for c in get_cameras()):
+        return jsonify({"error": t("camera inexistenta")}), 404
+    import recomandari
+    return jsonify({"recomandari": recomandari.pentru_camera(cam_id)})
+
+
+@bp.route("/api/cam/<int:cam_id>/recomandari/aplica", methods=["POST"])
+def api_cam_recomandari_aplica(cam_id):
+    """{id} -> aplica recomandarea (recalculata acum, nu din cerere); auditat."""
+    if not any(c["id"] == cam_id for c in get_cameras()):
+        return jsonify({"error": t("camera inexistenta")}), 404
+    import recomandari
+    rid = str((request.get_json(silent=True) or {}).get("id") or "")[:40]
+    try:
+        r = recomandari.aplica(cam_id, rid)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 409
+    audit.log("recomandare aplicata", f"cam{cam_id}:{rid}", who=(current_user() or {}).get("user"),
+              detail=r.get("actiune"))
+    return jsonify({"ok": True, "aplicata": r})
 
 # ---- descoperire camere in retea ----
 @bp.route("/api/discover", methods=["POST"])

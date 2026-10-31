@@ -1698,6 +1698,10 @@ dialog#reid::backdrop { background: rgba(0, 0, 0, .6); }
   .ev-filters #ev-filter { flex: 1 1 100%; }
 }
 
+/* ---------- fisa camerei: recomandari ---------- */
+.recom-card { background: var(--bg-2); border-radius: var(--r1); padding: var(--s2) var(--s3); margin-bottom: var(--s2); font-size: var(--fs-sm); }
+.recom-card p { margin: var(--s1) 0 var(--s2); }
+.recom-card button { min-height: 32px; }
 /* ---------- fisa camerei: invata scena (detectie pe schimbare) ---------- */
 .scena .inline { display: flex; gap: var(--s2); align-items: flex-start; margin-bottom: var(--s3); font-size: var(--fs-sm); }
 .scena-harta { position: relative; margin: var(--s2) 0; }

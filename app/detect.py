@@ -391,7 +391,15 @@ class CamState:
     def process(self, img, res, now):
         """Un cadru + rezultatul lui din lot -> toata logica per-camera."""
         import cv2
-        zone = cam_cfg(self.cam_id).get("zone")
+        cfg = cam_cfg(self.cam_id)
+        zone = cfg.get("zone")
+        # prag mai mare noaptea (recomandare per camera): siluetele nesigure din IR raman afara
+        prag_noapte = float(cfg.get("conf_noapte") or 0)
+        try:
+            import rules
+            e_noapte = bool(prag_noapte) and rules._is_night()
+        except Exception:
+            e_noapte = False
         h, w = img.shape[:2]
         hits = set()
         vazute = []      # TOATE chenarele + de ce au fost aruncate — overlay-ul (faza 6)
@@ -408,6 +416,9 @@ class CamState:
             vazute.append(box)
             if area < MIN_AREA or area > MAX_AREA:
                 box["filtru"] = "marime"
+                continue
+            if e_noapte and box["conf"] < prag_noapte:
+                box["filtru"] = "noapte"
                 continue
             # lipit de marginea cadrului = obiect taiat sau artefact
             if (nx1 < EDGE_MARGIN or ny1 < EDGE_MARGIN
@@ -745,13 +756,19 @@ def auto_siren_on():
     return {int(k) for k, v in load_cfg().items() if v.get("auto_siren")}
 
 
-def set_detect(cam_id, on=None, auto_siren=None):
+def set_detect(cam_id, on=None, auto_siren=None, conf_noapte=None):
+    """None = neschimbat; conf_noapte 0/False scoate pragul de noapte."""
     cfg = load_cfg()
     entry = cfg.get(str(cam_id), {"on": False, "auto_siren": False})
     if on is not None:
         entry["on"] = bool(on)
     if auto_siren is not None:
         entry["auto_siren"] = bool(auto_siren)
+    if conf_noapte is not None:
+        if conf_noapte:
+            entry["conf_noapte"] = round(max(0.3, min(0.95, float(conf_noapte))), 2)
+        else:
+            entry.pop("conf_noapte", None)
     cfg[str(cam_id)] = entry
     save_cfg(cfg)
     sync()

@@ -27,6 +27,12 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   Antrenamentul se poate porni pe yolo11m sau yolo11l și e evaluat automat pe clase, pe
   setul de validare fix (`scripts/evalueaza.py`, `runs/<nume>/evaluare.json`), iar
   rezultatele apar în cardul de antrenament.
+- Recomandări per cameră, în fișa camerei, deduse din ce a văzut sistemul (jurnal, candidați,
+  verdicte, harta de instabilitate) și aplicabile cu un clic: detecție pe regiuni HD când
+  obiectele sunt mici, zonă de detecție sub banda instabilă (copaci, cer), prag de încredere
+  mai mare noaptea când ai respins „om” de mai multe ori (reglaj nou, per cameră:
+  `conf_noapte`), pornirea urmăririi sau a scenei, nume noi în vocabular. Aplicările se
+  auditează.
 - Întrebările în limbaj natural („when did the garbage truck come?”) merg și în engleză, cu
   răspunsuri în limba interfeței.
 - `RECORDINGS_DIR`, `ARHIVA_DIR`, `BACKUP_DIR`: înregistrările, nivelul de arhivă și copiile
