@@ -253,10 +253,53 @@ def analiza_adanca(crop_bgr, model=None, clase=None, quantize=None, lock=None):
     return _decide_adanc(rez)
 
 
+_DIACRITICE = str.maketrans("șşțţăâî", "sstta ai".replace(" ", ""))
+
+
+def _simplu(text):
+    """Litere mici, fara diacritice — pentru comparat nume („Masina” ~ „mașină”)."""
+    return (text or "").lower().translate(_DIACRITICE).strip()
+
+
+def _acelasi(a, b):
+    """Doua nume vorbesc despre acelasi lucru: egale, sau cu acelasi prim cuvant
+    („om pe bicicletă” ~ „om”)."""
+    a, b = _simplu(a), _simplu(b)
+    if not a or not b:
+        return False
+    return a == b or a.split()[0] == b.split()[0]
+
+
+def _confirmat(nume, rez):
+    """Parerea VLM-ului e sustinuta de altcineva? YOLO-World (orice detectie), SigLIP (in
+    primele 3) sau YOLO-ul antrenat (clasa lui, tradusa). VLM-ul vede context, dar pe
+    fundaluri de noapte inventeaza („pisică albă” pe flori) — singur nu-l credem."""
+    w = rez.get("lume")
+    if w and _acelasi(w.get("eticheta"), nume):
+        return "yolo-world"
+    if any(_acelasi(x.get("nume"), nume) for x in (rez.get("vocab") or [])[:3]):
+        return "vocabular"
+    y = rez.get("yolo")
+    if y:
+        try:
+            import notify
+            ro = notify.RO.get(y.get("eticheta"), y.get("eticheta"))
+        except Exception:
+            ro = y.get("eticheta")
+        if _acelasi(ro, nume):
+            return "yolo"
+    return None
+
+
 def _decide_adanc(rez):
+    """VLM-ul primeaza DOAR confirmat de un alt model; altfel decizia obisnuita (YOLO /
+    YOLO-World / SigLIP), iar parerea VLM-ului ramane in `vlm` ca sa o vada omul."""
     vlm = rez.get("vlm")
     nume = _din_vocabular(vlm, vocabular()) if vlm else None
     if vlm and (nume or not _vlm_e_nimic(vlm)):
-        rez.update(eticheta=nume or vlm, incredere=1.0, sursa="vlm")
-        return rez
+        martor = _confirmat(nume or vlm, rez)
+        if martor:
+            rez.update(eticheta=nume or vlm, incredere=1.0, sursa="vlm", confirmat=martor)
+            return rez
+        rez["vlm_neconfirmat"] = True
     return _decide(rez)

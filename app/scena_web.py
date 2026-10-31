@@ -269,7 +269,7 @@ def text_analiza(r):
     """Rezultatul analizei, pe scurt, pentru om (Telegram si fisa camerei)."""
     parti = [t("🔍 Analiză: {ce}", ce=_eticheta_text(r.get("eticheta")))]
     if r.get("vlm"):
-        parti.append(t("VLM: „{txt}”", txt=r["vlm"]))
+        parti.append(t("VLM: „{txt}”", txt=r["vlm"]) + (" " + t("(neconfirmat de alt model)") if r.get("vlm_neconfirmat") else ""))
     y = r.get("yolo")
     if y:
         parti.append(f"YOLO: {_eticheta_text(y.get('eticheta'))} {round((y.get('incredere') or 0) * 100)}%")

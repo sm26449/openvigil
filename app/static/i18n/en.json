@@ -2238,5 +2238,6 @@
  "Candidații pleacă pe Telegram; butoanele de sub poză scriu feedback-ul.": "Candidates go to Telegram; the buttons under the photo record your feedback.",
  "Candidații nu mai pleacă pe Telegram.": "Candidates no longer go to Telegram.",
  "Analiză gata": "Analysis done",
- "Numele se compară cu imaginea prin SigLIP și YOLO-World: cuvinte simple, în română („cal cu căruță”, „tractor”); pentru un nume pe care interfața nu-l știe în engleză poți scrie „nume = english name”": "Names are matched against the image by SigLIP and YOLO-World: simple words (“horse and cart”, “tractor”); for a name the interface does not know in English you can write “name = english name”"
+ "Numele se compară cu imaginea prin SigLIP și YOLO-World: cuvinte simple, în română („cal cu căruță”, „tractor”); pentru un nume pe care interfața nu-l știe în engleză poți scrie „nume = english name”": "Names are matched against the image by SigLIP and YOLO-World: simple words (“horse and cart”, “tractor”); for a name the interface does not know in English you can write “name = english name”",
+ "(neconfirmat de alt model)": "(not confirmed by another model)"
 }

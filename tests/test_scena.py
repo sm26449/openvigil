@@ -118,13 +118,24 @@ def test_decizia_analizei_adanci(monkeypatch):
     baza = {"eticheta": "necunoscut", "incredere": 0.0, "sursa": "-",
             "yolo": {"eticheta": "person", "incredere": 0.55}, "vocab": [{"nume": "om", "scor": 0.08}]}
     r = scena_clasa._decide_adanc({**baza, "vlm": "un om cu glugă"})
-    assert (r["eticheta"], r["sursa"]) == ("om", "vlm")
+    assert (r["eticheta"], r["sursa"], r["confirmat"]) == ("om", "vlm", "vocabular")   # SigLIP il sustine
     r = scena_clasa._decide_adanc({**baza, "vlm": "drum gol"})          # nimic de etichetat -> YOLO
     assert (r["eticheta"], r["sursa"]) == ("person", "yolo")
-    r = scena_clasa._decide_adanc({**baza, "vlm": "mașină albă", "yolo": None})
-    assert (r["eticheta"], r["sursa"]) == ("mașină albă", "vlm")        # nu e in vocabular: textul lui
+    r = scena_clasa._decide_adanc({**baza, "vlm": "mașină albă", "yolo": None,
+                                   "lume": {"eticheta": "mașină", "incredere": 0.8}})
+    assert (r["eticheta"], r["sursa"], r["confirmat"]) == ("mașină albă", "vlm", "yolo-world")
     r = scena_clasa._decide_adanc({**baza, "vlm": "pământ, copaci, clădire, vânt, vânt, vânt", "yolo": None})
     assert (r["eticheta"], r["sursa"]) == ("om", "vocabular")           # insiruire = nu e eticheta
+    # VLM singur („pisică albă” pe flori): nu il credem; ramane parerea obisnuita + semnul
+    r = scena_clasa._decide_adanc({**baza, "vlm": "pisică albă", "yolo": None, "lume": None,
+                                   "vocab": [{"nume": "frunze mișcate de vânt", "scor": 0.078},
+                                             {"nume": "umbră", "scor": 0.062}]})
+    assert (r["eticheta"], r["sursa"]) == ("frunze mișcate de vânt", "vocabular") and r["vlm_neconfirmat"]
+    # YOLO-ul antrenat confirma prin clasa lui tradusa („person” ~ „om pe bicicletă”)
+    r = scena_clasa._decide_adanc({**baza, "vlm": "om pe bicicletă", "vocab": None,
+                                   "yolo": {"eticheta": "person", "incredere": 0.3}})
+    assert (r["eticheta"], r["sursa"], r["confirmat"]) == ("om pe bicicletă", "vlm", "yolo")
+    assert scena_clasa._acelasi("Masina", "mașină") and not scena_clasa._acelasi("om", "umbră")
 
 
 def test_vocabular_cu_forma_engleza(monkeypatch, tmp_path):

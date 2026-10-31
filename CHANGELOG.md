@@ -17,7 +17,9 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   descărcat la prima pornire în `data/modele/`): vede obiectul din decupaj, nu fundalul, și
   câștigă când YOLO-ul antrenat nu e sigur. Numele românești primesc forma engleză pentru
   CLIP din dicționarul interfeței, din „nume = english name” scris în vocabular sau printr-o
-  traducere memorată; setarea `scena_lume` îl oprește.
+  traducere memorată; setarea `scena_lume` îl oprește. În analiza adâncă, eticheta modelului
+  de limbaj e crezută doar dacă o confirmă YOLO-World, SigLIP sau YOLO-ul antrenat; altfel
+  rămâne afișată ca neconfirmată și decide restul.
 - Întrebările în limbaj natural („when did the garbage truck come?”) merg și în engleză, cu
   răspunsuri în limba interfeței.
 - `RECORDINGS_DIR`, `ARHIVA_DIR`, `BACKUP_DIR`: înregistrările, nivelul de arhivă și copiile
