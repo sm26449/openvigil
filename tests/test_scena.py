@@ -106,3 +106,22 @@ def test_uniunea_prea_mare_nu_e_candidat():
         maturi += s.feed(g, now=t)
         t += 0.25
     assert not maturi
+
+
+def test_decizia_analizei_adanci(monkeypatch):
+    import scena_clasa
+    monkeypatch.setattr(scena_clasa, "vocabular", lambda: ["om", "camion", "frunze mișcate de vânt", "om pe bicicletă"])
+    assert scena_clasa._din_vocabular("un camion alb", scena_clasa.vocabular()) == "camion"   # nu „om”
+    assert scena_clasa._din_vocabular("om pe bicicletă roșie", scena_clasa.vocabular()) == "om pe bicicletă"
+    assert scena_clasa._din_vocabular("frunze în vânt", scena_clasa.vocabular()) == "frunze mișcate de vânt"
+    assert scena_clasa._din_vocabular("pisică", scena_clasa.vocabular()) is None
+    baza = {"eticheta": "necunoscut", "incredere": 0.0, "sursa": "-",
+            "yolo": {"eticheta": "person", "incredere": 0.55}, "vocab": [{"nume": "om", "scor": 0.08}]}
+    r = scena_clasa._decide_adanc({**baza, "vlm": "un om cu glugă"})
+    assert (r["eticheta"], r["sursa"]) == ("om", "vlm")
+    r = scena_clasa._decide_adanc({**baza, "vlm": "drum gol"})          # nimic de etichetat -> YOLO
+    assert (r["eticheta"], r["sursa"]) == ("person", "yolo")
+    r = scena_clasa._decide_adanc({**baza, "vlm": "mașină albă", "yolo": None})
+    assert (r["eticheta"], r["sursa"]) == ("mașină albă", "vlm")        # nu e in vocabular: textul lui
+    r = scena_clasa._decide_adanc({**baza, "vlm": "pământ, copaci, clădire, vânt, vânt, vânt", "yolo": None})
+    assert (r["eticheta"], r["sursa"]) == ("om", "vocabular")           # insiruire = nu e eticheta

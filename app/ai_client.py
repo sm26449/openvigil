@@ -184,6 +184,12 @@ def describe_vehicle(cam_id, jpeg, boxes, moment=None):
                  boxes=json.dumps(boxes), moment=moment or "")
 
 
+def scena_reanalizeaza(cam, candidat, poza):
+    """Analiza adanca a unui candidat „ceva nou” (YOLO 640 + vocabular + VLM), in nvr-ai.
+    Lenta (VLM-ul se incarca la nevoie): de chemat dintr-un job, nu din cerere."""
+    return _post_json("/scena/reanalizeaza", timeout=240, cam=cam, candidat=candidat, poza=poza)
+
+
 def detect_state():
     """Starea detectiei din nvr-ai: {detect: {cam(int): {labels, recent}}, gate_ratio}.
     None la esec (apelantul cade pe detect.snapshot() local — gol cand bucla e remote,

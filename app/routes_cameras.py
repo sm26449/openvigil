@@ -10,7 +10,6 @@ import json
 import os
 import re
 import subprocess
-import threading
 import time
 import xml.etree.ElementTree as ET
 
@@ -28,6 +27,7 @@ import health
 from i18n import t
 import jobs
 import record
+import scena_web
 import settings
 from server import (EXT_BASE_ID, ROOT, _cam_entry, _remember_desired,
                     _set_stream_synced, _visible_ids, current_user, get_cameras,
@@ -791,35 +791,9 @@ def api_reboot(cam_id):
 
 
 # ---- detectie pe schimbare (scena.py, in nvr-ai): fisa camerei ----
-SCENA_DIR = os.path.join(ROOT, "data", "scena")
+SCENA_DIR = scena_web.SCENA_DIR
 _SCENA_FN = re.compile(r"^(\d{8}-\d{6}-\d+\.jpg|fundal\.jpg|instabil\.png)$")
-_FEEDBACK = os.path.join(SCENA_DIR, "feedback.jsonl")
-_fb_lock = threading.Lock()
-
-
-def _scena_feedback(cam_id=None):
-    """{id eveniment: {verdict, eticheta, cine, t}} din feedback.jsonl (ultimul cuvant conteaza)."""
-    out = {}
-    try:
-        with open(_FEEDBACK, encoding="utf-8") as f:
-            for ln in f:
-                try:
-                    r = json.loads(ln)
-                except ValueError:
-                    continue
-                if cam_id is None or r.get("cam") == cam_id:
-                    out[r["id"]] = r
-    except OSError:
-        pass
-    return out
-
-
-def _vocabular():
-    try:
-        import scena_clasa
-        return scena_clasa.vocabular()
-    except Exception:
-        return [str(x) for x in (settings.get("scena_vocabular") or [])]
+_vocabular = scena_web.vocabular
 
 
 @bp.route("/api/cam/<int:cam_id>/scena")
@@ -838,10 +812,13 @@ def api_cam_scena(cam_id):
         pass
     limit = min(200, max(1, int(request.args.get("limit", 60))))
     candidati = jurnal.query(limit=limit, tip="scena_candidat", cam=cam_id)
-    fb = _scena_feedback(cam_id)
+    fb = scena_web.feedback_citeste(cam_id)
+    # cea mai noua analiza a fiecarui candidat (query da intai cele noi -> parcurgem invers)
+    analize = {a.get("candidat"): a for a in reversed(jurnal.query(limit=limit, tip="scena_analiza", cam=cam_id))}
     etichete, verdicte = {}, {"ok": 0, "gresit": 0, "necunoscut": 0}
     for c in candidati:
         c["feedback"] = fb.get(c["id"])
+        c["analiza"] = analize.get(c["id"])        # analiza e legata de evenimentul din jurnal
         etichete[c.get("eticheta") or "?"] = etichete.get(c.get("eticheta") or "?", 0) + 1
     for r in fb.values():
         verdicte[r.get("verdict", "necunoscut")] = verdicte.get(r.get("verdict", "necunoscut"), 0) + 1
@@ -852,7 +829,8 @@ def api_cam_scena(cam_id):
         "fundal": os.path.exists(os.path.join(d, "fundal.jpg")),
         "instabil": os.path.exists(os.path.join(d, "instabil.png")),
         "candidati": candidati, "etichete": etichete, "verdicte": verdicte,
-        "vocabular": _vocabular()})
+        "vocabular": _vocabular(), "telegram": bool(settings.get("scena_telegram")),
+        "telegram_posibil": bool(settings.get("telegram_token") and settings.get("telegram_chat"))})
 
 
 @bp.route("/api/cam/<int:cam_id>/scena", methods=["POST"])
@@ -895,14 +873,32 @@ def api_cam_scena_feedback(cam_id):
     Se adauga in data/scena/feedback.jsonl — materia prima a antrenamentului."""
     b = request.get_json(silent=True) or {}
     eid = str(b.get("id") or "")[:32]
-    verdict = b.get("verdict")
-    if not eid or verdict not in ("ok", "gresit", "necunoscut"):
+    if not eid or b.get("verdict") not in scena_web.VERDICTE:
         return jsonify({"error": t("cerere invalida")}), 400
-    r = {"cam": cam_id, "id": eid, "verdict": verdict,
-         "eticheta": (str(b.get("eticheta") or "")[:60] or None),
-         "poza": (str(b.get("poza") or "")[:60] or None),
-         "cine": (current_user() or {}).get("user"), "t": time.strftime("%Y-%m-%d %H:%M:%S")}
-    os.makedirs(SCENA_DIR, exist_ok=True)
-    with _fb_lock, open(_FEEDBACK, "a", encoding="utf-8") as f:
-        f.write(json.dumps(r, ensure_ascii=False) + "\n")
+    r = scena_web.feedback_adauga(cam_id, eid, b["verdict"], eticheta=b.get("eticheta"),
+                                  poza=b.get("poza"), cine=(current_user() or {}).get("user"))
     return jsonify({"ok": True, "feedback": r})
+
+
+@bp.route("/api/cam/<int:cam_id>/scena/reanalizeaza", methods=["POST"])
+def api_cam_scena_reanalizeaza(cam_id):
+    """Analiza adanca a unui candidat (🔍): {id, poza} -> job (VLM-ul dureaza secunde)."""
+    b = request.get_json(silent=True) or {}
+    eid = str(b.get("id") or "")[:32]
+    poza = str(b.get("poza") or "")
+    if not eid or not _SCENA_FN.match(poza) or poza in ("fundal.jpg", "instabil.png"):
+        return jsonify({"error": t("cerere invalida")}), 400
+    if not any(c["id"] == cam_id for c in get_cameras()):
+        return jsonify({"error": t("camera inexistenta")}), 404
+    return jsonify(jobs.submit("scena_reanaliza", {"cam": cam_id, "id": eid, "poza": poza},
+                               who=(current_user() or {}).get("user"), cam=cam_id)), 202
+
+
+def _job_scena_reanaliza(job):
+    p = job.parametri
+    job.progres(10, t("analizez decupajul (YOLO, vocabular, VLM)"))
+    r = scena_web.reanalizeaza(p["cam"], p["id"], p["poza"])
+    return {"analiza": r, "text": scena_web.text_analiza(r)}
+
+
+jobs.register("scena_reanaliza", _job_scena_reanaliza)

@@ -38,6 +38,7 @@ EVENIMENTE = {
     "alarma_camera": "Alarma raportata de camera (miscare, linie trecuta, intrare in zona)",
     "zgomot": "Prag de zgomot depasit",
     "scena_candidat": "Ceva nou in scena unei camere (detectie pe schimbare), cu eticheta propusa",
+    "scena_analiza": "Analiza adanca a unui candidat „ceva nou” (YOLO + vocabular + VLM), la cerere",
     "camera_offline": "O camera nu mai raspunde",
     "camera_online": "O camera a revenit",
     "gol_inregistrare": "Gol in inregistrarea unei camere",

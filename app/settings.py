@@ -123,6 +123,8 @@ DEFAULTS = {
     # fisa camerei, nu alarme. Camerele trebuie sa fie in track_cams.
     "scena_cams": [],
     "scena_vocabular": [],       # gol = lista implicita din scena_clasa.VOCABULAR_IMPLICIT
+    "scena_telegram": False,     # candidatii (fara ploaie/umbra/frunze) pe Telegram, cu butoane
+    "scena_telegram_cooldown": 300,   # secunde intre doi candidati trimisi de pe aceeasi camera
     "scene_cams": [],
     "scene_persist_min": 30,     # cate minute trebuie sa persiste schimbarea ca s-o raportam
     "scene_roi_top": 0.35,       # fractia de sus a cadrului ignorata (cer/copaci = fals-pozitive)

@@ -313,6 +313,13 @@ def _journal(tip, cam_id, date):
             push.eveniment(entry)
         except Exception as e:
             logare.info(f"[rules] push: {str(e)[:80]}")
+    if tip == "scena_candidat":
+        # „Invata scena”: candidatul pleaca pe Telegram cu butoane (daca setarea e pornita)
+        try:
+            import scena_web
+            scena_web.notifica(entry)
+        except Exception as e:
+            logare.info(f"[rules] scena telegram: {str(e)[:80]}")
 
 
 def journal(limit=200, tip=None, cam=None, day=None, min_sev=None):

@@ -6,6 +6,13 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 ## [Nepublicat]
 
 ### Adăugat
+- „Învață scena” (în probă, per cameră, din fișa camerei): camera își învață fundalul și
+  clasifică doar ce e nou, pe decupaj din fluxul HD, cu vocabular deschis editabil din
+  interfață (SigLIP) plus YOLO; candidații apar în fișă cu butoane ✓ / ✕ / ? / 🔍, iar
+  verdictele se strâng în `data/scena/feedback.jsonl` pentru antrenamentul următor.
+  Opțional, candidații pleacă pe Telegram ca poză cu butoane (✓ corect, ✕ ce e de fapt,
+  🔍 reanalizează); 🔍 cere o analiză adâncă (YOLO la 640, tot vocabularul, modelul de limbaj
+  Qwen2.5-VL) și răspunde în același chat. Evenimente noi: `scena_candidat`, `scena_analiza`.
 - Întrebările în limbaj natural („when did the garbage truck come?”) merg și în engleză, cu
   răspunsuri în limba interfeței.
 - `RECORDINGS_DIR`, `ARHIVA_DIR`, `BACKUP_DIR`: înregistrările, nivelul de arhivă și copiile

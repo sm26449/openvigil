@@ -12,6 +12,7 @@ celorlalte; altfel „necunoscut” — si exact necunoscutele sunt cele pe care
 in fisa camerei, ca sa ne spuna ce sunt (feedback-ul intra la antrenament).
 Textele vocabularului sunt in romana (SigLIP e multilingv); interfata le traduce la afisare.
 """
+import re
 import threading
 
 import numpy as np
@@ -50,11 +51,11 @@ def _embeddings_vocab(nume):
         return _vocab_cache["emb"]
 
 
-def _yolo(crop_bgr, model, clase, quantize=None):
+def _yolo(crop_bgr, model, clase, quantize=None, imgsz=320):
     try:
-        res = model.predict(crop_bgr, imgsz=320, conf=0.25, verbose=False, quantize=quantize)[0]
+        res = model.predict(crop_bgr, imgsz=imgsz, conf=0.25, verbose=False, quantize=quantize)[0]
     except TypeError:                      # ultralytics fara `quantize`
-        res = model.predict(crop_bgr, imgsz=320, conf=0.25, verbose=False)[0]
+        res = model.predict(crop_bgr, imgsz=imgsz, conf=0.25, verbose=False)[0]
     best = None
     for b in res.boxes:
         lbl = clase.get(int(b.cls)) if clase else None
@@ -66,7 +67,7 @@ def _yolo(crop_bgr, model, clase, quantize=None):
     return best
 
 
-def _vocab(crop_bgr):
+def _vocab(crop_bgr, n=3):
     import cv2
     import semantic
     from PIL import Image
@@ -77,7 +78,7 @@ def _vocab(crop_bgr):
     pil = Image.fromarray(cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2RGB))
     e = semantic.embed_images([pil])[0]
     scoruri = emb @ e
-    ordine = np.argsort(-scoruri)[:3]
+    ordine = np.argsort(-scoruri)[:n]
     return [{"nume": nume[i], "scor": round(float(scoruri[i]), 4)} for i in ordine]
 
 
@@ -102,4 +103,88 @@ def clasifica(crop_bgr, model=None, clase=None, quantize=None):
         rez.update(eticheta=v[0]["nume"], incredere=v[0]["scor"], sursa="vocabular")
     elif y:
         rez.update(eticheta=y["eticheta"], incredere=y["incredere"], sursa="yolo-nesigur")
+    return rez
+
+
+# ---- analiza adanca, la cerere (butonul 🔍 din fisa camerei / Telegram) ----
+PROMPT_VLM = ("Imagine de la o cameră de supraveghere. Ce ființă sau obiect principal se vede în ea? "
+              "Răspunde în română, doar cu numele, în 1-5 cuvinte (exemple: om, om pe bicicletă, "
+              "pisică, găină, tractor, mașină albă, cal cu căruță). Dacă nu e nicio ființă și niciun "
+              "vehicul, spune ce se vede (de exemplu: frunze, umbră, ploaie, drum gol, perete).")
+# raspunsuri care inseamna „nu e nimic de etichetat”: raman la vocabular/YOLO
+VLM_NIMIC = ("nimic", "nu se vede", "gol", "goală", "perete", "drum", "iarbă", "neclar")
+
+
+def _din_vocabular(text, nume):
+    """Numele din vocabular pe care il contine raspunsul VLM — ca sa ramana antrenabil.
+    Potrivire pe cuvinte intregi („om” nu se ascunde in „camion”); un nume compus se
+    potriveste si prin primul lui cuvant, daca are macar 4 litere („frunze” -> „frunze
+    mișcate de vânt”). Castiga numele intreg cel mai lung."""
+    jos = (text or "").lower()
+
+    def are(cuv):
+        return re.search(r"(?<!\w)" + re.escape(cuv.lower()) + r"(?!\w)", jos) is not None
+
+    intregi = [n for n in nume if are(n)]
+    if intregi:
+        return max(intregi, key=len)
+    for n in nume:
+        primul = n.split()[0]
+        if len(primul) >= 4 and " " in n and are(primul):
+            return n
+    return None
+
+
+def _vlm_e_nimic(text):
+    """Raspunsul VLM nu e o eticheta: gol, „nimic/drum gol/perete…”, sau o insiruire
+    (modelul mic o ia uneori razna pe fundaluri: „pământ, copaci, vânt, vânt, vânt…”)."""
+    jos = (text or "").lower()
+    if not jos or len(jos.split()) > 6 or jos.count(",") >= 3:
+        return True
+    return any(re.search(r"(?<!\w)" + c + r"(?!\w)", jos) for c in VLM_NIMIC)
+
+
+def analiza_adanca(crop_bgr, model=None, clase=None, quantize=None, lock=None):
+    """Parerea „scumpa” despre un decupaj, ceruta de om: YOLO la 640, tot vocabularul (top 5)
+    si VLM-ul (Qwen2.5-VL, incarcat la nevoie, cateva secunde). `lock` se tine DOAR pe YOLO
+    (modelul partajat cu urmarirea); VLM-ul are lacatul lui si nu blocheaza camerele.
+    Decizia: VLM-ul primeaza (vede contextul, nu doar forma); daca raspunsul contine un nume
+    din vocabular, eticheta e acel nume (ramane antrenabil); altfel textul lui, scurtat."""
+    rez = {"eticheta": "necunoscut", "incredere": 0.0, "sursa": "-", "yolo": None, "vocab": None, "vlm": None}
+    if crop_bgr is None or crop_bgr.size == 0:
+        return rez
+    if model is not None:
+        try:
+            if lock is not None:
+                with lock:
+                    rez["yolo"] = _yolo(crop_bgr, model, clase or {}, quantize, imgsz=640)
+            else:
+                rez["yolo"] = _yolo(crop_bgr, model, clase or {}, quantize, imgsz=640)
+        except Exception as e:
+            logare.info(f"[scena] analiza yolo: {str(e)[:80]}")
+    try:
+        rez["vocab"] = _vocab(crop_bgr, n=5)
+    except Exception as e:
+        logare.info(f"[scena] analiza vocabular: {str(e)[:80]}")
+    try:
+        import cv2
+        import describe
+        from PIL import Image
+        pil = Image.fromarray(cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2RGB))
+        txt = describe.describe_crop(pil, PROMPT_VLM)
+        rez["vlm"] = " ".join(txt.split()).strip(" .").lower()[:80] or None
+    except Exception as e:
+        logare.info(f"[scena] analiza vlm: {str(e)[:80]}")
+    return _decide_adanc(rez)
+
+
+def _decide_adanc(rez):
+    y, v, vlm = rez["yolo"], rez["vocab"], rez["vlm"]
+    nume = _din_vocabular(vlm, vocabular()) if vlm else None
+    if vlm and (nume or not _vlm_e_nimic(vlm)):
+        rez.update(eticheta=nume or vlm, incredere=1.0, sursa="vlm")
+    elif y and y["incredere"] >= PRAG_YOLO:
+        rez.update(eticheta=y["eticheta"], incredere=y["incredere"], sursa="yolo")
+    elif v and v[0]["scor"] >= PRAG_VOCAB and (len(v) < 2 or v[0]["scor"] - v[1]["scor"] >= MARJA_VOCAB):
+        rez.update(eticheta=v[0]["nume"], incredere=v[0]["scor"], sursa="vocabular")
     return rez

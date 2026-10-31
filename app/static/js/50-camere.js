@@ -957,8 +957,9 @@ async function renderScena(c, box) {
       ${e.poza ? html`<img src="/api/cam/${c.id}/scena/fisier/${e.poza}" loading="lazy" alt="">` : html`<div class="scena-fara"></div>`}
       <figcaption><b>${numeEticheta(e.eticheta)}</b> <small>${e.sursa === 'vocabular' ? t('vocabular') : e.sursa === 'yolo' ? 'YOLO' : e.sursa === 'yolo-nesigur' ? t('YOLO nesigur') : ''}${pct ? ' · ' + pct : ''}</small>
         <span class="hint">${(e.t || '').slice(11, 16)} · ${t('{n} cadre', { n: e.cadre || 0 })}</span>
-        ${fb ? html`<span class="scena-verdict">${fb.verdict === 'ok' ? '✓ ' + t('corect') : fb.verdict === 'gresit' ? '✕ ' + (fb.eticheta ? numeEticheta(fb.eticheta) : t('greșit')) : '? ' + t('nu știu')}</span>`
-             : html`<span class="scena-fb"><button class="fb-ok" title="${t('Eticheta e corectă')}">✓</button><button class="fb-nu" title="${t('Nu e asta: spune ce e')}">✕</button><button class="fb-ns" title="${t('Nu se vede clar')}">?</button></span>`}
+        ${e.analiza ? html`<span class="scena-analiza" title="${e.analiza.vlm ? 'VLM: ' + e.analiza.vlm : ''}">🔍 ${numeEticheta(e.analiza.eticheta)}${e.analiza.vlm && e.analiza.vlm !== e.analiza.eticheta ? html` <i>„${e.analiza.vlm}”</i>` : ''}</span>` : ''}
+        ${fb ? html`<span class="scena-verdict">${fb.verdict === 'ok' ? '✓ ' + (fb.eticheta ? numeEticheta(fb.eticheta) : t('corect')) : fb.verdict === 'gresit' ? '✕ ' + (fb.eticheta ? numeEticheta(fb.eticheta) : t('greșit')) : '? ' + t('nu știu')}</span>`
+             : html`<span class="scena-fb"><button class="fb-ok" title="${t('Eticheta e corectă')}">✓</button><button class="fb-nu" title="${t('Nu e asta: spune ce e')}">✕</button><button class="fb-ns" title="${t('Nu se vede clar')}">?</button>${e.poza && !e.analiza ? html`<button class="fb-re" title="${t('Reanalizează: YOLO la rezoluție mare, tot vocabularul și modelul de limbaj (câteva secunde)')}">🔍</button>` : ''}</span>`}
       </figcaption></figure>`;
   };
   const etichete = Object.entries(d.etichete || {}).sort((a, b) => b[1] - a[1]);
@@ -969,6 +970,8 @@ async function renderScena(c, box) {
         <img src="/api/cam/${c.id}/scena/fisier/fundal.jpg?t=${ts}" alt="${t('Fundalul învățat')}">
         ${d.instabil ? html`<img class="scena-instabil" src="/api/cam/${c.id}/scena/fisier/instabil.png?t=${ts}" alt="">` : ''}</div>`
       : d.activ ? html`<p class="hint">${t('Fundalul se învață în primele minute; revino puțin mai târziu.')}</p>` : ''}
+    ${d.activ && d.telegram_posibil ? html`<label class="inline"><input type="checkbox" class="scena-telegram" ${d.telegram ? 'checked' : ''}>
+      ${t('Trimite candidații pe Telegram, cu butoane ✓ ✕ 🔍 (fără ploaie, umbre, frunze; cel mult unul la 5 minute pe cameră; comun tuturor camerelor)')}</label>` : ''}
     ${d.activ ? html`<p class="hint">${t('{cadre} cadre · {cand} candidați acum · {inst}% zonă instabilă · {zg} cadre sărite (ploaie/zgomot) · {res} reînvățări (lumină)',
         { cadre: st.cadre || 0, cand: st.candidati || 0, inst: st.instabil_pct || 0, zg: st.cadre_zgomot || 0, res: st.resetari || 0 })}</p>` : ''}
     ${etichete.length ? html`<p class="hint">${t('Până acum')}: ${etichete.map(([k, n]) => `${numeEticheta(k)} ${n}`).join(' · ')} · ${t('verdicte')}: ✓ ${d.verdicte.ok} ✕ ${d.verdicte.gresit} ? ${d.verdicte.necunoscut}</p>` : ''}
@@ -981,6 +984,11 @@ async function renderScena(c, box) {
     const r = await post(`/api/cam/${c.id}/scena`, { activ: ev.target.checked });
     if (r && r.ok) { toast(ev.target.checked ? t('Detecția pe schimbare a pornit; fundalul se învață în câteva minute.') : t('Detecția pe schimbare s-a oprit.')); setTimeout(() => renderScena(c, box), 800); }
   };
+  const tg = box.querySelector('.scena-telegram');
+  if (tg) tg.onchange = async (ev) => {
+    const r = await post('/api/settings', { scena_telegram: ev.target.checked });
+    if (r && !r.error) toast(ev.target.checked ? t('Candidații pleacă pe Telegram; butoanele de sub poză scriu feedback-ul.') : t('Candidații nu mai pleacă pe Telegram.'));
+  };
   box.querySelector('.vocab-save').onclick = async () => {
     const lines = box.querySelector('.scena-vocab textarea').value.split('\n').map((x) => x.trim()).filter(Boolean);
     const r = await post('/api/settings', { scena_vocabular: lines });
@@ -991,8 +999,13 @@ async function renderScena(c, box) {
     if (r && r.ok) renderScena(c, box);
   };
   for (const fig of box.querySelectorAll('.scena-card')) {
-    const ok = fig.querySelector('.fb-ok'), nu = fig.querySelector('.fb-nu'), ns = fig.querySelector('.fb-ns');
+    const ok = fig.querySelector('.fb-ok'), nu = fig.querySelector('.fb-nu'), ns = fig.querySelector('.fb-ns'), re = fig.querySelector('.fb-re');
     if (ok) ok.onclick = () => trimite(fig, 'ok');
+    if (re) re.onclick = async () => {
+      re.disabled = true; re.textContent = '…';
+      const j = await runJob(`/api/cam/${c.id}/scena/reanalizeaza`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: fig.dataset.id, poza: fig.dataset.poza }) }, { download: false });
+      if (j && j.stare === 'gata') { toast((j.rezultat || {}).text || t('Analiză gata')); renderScena(c, box); } else { re.disabled = false; re.textContent = '🔍'; }
+    };
     if (ns) ns.onclick = () => trimite(fig, 'necunoscut');
     if (nu) nu.onclick = () => {
       const sel = document.createElement('select');

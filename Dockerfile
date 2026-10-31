@@ -18,7 +18,12 @@ ENV DEBIAN_FRONTEND=noninteractive PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 
     PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1 \
     TZ=UTC HF_HOME=/home/openvigil/.cache/huggingface \
     NVIDIA_DRIVER_CAPABILITIES=compute,utility,video \
+    TORCH_DISABLE_NATIVE_JIT=1 \
     OPENVIGIL_VERSION=${OPENVIGIL_VERSION}
+# TORCH_DISABLE_NATIVE_JIT: torch 2.13 ruleaza unele operatii (ex. rotary in Qwen2.5-VL) prin
+# nuclee Triton compilate la prima folosire, iar Triton cere un compilator C — imaginea nu are
+# (uneltele de build se scot). Cu variabila, torch ramane pe nucleele clasice; fara ea, VLM-ul
+# (descrieri, analiza „ceva nou”) pica cu „Failed to find C compiler”.
 LABEL org.opencontainers.image.title="OpenVigil" \
       org.opencontainers.image.source="https://github.com/sm26449/openvigil" \
       org.opencontainers.image.url="https://openvigil.dev" \

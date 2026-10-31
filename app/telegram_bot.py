@@ -3,9 +3,14 @@
 interfata. Notificarile pleaca oricum prin acelasi bot (notify.py); aici citim ce
 raspunde omul, cu long-polling (getUpdates), intr-un fir al nvr-web.
 
+Tot pe aici vin si butoanele apasate sub candidatii „Invata scena” (callback_query, tratate
+in scena_web.callback) — de aceea bucla porneste si cand doar `scena_telegram` e pornit;
+comenzile text sunt executate numai cu `telegram_comenzi`.
+
 Securitate: se asculta DOAR chat-ul configurat in Setari (telegram_chat) — orice alt
 chat primeste un refuz scurt si e jurnalizat. Pornit explicit din Setari
-(`telegram_comenzi`), ca un al doilea proces cu acelasi bot sa nu se bata pe getUpdates.
+(`telegram_comenzi` / `scena_telegram`), ca un al doilea proces cu acelasi bot sa nu se
+bata pe getUpdates.
 """
 import threading
 import time
@@ -23,13 +28,34 @@ COMENZI = {"/acasa": "acasa", "/plecat": "plecat", "/noapte": "noapte"}
 
 
 def activ():
-    return bool(settings.get("telegram_comenzi") and settings.get("telegram_token")
-                and settings.get("telegram_chat"))
+    return bool((settings.get("telegram_comenzi") or settings.get("scena_telegram"))
+                and settings.get("telegram_token") and settings.get("telegram_chat"))
 
 
 def _trimite(cfg, text):
     requests.post(f"https://api.telegram.org/bot{cfg['telegram_token']}/sendMessage",
                   data={"chat_id": cfg["telegram_chat"], "text": text}, timeout=15)
+
+
+def _buton(cq, cfg):
+    """Un buton apasat sub un mesaj al botului: verificam chat-ul, delegam la scena_web si
+    raspundem apasarii (altfel telefonul arata „se incarca” pana la expirare)."""
+    import scena_web
+    chat = str(((cq.get("message") or {}).get("chat") or {}).get("id") or "")
+    if chat != str(cfg["telegram_chat"]):
+        import audit
+        audit.log("buton telegram refuzat (chat străin)", chat, {"data": str(cq.get("data"))[:40]})
+        return
+    try:
+        rasp = scena_web.callback(cq, cfg)
+    except Exception as e:
+        logare.info(f"[telegram] buton: {str(e)[:80]}")
+        rasp = t("Eroare: {e}", e=str(e)[:80])
+    try:
+        requests.post(f"https://api.telegram.org/bot{cfg['telegram_token']}/answerCallbackQuery",
+                      data={"callback_query_id": cq.get("id"), "text": (rasp or "")[:200]}, timeout=15)
+    except Exception as e:
+        logare.info(f"[telegram] answerCallbackQuery: {str(e)[:60]}")
 
 
 def _stare_text():
@@ -76,7 +102,7 @@ def _bucla():
         try:
             r = requests.get(f"https://api.telegram.org/bot{cfg['telegram_token']}/getUpdates",
                              params={"offset": _offset, "timeout": 25,
-                                     "allowed_updates": '["message"]'}, timeout=35)
+                                     "allowed_updates": '["message","callback_query"]'}, timeout=35)
             d = r.json()
             if not d.get("ok"):
                 logare.info(f"[telegram] getUpdates: {str(d.get('description'))[:80]}")
@@ -84,6 +110,11 @@ def _bucla():
                 continue
             for u in d.get("result") or []:
                 _offset = max(_offset, int(u["update_id"]) + 1)
+                if u.get("callback_query"):
+                    _buton(u["callback_query"], cfg)
+                    continue
+                if not cfg.get("telegram_comenzi"):
+                    continue          # doar butoanele sunt pornite; textul nu e comanda
                 msg = u.get("message") or {}
                 chat = str((msg.get("chat") or {}).get("id") or "")
                 text = msg.get("text") or ""

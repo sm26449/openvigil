@@ -477,6 +477,34 @@ def describe_job(kind):
     return jsonify({"ok": True})
 
 
+@app.route("/scena/reanalizeaza", methods=["POST"])
+def scena_reanalizeaza():
+    """Analiza adanca a unui candidat „ceva nou” (butonul 🔍): JSON {cam, candidat, poza}.
+    Decupajul HD salvat de bucla scenei (data/scena/<cam>/<poza>) trece prin YOLO la 640,
+    tot vocabularul si VLM. Sincron (secunde-zeci de secunde): web-ul o cheama dintr-un job.
+    Emite `scena_analiza` si intoarce rezultatul."""
+    err = _guard()
+    if err:
+        return err
+    import re
+    import cv2
+    import ai_track
+    import scena_clasa
+    b = request.get_json(silent=True) or {}
+    cam = b.get("cam")
+    poza = str(b.get("poza") or "")
+    if not isinstance(cam, int) or not re.fullmatch(r"\d{8}-\d{6}-\d+\.jpg", poza):
+        return jsonify({"error": "cerere invalida"}), 400
+    img = cv2.imread(os.path.join(ROOT, "data", "scena", str(cam), poza))
+    if img is None:
+        return jsonify({"error": "decupajul nu mai exista"}), 404
+    rez = scena_clasa.analiza_adanca(img, ai_track._get_model(), ai_track._clase, ai_track._fp16(),
+                                     lock=ai_track._predict_lock)
+    date = {"candidat": str(b.get("candidat") or "")[:32], "poza": poza, **rez}
+    emit("scena_analiza", cam, date)
+    return jsonify({"ok": True, **date})
+
+
 # ---- hot-swap formal (faza 6): schimbarea modelului e o tranzactie verificata ----
 @app.route("/model/verifica", methods=["POST"])
 def model_verifica():

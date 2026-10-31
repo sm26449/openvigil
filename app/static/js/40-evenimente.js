@@ -854,6 +854,7 @@ const EV_TIP_RO = { detectie: 'Detecție', persoana: 'Persoana', persoana_necuno
   gol_inregistrare: 'Gol înregistrare', intrus: 'INTRUS confirmat',
   trecere: 'Trecere linie', intrare_zona: 'Intrare în zona',
   obiect_nou: 'Obiect nou apărut', obiect_disparut: 'Obiect dispărut',
+  scena_candidat: 'Ceva nou în scenă', scena_analiza: 'Analiză „ceva nou”',
   parcare_inceput: 'Vehicul parcat', parcare_sfarsit: 'Vehicul plecat din parcare',
   episod: 'Episod de prezență' };
 // Momentul ACTIUNII unui eveniment agregat, nu al emiterii lui: episodul se
