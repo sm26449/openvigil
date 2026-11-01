@@ -68,18 +68,22 @@ def capture(cam_id, label):
 def save_frame(cam_id, label, img, boxes=None):
     """Salveaza un cadru deja decodat (ndarray BGR, eventual adnotat de YOLO). `boxes`
     ([{cls, x, y, w, h, conf}] normalizate) merg intr-un sidecar <poza>.json — „gaseste-l pe
-    toate camerele” taie omul exact din chenarul de la momentul detectiei, fara re-detectie."""
+    toate camerele” taie omul exact din chenarul de la momentul detectiei, fara re-detectie,
+    iar verdictul de pe Telegram (detectie_feedback) decupeaza tot de acolo.
+    Intoarce (zi, fisier) sau None (cooldown / eroare)."""
     if not _cooldown_ok(cam_id, label):
-        return
+        return None
     import cv2
     ok, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 85])
-    if ok:
-        cale = _save_bytes(cam_id, label, buf.tobytes())
-        if boxes and cale:
-            try:
-                store.atomic_write_json(cale + ".json", {"boxes": boxes}, mode=0o644)
-            except Exception as e:
-                logare.info(f"[snaps] sidecar nescris: {str(e)[:60]}")
+    if not ok:
+        return None
+    cale = _save_bytes(cam_id, label, buf.tobytes())
+    if boxes and cale:
+        try:
+            store.atomic_write_json(cale + ".json", {"boxes": boxes}, mode=0o644)
+        except Exception as e:
+            logare.info(f"[snaps] sidecar nescris: {str(e)[:60]}")
+    return (os.path.basename(os.path.dirname(cale)), os.path.basename(cale)) if cale else None
 
 
 DATASET_DIR = os.path.join(ROOT, "data", "dataset")

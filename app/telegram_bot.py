@@ -38,8 +38,10 @@ def _trimite(cfg, text):
 
 
 def _buton(cq, cfg):
-    """Un buton apasat sub un mesaj al botului: verificam chat-ul, delegam la scena_web si
-    raspundem apasarii (altfel telefonul arata „se incarca” pana la expirare)."""
+    """Un buton apasat sub un mesaj al botului: verificam chat-ul, delegam la scena_web (`sc|`)
+    sau detectie_feedback (`dt|`) si raspundem apasarii (altfel telefonul arata „se incarca”
+    pana la expirare)."""
+    import detectie_feedback
     import scena_web
     chat = str(((cq.get("message") or {}).get("chat") or {}).get("id") or "")
     if chat != str(cfg["telegram_chat"]):
@@ -47,7 +49,7 @@ def _buton(cq, cfg):
         audit.log("buton telegram refuzat (chat străin)", chat, {"data": str(cq.get("data"))[:40]})
         return
     try:
-        rasp = scena_web.callback(cq, cfg)
+        rasp = (detectie_feedback if detectie_feedback.e_al_nostru(cq.get("data")) else scena_web).callback(cq, cfg)
         logare.info(f"[telegram] buton {str(cq.get('data'))[:40]} -> {str(rasp)[:40]}")
     except Exception as e:
         logare.info(f"[telegram] buton {str(cq.get('data'))[:40]}: {str(e)[:80]}")

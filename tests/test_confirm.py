@@ -36,7 +36,7 @@ def stare(monkeypatch):
                         {0: "person", 1: "chicken", 2: "pigeon", 3: "car"})
     monkeypatch.setattr(detect.snaps, "save_dataset", lambda *a: None)
     monkeypatch.setattr(detect.snaps, "save_frame", lambda *a, **k: None)
-    monkeypatch.setattr(detect.notify, "detection", lambda *a: None)
+    monkeypatch.setattr(detect.notify, "detection", lambda *a, **k: None)
     monkeypatch.setattr(detect, "cam_cfg", lambda cid: {})
     monkeypatch.setattr(detect.faces, "enabled", lambda: False)
     monkeypatch.setattr(detect.plates, "enabled", lambda: False)

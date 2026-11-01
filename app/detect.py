@@ -492,8 +492,8 @@ class CamState:
             moment = _moment()   # zi/noapte, atasat oricarei detectii pentru filtrare
             chenare_sc = chenare_json(res)
             for lbl in fresh:
-                snaps.save_frame(self.cam_id, lbl, annotated, boxes=chenare_sc)
-                notify.detection(self.cam_id, lbl, jpeg)
+                poza = snaps.save_frame(self.cam_id, lbl, annotated, boxes=chenare_sc)
+                notify.detection(self.cam_id, lbl, jpeg, poza=poza)
                 try:
                     import hooks
                     # chenarul cel mai sigur al etichetei (normalizat): cautarea pe
@@ -582,9 +582,9 @@ class CamState:
                     self.recent.appendleft(
                         {"type": lbl, "time": time.strftime("%Y-%m-%dT%H:%M:%S")})
                     annotated = res.plot()   # crop-ul HD cu chenarul — poza clara
-                    snaps.save_frame(self.cam_id, lbl, annotated, boxes=chenare_json(res))
+                    poza = snaps.save_frame(self.cam_id, lbl, annotated, boxes=chenare_json(res))
                     ok, buf = cv2.imencode(".jpg", annotated, [cv2.IMWRITE_JPEG_QUALITY, 85])
-                    notify.detection(self.cam_id, lbl, buf.tobytes() if ok else None)
+                    notify.detection(self.cam_id, lbl, buf.tobytes() if ok else None, poza=poza)
                     try:
                         import hooks
                         hooks.emit("detectie", self.cam_id, eticheta=lbl,

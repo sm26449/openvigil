@@ -67,8 +67,10 @@ MARJA_AFISARE = 0.02     # in textul analizei, numele din vocabular la mai mult 
 
 
 # ---- feedback ----
-def feedback_adauga(cam, eid, verdict, eticheta=None, poza=None, cine=None, sursa=None):
-    """Un rand in feedback.jsonl; intoarce randul. verdict in VERDICTE, altfel ValueError."""
+def feedback_adauga(cam, eid, verdict, eticheta=None, poza=None, cine=None, sursa=None, initial=None):
+    """Un rand in feedback.jsonl; intoarce randul. verdict in VERDICTE, altfel ValueError.
+    `initial` = ce propusese sistemul, pentru verdictele care nu au eveniment scena_candidat in
+    jurnal (detectiile YOLO de pe Telegram): {eticheta_initiala, sursa_initiala, incredere, regiune, cadru}."""
     if verdict not in VERDICTE:
         raise ValueError("verdict")
     r = {"cam": int(cam), "id": str(eid)[:32], "verdict": verdict,
@@ -90,6 +92,8 @@ def feedback_adauga(cam, eid, verdict, eticheta=None, poza=None, cine=None, surs
             r["vreme"] = ev["vreme"]
         if not r["poza"] and ev.get("poza"):
             r["poza"] = ev["poza"]
+    elif initial:
+        r.update({k: v for k, v in initial.items() if v is not None})
     os.makedirs(SCENA_DIR, exist_ok=True)
     with _fb_lock, open(FEEDBACK, "a", encoding="utf-8") as f:
         f.write(json.dumps(r, ensure_ascii=False) + "\n")
@@ -210,19 +214,22 @@ def _taste(cam, eid, poza):
         {"text": "🔍 " + t("Reanalizează"), "callback_data": _date("re", cam, eid, poza)}]]}
 
 
-def _taste_vocabular(cam, eid, poza):
-    """Vocabularul ca butoane (3 pe rand), plus „nu stiu” si inapoi."""
+def _taste_vocabular(cam, eid, poza, date=None):
+    """Vocabularul ca butoane (3 pe rand), plus „nu stiu” si inapoi. `date(act)` = cine
+    construieste callback_data (implicit candidatii scenei; detectie_feedback da al lui)."""
+    if date is None:
+        date = lambda act: _date(act, cam, eid, poza)   # noqa: E731
     rnd, taste = [], []
     for i, n in enumerate(vocabular()[:30]):
-        rnd.append({"text": t(n), "callback_data": _date(f"et{i}", cam, eid, poza)})
+        rnd.append({"text": t(n), "callback_data": date(f"et{i}")})
         if len(rnd) == 3:
             taste.append(rnd)
             rnd = []
     if rnd:
         taste.append(rnd)
-    taste.append([{"text": "∅ " + t("Nimic nou (doar fundal)"), "callback_data": _date("nm", cam, eid, poza)}])
-    taste.append([{"text": "? " + t("Nu se vede clar"), "callback_data": _date("ns", cam, eid, poza)},
-                  {"text": "↩ " + t("Înapoi"), "callback_data": _date("inapoi", cam, eid, poza)}])
+    taste.append([{"text": "∅ " + t("Nimic nou (doar fundal)"), "callback_data": date("nm")}])
+    taste.append([{"text": "? " + t("Nu se vede clar"), "callback_data": date("ns")},
+                  {"text": "↩ " + t("Înapoi"), "callback_data": date("inapoi")}])
     return {"inline_keyboard": taste}
 
 

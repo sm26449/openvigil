@@ -66,6 +66,12 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   găinile fără nume cu cele numite la ~0,87, iar prelata și pământul ating cel mult 0,82 față
   de găini. Exemplele se refac din `feedback.jsonl` la pornirea nvr-ai. În fișa camerei,
   necunoscuții și fundalul sunt ascunși implicit, cu un comutator.
+- Butoane ✓ ✕ ∅ și sub notificările de detecție YOLO de pe Telegram (🚨 om / câine / pisică /
+  urs), nu doar sub candidații scenei. Verdictul intră în același `feedback.jsonl`, cu
+  decupajul din chenarul detecției (sidecarul snapshotului) salvat în `data/scena/<cam>/`:
+  ✓ devine exemplu de obiect al camerei, ∅ exemplu de fundal, ✕ deschide vocabularul; toate
+  intră în datasetul de fine-tune și în recomandarea de prag de noapte. Mesajele fără snapshot
+  (cooldown-ul pozelor) rămân fără butoane.
 - Server MCP (`POST /mcp`, cu jetonul API ca `X-Token` sau `Authorization: Bearer`): un
   asistent poate întreba sistemul ce s-a întâmplat (evenimente cu filtru de text, episoade,
   candidați), căuta în poze, cere cadrul unei camere, vedea recomandările și comuta modul.

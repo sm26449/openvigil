@@ -37,15 +37,16 @@ def _throttle_ok(key, cooldown):
         return True
 
 
-def _send_telegram(cfg, text, jpeg=None):
+def _send_telegram(cfg, text, jpeg=None, taste=None):
     base = f"https://api.telegram.org/bot{cfg['telegram_token']}"
+    extra = {"reply_markup": json.dumps(taste, ensure_ascii=False)} if taste else {}
     if jpeg:
         r = requests.post(f"{base}/sendPhoto",
-                          data={"chat_id": cfg["telegram_chat"], "caption": text},
+                          data={"chat_id": cfg["telegram_chat"], "caption": text, **extra},
                           files={"photo": ("s.jpg", jpeg, "image/jpeg")}, timeout=20)
     else:
         r = requests.post(f"{base}/sendMessage",
-                          data={"chat_id": cfg["telegram_chat"], "text": text}, timeout=20)
+                          data={"chat_id": cfg["telegram_chat"], "text": text, **extra}, timeout=20)
     r.raise_for_status()
     if not r.json().get("ok"):
         raise RuntimeError(r.json().get("description", t("telegram: răspuns ne-ok")))
@@ -66,9 +67,10 @@ def _send_email(cfg, text, jpeg=None):
         s.send_message(msg)
 
 
-def send(text, jpeg=None, key=None, sync=False):
+def send(text, jpeg=None, key=None, sync=False, taste=None):
     """Trimite pe toate canalele configurate. key = throttle per subiect.
-    sync=True -> ruleaza in fir si ridica exceptii (pentru butoanele de test)."""
+    sync=True -> ruleaza in fir si ridica exceptii (pentru butoanele de test).
+    taste = tastatura inline pentru Telegram (butoanele de verdict); emailul o ignora."""
     cfg = settings.load()
     tg = bool(cfg["telegram_token"] and cfg["telegram_chat"])
     em = bool(cfg["email_enabled"] and cfg["email_smtp"] and cfg["email_to"])
@@ -81,7 +83,7 @@ def send(text, jpeg=None, key=None, sync=False):
 
     def work():
         if tg:
-            _send_telegram(cfg, text, jpeg)
+            _send_telegram(cfg, text, jpeg, taste)
         if em:
             _send_email(cfg, text, jpeg)
 
@@ -121,14 +123,24 @@ def link(cam_id, ts=None):
     return f"\n🔗 {base}/#pb/{cam_id}/{time.strftime('%Y-%m-%d', lt)}/{sec}"
 
 
-def detection(cam_id, label, jpeg=None):
-    """Notificare pentru o detectie YOLO (doar etichetele alese in Setari)."""
+def detection(cam_id, label, jpeg=None, poza=None):
+    """Notificare pentru o detectie YOLO (doar etichetele alese in Setari). `poza` = (zi, fisier)
+    snapshotului salvat de snaps.save_frame: cu el, mesajul Telegram are butoanele ✓ ✕ ∅
+    (detectie_feedback), iar verdictul omului se leaga de chenarul din sidecar."""
     if label not in settings.get("notify_labels"):
         return
     name = _cam_name(cam_id)
+    taste = None
+    try:
+        import detectie_feedback
+        ref = detectie_feedback.din_poza(cam_id, poza)
+        if ref:
+            taste = detectie_feedback.taste(cam_id, *ref)
+    except Exception as e:
+        logare.info(f"[notify] butoane detectie: {str(e)[:60]}")
     send(t("🚨 {cam}: {ce} detectat ({ora})", cam=name, ce=t(RO.get(label, label)),
            ora=time.strftime('%H:%M:%S'))
-         + link(cam_id), jpeg=jpeg, key=(cam_id, label))
+         + (("\n" + t("E corect?")) if taste else "") + link(cam_id), jpeg=jpeg, key=(cam_id, label), taste=taste)
 
 
 def face(cam_id, person, jpeg=None):
