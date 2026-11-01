@@ -47,6 +47,7 @@ _ultim = {}                 # cam -> cand a plecat ultimul candidat pe Telegram
 _ultim_lock = threading.Lock()
 _analize = {}               # (cam, id) -> eticheta propusa de analiza (pentru butonul ✓ al ei)
 _ETICHETA_MAX = 60
+MARJA_AFISARE = 0.02     # in textul analizei, numele din vocabular la mai mult de atat sub primul nu se arata
 
 
 # ---- feedback ----
@@ -360,7 +361,15 @@ def text_analiza(r):
         parti.append(f"YOLO-World: {t(w.get('eticheta') or '')} {round((w.get('incredere') or 0) * 100)}%")
     v = r.get("vocab") or []
     if v:
-        parti.append(t("vocabular: {lista}", lista=", ".join(f"{t(x['nume'])} {round(x['scor'] * 1000)}" for x in v[:3])))
+        # scorurile SigLIP stau intr-o banda ingusta: aratam doar numele care ies in fata
+        # (peste prag si aproape de primul), nu trei nume oricum, dintre care doua sunt zgomot
+        import scena_clasa
+        varf = v[0]["scor"]
+        clare = [x for x in v if x["scor"] >= scena_clasa.PRAG_VOCAB and x["scor"] >= varf - MARJA_AFISARE]
+        if clare:
+            parti.append(t("vocabular: {lista}", lista=", ".join(f"{t(x['nume'])} {round(x['scor'] * 1000)}" for x in clare[:3])))
+        else:
+            parti.append(t("vocabular: nimic clar (cel mai apropiat: {nume} {scor})", nume=t(v[0]["nume"]), scor=round(varf * 1000)))
     return "\n".join(parti)
 
 

@@ -137,6 +137,16 @@ def test_reanalizarea_din_buton(_izolare, monkeypatch):
     assert apeluri[-1][0] == "editMessageText"
 
 
+def test_text_analiza_arata_doar_numele_clare():
+    v = [{"nume": "mașină", "scor": 0.1114}, {"nume": "ploaie", "scor": 0.076}, {"nume": "om cu cărucior", "scor": 0.0743}]
+    txt = scena_web.text_analiza({"eticheta": "mașină", "vocab": v})
+    assert "mașină 111" in txt and "ploaie" not in txt and "cărucior" not in txt
+    txt = scena_web.text_analiza({"eticheta": "necunoscut", "vocab": [{"nume": "ploaie", "scor": 0.05}, {"nume": "umbră", "scor": 0.049}]})
+    assert "nimic clar" in txt and "ploaie 50" in txt
+    txt = scena_web.text_analiza({"eticheta": "cal", "vocab": [{"nume": "cal", "scor": 0.09}, {"nume": "vacă", "scor": 0.085}]})
+    assert "cal 90" in txt and "vacă 85" in txt                      # doua nume apropiate: ambele
+
+
 def test_analiza_esuata_anunta(_izolare, monkeypatch):
     import ai_client
     apeluri = _izolare

@@ -2232,6 +2232,7 @@
  "🔍 Analiză: {ce}": "🔍 Analysis: {ce}",
  "VLM: „{txt}”": "VLM: “{txt}”",
  "vocabular: {lista}": "vocabulary: {lista}",
+ "vocabular: nimic clar (cel mai apropiat: {nume} {scor})": "vocabulary: nothing clear (closest: {nume} {scor})",
  "🔍 Analiza nu a reușit: {e}": "🔍 The analysis failed: {e}",
  "Reanalizează: YOLO la rezoluție mare, tot vocabularul și modelul de limbaj (câteva secunde)": "Reanalyse: YOLO at high resolution, the whole vocabulary and the language model (a few seconds)",
  "Trimite candidații pe Telegram, cu butoane ✓ ✕ 🔍 (fără ploaie, umbre, frunze; cel mult unul la 5 minute pe cameră; comun tuturor camerelor)": "Send candidates to Telegram with ✓ ✕ 🔍 buttons (no rain, shadows, leaves; at most one per 5 minutes per camera; shared by all cameras)",

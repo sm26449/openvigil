@@ -23,7 +23,8 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   Pe Telegram, „necunoscut” pleacă doar ziua și pe vreme bună (noaptea e granulație de
   infraroșu, pe ploaie sunt picături), iar noaptea pleacă doar etichetele date de un detector
   cu încredere de cel puțin 0,5; fiecare decizie de trimitere sau sărire e în jurnalul de
-  sistem.
+  sistem. Textul analizei adânci arată din vocabular doar numele care ies în față, nu
+  trei nume oricum.
 - Verdictele din „Învață scena” intră în datasetul de antrenament (Setări → Unelte → Model):
   decupajele confirmate devin exemple pozitive, cu chenarul obiectului pus de YOLO-World,
   iar „e doar ploaie / umbră / frunze” devin fundaluri fără obiecte; numele noi din vocabular
