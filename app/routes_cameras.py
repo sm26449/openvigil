@@ -837,15 +837,21 @@ def api_cam_scena(cam_id):
     except (OSError, ValueError):
         pass
     limit = min(200, max(1, int(request.args.get("limit", 60))))
-    candidati = jurnal.query(limit=limit, tip="scena_candidat", cam=cam_id)
+    cu_fundal = request.args.get("fundal") in ("1", "true")
+    toti = jurnal.query(limit=limit if cu_fundal else limit * 6, tip="scena_candidat", cam=cam_id)
     fb = scena_web.feedback_citeste(cam_id)
+    import scena_clasa
+    # implicit, lista arata ce are nume: necunoscutii si fundalul (ploaie, umbre, frunze, fundalul
+    # invatat) sunt cu zecile pe ora si ar ingropa restul; raman in cifrele „pana acum”
+    candidati = toti if cu_fundal else [c for c in toti if (c.get("eticheta") or "necunoscut") not in scena_clasa.NEUTRE or fb.get(c["id"])][:limit]
     # cea mai noua analiza a fiecarui candidat (query da intai cele noi -> parcurgem invers)
     analize = {a.get("candidat"): a for a in reversed(jurnal.query(limit=limit, tip="scena_analiza", cam=cam_id))}
     etichete, verdicte = {}, {"ok": 0, "gresit": 0, "necunoscut": 0}
+    for c in toti:
+        etichete[c.get("eticheta") or "?"] = etichete.get(c.get("eticheta") or "?", 0) + 1
     for c in candidati:
         c["feedback"] = fb.get(c["id"])
         c["analiza"] = analize.get(c["id"])        # analiza e legata de evenimentul din jurnal
-        etichete[c.get("eticheta") or "?"] = etichete.get(c.get("eticheta") or "?", 0) + 1
     for r in fb.values():
         verdicte[r.get("verdict", "necunoscut")] = verdicte.get(r.get("verdict", "necunoscut"), 0) + 1
     return jsonify({
@@ -854,7 +860,8 @@ def api_cam_scena(cam_id):
         "stare": stare,
         "fundal": os.path.exists(os.path.join(d, "fundal.jpg")),
         "instabil": os.path.exists(os.path.join(d, "instabil.png")),
-        "candidati": candidati, "etichete": etichete, "verdicte": verdicte,
+        "candidati": candidati, "etichete": etichete, "verdicte": verdicte, "cu_fundal": cu_fundal,
+        "fundal_exemple": __import__("scena_fundal").numar(cam_id), "ascunsi": len(toti) - len(candidati),
         "vocabular": _vocabular(), "telegram": bool(settings.get("scena_telegram")),
         "telegram_posibil": bool(settings.get("telegram_token") and settings.get("telegram_chat"))})
 

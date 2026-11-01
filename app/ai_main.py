@@ -505,6 +505,29 @@ def scena_reanalizeaza():
     return jsonify({"ok": True, **date})
 
 
+@app.route("/scena/fundal", methods=["POST"])
+def scena_fundal_verdict():
+    """JSON {cam, poza, nume|null}: verdictul omului pe un candidat intra in fundalul invatat al
+    camerei (nume de fundal) sau iese din el (nume = null / alt nume)."""
+    err = _guard()
+    if err:
+        return err
+    import re
+    import scena_fundal
+    b = request.get_json(silent=True) or {}
+    cam, poza, nume = b.get("cam"), str(b.get("poza") or ""), b.get("nume")
+    if not isinstance(cam, int) or not re.fullmatch(r"\d{8}-\d{6}-\d+\.jpg", poza):
+        return jsonify({"error": "cerere invalida"}), 400
+    try:
+        if nume in scena_fundal.NUME_FUNDAL:
+            ok = scena_fundal.adauga(cam, poza, nume)
+        else:
+            ok = scena_fundal.scoate(cam, poza)
+    except OSError:
+        return jsonify({"error": "decupajul nu mai exista"}), 404
+    return jsonify({"ok": True, "schimbat": bool(ok), "exemple": scena_fundal.numar(cam)})
+
+
 @app.route("/describe/text", methods=["POST"])
 def describe_text():
     """JSON {token, prompt, max_tokens?} -> {text}: un raspuns scurt doar din text (llm.py)."""
@@ -1077,6 +1100,9 @@ def main():
         if settings.get("scena_cams"):
             import scena_lume                 # YOLO-World + CLIP (fp32), tot in afara ferestrei bf16
             scena_lume.pregateste()
+            if semantic.enabled():
+                import scena_fundal           # exemplele de fundal din verdicte, aliniate la feedback.jsonl
+                threading.Thread(target=scena_fundal.reconstruieste, daemon=True, name="scena-fundal").start()
         ai_track.sync(emit)                   # urmaritorii dupa track_cams
         import detect
         detect.sync()                         # bucla de detectie (#9 pas 2) — AICI

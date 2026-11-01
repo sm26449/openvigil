@@ -973,9 +973,10 @@ function scenaSection(c) {
   return section(t('Învață scena'), box);
 }
 const numeEticheta = (l) => t(DET_RO[l] || l || 'necunoscut');
+let scenaCuFundal = false;   // arata si necunoscutii / fundalul in lista (implicit nu: sunt cu zecile pe ora)
 async function renderScena(c, box) {
   let d;
-  try { d = await (await fetch(`/api/cam/${c.id}/scena?limit=48`)).json(); } catch { d = null; }
+  try { d = await (await fetch(`/api/cam/${c.id}/scena?limit=48${scenaCuFundal ? '&fundal=1' : ''}`)).json(); } catch { d = null; }
   if (!d || d.error) { box.innerHTML = html`<p class="hint">${t('Nu am putut citi starea scenei.')}</p>`; return; }
   const st = d.stare || {};
   const ts = Date.now();
@@ -984,7 +985,7 @@ async function renderScena(c, box) {
     const pct = e.incredere ? Math.round(e.incredere * (e.sursa === 'vocabular' ? 1000 : 100)) : 0;
     return html`<figure class="scena-card${fb ? ' ' + fb.verdict : ''}" data-id="${e.id}" data-poza="${e.poza || ''}">
       ${e.poza ? html`<img src="/api/cam/${c.id}/scena/fisier/${e.poza}" loading="lazy" alt="">` : html`<div class="scena-fara"></div>`}
-      <figcaption><b>${numeEticheta(e.eticheta)}</b> <small>${e.sursa === 'vocabular' ? t('vocabular') : e.sursa === 'yolo' ? 'YOLO' : e.sursa === 'yolo-world' ? 'YOLO-World' : e.sursa === 'yolo-nesigur' ? t('YOLO nesigur') : ''}${pct ? ' · ' + pct : ''}</small>
+      <figcaption><b>${numeEticheta(e.eticheta)}</b> <small>${e.sursa === 'vocabular' ? t('vocabular') : e.sursa === 'yolo' ? 'YOLO' : e.sursa === 'yolo-world' ? 'YOLO-World' : e.sursa === 'yolo-nesigur' ? t('YOLO nesigur') : e.sursa === 'fundal-invatat' ? t('fundal învățat') : ''}${pct ? ' · ' + pct : ''}</small>
         <span class="hint">${(e.t || '').slice(11, 16)} · ${t('{n} cadre', { n: e.cadre || 0 })}</span>
         ${e.analiza ? html`<span class="scena-analiza" title="${e.analiza.vlm ? 'VLM: ' + e.analiza.vlm : ''}">🔍 ${numeEticheta(e.analiza.eticheta)}${e.analiza.vlm && e.analiza.vlm !== e.analiza.eticheta ? html` <i>„${e.analiza.vlm}”</i>` : ''}</span>` : ''}
         ${fb ? html`<span class="scena-verdict">${fb.verdict === 'ok' ? '✓ ' + (fb.eticheta ? numeEticheta(fb.eticheta) : t('corect')) : fb.verdict === 'gresit' ? (fb.eticheta === 'nimic' ? '∅ ' + t('doar fundal') : '✕ ' + (fb.eticheta ? numeEticheta(fb.eticheta) : t('greșit'))) : '? ' + t('nu știu')}</span>`
@@ -1003,7 +1004,9 @@ async function renderScena(c, box) {
       ${t('Trimite candidații pe Telegram, cu butoane ✓ ✕ 🔍 (fără ploaie, umbre, frunze; cel mult unul la 5 minute pe cameră; comun tuturor camerelor)')}</label>` : ''}
     ${d.activ ? html`<p class="hint">${t('{cadre} cadre · {cand} candidați acum · {inst}% zonă instabilă · {zg} cadre sărite (ploaie/zgomot) · {res} reînvățări (lumină)',
         { cadre: st.cadre || 0, cand: st.candidati || 0, inst: st.instabil_pct || 0, zg: st.cadre_zgomot || 0, res: st.resetari || 0 })}</p>` : ''}
-    ${etichete.length ? html`<p class="hint">${t('Până acum')}: ${etichete.map(([k, n]) => `${numeEticheta(k)} ${n}`).join(' · ')} · ${t('verdicte')}: ✓ ${d.verdicte.ok} ✕ ${d.verdicte.gresit} ? ${d.verdicte.necunoscut}</p>` : ''}
+    ${etichete.length ? html`<p class="hint">${t('Până acum')}: ${etichete.map(([k, n]) => `${numeEticheta(k)} ${n}`).join(' · ')} · ${t('verdicte')}: ✓ ${d.verdicte.ok} ✕ ${d.verdicte.gresit} ? ${d.verdicte.necunoscut}${d.fundal_exemple ? ' · ' + t('{n} exemple de fundal învățate din verdictele tale', { n: d.fundal_exemple }) : ''}</p>` : ''}
+    ${d.activ ? html`<label class="inline"><input type="checkbox" class="scena-cu-fundal" ${d.cu_fundal ? 'checked' : ''}>
+      ${t('Arată și necunoscuții și fundalul (ploaie, umbre, frunze, fundal învățat)')}${!d.cu_fundal && d.ascunsi ? html` <span class="hint">${t('({n} ascunși)', { n: d.ascunsi })}</span>` : ''}</label>` : ''}
     ${lista(d.candidati || [], card, d.activ ? `<p class="hint">${t('Niciun candidat încă: când ceva nou apare în cadru, îl vezi aici cu eticheta propusă.')}</p>` : '')}
     <details class="scena-vocab"><summary>${t('Vocabularul numelor (comun tuturor camerelor), un nume pe rând')}</summary>
       <textarea rows="5">${(d.vocabular || []).join('\n')}</textarea>
@@ -1013,6 +1016,8 @@ async function renderScena(c, box) {
     const r = await post(`/api/cam/${c.id}/scena`, { activ: ev.target.checked });
     if (r && r.ok) { toast(ev.target.checked ? t('Detecția pe schimbare a pornit; fundalul se învață în câteva minute.') : t('Detecția pe schimbare s-a oprit.')); setTimeout(() => renderScena(c, box), 800); }
   };
+  const cf = box.querySelector('.scena-cu-fundal');
+  if (cf) cf.onchange = () => { scenaCuFundal = cf.checked; renderScena(c, box); };
   const tg = box.querySelector('.scena-telegram');
   if (tg) tg.onchange = async (ev) => {
     const r = await post('/api/settings', { scena_telegram: ev.target.checked });

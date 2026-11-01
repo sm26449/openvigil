@@ -95,7 +95,27 @@ def feedback_adauga(cam, eid, verdict, eticheta=None, poza=None, cine=None, surs
         f.write(json.dumps(r, ensure_ascii=False) + "\n")
     if verdict == "gresit" and r["eticheta"] and r["poza"]:
         _index_eticheta(r["cam"], r["poza"], r["eticheta"])
+    if r["poza"]:
+        _fundal_invata(r["cam"], r["poza"], r["eticheta"] if verdict == "gresit" else None)
     return r
+
+
+def _fundal_invata(cam, poza, eticheta):
+    """Fundalul invatat al camerei afla verdictul: un nume de fundal adauga exemplul, orice
+    altceva il scoate daca era. Niciodata nu arunca."""
+    try:
+        import ai_client
+        import scena_fundal
+        nume = eticheta if eticheta in scena_fundal.NUME_FUNDAL else None
+        if ai_client.remote():
+            ai_client.scena_fundal(cam, poza, nume)
+        elif not settings.get("ai_service"):
+            if nume:
+                scena_fundal.adauga(cam, poza, nume)
+            else:
+                scena_fundal.scoate(cam, poza)
+    except Exception as e:
+        logare.info(f"[scena] fundal invatat: {str(e)[:80]}")
 
 
 def _index_eticheta(cam, poza, eticheta):

@@ -234,6 +234,11 @@ def semantic_index(day, fn):
         logare.error(f"[ai-client] indexare {fn} esuata — intra la backfill")
 
 
+def scena_fundal(cam, poza, nume):
+    """Verdictul omului intra in / iese din fundalul invatat al camerei (nvr-ai). Best-effort."""
+    return _post_json("/scena/fundal", timeout=30, cam=int(cam), poza=poza, nume=nume) is not None
+
+
 def semantic_scena(cam, fn, eticheta):
     """Verdictul omului pe un decupaj al scenei ajunge in indexul din nvr-ai. Best-effort."""
     return _post_json("/semantic/scena", timeout=10, cam=int(cam), fn=fn, eticheta=eticheta) is not None

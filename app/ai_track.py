@@ -24,6 +24,7 @@ import ai_scene
 import detect
 import scena
 import scena_clasa
+import scena_fundal
 import settings
 import track
 import logare
@@ -437,6 +438,11 @@ def _scena_schimbare(self, c, frame, now, model):
         with _predict_lock:
             rez = scena_clasa.clasifica(crop, model, _clase, _fp16())
         emb = rez.pop("_emb", None)
+        # fundalul invatat din verdictele omului: aceeasi tufa / umbra / creanga seamana la >0,85
+        # cu un decupaj pe care el l-a numit deja „frunze” sau „nimic” -> ia numele lui, nu „necunoscut”
+        f = scena_fundal.potriveste(c, emb)
+        if f:
+            rez.update(eticheta=f["nume"], incredere=f["scor"], sursa=scena_fundal.SURSA)
         cand.clasificat = rez
         cand.ultima_clasificare = now
         fn = f"{time.strftime('%Y%m%d-%H%M%S', time.localtime(now))}-{cand.id}.jpg"

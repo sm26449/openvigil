@@ -55,6 +55,12 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   recomandări (`scena_noapte`), când ai respins de mai multe ori etichete de noapte. Pe
   vreme rea scena cere de trei ori mai multe cadre până la clasificare și înjumătățește
   bugetul de clasificări.
+- Fundal învățat din verdicte, per cameră: când spui „nimic”, „frunze”, „umbră” sau „copac”
+  despre un candidat, decupajul lui devine exemplu de fundal al camerei (vectorul SigLIP,
+  `data/scena/<cam>/fundal_invatat.*`); un candidat nou care seamănă la peste 0,85 cu un
+  exemplu primește automat numele acela (sursa „fundal învățat”) în loc de „necunoscut”, nu
+  pleacă pe Telegram și nu intră în index. Exemplele se refac din `feedback.jsonl` la pornirea
+  nvr-ai. În fișa camerei, necunoscuții și fundalul sunt ascunși implicit, cu un comutator.
 - Server MCP (`POST /mcp`, cu jetonul API ca `X-Token` sau `Authorization: Bearer`): un
   asistent poate întreba sistemul ce s-a întâmplat (evenimente cu filtru de text, episoade,
   candidați), căuta în poze, cere cadrul unei camere, vedea recomandările și comuta modul.
