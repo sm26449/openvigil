@@ -15,6 +15,7 @@ import requests
 
 import config as C
 import logare
+import store
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SNAP_DIR = os.path.join(ROOT, "data", "snapshots")

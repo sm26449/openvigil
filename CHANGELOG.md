@@ -92,6 +92,10 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` în imagine (se pierduse la mutarea de pe
   systemd). Raportul `/capabilities` al nvr-ai arată acum VRAM-ul pe modele și fragmentarea.
 
+- Sidecar-ul cu chenare al pozelor de detecție (`<poză>.json`, folosit de „găsește-l pe toate
+  camerele” ca să taie omul exact din chenarul momentului) nu se scria niciodată: lipsea un
+  import în `snaps.py`, iar eroarea era doar în jurnal („sidecar nescris: name 'store' is not
+  defined”). Test de regresie.
 ## [1.0.0] — 2026-10-26
 
 Prima versiune publicată.
