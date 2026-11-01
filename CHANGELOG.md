@@ -55,12 +55,17 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   recomandări (`scena_noapte`), când ai respins de mai multe ori etichete de noapte. Pe
   vreme rea scena cere de trei ori mai multe cadre până la clasificare și înjumătățește
   bugetul de clasificări.
-- Fundal învățat din verdicte, per cameră: când spui „nimic”, „frunze”, „umbră” sau „copac”
-  despre un candidat, decupajul lui devine exemplu de fundal al camerei (vectorul SigLIP,
-  `data/scena/<cam>/fundal_invatat.*`); un candidat nou care seamănă la peste 0,85 cu un
-  exemplu primește automat numele acela (sursa „fundal învățat”) în loc de „necunoscut”, nu
-  pleacă pe Telegram și nu intră în index. Exemplele se refac din `feedback.jsonl` la pornirea
-  nvr-ai. În fișa camerei, necunoscuții și fundalul sunt ascunși implicit, cu un comutator.
+- Exemple învățate din verdicte, per cameră: orice verdict cu nume face din decupajul
+  candidatului un exemplu al camerei (vectorul SigLIP, `data/scena/<cam>/fundal_invatat.*`).
+  Numele de fundal („nimic”, „frunze”, „umbră”, „ploaie”, „copac”) se potrivesc la peste 0,85
+  și bat orice etichetă: candidatul nu pleacă pe Telegram și nu intră în index. Numele de
+  obiecte (✓ pe eticheta propusă sau ✕ cu numele adevărat: „găină”, „mașină”…) se potrivesc
+  la peste 0,82 și înlocuiesc doar „necunoscut” și scorurile mărunte ale vocabularului, nu
+  eticheta unui detector (sursa „învățat din verdicte”). Câștigă cel mai apropiat exemplu care
+  își trece pragul. Pragurile, măsurate pe instalație: fundalurile seamănă între ele la ~0,88,
+  găinile fără nume cu cele numite la ~0,87, iar prelata și pământul ating cel mult 0,82 față
+  de găini. Exemplele se refac din `feedback.jsonl` la pornirea nvr-ai. În fișa camerei,
+  necunoscuții și fundalul sunt ascunși implicit, cu un comutator.
 - Server MCP (`POST /mcp`, cu jetonul API ca `X-Token` sau `Authorization: Bearer`): un
   asistent poate întreba sistemul ce s-a întâmplat (evenimente cu filtru de text, episoade,
   candidați), căuta în poze, cere cadrul unei camere, vedea recomandările și comuta modul.
@@ -96,6 +101,7 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   camerele” ca să taie omul exact din chenarul momentului) nu se scria niciodată: lipsea un
   import în `snaps.py`, iar eroarea era doar în jurnal („sidecar nescris: name 'store' is not
   defined”). Test de regresie.
+
 ## [1.0.0] — 2026-10-26
 
 Prima versiune publicată.

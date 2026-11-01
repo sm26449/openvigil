@@ -507,8 +507,8 @@ def scena_reanalizeaza():
 
 @app.route("/scena/fundal", methods=["POST"])
 def scena_fundal_verdict():
-    """JSON {cam, poza, nume|null}: verdictul omului pe un candidat intra in fundalul invatat al
-    camerei (nume de fundal) sau iese din el (nume = null / alt nume)."""
+    """JSON {cam, poza, nume|null}: verdictul omului pe un candidat intra in exemplele invatate
+    ale camerei (fundal sau obiect, dupa nume) sau iese din ele (nume = null)."""
     err = _guard()
     if err:
         return err
@@ -519,13 +519,11 @@ def scena_fundal_verdict():
     if not isinstance(cam, int) or not re.fullmatch(r"\d{8}-\d{6}-\d+\.jpg", poza):
         return jsonify({"error": "cerere invalida"}), 400
     try:
-        if nume in scena_fundal.NUME_FUNDAL:
-            ok = scena_fundal.adauga(cam, poza, nume)
-        else:
-            ok = scena_fundal.scoate(cam, poza)
+        ok = scena_fundal.adauga(cam, poza, nume) if nume else scena_fundal.scoate(cam, poza)
     except OSError:
         return jsonify({"error": "decupajul nu mai exista"}), 404
-    return jsonify({"ok": True, "schimbat": bool(ok), "exemple": scena_fundal.numar(cam)})
+    fundal, obiecte = scena_fundal.numar(cam)
+    return jsonify({"ok": True, "schimbat": bool(ok), "exemple": fundal + obiecte, "fundal": fundal, "obiecte": obiecte})
 
 
 @app.route("/describe/text", methods=["POST"])
@@ -1101,7 +1099,7 @@ def main():
             import scena_lume                 # YOLO-World + CLIP (fp32), tot in afara ferestrei bf16
             scena_lume.pregateste()
             if semantic.enabled():
-                import scena_fundal           # exemplele de fundal din verdicte, aliniate la feedback.jsonl
+                import scena_fundal           # exemplele invatate din verdicte, aliniate la feedback.jsonl
                 threading.Thread(target=scena_fundal.reconstruieste, daemon=True, name="scena-fundal").start()
         ai_track.sync(emit)                   # urmaritorii dupa track_cams
         import detect

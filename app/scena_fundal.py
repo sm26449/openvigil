@@ -1,16 +1,25 @@
 #!/usr/bin/env python3
-"""Fundalul invatat din verdictele omului, per camera („Invata scena”, nvr-ai).
+"""Exemplele invatate din verdictele omului, per camera („Invata scena”, nvr-ai).
 
-Cand omul spune despre un candidat „nimic” / „frunze” / „umbra” / „copac”, decupajul lui
-devine un exemplu de fundal al camerei: vectorul SigLIP (acelasi calculat la compararea cu
-vocabularul) intra in data/scena/<cam>/fundal_invatat.{npy,json}. Un candidat nou al carui
-vector e mai aproape de PRAG de un asemenea exemplu primeste automat numele acela, cu sursa
-„fundal-invatat”: nu pleaca pe Telegram, nu intra in indexul cautarii, nu apare ca
-„necunoscut”. Masurat pe instalatie: fundalurile aceleiasi camere seamana intre ele la
-~0,88, obiectele reale (masini, gaini, oameni) raman sub 0,75 fata de orice fundal — PRAG 0,85
-lasa o marja de 0,10.
+Fiecare verdict cu un nume devine un exemplu al camerei: decupajul candidatului, cu vectorul
+SigLIP (acelasi calculat la compararea cu vocabularul), intra in
+data/scena/<cam>/fundal_invatat.{npy,json}. Doua feluri de nume:
 
-Scrie nvr-ai (gazda SigLIP): la fiecare verdict de fundal (web -> /scena/fundal) si la pornire
+- fundal (NUME_FUNDAL: „nimic”, „frunze”, „umbra”, „ploaie”, „copac”) — un candidat nou care
+  seamana la peste PRAG_FUNDAL cu un asemenea exemplu primeste numele, cu sursa „fundal-invatat”:
+  nu pleaca pe Telegram, nu intra in index, nu apare ca „necunoscut”. Bate orice eticheta.
+- obiecte („gaina”, „porumbel”, „masina”…), din ✓ pe eticheta propusa sau ✕ cu numele adevarat —
+  un candidat nou care seamana la peste PRAG_OBIECT primeste numele, cu sursa „invatat”, dar
+  numai daca sistemul nu avea deja un nume de la un detector (YOLO, YOLO-World, VLM):
+  inlocuieste „necunoscut” si scorurile marunte ale vocabularului.
+
+Cel mai apropiat exemplu care isi trece pragul castiga, deci un fundal ∅ pe prelata alba si o
+gaina ✓ pe aceeasi camera se despart intre ele. Masurat pe instalatie (cam 101, 1 nov 2026):
+fundalurile aceleiasi camere seamana intre ele la ~0,88 si raman sub 0,75 fata de obiecte;
+gainile fara nume seamana cu cele numite la 0,87 (mediana), iar prelata si pamantul ating cel
+mult 0,82 fata de gaini — de aici cele doua praguri.
+
+Scrie nvr-ai (gazda SigLIP): la fiecare verdict (web -> /scena/fundal) si la pornire
 (reconstruieste din feedback.jsonl, ca lista sa fie completa si verdictele schimbate sa iasa).
 """
 import json
@@ -24,12 +33,33 @@ import logare
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCENA_DIR = os.path.join(ROOT, "data", "scena")
-PRAG = 0.85            # cosinus minim fata de un exemplu de fundal al camerei
+PRAG_FUNDAL = 0.85     # cosinus minim fata de un exemplu de fundal al camerei
+PRAG_OBIECT = 0.82     # ...fata de un exemplu de obiect
+PRAG = PRAG_FUNDAL
 NUME_FUNDAL = {"nimic", "frunze mișcate de vânt", "umbră", "ploaie", "copac"}
 SURSA = "fundal-invatat"
+SURSA_OBIECT = "invatat"
+SURSE_DETECTOR = {"yolo", "yolo-world", "vlm"}   # etichete pe care un exemplu de obiect nu le bate
 
 _lock = threading.Lock()
 _cache = {}            # cam -> (mtime json, mat, meta)
+
+
+def e_fundal(nume):
+    return nume in NUME_FUNDAL
+
+
+def nume_exemplu(r):
+    """Numele cu care un rand de feedback devine exemplu, sau None (verdictul „?”, „necunoscut”,
+    sau un ✓ pe un candidat care nu avea nume)."""
+    if r.get("verdict") == "gresit":
+        nume = r.get("eticheta")
+    elif r.get("verdict") == "ok":
+        nume = r.get("eticheta") or r.get("eticheta_initiala")
+    else:
+        nume = None
+    nume = (nume or "").strip()
+    return nume if nume and nume != "necunoscut" else None
 
 
 def _cai(cam):
@@ -57,18 +87,33 @@ def incarca(cam):
     return mat, meta
 
 
-def potriveste(cam, emb, prag=PRAG):
-    """{nume, scor, poza} al celui mai apropiat exemplu de fundal al camerei, daca trece pragul."""
+def potriveste(cam, emb):
+    """{nume, scor, poza, fundal} al celui mai apropiat exemplu al camerei care isi trece pragul
+    (PRAG_FUNDAL pentru fundal, PRAG_OBIECT pentru obiecte), altfel None."""
     if emb is None:
         return None
     mat, meta = incarca(cam)
     if mat is None or not len(mat):
         return None
     s = mat @ np.asarray(emb, np.float32)
-    i = int(np.argmax(s))
-    if float(s[i]) < prag:
+    praguri = np.fromiter((PRAG_FUNDAL if e_fundal(m["nume"]) else PRAG_OBIECT for m in meta), np.float32, len(meta))
+    trec = s >= praguri
+    if not trec.any():
         return None
-    return {"nume": meta[i]["nume"], "scor": round(float(s[i]), 3), "poza": meta[i]["poza"]}
+    i = int(np.argmax(np.where(trec, s, -1.0)))
+    return {"nume": meta[i]["nume"], "scor": round(float(s[i]), 3), "poza": meta[i]["poza"], "fundal": e_fundal(meta[i]["nume"])}
+
+
+def aplica(cam, emb, rez):
+    """Rezultatul clasificarii primeste numele exemplului potrivit, daca exista si daca are voie
+    (fundalul bate tot; un obiect nu bate eticheta unui detector). Intoarce potrivirea sau None."""
+    f = potriveste(cam, emb)
+    if not f:
+        return None
+    if not f["fundal"] and rez.get("sursa") in SURSE_DETECTOR:
+        return None
+    rez.update(eticheta=f["nume"], incredere=f["scor"], sursa=SURSA if f["fundal"] else SURSA_OBIECT)
+    return f
 
 
 def _scrie(cam, mat, meta):
@@ -91,9 +136,10 @@ def _vector(cam, poza):
 
 
 def adauga(cam, poza, nume):
-    """Decupajul `poza` al camerei devine exemplu de fundal cu numele dat (sau isi schimba numele).
+    """Decupajul `poza` al camerei devine exemplu cu numele dat (sau isi schimba numele).
     Intoarce True daca a scris ceva; ridica OSError daca poza nu mai exista."""
-    if nume not in NUME_FUNDAL or not poza:
+    nume = (nume or "").strip()
+    if not nume or nume == "necunoscut" or not poza:
         return False
     with _lock:
         mat, meta = incarca(cam)
@@ -107,12 +153,12 @@ def adauga(cam, poza, nume):
                 return True
         e = _vector(cam, poza)
         _scrie(cam, np.vstack([mat, e[None, :]]), meta + [{"poza": poza, "nume": nume, "t": time.strftime("%Y-%m-%d %H:%M:%S")}])
-    logare.info(f"[scena] fundal invatat cam{cam}: +{nume} ({poza}), {len(meta) + 1} exemple")
+    logare.info(f"[scena] exemplu invatat cam{cam}: +{nume} ({poza}), {len(meta) + 1} exemple")
     return True
 
 
 def scoate(cam, poza):
-    """Verdictul s-a schimbat (nu mai e fundal): exemplul iese."""
+    """Verdictul s-a schimbat (nu mai are nume): exemplul iese."""
     with _lock:
         mat, meta = incarca(cam)
         if mat is None:
@@ -127,7 +173,7 @@ def scoate(cam, poza):
 
 def reconstruieste():
     """Aliniaza exemplele la feedback.jsonl (ultimul verdict al fiecarui candidat conteaza):
-    verdictele de fundal fara exemplu intra, exemplele al caror verdict nu mai e fundal ies.
+    verdictele cu nume fara exemplu intra, exemplele al caror verdict nu mai are nume ies.
     Intoarce (adaugate, scoase)."""
     import scena_web
     fb = scena_web.feedback_citeste()
@@ -140,19 +186,21 @@ def reconstruieste():
         _, meta = incarca(cam)
         are = {m["poza"]: m["nume"] for m in meta}
         for poza, r in randuri.items():
-            fundal = r.get("verdict") == "gresit" and r.get("eticheta") in NUME_FUNDAL
-            if fundal and are.get(poza) != r["eticheta"]:
+            nume = nume_exemplu(r)
+            if nume and are.get(poza) != nume:
                 try:
-                    plus += bool(adauga(cam, poza, r["eticheta"]))
+                    plus += bool(adauga(cam, poza, nume))
                 except Exception as e:
-                    logare.info(f"[scena] fundal cam{cam} {poza}: {str(e)[:60]}")
-            elif not fundal and poza in are:
+                    logare.info(f"[scena] exemplu cam{cam} {poza}: {str(e)[:60]}")
+            elif not nume and poza in are:
                 minus += bool(scoate(cam, poza))
     if plus or minus:
-        logare.info(f"[scena] fundal invatat: +{plus} -{minus} exemple din verdicte")
+        logare.info(f"[scena] exemple invatate: +{plus} -{minus} din verdicte")
     return plus, minus
 
 
 def numar(cam):
+    """(exemple de fundal, exemple de obiecte) ale camerei."""
     _, meta = incarca(cam)
-    return len(meta)
+    f = sum(1 for m in meta if e_fundal(m["nume"]))
+    return f, len(meta) - f

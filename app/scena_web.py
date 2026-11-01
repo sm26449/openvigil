@@ -96,17 +96,17 @@ def feedback_adauga(cam, eid, verdict, eticheta=None, poza=None, cine=None, surs
     if verdict == "gresit" and r["eticheta"] and r["poza"]:
         _index_eticheta(r["cam"], r["poza"], r["eticheta"])
     if r["poza"]:
-        _fundal_invata(r["cam"], r["poza"], r["eticheta"] if verdict == "gresit" else None)
+        _fundal_invata(r["cam"], r["poza"], r)
     return r
 
 
-def _fundal_invata(cam, poza, eticheta):
-    """Fundalul invatat al camerei afla verdictul: un nume de fundal adauga exemplul, orice
-    altceva il scoate daca era. Niciodata nu arunca."""
+def _fundal_invata(cam, poza, rand):
+    """Exemplele invatate ale camerei afla verdictul: un nume (fundal sau obiect) adauga exemplul,
+    lipsa lui („?”, necunoscut) il scoate daca era. Niciodata nu arunca."""
     try:
         import ai_client
         import scena_fundal
-        nume = eticheta if eticheta in scena_fundal.NUME_FUNDAL else None
+        nume = scena_fundal.nume_exemplu(rand)
         if ai_client.remote():
             ai_client.scena_fundal(cam, poza, nume)
         elif not settings.get("ai_service"):

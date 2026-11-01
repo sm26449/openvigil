@@ -2352,7 +2352,8 @@
  "Prag mai mare noaptea pentru candidații trimiși pe Telegram": "Higher night threshold for candidates sent on Telegram",
  "Ai respins {n} din {total} etichete date noaptea de detector pe camera asta, cu încredere peste {prag}. Un prag de {nou} noaptea, doar aici, le lasă afară; ziua nu se schimbă nimic.": "You rejected {n} of {total} labels given at night by the detector on this camera, with confidence above {prag}. A night threshold of {nou}, only here, keeps them out; nothing changes by day.",
  "fundal învățat": "learned background",
- "{n} exemple de fundal învățate din verdictele tale": "{n} background examples learned from your verdicts",
+ "{f} exemple de fundal și {o} de obiecte învățate din verdictele tale": "{f} background and {o} object examples learned from your verdicts",
+ "învățat din verdicte": "learned from verdicts",
  "Arată și necunoscuții și fundalul (ploaie, umbre, frunze, fundal învățat)": "Also show unknowns and background (rain, shadows, leaves, learned background)",
  "({n} ascunși)": "({n} hidden)"
 }

@@ -854,6 +854,7 @@ def api_cam_scena(cam_id):
         c["analiza"] = analize.get(c["id"])        # analiza e legata de evenimentul din jurnal
     for r in fb.values():
         verdicte[r.get("verdict", "necunoscut")] = verdicte.get(r.get("verdict", "necunoscut"), 0) + 1
+    fundal_ex, obiecte_ex = __import__("scena_fundal").numar(cam_id)
     return jsonify({
         "activ": cam_id in {int(x) for x in (settings.get("scena_cams") or [])},
         "urmarita": cam_id in {int(x) for x in (settings.get("track_cams") or [])},
@@ -861,7 +862,7 @@ def api_cam_scena(cam_id):
         "fundal": os.path.exists(os.path.join(d, "fundal.jpg")),
         "instabil": os.path.exists(os.path.join(d, "instabil.png")),
         "candidati": candidati, "etichete": etichete, "verdicte": verdicte, "cu_fundal": cu_fundal,
-        "fundal_exemple": __import__("scena_fundal").numar(cam_id), "ascunsi": len(toti) - len(candidati),
+        "fundal_exemple": fundal_ex, "obiecte_exemple": obiecte_ex, "ascunsi": len(toti) - len(candidati),
         "vocabular": _vocabular(), "telegram": bool(settings.get("scena_telegram")),
         "telegram_posibil": bool(settings.get("telegram_token") and settings.get("telegram_chat"))})
 

@@ -88,7 +88,9 @@ def test_prag_de_noapte_global_si_per_camera(monkeypatch):
     assert scena_web.prag_noapte(14) == scena_web.NOAPTE_INCREDERE
 
 
-def test_verdictul_de_fundal_invata_camera(monkeypatch):
+def test_verdictul_invata_camera(monkeypatch):
+    """Orice verdict cu nume (fundal sau obiect) pleaca la nvr-ai ca exemplu; „?” si ✓ fara nume
+    propus scot exemplul."""
     import ai_client
     apeluri = []
     monkeypatch.setattr(ai_client, "remote", lambda: True)
@@ -97,7 +99,10 @@ def test_verdictul_de_fundal_invata_camera(monkeypatch):
     scena_web.feedback_adauga(14, "f1", "gresit", eticheta="nimic", poza="20261101-091845-7.jpg")
     scena_web.feedback_adauga(14, "f2", "gresit", eticheta="pisică", poza="20261101-091846-8.jpg")
     scena_web.feedback_adauga(14, "f3", "ok", poza="20261101-091847-9.jpg")
-    assert apeluri == [(14, "20261101-091845-7.jpg", "nimic"), (14, "20261101-091846-8.jpg", None), (14, "20261101-091847-9.jpg", None)]
+    scena_web.feedback_adauga(14, "f4", "ok", eticheta="găină", poza="20261101-091848-9.jpg")
+    scena_web.feedback_adauga(14, "f4", "necunoscut", poza="20261101-091848-9.jpg")
+    assert apeluri == [(14, "20261101-091845-7.jpg", "nimic"), (14, "20261101-091846-8.jpg", "pisică"),
+                       (14, "20261101-091847-9.jpg", None), (14, "20261101-091848-9.jpg", "găină"), (14, "20261101-091848-9.jpg", None)]
 
 
 def test_verdictul_ajunge_in_index(monkeypatch):
