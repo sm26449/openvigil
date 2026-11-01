@@ -2343,5 +2343,7 @@
  "dreapta": "right",
  "centru": "centre",
  "Zonă de detecție fără peticul care se mișcă mereu": "Detection zone without the patch that keeps moving",
- "{n} candidați fără obiect real în ultimele {zile} zile, {parte}% din ei într-un petic de {arie}% din cadru ({unde}), pe unde ziua nu trec obiecte: o tufă în vânt, o creangă în infraroșu, granulație pe gazon. O zonă de detecție care îl lasă afară îi oprește înainte de clasificare (și eliberează GPU-ul); zona se poate retușa din fișa camerei.": "{n} candidates with no real object in the last {zile} days, {parte}% of them in a patch of {arie}% of the frame ({unde}) where nothing passes by day: a bush in the wind, a branch under infrared, grain on the lawn. A detection zone that leaves it out stops them before classification (and frees the GPU); the zone can be touched up from the camera sheet."
+ "{n} candidați fără obiect real în ultimele {zile} zile, {parte}% din ei într-un petic de {arie}% din cadru ({unde}), pe unde ziua nu trec obiecte: o tufă în vânt, o creangă în infraroșu, granulație pe gazon. O zonă de detecție care îl lasă afară îi oprește înainte de clasificare (și eliberează GPU-ul); zona se poate retușa din fișa camerei.": "{n} candidates with no real object in the last {zile} days, {parte}% of them in a patch of {arie}% of the frame ({unde}) where nothing passes by day: a bush in the wind, a branch under infrared, grain on the lawn. A detection zone that leaves it out stops them before classification (and frees the GPU); the zone can be touched up from the camera sheet.",
+ "scenă": "scene",
+ "văzut de „Învață scena”, nu de YOLO": "seen by “Learn the scene”, not by YOLO"
 }

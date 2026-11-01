@@ -231,6 +231,33 @@ def de_trimis(entry, now=None):
     return True
 
 
+def curata(zile=None):
+    """Sterge decupajele scenei mai vechi de `zile` (implicit retentia pozelor), in afara
+    celor cu verdict in feedback.jsonl: acelea sunt datasetul urmator. Intoarce cate a sters."""
+    zile = int(zile or settings.get("retention_snapshots_days") or 90)
+    pastrate = {(r["cam"], r.get("poza")) for r in feedback_citeste().values() if r.get("poza")}
+    limita = time.time() - zile * 86400
+    sterse = 0
+    try:
+        camere = [d for d in os.listdir(SCENA_DIR) if d.isdigit()]
+    except FileNotFoundError:
+        return 0
+    for d in camere:
+        cale = os.path.join(SCENA_DIR, d)
+        for fn in os.listdir(cale):
+            if not fn.endswith(".jpg") or fn == "fundal.jpg" or (int(d), fn) in pastrate:
+                continue
+            try:
+                if os.path.getmtime(os.path.join(cale, fn)) < limita:
+                    os.remove(os.path.join(cale, fn))
+                    sterse += 1
+            except OSError:
+                pass
+    if sterse:
+        logare.info(f"[scena] curatare: {sterse} decupaje mai vechi de {zile} zile sterse")
+    return sterse
+
+
 def _e_noapte():
     """Noapte acum (apus/rasarit cand e locatia setata, altfel orele din Setari); niciodata nu arunca."""
     try:

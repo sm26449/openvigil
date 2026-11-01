@@ -243,6 +243,7 @@ header > nav button.active { background: var(--accent); color: #fff; }
 .al-card { display: block; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r2); overflow: hidden; text-decoration: none; color: var(--text); }
 .al-card img { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; background: #000; }
 .al-card .al-cap { padding: var(--s2) var(--s3); font-size: var(--fs-sm); color: var(--text-2); }
+.al-scena { font-size: var(--fs-sm); font-weight: 400; color: var(--text-2); white-space: nowrap; }
 .al-card:hover { border-color: var(--accent); }
 .al-card { cursor: pointer; }
 

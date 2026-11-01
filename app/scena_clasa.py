@@ -121,19 +121,22 @@ def _yolo(crop_bgr, model, clase, quantize=None, imgsz=320):
     return best
 
 
-def _vocab(crop_bgr, n=3):
+def _vocab(crop_bgr, n=3, cu_emb=False):
+    """Primele n nume din vocabular dupa SigLIP; cu cu_emb=True intoarce (lista, vectorul
+    decupajului) — vectorul merge mai departe in indexul semantic, fara a doua trecere pe GPU."""
     import cv2
     import semantic
     from PIL import Image
     if not semantic.enabled():
-        return None
+        return (None, None) if cu_emb else None
     nume = vocabular()
     emb = _embeddings_vocab(nume)
     pil = Image.fromarray(cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2RGB))
     e = semantic.embed_images([pil])[0]
     scoruri = emb @ e
     ordine = np.argsort(-scoruri)[:n]
-    return [{"nume": nume[i], "scor": round(float(scoruri[i]), 4)} for i in ordine]
+    lista = [{"nume": nume[i], "scor": round(float(scoruri[i]), 4)} for i in ordine]
+    return (lista, e) if cu_emb else lista
 
 
 def _lume(crop_bgr, imgsz=320, quantize=None):
@@ -145,7 +148,8 @@ def clasifica(crop_bgr, model=None, clase=None, quantize=None):
     """{eticheta, incredere, sursa, yolo, lume, vocab} pentru un decupaj BGR.
     Trei pareri: YOLO-ul instalatiei (clasele antrenate), YOLO-World (detector pe vocabular)
     si SigLIP (tot decupajul fata de vocabular); decizia in _decide."""
-    rez = {"eticheta": "necunoscut", "incredere": 0.0, "sursa": "-", "yolo": None, "lume": None, "vocab": None}
+    rez = {"eticheta": "necunoscut", "incredere": 0.0, "sursa": "-", "yolo": None, "lume": None, "vocab": None,
+           "_emb": None}   # vectorul SigLIP al decupajului (numpy, nu intra in jurnal): pentru indexul semantic
     if crop_bgr is None or crop_bgr.size == 0:
         return rez
     if model is not None:
@@ -158,7 +162,7 @@ def clasifica(crop_bgr, model=None, clase=None, quantize=None):
     except Exception as e:
         logare.info(f"[scena] yolo-world: {str(e)[:80]}")
     try:
-        rez["vocab"] = _vocab(crop_bgr)
+        rez["vocab"], rez["_emb"] = _vocab(crop_bgr, cu_emb=True)
     except Exception as e:
         logare.info(f"[scena] vocabular: {str(e)[:80]}")
     return _decide(rez)

@@ -589,8 +589,8 @@ async function semanticSearch() {
   if (d.error) { $('#al-info').textContent = d.error; return; }
   const names = Object.fromEntries(S.cameras.map((c) => [c.id, c.name]));
   alList = d.results.map((p) => ({
-    url: p.url, time: p.time, label: p.label, cam: p.cam, date: p.day,
-    cap: `${p.day} ${p.time} — ${names[p.cam] || 'cam ' + p.cam} — ${alNume(p.label)}`,
+    url: p.url, time: p.time, label: p.label, cam: p.cam, date: p.day, sursa: p.sursa,
+    cap: `${p.day} ${p.time} — ${names[p.cam] || 'cam ' + p.cam} — ${p.sursa === 'scena' ? t(p.label) + ' · ' + t('scenă') : alNume(p.label)}`,
   }));
   $('#al-pills').innerHTML = '';
   $('#al-chart').innerHTML = '';
@@ -605,7 +605,7 @@ async function semanticSearch() {
     card.innerHTML = html`
       <img loading="lazy" src="${p.url}" alt="">
       <div class="al-cap">
-        <div class="inc-cand">${p.date} ${p.time.slice(0, 5)}</div>
+        <div class="inc-cand">${p.date} ${p.time.slice(0, 5)}${p.sursa === 'scena' ? html` <span class="al-scena" title="${t('văzut de „Învață scena”, nu de YOLO')}">🧩 ${t(p.label)}</span>` : ''}</div>
         <div class="inc-cam">${names[p.cam] || 'cam ' + p.cam}</div>
       </div>`;
     card.querySelector('img').onclick = () => openPhoto(i);

@@ -137,6 +137,21 @@ def test_reanalizarea_din_buton(_izolare, monkeypatch):
     assert apeluri[-1][0] == "editMessageText"
 
 
+def test_curatarea_decupajelor_pastreaza_verdictele(tmp_path):
+    import time as _t
+    d = tmp_path / "14"
+    d.mkdir()
+    for fn in ("vechi.jpg", "cu-verdict.jpg", "nou.jpg", "fundal.jpg"):
+        (d / fn).write_bytes(b"x")
+    vechi = _t.time() - 100 * 86400
+    for fn in ("vechi.jpg", "cu-verdict.jpg", "fundal.jpg"):
+        os.utime(d / fn, (vechi, vechi))
+    scena_web.feedback_adauga(14, "id1", "ok", poza="cu-verdict.jpg")
+    assert scena_web.curata(90) == 1
+    assert sorted(os.listdir(d)) == ["cu-verdict.jpg", "fundal.jpg", "nou.jpg"]
+    assert scena_web.curata(90) == 0
+
+
 def test_text_analiza_arata_doar_numele_clare():
     v = [{"nume": "mașină", "scor": 0.1114}, {"nume": "ploaie", "scor": 0.076}, {"nume": "om cu cărucior", "scor": 0.0743}]
     txt = scena_web.text_analiza({"eticheta": "mașină", "vocab": v})

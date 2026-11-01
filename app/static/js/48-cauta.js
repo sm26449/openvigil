@@ -34,7 +34,7 @@ async function cauta(q) {
   ]);
   const rez = [];
   for (const p of ((sem && sem.results) || [])) {
-    rez.push({ cat: 'poze', cam: p.cam, t: `${p.day} ${p.time}`, titlu: t(DET_RO[p.label] || AL_RO[p.label] || p.label), poza: p.url, tip: 'detectie', det: p.label });
+    rez.push({ cat: 'poze', cam: p.cam, t: `${p.day} ${p.time}`, titlu: t(DET_RO[p.label] || AL_RO[p.label] || p.label) + (p.sursa === 'scena' ? ' 🧩' : ''), poza: p.url, tip: 'detectie', det: p.label });
   }
   for (const r of ((pl && pl.reads) || [])) {
     if (!qd || fdia(r.numar).includes(qd.replace(/\s+/g, '')) || fdia(r.nume || '').includes(qd)) {

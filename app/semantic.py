@@ -183,6 +183,50 @@ def shard_add(day, embs, metas):
         os.replace(meta + ".tmp", meta)
 
 
+def url_poza(day, m):
+    """URL-ul unei intrari din index: snapshot-ul de detectie (implicit) sau, pentru decupajele
+    scenei, fisierul lor din data/scena/<cam>/ (meta poarta `url` si `sursa`)."""
+    return m.get("url") or f"/snapshots/{day}/{m['fn']}"
+
+
+_queue_scena = queue.Queue(maxsize=512)
+
+
+def adauga_scena(cam, fn, eticheta, emb):
+    """Un decupaj al scenei („ceva nou” clasificat) intra in indexul zilei lui, cu vectorul
+    SigLIP deja calculat la compararea cu vocabularul (zero GPU in plus). Doar in nvr-ai
+    (gazda indexului); nu blocheaza bucla scenei — scrie lucratorul, in loturi."""
+    if not enabled() or not IS_HOST or emb is None:
+        return False
+    m = re.match(r"^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})-\d+\.jpg$", fn)
+    if not m:
+        return False
+    day = f"{m[1]}-{m[2]}-{m[3]}"
+    meta = {"fn": fn, "time": f"{m[4]}:{m[5]}:{m[6]}", "cam": int(cam), "label": eticheta,
+            "sursa": "scena", "url": f"/api/cam/{int(cam)}/scena/fisier/{fn}"}
+    _ensure_worker()
+    try:
+        _queue_scena.put_nowait((day, meta, np.asarray(emb, np.float32)))
+    except queue.Full:
+        return False
+    return True
+
+
+def _scrie_scena():
+    """Goleste coada decupajelor scenei in shard-urile zilelor lor (chemata de lucrator)."""
+    pe_zi = {}
+    while True:
+        try:
+            day, meta, emb = _queue_scena.get_nowait()
+        except queue.Empty:
+            break
+        pe_zi.setdefault(day, ([], []))
+        pe_zi[day][0].append(emb)
+        pe_zi[day][1].append(meta)
+    for day, (embs, metas) in pe_zi.items():
+        shard_add(day, np.stack(embs), metas)
+
+
 def indexed_days():
     if not os.path.isdir(SEM_DIR):
         return []
@@ -196,13 +240,19 @@ IS_HOST = False
 
 
 def prune():
-    """Sterge shard-urile zilelor pe care retentia le-a scos din snapshots/."""
+    """Sterge shard-urile zilelor pe care retentia le-a scos din snapshots/ (decupajele
+    scenei au aceeasi retentie, deci pleaca odata cu ziua lor)."""
     if not IS_HOST and settings.get("ai_service"):
         import ai_client
         ai_client.semantic_prune()
         return
+    keep = int(settings.get("retention_snapshots_days") or 0)
     for day in indexed_days():
-        if not os.path.isdir(os.path.join(SNAP_DIR, day)):
+        try:
+            veche = keep and (time.time() - time.mktime(time.strptime(day, "%Y-%m-%d"))) / 86400 > keep
+        except ValueError:
+            veche = False
+        if veche or not os.path.isdir(os.path.join(SNAP_DIR, day)):
             for p in _shard_paths(day):
                 try:
                     os.remove(p)
@@ -240,6 +290,10 @@ def _worker():
                 continue
         except queue.Empty:
             pass
+        try:
+            _scrie_scena()
+        except Exception as e:
+            logare.error(f"[semantic] indexarea scenei a esuat: {str(e)[:80]}")
         if not lot:
             continue
         try:
@@ -357,7 +411,7 @@ def appearances(text, days=30, visible=None, gap=APPEAR_GAP, labels=None):
             if labels is not None and m.get("label") not in labels:
                 continue
             hits.append({"day": day, "time": m["time"], "cam": m["cam"],
-                         "fn": m["fn"], "score": float(sims[int(i)])})
+                         "fn": m["fn"], "score": float(sims[int(i)]), "url": url_poza(day, m)})
     if not hits:
         return [], 0.0
     top = max(h["score"] for h in hits)
@@ -377,13 +431,13 @@ def appearances(text, days=30, visible=None, gap=APPEAR_GAP, labels=None):
             g["poze"] += 1
             if h["score"] > g["scor"]:
                 g["scor"] = h["score"]
-                g["coperta"] = f"/snapshots/{h['day']}/{h['fn']}"
+                g["coperta"] = h["url"]
         else:
             grupuri.append({"inceput": f"{h['day']} {h['time']}",
                             "sfarsit": f"{h['day']} {h['time']}",
                             "camere": [h["cam"]], "poze": 1,
                             "scor": h["score"],
-                            "coperta": f"/snapshots/{h['day']}/{h['fn']}",
+                            "coperta": h["url"],
                             "_last": h["ts"]})
     for g in grupuri:
         g.pop("_last")
@@ -410,8 +464,9 @@ def search(text, days=14, limit=40, visible=None):
             m = meta[int(i)]
             if visible is not None and m["cam"] not in visible:
                 continue
-            out.append({"url": f"/snapshots/{day}/{m['fn']}", "day": day,
+            out.append({"url": url_poza(day, m), "day": day,
                         "cam": m["cam"], "label": m["label"], "time": m["time"],
+                        "sursa": m.get("sursa") or "detectie",
                         "score": round(float(sims[int(i)]), 4)})
     out.sort(key=lambda r: -r["score"])
     return out[:limit]

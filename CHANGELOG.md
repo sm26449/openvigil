@@ -42,6 +42,11 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   gazon) și propune o zonă de detecție care îl lasă afară.
 - Zona de detecție a camerei (desenată în fișa ei) e respectată și de „Învață scena”: ce e
   în afara ei nu devine candidat și nu consumă clasificări.
+- Decupajele scenei intră în indexul căutării semantice, cu vectorul SigLIP deja calculat
+  la compararea cu vocabularul (fără GPU în plus): „mașină albă” sau „om cu umbrelă” găsește
+  și ce a văzut doar scena, nu și YOLO; în rezultate sunt marcate 🧩. Ploaia, umbrele și
+  frunzele nu intră. Decupajele scenei au retenția pozelor (`retention_snapshots_days`),
+  cu excepția celor cu verdict, care rămân pentru antrenament.
 - Server MCP (`POST /mcp`, cu jetonul API ca `X-Token` sau `Authorization: Bearer`): un
   asistent poate întreba sistemul ce s-a întâmplat (evenimente cu filtru de text, episoade,
   candidați), căuta în poze, cere cadrul unei camere, vedea recomandările și comuta modul.

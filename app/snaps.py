@@ -196,6 +196,11 @@ def prune():
         semantic.prune()
     except Exception as e:
         logare.error(f"[snaps] curatarea indexului semantic a esuat: {str(e)[:60]}")
+    try:   # decupajele scenei („ceva nou”) au aceeasi retentie; cele cu verdict raman
+        import scena_web
+        scena_web.curata(keep_days)
+    except Exception as e:
+        logare.error(f"[snaps] curatarea decupajelor scenei a esuat: {str(e)[:60]}")
     try:   # arhiva de corpuri (re-ID) are aceeasi retentie ca pozele
         import reid_arhiva
         reid_arhiva.curata()

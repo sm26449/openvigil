@@ -93,6 +93,7 @@ def test_prune_sterge_shardurile_orfane(monkeypatch):
     # testam logica GAZDEI (nvr-ai); altfel, cu ai_service pornit in instalarea
     # reala, prune ar incerca sa se trimita singur prin HTTP (#9 pas 3)
     monkeypatch.setattr(semantic, "IS_HOST", True)
+    monkeypatch.setattr(semantic.settings, "get", lambda k: None)      # fara retentie pe zile
     semantic.shard_add("2026-08-10", np.stack([_unit([1])]),
                        [{"fn": "a.jpg", "cam": 1, "label": "x", "time": "10:00:00"}])
     os.makedirs(os.path.join(semantic.SNAP_DIR, "2026-08-11"))
@@ -100,6 +101,30 @@ def test_prune_sterge_shardurile_orfane(monkeypatch):
                        [{"fn": "b.jpg", "cam": 1, "label": "x", "time": "10:00:00"}])
     semantic.prune()
     assert semantic.indexed_days() == ["2026-08-11"]   # 08-10 nu mai are poze -> a zburat
+    monkeypatch.setattr(semantic.settings, "get", lambda k: 30 if k == "retention_snapshots_days" else None)
+    semantic.prune()
+    assert semantic.indexed_days() == []               # mai veche decat retentia, chiar daca directorul exista
+
+
+def test_decupajele_scenei_intra_in_index(monkeypatch):
+    monkeypatch.setattr(semantic, "IS_HOST", True)
+    monkeypatch.setattr(semantic, "enabled", lambda: True)
+    monkeypatch.setattr(semantic, "_ensure_worker", lambda: None)      # scriem noi, nu firul
+    assert semantic.adauga_scena(14, "20261101-085942-45.jpg", "mașină", _unit([1]))
+    assert not semantic.adauga_scena(14, "fundal.jpg", "x", _unit([1]))
+    assert not semantic.adauga_scena(14, "20261101-085942-45.jpg", "x", None)
+    semantic._scrie_scena()
+    semantic.shard_add("2026-11-01", np.stack([_unit([0, 1])]),
+                       [{"fn": "a.jpg", "cam": 1, "label": "car", "time": "10:00:00"}])
+    monkeypatch.setattr(semantic, "embed_text", lambda q: _unit([1]))
+    rez = semantic.search("mașină albă", days=7, limit=10)
+    assert rez[0]["url"] == "/api/cam/14/scena/fisier/20261101-085942-45.jpg"
+    assert (rez[0]["sursa"], rez[0]["label"], rez[0]["time"], rez[0]["cam"]) == ("scena", "mașină", "08:59:42", 14)
+    assert rez[1]["sursa"] == "detectie" and rez[1]["url"] == "/snapshots/2026-11-01/a.jpg"
+    grupuri, top = semantic.appearances("mașină albă", days=7)
+    assert grupuri[0]["coperta"] == "/api/cam/14/scena/fisier/20261101-085942-45.jpg"
+    monkeypatch.setattr(semantic, "IS_HOST", False)
+    assert not semantic.adauga_scena(14, "20261101-085942-45.jpg", "mașină", _unit([1]))   # doar gazda indexului
 
 
 def test_status_numara_corect():

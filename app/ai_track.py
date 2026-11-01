@@ -431,6 +431,7 @@ def _scena_schimbare(self, c, frame, now, model):
             continue
         with _predict_lock:
             rez = scena_clasa.clasifica(crop, model, _clase, _fp16())
+        emb = rez.pop("_emb", None)
         cand.clasificat = rez
         cand.ultima_clasificare = now
         fn = f"{time.strftime('%Y%m%d-%H%M%S', time.localtime(now))}-{cand.id}.jpg"
@@ -439,6 +440,11 @@ def _scena_schimbare(self, c, frame, now, model):
         if ok:
             with open(cale, "wb") as f:
                 f.write(buf.tobytes())
+            if emb is not None and rez["eticheta"] not in scena_clasa.NEUTRE - {"necunoscut"}:
+                # ce a vazut scena se poate cauta apoi ca orice poza („mașină albă”, „om cu umbrelă”);
+                # ploaia, umbrele si frunzele nu merita loc in index
+                import semantic
+                semantic.adauga_scena(c, fn, rez["eticheta"], emb)
         self.emit_fn("scena_candidat", c, {
             "candidat": cand.id, "eticheta": rez["eticheta"], "incredere": rez["incredere"],
             "sursa": rez["sursa"], "yolo": rez["yolo"], "lume": rez.get("lume"), "vocab": rez["vocab"],
