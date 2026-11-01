@@ -106,6 +106,21 @@ def test_prune_sterge_shardurile_orfane(monkeypatch):
     assert semantic.indexed_days() == []               # mai veche decat retentia, chiar daca directorul exista
 
 
+def test_verdictul_schimba_eticheta_sau_scoate_randul():
+    semantic.shard_add("2026-11-01", np.stack([_unit([1]), _unit([0, 1])]),
+                       [{"fn": "a.jpg", "cam": 1, "label": "car", "time": "10:00:00"},
+                        {"fn": "20261101-091845-7.jpg", "cam": 14, "label": "necunoscut", "time": "09:18:45",
+                         "sursa": "scena", "url": "/api/cam/14/scena/fisier/20261101-091845-7.jpg"}])
+    assert semantic.actualizeaza_scena(14, "20261101-091845-7.jpg", "pisică")
+    mat, meta = semantic.shard_load("2026-11-01")
+    assert meta[1]["label"] == "pisică" and mat.shape == (2, 8)
+    assert not semantic.actualizeaza_scena(14, "a.jpg", "x")                 # nu e al scenei
+    assert not semantic.actualizeaza_scena(14, "20261101-000000-1.jpg", "x")  # inexistent
+    assert semantic.actualizeaza_scena(14, "20261101-091845-7.jpg", "nimic")
+    mat, meta = semantic.shard_load("2026-11-01")
+    assert [m["fn"] for m in meta] == ["a.jpg"] and mat.shape == (1, 8)
+
+
 def test_decupajele_scenei_intra_in_index(monkeypatch):
     monkeypatch.setattr(semantic, "IS_HOST", True)
     monkeypatch.setattr(semantic, "enabled", lambda: True)

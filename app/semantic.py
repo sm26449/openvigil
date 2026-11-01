@@ -172,15 +172,20 @@ def shard_add(day, embs, metas):
     if not len(embs):
         return
     with _shard_lock:
-        os.makedirs(SEM_DIR, exist_ok=True)
         old, old_meta = shard_load(day)
         mat = np.vstack([old, embs]) if old is not None else np.asarray(embs)
-        npy, meta = _shard_paths(day)
-        np.save(npy + ".tmp.npy", mat.astype(np.float32))
-        os.replace(npy + ".tmp.npy", npy)
-        with open(meta + ".tmp", "w") as f:
-            json.dump(old_meta + list(metas), f, ensure_ascii=False)
-        os.replace(meta + ".tmp", meta)
+        _shard_write(day, mat, old_meta + list(metas))
+
+
+def _shard_write(day, mat, metas):
+    """Scrie shard-ul intreg (sub _shard_lock), atomic: matricea apoi meta."""
+    os.makedirs(SEM_DIR, exist_ok=True)
+    npy, meta = _shard_paths(day)
+    np.save(npy + ".tmp.npy", np.asarray(mat, np.float32))
+    os.replace(npy + ".tmp.npy", npy)
+    with open(meta + ".tmp", "w") as f:
+        json.dump(list(metas), f, ensure_ascii=False)
+    os.replace(meta + ".tmp", meta)
 
 
 def url_poza(day, m):
@@ -209,6 +214,31 @@ def adauga_scena(cam, fn, eticheta, emb):
         _queue_scena.put_nowait((day, meta, np.asarray(emb, np.float32)))
     except queue.Full:
         return False
+    return True
+
+
+def actualizeaza_scena(cam, fn, eticheta):
+    """Verdictul omului pe un decupaj al scenei: eticheta noua in index sau, daca e „nimic” /
+    ploaie / umbra / frunze, randul iese din index. Intoarce True daca a schimbat ceva."""
+    import scena_clasa
+    m = re.match(r"^(\d{4})(\d{2})(\d{2})-", fn or "")
+    if not m:
+        return False
+    day = f"{m[1]}-{m[2]}-{m[3]}"
+    with _shard_lock:
+        mat, meta = shard_load(day)
+        if mat is None:
+            return False
+        idx = [i for i, x in enumerate(meta) if x.get("fn") == fn and x.get("cam") == int(cam) and x.get("sursa") == "scena"]
+        if not idx:
+            return False
+        if eticheta in scena_clasa.NEUTRE or eticheta == "nimic":
+            ramase = [i for i in range(len(meta)) if i not in idx]
+            mat, meta = mat[ramase], [meta[i] for i in ramase]
+        else:
+            for i in idx:
+                meta[i]["label"] = eticheta
+        _shard_write(day, mat, meta)
     return True
 
 

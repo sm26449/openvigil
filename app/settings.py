@@ -126,6 +126,8 @@ DEFAULTS = {
     "scena_lume": True,          # YOLO-World pe decupaj (detector cu vocabularul; greutati descarcate la prima pornire)
     "scena_telegram": False,     # candidatii (fara ploaie/umbra/frunze) pe Telegram, cu butoane
     "scena_telegram_cooldown": 300,   # secunde intre doi candidati trimisi de pe aceeasi camera
+    "scena_telegram_noapte": 0.5,     # noaptea pleaca doar etichetele de detector cu macar atata incredere
+                                      # (per camera: `scena_noapte` in detect.json, din recomandari)
     # Model de limbaj (llm.py): gol = Qwen-ul local din nvr-ai; altfel un server compatibil
     # OpenAI (Ollama: http://gazda:11434/v1). episod_llm: rezumatul episoadelor scris de el.
     "llm_url": "",

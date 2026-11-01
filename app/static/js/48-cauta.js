@@ -29,7 +29,7 @@ async function cauta(q) {
   const [sem, pl, jur, hist] = await Promise.all([
     PLACUTA.test(q) ? null : j(`/api/search?q=${encodeURIComponent(q)}&days=${zile}&limit=40`),   // un numar nu e o descriere de poza
     j(`/api/plates?q=${encodeURIComponent(q.replace(/\s+/g, ''))}`),
-    j('/api/journal?limit=400'),
+    j(`/api/journal?limit=300&text=${encodeURIComponent(q)}&zile=${zile}`),   // descrierile VLM, rezumatele episoadelor, nume, numere (fara diacritice)
     j(`/api/faces/history?name=${encodeURIComponent(q)}&limit=60`),
   ]);
   const rez = [];
@@ -46,9 +46,10 @@ async function cauta(q) {
   }
   const qcuv = qd.split(/\s+/).filter(Boolean);
   for (const e of ((jur && jur.events) || [])) {
-    const txt = fdia([t(EV_TIP_RO[e.tip] || e.tip), e.eticheta ? t(DET_RO[e.eticheta] || e.eticheta) : '', e.nume, e.numar, e.text, e.context, names[e.cam]].filter(Boolean).join(' '));
+    const txt = fdia([t(EV_TIP_RO[e.tip] || e.tip), e.eticheta ? t(DET_RO[e.eticheta] || e.eticheta) : '', e.nume, e.numar, e.text, e.vlm, e.context, names[e.cam]].filter(Boolean).join(' '));
     if (qcuv.every((w) => txt.includes(w))) {
-      rez.push({ cat: 'jurnal', cam: e.cam, t: e.t, titlu: t(EV_TIP_RO[e.tip] || e.tip) + (e.eticheta || e.nume || e.numar ? ': ' + t(DET_RO[e.eticheta] || e.eticheta || e.nume || e.numar) : ''), tip: e.tip, sev: e.sev, id: e.id, det: e.eticheta || e.nume || e.numar || '', cine: e.nume || '' });
+      const descr = e.text || e.vlm || '';          // descrierea VLM / rezumatul episodului, in cuvintele lor
+      rez.push({ cat: 'jurnal', cam: e.cam, t: e.t, titlu: t(EV_TIP_RO[e.tip] || e.tip) + (descr ? ': ' + descr.slice(0, 80) : e.eticheta || e.nume || e.numar ? ': ' + t(DET_RO[e.eticheta] || e.eticheta || e.nume || e.numar) : ''), tip: e.tip, sev: e.sev, id: e.id, det: e.eticheta || e.nume || e.numar || '', cine: e.nume || '', poza: e.poza && e.tip && e.tip.startsWith('scena') ? `/api/cam/${e.cam}/scena/fisier/${e.poza}` : undefined });
     }
   }
   // dedup (jurnal vs poze la aceeasi secunda pe aceeasi camera) si ordine: cele mai noi primele

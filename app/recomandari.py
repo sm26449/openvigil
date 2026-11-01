@@ -201,6 +201,30 @@ def r_prag_noapte(cam, feedback, cfg, e_noapte):
             "actiune": {"tip": "detect", "conf_noapte": PRAG_NOAPTE}}
 
 
+def r_noapte_telegram(cam, feedback, cfg, e_noapte, prag):
+    """Noaptea, etichetele de detector trimise pe Telegram de pe camera asta au fost respinse de
+    om de mai multe ori (creanga in IR = „pisica” la 0,7) -> prag de incredere mai mare noaptea,
+    doar pentru camera asta: peste cea mai mare incredere respinsa, plus o marja."""
+    if cfg.get("scena_noapte"):
+        return None
+    import scena_web
+    noapte = [r for r in feedback.values()
+              if r.get("sursa_initiala") in scena_web.SURSE_NOAPTE and r.get("incredere") is not None
+              and float(r["incredere"]) >= prag and e_noapte((r.get("t") or "")[11:16])]
+    false = [r for r in noapte if r.get("verdict") == "gresit"]
+    if len(false) < MIN_FALS_NOAPTE or len(false) < 0.5 * len(noapte):
+        return None
+    nou = min(0.9, round(max(float(r["incredere"]) for r in false) + 0.05, 2))
+    if nou <= prag:
+        return None
+    return {"id": "noapte_telegram", "tip": "prag",
+            "titlu": t("Prag mai mare noaptea pentru candidații trimiși pe Telegram"),
+            "text": t("Ai respins {n} din {total} etichete date noaptea de detector pe camera asta, cu încredere peste {prag}. Un prag de {nou} noaptea, doar aici, le lasă afară; ziua nu se schimbă nimic.",
+                      n=len(false), total=len(noapte), prag=prag, nou=nou),
+            "dovezi": {"respinse_noaptea": len(false), "total_noaptea": len(noapte), "prag_actual": prag},
+            "actiune": {"tip": "detect", "scena_noapte": nou}}
+
+
 def r_scena(cam, n_detectii, track_cams, scena_cams):
     if cam in scena_cams or cam not in track_cams or n_detectii < MIN_DETECTII_SCENA:
         return None
@@ -330,6 +354,7 @@ def pentru_camera(cam):
     out = []
     pasi = [
         lambda: r_prag_noapte(cam, scena_web.feedback_citeste(cam), cfg, rules._is_night),
+        lambda: r_noapte_telegram(cam, scena_web.feedback_citeste(cam), cfg, rules._is_night, scena_web.prag_noapte(cam)),
         lambda: r_zona_fierbinte(cam, cfg.get("zone"), _regiuni(cam), _chenare_zi(cam)),
         lambda: r_zona_instabila(cam, cfg.get("zone"), _instabil(cam)),
         lambda: r_regiuni_hd(cam, _chenare(cam), lst("tile_cams")),
@@ -369,7 +394,7 @@ def aplica(cam, rid):
         detect.set_zone(cam, a["puncte"])
     elif a["tip"] == "detect":
         import detect
-        detect.set_detect(cam, conf_noapte=a.get("conf_noapte"))
+        detect.set_detect(cam, conf_noapte=a.get("conf_noapte"), scena_noapte=a.get("scena_noapte"))
     elif a["tip"] == "scena":
         sc = {int(x) for x in (settings.get("scena_cams") or [])}
         tr = {int(x) for x in (settings.get("track_cams") or [])}

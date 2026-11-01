@@ -74,6 +74,36 @@ def test_noaptea_doar_etichete_sigure(monkeypatch):
     assert scena_web.de_trimis({**e, "cam": 6, "eticheta": "pisică", "sursa": "vocabular", "incredere": 0.05}, now=1000)
 
 
+def test_prag_de_noapte_global_si_per_camera(monkeypatch):
+    import detect
+    import rules
+    monkeypatch.setitem(CFG, "scena_telegram_noapte", 0.6)
+    monkeypatch.setattr(detect, "cam_cfg", lambda c: {"scena_noapte": 0.8} if c == 6 else {})
+    assert scena_web.prag_noapte(6) == 0.8 and scena_web.prag_noapte(14) == 0.6
+    monkeypatch.setattr(rules, "_is_night", lambda *a: True)
+    e = {"cam": 6, "id": "n1", "poza": "p.jpg", "eticheta": "pisică", "sursa": "yolo-world", "incredere": 0.75}
+    assert not scena_web.de_trimis(e, now=1000)                                   # sub 0,8 pe cam 6
+    assert scena_web.de_trimis({**e, "cam": 14}, now=1000)                          # peste 0,6 global
+    monkeypatch.delitem(CFG, "scena_telegram_noapte")
+    assert scena_web.prag_noapte(14) == scena_web.NOAPTE_INCREDERE
+
+
+def test_verdictul_ajunge_in_index(monkeypatch):
+    import ai_client
+    import semantic
+    apeluri = []
+    monkeypatch.setattr(ai_client, "remote", lambda: False)
+    monkeypatch.setattr(semantic, "actualizeaza_scena", lambda cam, fn, et: apeluri.append((cam, fn, et)) or True)
+    scena_web.feedback_adauga(14, "i1", "gresit", eticheta="pisică", poza="20261101-091845-7.jpg")
+    scena_web.feedback_adauga(14, "i2", "ok", poza="20261101-091846-8.jpg")
+    scena_web.feedback_adauga(14, "i3", "gresit", eticheta="nimic", poza="20261101-091847-9.jpg")
+    assert apeluri == [(14, "20261101-091845-7.jpg", "pisică"), (14, "20261101-091847-9.jpg", "nimic")]
+    monkeypatch.setattr(ai_client, "remote", lambda: True)
+    monkeypatch.setattr(ai_client, "semantic_scena", lambda cam, fn, et: apeluri.append(("ai", cam, fn, et)))
+    scena_web.feedback_adauga(14, "i4", "gresit", eticheta="cal", poza="20261101-091848-1.jpg")
+    assert apeluri[-1] == ("ai", 14, "20261101-091848-1.jpg", "cal")
+
+
 def test_callback_data_scurt_si_parsabil():
     d = scena_web._date("et12", 101, "710ef3f64d0c", "20261027-224256-248.jpg")
     assert len(d.encode()) <= 64

@@ -85,6 +85,21 @@ def test_prag_noapte_din_verdicte():
     assert R.r_prag_noapte(6, putine, {}, _noapte) is None                      # sub minim
 
 
+def test_noapte_telegram_din_verdicte():
+    def rand(i, inc, verdict="gresit", t="2026-11-01 03:1%d:00"):
+        return {"id": f"n{i}", "verdict": verdict, "sursa_initiala": "yolo-world", "incredere": inc, "t": t % i}
+    fb = {f"n{i}": rand(i, inc) for i, inc in enumerate((0.78, 0.74, 0.52, 0.73))}
+    fb["ok1"] = rand(9, 0.9, "ok")
+    r = R.r_noapte_telegram(6, fb, {}, _noapte, 0.5)
+    assert r and r["actiune"] == {"tip": "detect", "scena_noapte": 0.83} and r["dovezi"]["respinse_noaptea"] == 4
+    assert R.r_noapte_telegram(6, fb, {"scena_noapte": 0.8}, _noapte, 0.8) is None       # are deja prag
+    assert R.r_noapte_telegram(6, dict(list(fb.items())[:2]), {}, _noapte, 0.5) is None   # prea putine
+    zi = {k: {**v, "t": "2026-11-01 13:00:00"} for k, v in fb.items()}
+    assert R.r_noapte_telegram(6, zi, {}, _noapte, 0.5) is None                           # ziua nu conteaza
+    fb["v"] = {**rand(7, 0.3), "sursa_initiala": "vocabular"}
+    assert R.r_noapte_telegram(6, fb, {}, _noapte, 0.5)["dovezi"]["total_noaptea"] == 5   # vocabularul nu intra
+
+
 def test_scena_urmarire_vocabular_zgomot():
     assert R.r_scena(5, 80, {5}, set())["actiune"] == {"tip": "scena", "activ": True}
     assert R.r_scena(5, 80, set(), set()) is None                 # intai urmarirea
@@ -122,7 +137,10 @@ def test_aplica(monkeypatch):
     R.aplica(14, "zona_instabila")
     assert apeluri[-1][0] == "zona" and apeluri[-1][2][0] == [0, 0.3]
     R.aplica(14, "prag_noapte")
-    assert apeluri[-1] == ("detect", 14, {"conf_noapte": 0.65})
+    assert apeluri[-1] == ("detect", 14, {"conf_noapte": 0.65, "scena_noapte": None})
+    recs.append({"id": "noapte_telegram", "actiune": {"tip": "detect", "scena_noapte": 0.83}})
+    R.aplica(14, "noapte_telegram")
+    assert apeluri[-1] == ("detect", 14, {"conf_noapte": None, "scena_noapte": 0.83})
     R.aplica(14, "scena")
     assert stocat["scena_cams"] == [14] and stocat["track_cams"] == [3, 14]
     R.aplica(14, "vocabular")

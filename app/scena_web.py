@@ -31,8 +31,24 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCENA_DIR = os.path.join(ROOT, "data", "scena")
 FEEDBACK = os.path.join(SCENA_DIR, "feedback.jsonl")
 NIMIC = "nimic"          # verdictul „e doar fundalul”: intra in dataset ca negativ (feedback_dataset)
-NOAPTE_INCREDERE = 0.5   # noaptea pleaca pe Telegram doar etichetele cu cel putin atata incredere...
+NOAPTE_INCREDERE = 0.5   # noaptea pleaca pe Telegram doar etichetele cu cel putin atata incredere (implicit;
+                         # setarea `scena_telegram_noapte`, iar per camera `scena_noapte` din detect.json)...
 SURSE_NOAPTE = {"yolo", "yolo-world", "vlm"}   # ...si doar de la un detector, nu „yolo-nesigur” / vocabular
+
+
+def prag_noapte(cam):
+    """Pragul de incredere al camerei noaptea: al ei (recomandare aplicata) sau cel global."""
+    try:
+        import detect
+        p = detect.cam_cfg(int(cam)).get("scena_noapte")
+    except Exception:
+        p = None
+    if not p:
+        p = settings.get("scena_telegram_noapte")
+    try:
+        return float(p) if p else NOAPTE_INCREDERE
+    except (TypeError, ValueError):
+        return NOAPTE_INCREDERE
 
 
 def _neutre():
@@ -66,6 +82,8 @@ def feedback_adauga(cam, eid, verdict, eticheta=None, poza=None, cine=None, surs
         # ce propusese sistemul si unde era, ca datasetul sa stie eticheta unui „✓ corect”
         r["eticheta_initiala"] = ev.get("eticheta")
         r["sursa_initiala"] = ev.get("sursa")
+        if ev.get("incredere") is not None:
+            r["incredere"] = ev.get("incredere")
         if isinstance(ev.get("regiune"), list):
             r["regiune"] = ev["regiune"]
         if ev.get("vreme"):
@@ -75,7 +93,22 @@ def feedback_adauga(cam, eid, verdict, eticheta=None, poza=None, cine=None, surs
     os.makedirs(SCENA_DIR, exist_ok=True)
     with _fb_lock, open(FEEDBACK, "a", encoding="utf-8") as f:
         f.write(json.dumps(r, ensure_ascii=False) + "\n")
+    if verdict == "gresit" and r["eticheta"] and r["poza"]:
+        _index_eticheta(r["cam"], r["poza"], r["eticheta"])
     return r
+
+
+def _index_eticheta(cam, poza, eticheta):
+    """Indexul semantic afla verdictul (eticheta noua, sau randul iese); niciodata nu arunca."""
+    try:
+        import ai_client
+        import semantic
+        if ai_client.remote():
+            ai_client.semantic_scena(cam, poza, eticheta)
+        elif semantic.IS_HOST or not settings.get("ai_service"):
+            semantic.actualizeaza_scena(cam, poza, eticheta)
+    except Exception as e:
+        logare.info(f"[scena] index: {str(e)[:80]}")
 
 
 def _eticheta_analiza(cam, eid):
@@ -215,9 +248,9 @@ def de_trimis(entry, now=None):
                     return False         # pe ploaie/ceata, necunoscutele sunt picaturi: nu deranjam omul
             except Exception:
                 pass
-    elif noapte and (entry.get("sursa") not in SURSE_NOAPTE or float(entry.get("incredere") or 0) < NOAPTE_INCREDERE):
+    elif noapte and (entry.get("sursa") not in SURSE_NOAPTE or float(entry.get("incredere") or 0) < prag_noapte(cam)):
         logare.info(f"[scena] telegram cam{cam}: sarit, noaptea {eticheta} ({entry.get('sursa')}, "
-                    f"{float(entry.get('incredere') or 0):.2f}) e sub pragul {NOAPTE_INCREDERE}")
+                    f"{float(entry.get('incredere') or 0):.2f}) e sub pragul {prag_noapte(cam)}")
         return False
     now = now or time.time()
     cd = int(settings.get("scena_telegram_cooldown") or 0)

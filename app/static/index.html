@@ -1105,6 +1105,7 @@
       <div id="vreme-locatie" class="hint"></div>
       <label>Prag de încredere pe vreme rea <input id="vreme-prag" type="number" min="0" max="0.95" step="0.05" style="width:80px" aria-label="Prag pe vreme rea"> <span class="hint">0 = neschimbat; ex. 0,6 când plouă, ninge sau e ceață</span></label>
       <label class="inline"><input id="vreme-tg-ploaie" type="checkbox"> Trimite pe Telegram și candidații „necunoscut” când e vreme rea (altfel pe ploaie pleacă doar cei cu nume)</label>
+      <label>Noaptea, pe Telegram pleacă doar etichetele cu încredere de cel puțin <input id="vreme-tg-noapte" type="number" min="0.3" max="0.95" step="0.05" style="width:80px" aria-label="Prag de noapte pe Telegram"> <span class="hint">„necunoscut” nu pleacă noaptea deloc (e granulație IR); o cameră poate primi prag propriu din recomandări</span></label>
       <div class="s-btns"><button id="vreme-save">Salvează</button><span class="s-msg" id="s-msg-vreme"></span></div>
       <div id="vreme-acum" class="hint"></div>
     </div>

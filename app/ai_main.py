@@ -799,6 +799,22 @@ def semantic_index():
     return jsonify({"ok": True})
 
 
+@app.route("/semantic/scena", methods=["POST"])
+def semantic_scena():
+    """Body: {token, cam, fn, eticheta} — verdictul omului pe un decupaj al scenei: eticheta
+    noua in index, sau randul iese daca verdictul e „nimic” / vreme / fundal."""
+    err = _guard()
+    if err:
+        return err
+    import semantic
+    b = request.get_json(silent=True) or {}
+    try:
+        ok = semantic.actualizeaza_scena(int(b.get("cam")), str(b.get("fn") or ""), str(b.get("eticheta") or ""))
+    except (TypeError, ValueError):
+        return jsonify({"error": "cerere invalida"}), 400
+    return jsonify({"ok": True, "schimbat": ok})
+
+
 @app.route("/semantic/prune", methods=["POST"])
 def semantic_prune():
     err = _guard()

@@ -49,6 +49,11 @@ IMPLICIT = {
 }
 
 
+# pe vreme rea (ploaie, ninsoare, ceata) picaturile si granulatia dau candidati cu duiumul:
+# cerem de trei ori mai multe cadre pana la clasificare si injumatatim bugetul de clasificari
+VREME_REA = {"cadre_min": 12, "clasificari_pe_min": 4}
+
+
 class Candidat:
     __slots__ = ("id", "box", "t0", "last", "cadre", "cx0", "cy0", "cx", "cy",
                  "clasificat", "ultima_clasificare", "arie0")
@@ -117,6 +122,8 @@ class Scena:
     def __init__(self, cam_id, cfg=None):
         self.cam_id = cam_id
         self.cfg = {**IMPLICIT, **(cfg or {})}
+        self._cfg_normal = {k: self.cfg[k] for k in VREME_REA}
+        self.vreme_rea = False
         self.w = self.h = 0
         self.cadre = 0
         self.resetari = 0
@@ -137,6 +144,15 @@ class Scena:
         return cv2.createBackgroundSubtractorMOG2(history=int(self.cfg["istoric"]),
                                                   varThreshold=float(self.cfg["prag"]),
                                                   detectShadows=True)
+
+    # ---- vremea ----
+    def set_vreme_rea(self, rea):
+        """Pe vreme rea, candidatii se maturizeaza mai greu (VREME_REA); la vreme buna revin valorile."""
+        rea = bool(rea)
+        if rea == self.vreme_rea:
+            return
+        self.vreme_rea = rea
+        self.cfg.update(VREME_REA if rea else self._cfg_normal)
 
     # ---- zona de detectie ----
     def set_zona(self, puncte):
@@ -280,7 +296,8 @@ class Scena:
                 "instabil_pct": round(float((self._instabil > self.cfg["instabil_prag"]).mean() * 100), 1)
                 if self._instabil is not None else 0.0,
                 "resetari": self.resetari, "ultimul_reset": self.ultimul_reset,
-                "schimbat_pct": round(self.ultimul_raport * 100, 1), "zona": self._zona is not None}
+                "schimbat_pct": round(self.ultimul_raport * 100, 1), "zona": self._zona is not None,
+                "vreme_rea": self.vreme_rea}
 
 
 def decupaj(frame_bgr, nbox, margine=0.25, min_lat=96):

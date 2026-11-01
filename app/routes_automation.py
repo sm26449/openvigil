@@ -21,7 +21,9 @@ bp = Blueprint("automation", __name__)
 
 @bp.route("/api/journal")
 def api_events_journal():
-    """?limit=&tip=&cam=&day=YYYY-MM-DD — istoricul evenimentelor, cele mai noi primele.
+    """?limit=&tip=&cam=&day=YYYY-MM-DD&text=&zile= — istoricul evenimentelor, cele mai noi
+    primele; `text` cauta un fragment (fara diacritice) in orice camp: descrierile VLM, rezumatele
+    episoadelor, numere, nume; `zile` = doar ultimele N zile.
     Cu ?grup=1: episoade cu inceput/sfarsit/durata in loc de evenimente brute."""
     args = dict(limit=min(1000, max(1, request.args.get("limit", 200, type=int))),
                 tip=request.args.get("tip") or None,
@@ -34,6 +36,12 @@ def api_events_journal():
     if request.args.get("grup"):
         return jsonify({"episodes": doar_vizibile(rules.episodes(**args)),
                         "types": sorted(hooks.EVENIMENTE)})
+    text = (request.args.get("text") or "").strip()
+    zile = request.args.get("zile", type=int)
+    if text:
+        args["text"] = text[:80]
+    if zile:
+        args["since"] = time.time() - min(365, max(1, zile)) * 86400
     return jsonify({"events": doar_vizibile(rules.journal(**args)),
                     "types": sorted(hooks.EVENIMENTE)})
 

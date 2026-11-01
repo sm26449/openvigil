@@ -414,6 +414,11 @@ def _scena_schimbare(self, c, frame, now, model):
         # devine candidat, deci nu consuma clasificari
         self._zona_citita[c] = now
         sc.set_zona(detect.cam_cfg(c).get("zone"))
+        try:
+            import vreme
+            sc.set_vreme_rea(vreme.citeste().get("rea"))   # pe ploaie: mai multe cadre pana la clasificare
+        except Exception as e:
+            logare.info(f"[scena] vreme: {str(e)[:60]}")
     maturi = sc.feed(frame, now)
     hd = None
     if maturi:

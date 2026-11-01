@@ -177,6 +177,27 @@ def _day_range(day):
         return None
 
 
+_FOLD = str.maketrans("ăâîșțĂÂÎȘȚşţŞŢ", "aaistAAISTstST")
+
+
+def fara_diacritice(s):
+    return str(s or "").translate(_FOLD).lower()
+
+
+def _tipar_text(text):
+    """Tiparul LIKE pentru un fragment, insensibil la diacritice: literele care pot purta
+    diacritice (a, i, s, t) devin `_`, restul se scapa. Potrivirea exacta se face apoi in Python."""
+    out = []
+    for ch in fara_diacritice(text)[:80]:
+        if ch in "aist":
+            out.append("_")
+        elif ch in "\\%_":
+            out.append("\\" + ch)
+        else:
+            out.append(ch)
+    return "%" + "".join(out) + "%"
+
+
 def query(limit=200, tip=None, cam=None, day=None, min_sev=None, since=None, until=None, text=None):
     """Cele mai noi evenimente, cele mai noi primele, cu filtre optionale:
     tip, cam (id), day ('YYYY-MM-DD' local), min_sev ('atentie' = atentie+critic),
@@ -188,7 +209,7 @@ def query(limit=200, tip=None, cam=None, day=None, min_sev=None, since=None, unt
         args.append(tip)
     if text:
         cond.append("date LIKE ? ESCAPE '\\'")
-        args.append("%" + str(text)[:80].replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%")
+        args.append(_tipar_text(text))
     if cam is not None:
         cond.append("cam = ?")
         args.append(int(cam))
@@ -228,6 +249,8 @@ def query(limit=200, tip=None, cam=None, day=None, min_sev=None, since=None, unt
             e.update(json.loads(date))
         except ValueError:
             pass
+        if text and fara_diacritice(text)[:80] not in fara_diacritice(date):
+            continue                    # tiparul cu `_` e larg; aici potrivirea reala, fara diacritice
         out.append(e)
     return out
 

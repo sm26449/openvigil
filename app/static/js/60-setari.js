@@ -1272,6 +1272,7 @@ async function loadVreme() {
   try {
     const [s, v] = await Promise.all([(await fetch('/api/settings')).json(), (await fetch('/api/vreme')).json()]);
     $('#vreme-prag').value = s.vreme_prag || 0; $('#vreme-tg-ploaie').checked = !!s.scena_telegram_ploaie;
+    $('#vreme-tg-noapte').value = s.scena_telegram_noapte || 0.5;
     $('#vreme-locatie').innerHTML = s.locatie_lat ? html`${t('Locația salvată')}: <b>${s.locatie_nume || ''}</b> (${s.locatie_lat}, ${s.locatie_lon})` : html`${t('Nicio locație salvată: caută localitatea și alege-o din listă.')}`;
     const ex = (v && v.exterior) || {};
     $('#vreme-acum').innerHTML = v && v.stare ? html`${t('Acum')}: <b>${v.text}</b> · ${t('sursa')}: ${v.sursa || '-'}${v.rea ? ' · ' + t('vreme rea: pragul pe vreme e activ') : ''}${
@@ -1288,7 +1289,8 @@ $('#vreme-cauta') && ($('#vreme-cauta').onclick = async () => {
   for (const r of $('#vreme-rezultate').querySelectorAll('input[type=radio]')) r.onchange = () => { vremeAles = l[+r.value]; };
 });
 $('#vreme-save') && ($('#vreme-save').onclick = async () => {
-  const body = { vreme_prag: +$('#vreme-prag').value || 0, scena_telegram_ploaie: $('#vreme-tg-ploaie').checked };
+  const body = { vreme_prag: +$('#vreme-prag').value || 0, scena_telegram_ploaie: $('#vreme-tg-ploaie').checked,
+                 scena_telegram_noapte: Math.min(0.95, Math.max(0.3, +$('#vreme-tg-noapte').value || 0.5)) };
   if (vremeAles) Object.assign(body, { locatie_nume: [vremeAles.nume, vremeAles.judet].filter(Boolean).join(', '), locatie_lat: vremeAles.lat, locatie_lon: vremeAles.lon });
   const d = await post('/api/settings', body);
   if (d && !d.error) { flash('#s-msg-vreme', t('Salvat ✓')); await post('/api/vreme/acum'); vremeAles = null; loadVreme(); }

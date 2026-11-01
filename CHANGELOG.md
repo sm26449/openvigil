@@ -47,6 +47,14 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   și ce a văzut doar scena, nu și YOLO; în rezultate sunt marcate 🧩. Ploaia, umbrele și
   frunzele nu intră. Decupajele scenei au retenția pozelor (`retention_snapshots_days`),
   cu excepția celor cu verdict, care rămân pentru antrenament.
+- Căutarea din antet caută și în text, fără diacritice: descrierile modelului de limbaj
+  („mașină albă”), rezumatele episoadelor, nume, numere (`/api/journal?text=&zile=`).
+  Verdictul omului pe un candidat ajunge și în indexul căutării (eticheta nouă, sau rândul
+  iese dacă era doar fundal). Pragul de noapte al candidaților trimiși pe Telegram e setare
+  (`scena_telegram_noapte`, Setări → Locație și vreme) și poate fi per cameră, din
+  recomandări (`scena_noapte`), când ai respins de mai multe ori etichete de noapte. Pe
+  vreme rea scena cere de trei ori mai multe cadre până la clasificare și înjumătățește
+  bugetul de clasificări.
 - Server MCP (`POST /mcp`, cu jetonul API ca `X-Token` sau `Authorization: Bearer`): un
   asistent poate întreba sistemul ce s-a întâmplat (evenimente cu filtru de text, episoade,
   candidați), căuta în poze, cere cadrul unei camere, vedea recomandările și comuta modul.

@@ -2345,5 +2345,10 @@
  "Zonă de detecție fără peticul care se mișcă mereu": "Detection zone without the patch that keeps moving",
  "{n} candidați fără obiect real în ultimele {zile} zile, {parte}% din ei într-un petic de {arie}% din cadru ({unde}), pe unde ziua nu trec obiecte: o tufă în vânt, o creangă în infraroșu, granulație pe gazon. O zonă de detecție care îl lasă afară îi oprește înainte de clasificare (și eliberează GPU-ul); zona se poate retușa din fișa camerei.": "{n} candidates with no real object in the last {zile} days, {parte}% of them in a patch of {arie}% of the frame ({unde}) where nothing passes by day: a bush in the wind, a branch under infrared, grain on the lawn. A detection zone that leaves it out stops them before classification (and frees the GPU); the zone can be touched up from the camera sheet.",
  "scenă": "scene",
- "văzut de „Învață scena”, nu de YOLO": "seen by “Learn the scene”, not by YOLO"
+ "văzut de „Învață scena”, nu de YOLO": "seen by “Learn the scene”, not by YOLO",
+ "Noaptea, pe Telegram pleacă doar etichetele cu încredere de cel puțin": "At night only labels with confidence of at least",
+ "Prag de noapte pe Telegram": "Night threshold on Telegram",
+ "„necunoscut” nu pleacă noaptea deloc (e granulație IR); o cameră poate primi prag propriu din recomandări": "“unknown” never goes out at night (it is IR grain); a camera can get its own threshold from recommendations",
+ "Prag mai mare noaptea pentru candidații trimiși pe Telegram": "Higher night threshold for candidates sent on Telegram",
+ "Ai respins {n} din {total} etichete date noaptea de detector pe camera asta, cu încredere peste {prag}. Un prag de {nou} noaptea, doar aici, le lasă afară; ziua nu se schimbă nimic.": "You rejected {n} of {total} labels given at night by the detector on this camera, with confidence above {prag}. A night threshold of {nou}, only here, keeps them out; nothing changes by day."
 }

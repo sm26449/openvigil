@@ -73,6 +73,16 @@ def test_zona_de_detectie_taie_candidatii_din_afara():
     assert s._zona is None
 
 
+def test_pe_vreme_rea_cere_mai_multe_cadre():
+    s = scena.Scena(1, {"cadre_min": 6})
+    s.set_vreme_rea(True)
+    assert (s.cfg["cadre_min"], s.cfg["clasificari_pe_min"]) == (12, 4) and s.stare()["vreme_rea"] is True
+    s.set_vreme_rea(True)                                     # idempotent
+    s.set_vreme_rea(False)
+    assert (s.cfg["cadre_min"], s.cfg["clasificari_pe_min"]) == (6, scena.IMPLICIT["clasificari_pe_min"])
+    assert s.stare()["vreme_rea"] is False
+
+
 def test_tremurul_pe_loc_nu_e_candidat():
     f = _fundal()
     s = scena.Scena(1, {"istoric": 200, "instabil_rata": 0.05})   # harta se invata repede in test

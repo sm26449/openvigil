@@ -22,6 +22,17 @@ def test_insert_si_query_intorc_forma_plata():
                  "ts": jurnal._epoch("2026-10-20 10:00:00")}
 
 
+def test_cautarea_de_text_fara_diacritice():
+    _ev("2026-10-20 10:00:00", "descriere", 13, text="mașină albă în fața porții")
+    _ev("2026-10-20 10:01:00", "episod", 12, text="o persoană necunoscută · 12s")
+    _ev("2026-10-20 10:02:00", "scena_analiza", 14, vlm="camion roșu", eticheta="camion")
+    assert [e["cam"] for e in jurnal.query(text="masina alba")] == [13]
+    assert [e["cam"] for e in jurnal.query(text="MAȘINĂ")] == [13]
+    assert [e["cam"] for e in jurnal.query(text="camion ros")] == [14]
+    assert jurnal.query(text="tractor") == []
+    assert jurnal._tipar_text("ma_x%") == "%m_\\_x\\%%" and jurnal.fara_diacritice("Șț") == "st"
+
+
 def test_fara_camera_nu_are_cheia_cam():
     jurnal.insert({"t": "2026-10-20 10:00:00", "tip": "camera_offline"})
     e = jurnal.query()[0]

@@ -769,19 +769,22 @@ def auto_siren_on():
     return {int(k) for k, v in load_cfg().items() if v.get("auto_siren")}
 
 
-def set_detect(cam_id, on=None, auto_siren=None, conf_noapte=None):
-    """None = neschimbat; conf_noapte 0/False scoate pragul de noapte."""
+def set_detect(cam_id, on=None, auto_siren=None, conf_noapte=None, scena_noapte=None):
+    """None = neschimbat; conf_noapte / scena_noapte 0/False scot pragul respectiv de noapte
+    (conf_noapte = YOLO pe cadru; scena_noapte = candidatii scenei trimisi pe Telegram)."""
     cfg = load_cfg()
     entry = cfg.get(str(cam_id), {"on": False, "auto_siren": False})
     if on is not None:
         entry["on"] = bool(on)
     if auto_siren is not None:
         entry["auto_siren"] = bool(auto_siren)
-    if conf_noapte is not None:
-        if conf_noapte:
-            entry["conf_noapte"] = round(max(0.3, min(0.95, float(conf_noapte))), 2)
+    for cheie, val in (("conf_noapte", conf_noapte), ("scena_noapte", scena_noapte)):
+        if val is None:
+            continue
+        if val:
+            entry[cheie] = round(max(0.3, min(0.95, float(val))), 2)
         else:
-            entry.pop("conf_noapte", None)
+            entry.pop(cheie, None)
     cfg[str(cam_id)] = entry
     save_cfg(cfg)
     sync()

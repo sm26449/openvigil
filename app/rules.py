@@ -341,10 +341,10 @@ def _journal(tip, cam_id, date):
             logare.info(f"[rules] scena telegram: {str(e)[:80]}")
 
 
-def journal(limit=200, tip=None, cam=None, day=None, min_sev=None):
+def journal(limit=200, tip=None, cam=None, day=None, min_sev=None, text=None, since=None):
     """Cele mai noi evenimente, filtrabile dupa tip / camera / zi / severitate
-    minima. Cele mai noi primele; citire indexata din SQLite (jurnal.py)."""
-    return jurnal.query(limit=limit, tip=tip, cam=cam, day=day, min_sev=min_sev)
+    minima / fragment de text (fara diacritice). Cele mai noi primele; citire indexata din SQLite (jurnal.py)."""
+    return jurnal.query(limit=limit, tip=tip, cam=cam, day=day, min_sev=min_sev, text=text, since=since)
 
 
 # ---- episoade: evenimentele grupate, cu inceput/sfarsit/durata ----
