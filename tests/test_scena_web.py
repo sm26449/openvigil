@@ -25,6 +25,8 @@ def _izolare(tmp_path, monkeypatch):
     monkeypatch.setattr(scena_web, "_nume_cam", lambda c: f"cam{c}")
     import vreme
     monkeypatch.setattr(vreme, "acum", lambda: {})          # fara vremea reala a instalatiei
+    import rules
+    monkeypatch.setattr(rules, "_is_night", lambda *a: False)   # ziua, daca testul nu zice altfel
     scena_web._ultim.clear()
     scena_web._analize.clear()
     apeluri = []
@@ -57,6 +59,19 @@ def test_de_trimis_filtru_si_cooldown():
         assert not scena_web.de_trimis({**e, "cam": 13}, now=1)
     finally:
         CFG["scena_telegram"] = True
+
+
+def test_noaptea_doar_etichete_sigure(monkeypatch):
+    import rules
+    monkeypatch.setattr(rules, "_is_night", lambda *a: True)
+    e = {"cam": 14, "id": "n1", "poza": "p.jpg", "eticheta": "necunoscut"}
+    assert not scena_web.de_trimis(e, now=1000)                                                   # granulatie IR
+    assert not scena_web.de_trimis({**e, "eticheta": "pisică", "sursa": "vocabular", "incredere": 0.9}, now=1000)
+    assert not scena_web.de_trimis({**e, "eticheta": "person", "sursa": "yolo-nesigur", "incredere": 0.45}, now=1000)
+    assert not scena_web.de_trimis({**e, "eticheta": "pisică", "sursa": "yolo-world", "incredere": 0.42}, now=1000)
+    assert scena_web.de_trimis({**e, "eticheta": "mașină", "sursa": "yolo-world", "incredere": 0.6}, now=1000)
+    monkeypatch.setattr(rules, "_is_night", lambda *a: False)
+    assert scena_web.de_trimis({**e, "cam": 6, "eticheta": "pisică", "sursa": "vocabular", "incredere": 0.05}, now=1000)
 
 
 def test_callback_data_scurt_si_parsabil():

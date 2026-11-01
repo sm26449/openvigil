@@ -10,6 +10,9 @@ Motorul de aici e pur (numpy + OpenCV, fara torch) si TESTABIL cu cadre sintetic
     un obiect care RAMANE (masina parcata) intra singur in fundal dupa `istoric` cadre;
   - harta de instabilitate: cat de des se schimba fiecare pixel (frunze in vant, apa,
     steag); zonele instabile nu produc candidati — asa dispar „oamenii” din copaci;
+  - zona de detectie a camerei (poligonul desenat in interfata, acelasi ca la YOLO): ce e in
+    afara ei nu intra nici in fundal, nici in candidati — o tufa batuta de vant langa poarta
+    nu mai cere 300 de clasificari pe ora;
   - schimbarile GLOBALE (apus, trecerea pe IR, farurile): cand prea mult din cadru s-a
     schimbat deodata e lumina, nu un obiect — fundalul se reinvata, candidatii se uita;
   - candidatii: regiuni de prim-plan urmarite de la cadru la cadru (potrivire IoU); unul
@@ -121,6 +124,8 @@ class Scena:
         self.candidati = {}
         self._next = 1
         self._instabil = None       # float32 (h, w): frecventa prim-planului per pixel
+        self._zona = None           # poligonul zonei de detectie (puncte normalizate) sau None
+        self._zona_masca = None     # masca lui (uint8, la latimea de lucru), refacuta la nevoie
         self._kernel_o = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
         self._kernel_c = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
         self._mog = self._nou_mog()
@@ -132,6 +137,26 @@ class Scena:
         return cv2.createBackgroundSubtractorMOG2(history=int(self.cfg["istoric"]),
                                                   varThreshold=float(self.cfg["prag"]),
                                                   detectShadows=True)
+
+    # ---- zona de detectie ----
+    def set_zona(self, puncte):
+        """Poligonul zonei de detectie ([[x, y], ...] normalizat) sau None = tot cadrul.
+        Ieftin de chemat des: nu face nimic daca poligonul e acelasi."""
+        p = [[float(x), float(y)] for x, y in puncte] if puncte and len(puncte) >= 3 else None
+        if p != self._zona:
+            self._zona = p
+            self._zona_masca = None
+
+    def _masca_zona(self):
+        if self._zona is None or not self.w:
+            return None
+        m = self._zona_masca
+        if m is None or m.shape != (self.h, self.w):
+            m = np.zeros((self.h, self.w), np.uint8)
+            pts = np.array([[int(round(x * self.w)), int(round(y * self.h))] for x, y in self._zona], np.int32)
+            cv2.fillPoly(m, [pts], 255)
+            self._zona_masca = m
+        return m
 
     # ---- intrarea ----
     def _mic(self, frame):
@@ -155,6 +180,9 @@ class Scena:
         sus, jos = int(self.h * cfg["banda_sus"]), int(self.h * (1 - cfg["banda_jos"]))
         fg[:sus, :] = 0
         fg[jos:, :] = 0
+        masca = self._masca_zona()
+        if masca is not None:
+            fg[masca == 0] = 0
         raport = float(fg.mean())
         self.ultimul_raport = raport
         if raport > cfg["reset_global"]:
@@ -252,7 +280,7 @@ class Scena:
                 "instabil_pct": round(float((self._instabil > self.cfg["instabil_prag"]).mean() * 100), 1)
                 if self._instabil is not None else 0.0,
                 "resetari": self.resetari, "ultimul_reset": self.ultimul_reset,
-                "schimbat_pct": round(self.ultimul_raport * 100, 1)}
+                "schimbat_pct": round(self.ultimul_raport * 100, 1), "zona": self._zona is not None}
 
 
 def decupaj(frame_bgr, nbox, margine=0.25, min_lat=96):

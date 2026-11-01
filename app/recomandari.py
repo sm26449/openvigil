@@ -24,6 +24,15 @@ ARIE_MICA = 0.005          # sub 0,5% din cadru: obiecte mici, la distanta -> re
 MIN_ESANTION = 30          # cate chenare ca sa credem mediana
 INSTABIL_MIN = 0.05        # fractia de cadru instabila de la care propunem o zona
 INSTABIL_CONCENTRAT = 0.8  # cat din instabilitate trebuie sa stea in banda de sus propusa
+FIERBINTE_GRILA = (6, 8)   # randuri x coloane in care numaram centrele candidatilor scenei
+FIERBINTE_MIN = 100        # cati candidati ca sa credem ca un petic e „fierbinte”
+FIERBINTE_PARTE = 0.15     # cat din candidatii-zgomot trebuie sa stea in petic
+FIERBINTE_SEMINTE = 5      # incercam peticul din fiecare dintre cele mai calde celule, in ordine
+FIERBINTE_CELULE = 12      # peticul: cel mult atatea celule (un sfert de cadru), altfel e raspandit
+FIERBINTE_CRESTERE = 0.2   # peticul creste cu o celula vecina doar daca ea are macar atat din varf
+FIERBINTE_DENSITATE = 4    # peticul trebuie sa fie de atatea ori mai des decat media cadrului
+FIERBINTE_DETECTII = 0.03  # peste atat din detectiile de zi in petic = trec obiecte reale, nu-l scoatem
+FIERBINTE_ZILE = 3
 PRAG_NOAPTE = 0.65
 MIN_FALS_NOAPTE = 3
 MIN_DETECTII_SCENA = 50
@@ -76,6 +85,105 @@ def r_zona_instabila(cam, zona, instabil):
             "actiune": {"tip": "zona", "puncte": [[0, f], [1, f], [1, 1], [0, 1]]}}
 
 
+def _decupaj_jos(x1, y1, x2):
+    """Poligonul cadrului intreg din care lipseste dreptunghiul (x1, y1)-(x2, 1), lipit de jos."""
+    return [[0, 0], [1, 0], [1, 1], [x2, 1], [x2, y1], [x1, y1], [x1, 1], [0, 1]]
+
+
+def poligon_fara(x1, y1, x2, y2):
+    """Zona de detectie = tot cadrul minus dreptunghiul normalizat, prelungit pana la marginea
+    cea mai apropiata (un poligon simplu, in forma de U; editorul de zona il arata si il
+    poate retusa). Coordonatele sunt rotunjite la 3 zecimale."""
+    marg = min(("jos", 1 - y2), ("sus", y1), ("stanga", x1), ("dreapta", 1 - x2), key=lambda m: m[1])[0]
+    if marg == "jos":
+        pts = _decupaj_jos(x1, y1, x2)
+    elif marg == "sus":
+        pts = [[x, 1 - y] for x, y in _decupaj_jos(x1, 1 - y2, x2)]
+    elif marg == "dreapta":
+        pts = [[y, x] for x, y in _decupaj_jos(y1, x1, y2)]
+    else:
+        pts = [[1 - y, x] for x, y in _decupaj_jos(y1, 1 - x2, y2)]
+    pts = [[round(float(x), 3), round(float(y), 3)] for x, y in pts]
+    return [p for i, p in enumerate(pts) if p != pts[i - 1]]      # un petic din colt ar repeta coltul
+
+
+def _unde(x1, y1, x2, y2):
+    cx, cy = (x1 + x2) / 2, (y1 + y2) / 2
+    v = t("sus") if cy < 1 / 3 else t("jos") if cy > 2 / 3 else t("mijloc")
+    o = t("stânga") if cx < 1 / 3 else t("dreapta") if cx > 2 / 3 else t("centru")
+    return f"{o}-{v}"
+
+
+def _zgomot(e):
+    """Candidat fara obiect real: nimic recunoscut, un nume neutru sau doar o potrivire slaba de vocabular."""
+    import scena_clasa
+    return (e.get("eticheta") or "necunoscut") in scena_clasa.NEUTRE or e.get("sursa") in ("vocabular", "yolo-nesigur", "-", None)
+
+
+def _celula(x, y, w, h):
+    rr, cc = FIERBINTE_GRILA
+    return min(int((y + h / 2) * rr), rr - 1), min(int((x + w / 2) * cc), cc - 1)
+
+
+def r_zona_fierbinte(cam, zona, regiuni, detectii_zi):
+    """Candidatii-zgomot ai scenei ingramaditi intr-un petic mic al cadrului (o tufa in vant, o
+    creanga in IR, granulatie pe gazon) -> zona de detectie care lasa peticul afara.
+    `regiuni` = chenarele normalizate (x, y, w, h) ale candidatilor fara obiect real din ultimele
+    zile; `detectii_zi` = chenarele detectiilor YOLO de peste zi: daca pe petic trec masini sau
+    oameni ziua, nu-l scoatem (drumul ramane drum, chiar daca ploaia il umple de candidati)."""
+    if zona or len(regiuni) < FIERBINTE_MIN:
+        return None
+    rr, cc = FIERBINTE_GRILA
+    grila = {}
+    for x, y, w, h in regiuni:
+        k = _celula(x, y, w, h)
+        grila[k] = grila.get(k, 0) + 1
+    suma = lambda ra, rb, ca, cb: sum(grila.get((r, c), 0) for r in range(ra, rb) for c in range(ca, cb))  # noqa: E731
+    seminte = sorted(grila.items(), key=lambda kv: -kv[1])[:FIERBINTE_SEMINTE]
+    for (r0, c0), varf in seminte:
+        petic = _petic(grila, suma, r0, c0, varf, len(regiuni), detectii_zi)
+        if petic:
+            return petic
+    return None
+
+
+def _petic(grila, suma, r0, c0, varf, total, detectii_zi):
+    """Peticul crescut din celula (r0, c0), daca merita scos; altfel None."""
+    rr, cc = FIERBINTE_GRILA
+    r1, r2, c1, c2 = r0, r0 + 1, c0, c0 + 1          # peticul creste din celula calda, vecin cu vecin
+    while True:
+        pasi = [(suma(r1 - 1, r1, c1, c2), (r1 - 1, r2, c1, c2)) if r1 > 0 else (0, None),
+                (suma(r2, r2 + 1, c1, c2), (r1, r2 + 1, c1, c2)) if r2 < rr else (0, None),
+                (suma(r1, r2, c1 - 1, c1), (r1, r2, c1 - 1, c2)) if c1 > 0 else (0, None),
+                (suma(r1, r2, c2, c2 + 1), (r1, r2, c1, c2 + 1)) if c2 < cc else (0, None)]
+        castig, cadru = max(pasi, key=lambda p: p[0])
+        if not cadru or castig < FIERBINTE_CRESTERE * varf:
+            break
+        nr1, nr2, nc1, nc2 = cadru
+        if (nr2 - nr1) * (nc2 - nc1) > FIERBINTE_CELULE:
+            break
+        r1, r2, c1, c2 = cadru
+    in_petic = suma(r1, r2, c1, c2)
+    celule = (r2 - r1) * (c2 - c1)
+    if in_petic < FIERBINTE_MIN or in_petic < FIERBINTE_PARTE * total:
+        return None
+    if in_petic / celule < FIERBINTE_DENSITATE * total / (rr * cc):
+        return None                                  # nu e mult mai cald decat restul cadrului
+    x1, y1, x2, y2 = c1 / cc, r1 / rr, c2 / cc, r2 / rr
+    reale = sum(1 for x, y, w, h in detectii_zi if x1 <= x + w / 2 < x2 and y1 <= y + h / 2 < y2)
+    if reale > FIERBINTE_DETECTII * max(len(detectii_zi), 1) and reale >= 3:
+        return None                                  # ziua trec obiecte reale pe acolo
+    parte = round(100 * in_petic / total)
+    arie = round(100 * (x2 - x1) * (y2 - y1))
+    return {"id": "zona_fierbinte", "tip": "zona",
+            "titlu": t("Zonă de detecție fără peticul care se mișcă mereu"),
+            "text": t("{n} candidați fără obiect real în ultimele {zile} zile, {parte}% din ei într-un petic de {arie}% din cadru ({unde}), pe unde ziua nu trec obiecte: o tufă în vânt, o creangă în infraroșu, granulație pe gazon. O zonă de detecție care îl lasă afară îi oprește înainte de clasificare (și eliberează GPU-ul); zona se poate retușa din fișa camerei.",
+                      n=total, zile=FIERBINTE_ZILE, parte=parte, arie=arie, unde=_unde(x1, y1, x2, y2)),
+            "dovezi": {"candidati": total, "parte_pct": parte, "detectii_zi": reale,
+                       "petic": [round(x1, 3), round(y1, 3), round(x2, 3), round(y2, 3)]},
+            "actiune": {"tip": "zona", "puncte": poligon_fara(x1, y1, x2, y2)}}
+
+
 def r_prag_noapte(cam, feedback, cfg, e_noapte):
     """Omul a respins „om” noaptea de mai multe ori -> prag de incredere mai mare noaptea."""
     if cfg.get("conf_noapte"):
@@ -115,7 +223,8 @@ def r_urmarire(cam, detect_on, n_detectii, track_cams):
 
 def r_vocabular(cam, feedback, vocabular):
     """Numele scrise de om la „altceva…” care nu sunt in vocabular -> le adaugam."""
-    voc = {v.lower() for v in vocabular}
+    import scena_clasa
+    voc = {v.lower() for v in vocabular} | scena_clasa.NEUTRE      # „nimic”, „copac”… sunt verdicte, nu nume
     numar = {}
     for r in feedback.values():
         e = (r.get("eticheta") or "").strip()
@@ -149,6 +258,32 @@ def _chenare(cam):
     for e in jurnal.query(limit=3000, tip="detectie", cam=cam):
         c = e.get("chenar")
         if isinstance(c, list) and len(c) == 4:
+            out.append(tuple(float(x) for x in c))
+    return out
+
+
+def _regiuni(cam):
+    """Chenarele normalizate (x, y, w, h) ale candidatilor-zgomot ai scenei din ultimele FIERBINTE_ZILE zile."""
+    import time
+    import jurnal
+    out = []
+    for e in jurnal.query(limit=5000, tip="scena_candidat", cam=cam, since=time.time() - FIERBINTE_ZILE * 86400):
+        r = e.get("regiune")
+        if isinstance(r, list) and len(r) == 4 and _zgomot(e):
+            out.append(tuple(float(x) for x in r))
+    return out
+
+
+def _chenare_zi(cam):
+    """Chenarele detectiilor de peste zi (orele de noapte din Setari): obiectele reale ale camerei.
+    Noaptea o creanga in IR trece drept „om” si ar apara tocmai peticul pe care vrem sa-l scoatem."""
+    import time
+    import jurnal
+    import rules
+    out = []
+    for e in jurnal.query(limit=3000, tip="detectie", cam=cam, since=time.time() - FIERBINTE_ZILE * 86400):
+        c = e.get("chenar")
+        if isinstance(c, list) and len(c) == 4 and not rules._is_night(str(e.get("t") or "")[11:16] or "12:00"):
             out.append(tuple(float(x) for x in c))
     return out
 
@@ -195,6 +330,7 @@ def pentru_camera(cam):
     out = []
     pasi = [
         lambda: r_prag_noapte(cam, scena_web.feedback_citeste(cam), cfg, rules._is_night),
+        lambda: r_zona_fierbinte(cam, cfg.get("zone"), _regiuni(cam), _chenare_zi(cam)),
         lambda: r_zona_instabila(cam, cfg.get("zone"), _instabil(cam)),
         lambda: r_regiuni_hd(cam, _chenare(cam), lst("tile_cams")),
         lambda: r_urmarire(cam, bool(cfg.get("on")), _n_detectii(cam), lst("track_cams")),

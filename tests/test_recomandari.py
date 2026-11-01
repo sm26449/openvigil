@@ -34,6 +34,45 @@ def test_zona_instabila_din_banda_de_sus():
     assert R.r_zona_instabila(13, None, (0.2, [5] * 20)) is None   # raspandit peste tot, nu banda
 
 
+def test_zona_fierbinte_din_candidatii_ingramaditi():
+    import detect
+    tufa = [(0.2, 0.8, 0.1, 0.1)] * 90 + [(0.3, 0.75, 0.1, 0.15)] * 60       # stanga-jos, doua celule vecine
+    rest = [(x / 10, 0.3, 0.05, 0.05) for x in range(10)] * 5               # 50 raspanditi pe un rand
+    drum = [(0.5, 0.2, 0.1, 0.1)] * 40                                       # masini ziua, in alta parte
+    r = R.r_zona_fierbinte(14, None, tufa + rest, drum)
+    assert r and r["actiune"]["tip"] == "zona" and r["dovezi"]["parte_pct"] == 75
+    assert r["dovezi"]["petic"] == [0.25, 0.667, 0.375, 1.0] and "stânga-jos" in r["text"]
+    pts = r["actiune"]["puncte"]
+    assert len(pts) == 8 and [0, 0] in pts and [1, 1] in pts
+    assert not detect._in_zone(pts, 0.3, 0.85) and detect._in_zone(pts, 0.5, 0.3) and detect._in_zone(pts, 0.3, 0.5)
+    assert R.r_zona_fierbinte(14, [[0, 0], [1, 0], [1, 1], [0, 1]], tufa, drum) is None    # are deja zona
+    assert R.r_zona_fierbinte(14, None, tufa[:50], drum) is None                             # prea putini
+    peste_tot = [(x / 10, y / 6, 0.05, 0.05) for x in range(10) for y in range(6)] * 4
+    assert R.r_zona_fierbinte(14, None, peste_tot, drum) is None                             # raspanditi
+    # pe petic trec obiecte reale ziua (drumul plin de picaturi): ramane
+    assert R.r_zona_fierbinte(14, None, tufa + rest, drum + [(0.25, 0.8, 0.1, 0.1)] * 10) is None
+    # un petic secundar, mult mai cald decat restul: ajunge si un sfert din zgomot
+    colt = [(0.9, 0.8, 0.05, 0.1)] * 120
+    r = R.r_zona_fierbinte(13, None, colt + peste_tot[:240], drum)
+    assert r and r["dovezi"]["petic"] == [0.875, 0.833, 1.0, 1.0]
+    assert r["actiune"]["puncte"] == [[0, 0], [1, 0], [1, 1], [1, 0.833], [0.875, 0.833], [0.875, 1], [0, 1]]   # coltul, o data
+    # celula cea mai calda e drumul (ploaie), dar ziua trec masini pe el: sarim la coltul urmator
+    drum_ploaie = [(0.3, 0.6, 0.1, 0.1)] * 200
+    r = R.r_zona_fierbinte(13, None, drum_ploaie + colt + peste_tot[:240], [(0.3, 0.6, 0.1, 0.1)] * 40)
+    assert r and r["dovezi"]["petic"] == [0.875, 0.833, 1.0, 1.0] and r["dovezi"]["detectii_zi"] == 0
+
+
+def test_poligon_fara_pe_fiecare_margine():
+    import detect
+    for (x1, y1, x2, y2), inauntru, afara in [((0.1, 0.7, 0.4, 0.95), (0.6, 0.5), (0.2, 0.9)),    # jos
+                                              ((0.1, 0.05, 0.4, 0.3), (0.6, 0.5), (0.2, 0.1)),     # sus
+                                              ((0.8, 0.4, 0.95, 0.7), (0.5, 0.5), (0.9, 0.5)),     # dreapta
+                                              ((0.05, 0.4, 0.2, 0.7), (0.5, 0.5), (0.1, 0.5))]:    # stanga
+        pts = R.poligon_fara(x1, y1, x2, y2)
+        assert len(pts) == 8 and detect._in_zone(pts, *inauntru) and not detect._in_zone(pts, *afara)
+        assert all(0 <= v <= 1 for p in pts for v in p)
+
+
 def test_prag_noapte_din_verdicte():
     fb = {f"a{i}": {"eticheta_initiala": "person", "verdict": "gresit", "t": "2026-10-31 23:1%d:00" % i} for i in range(4)}
     fb["ok1"] = {"eticheta_initiala": "person", "verdict": "ok", "t": "2026-10-31 02:00:00"}

@@ -20,6 +20,10 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   traducere memorată; setarea `scena_lume` îl oprește. În analiza adâncă, eticheta modelului
   de limbaj e crezută doar dacă o confirmă YOLO-World, SigLIP sau YOLO-ul antrenat; altfel
   rămâne afișată ca neconfirmată și decide restul.
+  Pe Telegram, „necunoscut” pleacă doar ziua și pe vreme bună (noaptea e granulație de
+  infraroșu, pe ploaie sunt picături), iar noaptea pleacă doar etichetele date de un detector
+  cu încredere de cel puțin 0,5; fiecare decizie de trimitere sau sărire e în jurnalul de
+  sistem.
 - Verdictele din „Învață scena” intră în datasetul de antrenament (Setări → Unelte → Model):
   decupajele confirmate devin exemple pozitive, cu chenarul obiectului pus de YOLO-World,
   iar „e doar ploaie / umbră / frunze” devin fundaluri fără obiecte; numele noi din vocabular
@@ -32,7 +36,11 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   obiectele sunt mici, zonă de detecție sub banda instabilă (copaci, cer), prag de încredere
   mai mare noaptea când ai respins „om” de mai multe ori (reglaj nou, per cameră:
   `conf_noapte`), pornirea urmăririi sau a scenei, nume noi în vocabular. Aplicările se
-  auditează.
+  auditează. Recomandarea „zonă fierbinte” vede când candidații scenei se îngrămădesc
+  într-un petic mic al cadrului (o tufă în vânt, o creangă în infraroșu, granulație pe
+  gazon) și propune o zonă de detecție care îl lasă afară.
+- Zona de detecție a camerei (desenată în fișa ei) e respectată și de „Învață scena”: ce e
+  în afara ei nu devine candidat și nu consumă clasificări.
 - Server MCP (`POST /mcp`, cu jetonul API ca `X-Token` sau `Authorization: Bearer`): un
   asistent poate întreba sistemul ce s-a întâmplat (evenimente cu filtru de text, episoade,
   candidați), căuta în poze, cere cadrul unei camere, vedea recomandările și comuta modul.

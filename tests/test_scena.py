@@ -53,6 +53,26 @@ def test_obiect_care_trece_devine_candidat_matur():
     assert c not in s.feed(_cu_obiect(f, 100 + 12 * 12, 120), now=t + 0.25)
 
 
+def test_zona_de_detectie_taie_candidatii_din_afara():
+    f = _fundal()
+    s = scena.Scena(1, {"istoric": 200})
+    s.set_zona([[0, 0], [1, 0], [1, 0.5], [0, 0.5]])          # doar jumatatea de sus a cadrului
+    t = _antreneaza(s, f)
+    maturi = []
+    for i in range(12):                                       # obiectul trece prin jumatatea de jos
+        maturi += s.feed(_cu_obiect(f, 100 + i * 12, 240), now=t)
+        t += 0.25
+    assert not maturi and s.stare()["zona"] is True
+    for i in range(12):                                       # acelasi drum, in zona: candidat
+        maturi += s.feed(_cu_obiect(f, 100 + i * 12, 60), now=t)
+        t += 0.25
+    assert maturi
+    s.set_zona(None)
+    assert s._masca_zona() is None and s.stare()["zona"] is False
+    s.set_zona([[0, 0], [1, 0]])                               # sub 3 puncte = tot cadrul
+    assert s._zona is None
+
+
 def test_tremurul_pe_loc_nu_e_candidat():
     f = _fundal()
     s = scena.Scena(1, {"istoric": 200, "instabil_rata": 0.05})   # harta se invata repede in test

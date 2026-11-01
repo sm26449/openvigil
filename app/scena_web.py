@@ -4,8 +4,10 @@
   - feedback-ul omului pe un candidat (✓ corect / ✕ e altceva / ? nu stiu), in
     data/scena/feedback.jsonl — materia prima a antrenamentului urmator;
   - candidatii pe Telegram, ca poza cu butoane inline (✓ / ✕ / 🔍), cand setarea
-    `scena_telegram` e pornita: ploaia, umbrele si frunzele nu pleaca (NEUTRE), iar o camera
-    nu trimite mai des de `scena_telegram_cooldown` secunde;
+    `scena_telegram` e pornita: ploaia, umbrele si frunzele nu pleaca (NEUTRE), „necunoscut”
+    pleaca doar ziua si pe vreme buna (noaptea e granulatie IR, pe ploaie sunt picaturi),
+    noaptea pleaca doar etichetele date de un detector cu incredere de cel putin
+    NOAPTE_INCREDERE, iar o camera nu trimite mai des de `scena_telegram_cooldown` secunde;
   - apasarea butoanelor (callback_query, citit de telegram_bot): ✕ deschide vocabularul ca
     butoane, 🔍 cere analiza adanca din nvr-ai (YOLO 640 + vocabular + VLM) si raspunde cu
     parerea ei, din nou cu butoane. Tot ce apasa omul ajunge in acelasi feedback.jsonl.
@@ -29,6 +31,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCENA_DIR = os.path.join(ROOT, "data", "scena")
 FEEDBACK = os.path.join(SCENA_DIR, "feedback.jsonl")
 NIMIC = "nimic"          # verdictul „e doar fundalul”: intra in dataset ca negativ (feedback_dataset)
+NOAPTE_INCREDERE = 0.5   # noaptea pleaca pe Telegram doar etichetele cu cel putin atata incredere...
+SURSE_NOAPTE = {"yolo", "yolo-world", "vlm"}   # ...si doar de la un detector, nu „yolo-nesigur” / vocabular
 
 
 def _neutre():
@@ -196,16 +200,26 @@ def de_trimis(entry, now=None):
         return False
     if (entry.get("eticheta") or "") in _neutre():
         return False
-    if (entry.get("eticheta") or "necunoscut") == "necunoscut" and not settings.get("scena_telegram_ploaie"):
-        try:
-            import vreme
-            if vreme.acum().get("rea"):
-                return False             # pe ploaie/ceata, necunoscutele sunt picaturi: nu deranjam omul
-        except Exception:
-            pass
+    cam = int(entry["cam"])
+    eticheta = entry.get("eticheta") or "necunoscut"
+    noapte = _e_noapte()
+    if eticheta == "necunoscut":
+        if noapte:
+            logare.info(f"[scena] telegram cam{cam}: sarit, necunoscut noaptea (granulație IR)")
+            return False
+        if not settings.get("scena_telegram_ploaie"):
+            try:
+                import vreme
+                if vreme.acum().get("rea"):
+                    return False         # pe ploaie/ceata, necunoscutele sunt picaturi: nu deranjam omul
+            except Exception:
+                pass
+    elif noapte and (entry.get("sursa") not in SURSE_NOAPTE or float(entry.get("incredere") or 0) < NOAPTE_INCREDERE):
+        logare.info(f"[scena] telegram cam{cam}: sarit, noaptea {eticheta} ({entry.get('sursa')}, "
+                    f"{float(entry.get('incredere') or 0):.2f}) e sub pragul {NOAPTE_INCREDERE}")
+        return False
     now = now or time.time()
     cd = int(settings.get("scena_telegram_cooldown") or 0)
-    cam = int(entry["cam"])
     with _ultim_lock:
         de_cand = now - _ultim.get(cam, 0)
         if de_cand < cd:
@@ -214,6 +228,15 @@ def de_trimis(entry, now=None):
         _ultim[cam] = now
     logare.info(f"[scena] telegram cam{cam}: trimit {entry.get('eticheta')} ({entry.get('id')})")
     return True
+
+
+def _e_noapte():
+    """Noapte acum (apus/rasarit cand e locatia setata, altfel orele din Setari); niciodata nu arunca."""
+    try:
+        import rules
+        return bool(rules._is_night())
+    except Exception:
+        return False
 
 
 def notifica(entry):

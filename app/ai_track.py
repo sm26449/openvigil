@@ -266,6 +266,7 @@ class BatchLoop(threading.Thread):
         self.schimbare = {}            # cam_id -> scena.Scena (detectie pe schimbare)
         self._hd = {}                  # cam_id -> (t, cadru HD) pentru decupajele scenei
         self._scena_scris = {}         # cam_id -> cand am scris ultima data harta pe disc
+        self._zona_citita = {}         # cam_id -> cand am recitit zona de detectie (detect.json)
 
     def _sync(self, want):
         for c in list(self.readers):
@@ -408,6 +409,11 @@ def _scena_schimbare(self, c, frame, now, model):
     if sc is None:
         sc = scena.Scena(c)
         self.schimbare[c] = sc
+    if now - self._zona_citita.get(c, 0) >= 5:
+        # aceeasi zona de detectie ca la YOLO (desenata in fisa camerei): ce e in afara ei nu
+        # devine candidat, deci nu consuma clasificari
+        self._zona_citita[c] = now
+        sc.set_zona(detect.cam_cfg(c).get("zone"))
     maturi = sc.feed(frame, now)
     hd = None
     if maturi:
