@@ -281,7 +281,7 @@ def _worker():
     """Ia snapshot-uri din coada si le indexeaza in loturi mici — detectia nu asteapta."""
     import io
     from PIL import Image
-    lot = []
+    lot, incercari = [], 0
     while True:
         try:
             item = _queue.get(timeout=5)
@@ -306,8 +306,15 @@ def _worker():
             if imgs:
                 shard_add(day, _embed_masurat(imgs), metas)
         except Exception as e:
+            # la pornirea nvr-ai, SigLIP se incarca in timp ce alt fir mai importa din
+            # transformers („cannot import name AutoModel”): lotul se reia, nu se pierde
+            incercari += 1
+            if incercari < 4:
+                logare.info(f"[semantic] indexare amanata ({incercari}): {str(e)[:80]}")
+                time.sleep(10)
+                continue
             logare.error(f"[semantic] indexare esuata: {str(e)[:80]}")
-        lot = []
+        lot, incercari = [], 0
 
 
 def enqueue(day, fn, jpeg_bytes):
