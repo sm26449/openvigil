@@ -61,8 +61,21 @@ Făcute în modul demo (camere sintetice), deci fără imagini reale.
   episoade de vehicul parcat, obiect nou sau dispărut pe camere statice, a doua opinie cu un
   model stock înainte de alerta de „intrus”, linii de numărare și zone trimise camerelor ca
   evenimente smart.
+- **Învață scena**: detecție pe schimbare, per cameră, care învață fundalul și clasifică doar
+  ce e nou, cu vocabular deschis editabil (SigLIP + YOLO) și analiză adâncă la cerere (YOLO-World
+  + Qwen2.5-VL). Butoane de verdict în fișa camerei și pe Telegram — pentru candidații scenei și
+  pentru detecțiile YOLO deopotrivă — antrenează modelul și construiesc exemple învățate per cameră.
+- **Conștient de vreme**: vremea de afară (Open-Meteo, fără cheie) și cea estimată din camere
+  (ploaie, vânt, ceață) pe fiecare eveniment, cu un prag de detecție opțional pe vreme rea.
+- **Recomandări per cameră**: din ce a văzut, sistemul propune detecție pe regiuni HD, zonă de
+  detecție sub banda instabilă, prag de noapte mai mare, zonă fierbinte, urmărire sau vocabular —
+  fiecare aplicabilă cu un clic și auditată.
+- **Asistent / MCP**: un server MCP (`POST /mcp`) și o punte stdio lasă un asistent să întrebe
+  evenimente, episoade, poze și recomandări și să comute modurile casei; modelul de limbaj e
+  configurabil (Qwen local sau orice server compatibil OpenAI).
 - **Bucla de antrenare**: coadă de cadre nesigure, unealtă de adnotare, dataset din camerele
-  tale și fine-tuning din interfață, cu metrici per model.
+  tale și fine-tuning din interfață, cu metrici per model. Verdictele scenei alimentează același
+  dataset, iar numele noi din vocabular cu destule exemple devin clase noi.
 - **Operare**: comenzi prin botul Telegram (/acasa, /plecat, /noapte, /stare), API de
   automatizare cu jeton propriu (`/api/v1`) pentru Node-RED sau Home Assistant, forward-auth
   pentru alte unelte în spatele aceluiași login, verificarea ceasului camerelor, test de viteză
@@ -151,7 +164,9 @@ cu `HTTPS=true` și `TRUSTED_PROXIES` în `.env`. Proxy-ul trimite `/api/ws` și
 
 `data/` e un director al gazdei: fă-i backup, iar dacă vrei criptare la rest pune-l pe un
 volum LUKS sau fscrypt. Copiile nocturne (configurație, baze de date) sunt criptate cu cheia
-din `data/backup_key`; fără ea nu valorează nimic, noteaz-o în altă parte.
+din `data/backup_key`; fără ea nu valorează nimic, noteaz-o în altă parte. Înregistrările,
+nivelul de arhivă și copiile pot sta fiecare pe alt disc (`RECORDINGS_DIR`, `ARHIVA_DIR`,
+`BACKUP_DIR` în `.env`).
 
 ## Depanare
 
@@ -176,8 +191,11 @@ Operarea de zi cu zi (jurnale, actualizare, copii, porturi, dezinstalare): [docs
 
 [docs/ro/manual.md](docs/ro/manual.md) este jurnalul deciziilor, scris pe măsură ce sistemul a
 fost construit pentru instalația de origine; unele secțiuni descriu varianta de dinainte de
-Docker (servicii systemd, criptare pe gazdă) și nu se mai aplică ca atare. Apoi [docs/nvr-ai.md](docs/nvr-ai.md), [docs/ai-contract.md](docs/ai-contract.md),
-[docs/node-red.md](docs/node-red.md), [SECURITY.md](SECURITY.md), [CONTRIBUTING.md](CONTRIBUTING.md).
+Docker (servicii systemd, criptare pe gazdă) și nu se mai aplică ca atare. În engleză, manualul
+complet e la [docs/en/manual.md](docs/en/manual.md) (traducere a celui românesc). Apoi
+[docs/nvr-ai.md](docs/nvr-ai.md), [docs/ai-contract.md](docs/ai-contract.md),
+[docs/node-red.md](docs/node-red.md), [docs/mcp.md](docs/mcp.md) (serverul MCP și modelul de
+limbaj extern), [SECURITY.md](SECURITY.md), [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Licență
 

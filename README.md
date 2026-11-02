@@ -51,7 +51,8 @@ Taken on the built-in demo mode (synthetic cameras), so no real footage.
   CSP, audit log, public `/verifica` page to verify an exported clip by hash.
 - **Resilience**: recorders fall back from go2rtc to the camera directly and come back on
   their own; nightly encrypted backup of configuration and databases; everything in
-  `data/` is plain files and SQLite you can read without the app.
+  `data/` is plain files and SQLite you can read without the app. Recordings, the archive tier
+  and the backups can each live on a separate disk.
 
 ### Also in the box
 
@@ -67,8 +68,22 @@ Taken on the built-in demo mode (synthetic cameras), so no real footage.
 - **Smarter events**: presence episodes (one story instead of fifty frames), parked-vehicle
   episodes, new or missing object on static cameras, a second opinion with a stock model
   before an "intruder" alert, counting lines and zones pushed to the cameras as smart events.
+- **Learn the scene**: per-camera change detection that learns the background and classifies
+  only what is new, with an editable open vocabulary (SigLIP + YOLO) and deep analysis on
+  demand (YOLO-World + Qwen2.5-VL). Verdict buttons in the camera card and on Telegram — for
+  scene candidates and for YOLO detections alike — train the model and build per-camera learned
+  examples.
+- **Weather-aware**: outdoor weather (Open-Meteo, no key) and camera-estimated weather (rain,
+  wind, fog) stamped on every event, with an optional bad-weather detection threshold.
+- **Per-camera recommendations**: from what it has seen the system suggests HD-region detection,
+  a detection zone under an unstable band, a higher night threshold, a hot-zone mask, tracking
+  or vocabulary — each applied with one click and audited.
+- **Assistant / MCP**: an MCP server (`POST /mcp`) and a stdio bridge let an assistant query
+  events, episodes, photos and recommendations and switch house modes; the language model is
+  configurable (the local Qwen or any OpenAI-compatible server).
 - **Training loop**: a queue of uncertain frames, an annotation tool, a dataset built from
-  your own cameras and fine-tuning from the UI, with per-model metrics.
+  your own cameras and fine-tuning from the UI, with per-model metrics. Scene verdicts feed the
+  same dataset, and new vocabulary names with enough examples become new classes.
 - **Operations**: Telegram bot commands (`/acasa`, `/plecat`, `/noapte`, `/stare`), an automation API
   with its own token (`/api/v1`) for Node-RED or Home Assistant, forward-auth for other tools
   behind the same login, a camera clock check, a speed test that picks the playback
@@ -252,6 +267,9 @@ Day-to-day operations (logs, updates, backups, ports, uninstall): [docs/operare.
 
 ## Documentation
 
+- [docs/en/manual.md](docs/en/manual.md): the full manual in English — every feature, how it
+  works and why. (The original is the Romanian decision log below; the English manual is a
+  translation of it.)
 - [docs/ro/manual.md](docs/ro/manual.md): the decision log, in Romanian, written while the
   system was built for its original installation. Some sections describe the pre-Docker
   setup (systemd services, host encryption) and no longer apply as is.

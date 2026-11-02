@@ -64,6 +64,8 @@ vehicule (masina, motocicleta, autobuz, camion) pentru LPR.
 pentru asta ar trebui un model fine-tuned (posibil pas viitor).
 Stare persistata in `data/detect.json`; model in `data/yolo11n.pt`;
 API: `POST /api/cam/<id>/detect {on, auto_siren}`, etichete live in `GET /api/events`.
+Dincolo de clasele COCO, camera poate invata singura ce e „nou" pe cadrul ei — vezi
+„Invata scena" mai jos.
 
 ### Sirena automata la caine (🚨)
 Buton **🚨** pe camerele cu sirena: cand e pornit **si** detectia 🐾 e activa, un caine
@@ -309,7 +311,8 @@ rucsac", "caine langa poarta" — ordonate dupa potrivire; click = acelasi vizua
 cu clip si "vezi in context". Pozele noi se indexeaza pe masura ce apar (coada
 asincrona, detectia nu asteapta); istoricul se indexeaza in fundal la activare sau cu
 butonul din Setari → Detectie. Merge si pentru vieweri (rezultatele se filtreaza pe
-camerele lor).
+camerele lor). Din 2026-10-27 intra in index si decupajele „Invata scena" (marcate 🧩),
+cu vectorul SigLIP deja calculat la clasificare — vezi sectiunea „Invata scena".
 
 ## Tabul AI: persoane, masini, reguli, evenimente
 Tab dedicat cu patru sectiuni (sidebar, ca la Setari):
@@ -351,6 +354,11 @@ lumina din Home Assistant/Zigbee2MQTT/Tasmota. Conexiunea reconecteaza singura; 
 broker cazut nu opreste nimic (evenimentele raman in jurnalul local).
 
 ## Dataset si antrenament (fine-tuning YOLO, local)
+Pe langa cadrele de mai jos, **verdictele din „Invata scena"** (si cele de sub detectiile YOLO
+de pe Telegram) alimenteaza acelasi dataset — decupaje confirmate ca exemple pozitive, „doar
+ploaie / umbra / frunze" ca fundaluri, nume noi din vocabular ca pot deveni clase noi; vezi
+sectiunea „Invata scena".
+
 La fiecare detectie se salveaza si cadrul **curat** (fara chenare) in `data/dataset/`
 (max 1/min per camera, nu se sterge automat) — materia prima pentru un model pe scenele
 noastre. Fluxul e local, fara unelte externe:
@@ -390,6 +398,97 @@ cele sub prag cu linie intrerupta), cele mai nesigure primele. Sursa „coada: c
 din editor: corectezi/confirmi -> cadrul intra in `images/train` ca verificat de om si iese din
 coada; „Ignora" il scoate fara sa intre. Asa corectezi 50 de cadre care conteaza, nu 7.000.
 (`app/nesigure.py`; rute `/api/adnotare/nesigure/scaneaza|stare`, `.../cadru/nesigure/<fn>/ignora`.)
+
+## Invata scena: detectie pe schimbare, vocabular deschis, verdicte (2026-10-26 … 11-01)
+Pe langa YOLO (care stie clasele cu care a fost antrenat), fiecare camera poate invata ce
+inseamna „normal" pe cadrul ei si sa semnaleze doar **ce e nou**. Se porneste din fisa camerei,
+e in proba si merge per camera (`app/scena.py` in nvr-ai, setarea `scena`).
+- **Fundalul invatat** — camera tine o referinta a cadrului linistit; cand ceva se schimba
+  intr-o regiune, decupajul acelei regiuni (din fluxul **HD**, nu din substream) devine un
+  **candidat**. Candidatul se clasifica pe decupaj cu un **vocabular deschis** editabil din
+  interfata (SigLIP, asemanare cu nume scrise de om) plus YOLO-ul activ. Ce e in afara zonei de
+  detectie a camerei (daca e desenata) nu devine candidat si nu consuma clasificari.
+- **Fisa camerei** arata candidatii cu butoane **✓ / ✕ / ? / 🔍** si, implicit, ascunde
+  „necunoscut" si fundalul (un comutator ii arata). Verdictele se strang in
+  `data/scena/<cam>/feedback.jsonl`. Evenimente noi: `scena_candidat`, `scena_analiza`.
+- **Pe Telegram** candidatii pot pleca ca poza cu butoane (✓ corect, ✕ ce e de fapt,
+  🔍 reanalizeaza). „Necunoscut" pleaca doar ziua si pe vreme buna (noaptea e granulatie de
+  infrarosu, pe ploaie sunt picaturi); noaptea pleaca doar etichetele date de un detector cu
+  incredere de cel putin 0,5. Fiecare decizie de trimitere sau sarire e in jurnalul de sistem.
+  Pragul de noapte e setare (`scena_telegram_noapte`, Setari → Locatie si vreme) si poate fi
+  per camera, din recomandari (`scena_noapte`).
+- **YOLO-World pe decupaj** (`yolov8m-worldv2`, descarcat la prima pornire in `data/modele/`):
+  tot vocabularul trece si printr-un detector cu vocabular deschis, care vede obiectul din
+  decupaj, nu fundalul, si castiga cand YOLO-ul antrenat nu e sigur. Numele romanesti primesc
+  forma engleza pentru CLIP din dictionarul interfetei, din „nume = english name" scris in
+  vocabular, sau printr-o traducere memorata; setarea `scena_lume` il opreste.
+- **Analiza adanca** (butonul 🔍, la cerere): YOLO la 640, tot vocabularul si modelul de limbaj
+  (Qwen2.5-VL) ruleaza pe cadru si raspund in acelasi chat. Eticheta modelului de limbaj e
+  crezuta **doar** daca o confirma YOLO-World, SigLIP sau YOLO-ul antrenat; altfel ramane
+  afisata ca neconfirmata si decide restul. Textul arata din vocabular doar numele care ies in
+  fata, nu trei nume oricum.
+- **Exemple invatate din verdicte**, per camera: orice verdict cu nume face din decupajul
+  candidatului un exemplu al camerei (vectorul SigLIP, `data/scena/<cam>/fundal_invatat.*`).
+  Numele de fundal („nimic", „frunze", „umbra", „ploaie", „copac") se potrivesc la peste 0,85 si
+  bat orice eticheta — candidatul nu pleaca pe Telegram si nu intra in cautare. Numele de obiecte
+  (✓ pe eticheta propusa sau ✕ cu numele adevarat) se potrivesc la peste 0,82 si inlocuiesc doar
+  „necunoscut" si scorurile marunte ale vocabularului, nu eticheta unui detector (sursa „invatat
+  din verdicte"). Castiga cel mai apropiat exemplu care isi trece pragul. Exemplele se refac din
+  `feedback.jsonl` la pornirea nvr-ai.
+- **Verdicte si sub detectiile YOLO** (🚨 om / caine / pisica / urs pe Telegram), nu doar sub
+  candidatii scenei. ✓ devine exemplu de obiect al camerei, ∅ exemplu de fundal, ✕ deschide
+  vocabularul; decupajul vine din chenarul detectiei (sidecarul snapshotului), totul intra in
+  acelasi `feedback.jsonl` si in datasetul de fine-tune. Mesajele fara snapshot (cooldown-ul
+  pozelor) raman fara butoane.
+- **Verdictele intra in antrenament** (Setari → Unelte → Model): decupajele confirmate devin
+  exemple pozitive, cu chenarul obiectului pus de YOLO-World; „e doar ploaie / umbra / frunze"
+  devin fundaluri fara obiecte; numele noi din vocabular cu destule exemple devin clase noi
+  (`data/finetune/clase.json` tine id-urile stabile). Antrenamentul merge pe yolo11m sau yolo11l
+  si e evaluat automat pe clase, pe setul de validare fix (`scripts/evalueaza.py`,
+  `runs/<nume>/evaluare.json`); rezultatele apar in cardul de antrenament.
+- **Scena pe vreme rea**: cere de trei ori mai multe cadre pana la clasificare si injumatateste
+  bugetul de clasificari.
+- **Decupajele scenei intra in cautarea semantica** (vezi sectiunea de mai sus), cu vectorul
+  SigLIP deja calculat, marcate 🧩; ploaia, umbrele si frunzele nu intra. Au retentia pozelor
+  (`retention_snapshots_days`), mai putin cele cu verdict, care raman pentru antrenament.
+
+## Recomandari per camera (2026-11-01)
+In fisa camerei, sistemul deduce din ce a vazut (jurnal, candidati, verdicte, harta de
+instabilitate) cateva **recomandari aplicabile cu un clic**, fiecare auditata la aplicare:
+detectie pe regiuni HD cand obiectele sunt mici, zona de detectie sub banda instabila (copaci,
+cer), prag de incredere mai mare noaptea cand ai respins „om" de mai multe ori (reglaj nou, per
+camera: `conf_noapte`), pornirea urmaririi sau a scenei, nume noi in vocabular. Recomandarea
+**„zona fierbinte"** vede cand candidatii scenei se ingramadesc intr-un petic mic al cadrului
+(o tufa in vant, o creanga in infrarosu, granulatie pe gazon) si propune o zona de detectie
+care il lasa afara.
+
+## Vremea pe evenimente (2026-10-27)
+Setari → Unelte → **Locatie si vreme**: localitatea se cauta dupa nume (geocodare Open-Meteo,
+fara cheie), vremea de afara se citeste la 5 minute si se combina cu ce estimeaza camerele
+(ploaie din cadrele sarite ale scenei, vant din zonele instabile, ceata din contrastul
+fundalului). Fiecare eveniment din jurnal primeste campul `vreme`; un prag de incredere optional
+(`vreme_prag`) se aplica detectiei pe ploaie, ninsoare, ceata sau furtuna; pe vreme rea
+candidatii „necunoscut" ai scenei nu mai pleaca pe Telegram (comutabil). `data/vreme.json` e
+citit de nvr-ai fara retea; exista si unealta MCP `vreme`.
+
+## Asistent: server MCP si model de limbaj configurabil (2026-10-31)
+- **Server MCP** (`POST /mcp`, cu jetonul API ca `X-Token` sau `Authorization: Bearer`): un
+  asistent (Claude Desktop / Claude Code, orice client MCP) poate intreba sistemul ce s-a
+  intamplat — evenimente cu filtru de text, episoade, candidatii scenei — poate cauta in poze,
+  cere cadrul unei camere, vedea recomandarile si comuta modul casei. Puntea stdio
+  `scripts/openvigil_mcp.py`; detalii in `docs/mcp.md`.
+- **Model de limbaj configurabil** (`app/llm.py`): Qwen-ul local din nvr-ai sau, optional, un
+  server compatibil OpenAI (Ollama, LM Studio, vLLM), ales din Setari → Unelte, cu buton de
+  test. Rezumatele episoadelor de prezenta pot fi scrise de el (o propozitie, numai din fapte;
+  sablonul ramane ca `text_sablon`). Intrebarile in limbaj natural merg si in engleza, cu
+  raspunsul in limba interfetei. Jurnalul se poate filtra dupa text, fara diacritice
+  (`/api/journal?text=&zile=`), iar verdictul omului pe un candidat ajunge si in indexul
+  cautarii (eticheta noua, sau randul iese daca era doar fundal).
+
+## Inregistrari, arhiva si copii pe discuri separate (2026-10-26)
+`RECORDINGS_DIR`, `ARHIVA_DIR` si `BACKUP_DIR` (bind-uri separate in Docker): inregistrarile,
+nivelul de arhiva si copiile nocturne pot sta fiecare pe alt disc decat restul lui `data/`.
+Restul datelor (configuratie, baze, fete, index) raman unde e `data/`.
 
 ## Arhitectura
 ```

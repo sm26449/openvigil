@@ -5,6 +5,19 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 
 ## [Nepublicat]
 
+## [1.1.0] — 2026-11-02
+
+**Highlights (English).** "Learn the scene" — per-camera change detection that learns each
+camera's background and classifies only what is new, with an editable open vocabulary
+(SigLIP + YOLO), on-demand deep analysis (YOLO-World + Qwen2.5-VL), and verdict buttons both
+in the camera card and on Telegram — for scene candidates *and* for YOLO detections — that feed
+the training set and build per-camera learned examples. Outdoor and camera-estimated **weather**
+on every event, with a bad-weather detection threshold. **Per-camera recommendations** applied
+with one click. A configurable **language model** (the local Qwen or an OpenAI-compatible
+server) and an **MCP server** so an assistant can ask the system what happened. Recordings,
+the archive tier and the nightly backups can each live on a separate disk. The Romanian
+detail follows.
+
 ### Adăugat
 - „Învață scena” (în probă, per cameră, din fișa camerei): camera își învață fundalul și
   clasifică doar ce e nou, pe decupaj din fluxul HD, cu vocabular deschis editabil din
