@@ -190,7 +190,6 @@ def api_train_harvest():
     return jsonify({"ok": True, "running": True})
 
 
-@bp.route("/api/train/apply", methods=["POST"])
 def _swap_formal(sursa):
     """Hot-swap-ul ca TRANZACTIE (faza 6): pre-flight pe candidat in nvr-ai (chiar
     procesul care-l va rula), swap, reincarcare fortata + confirmare — si ROLLBACK
@@ -220,6 +219,7 @@ def _swap_formal(sursa):
     return {"error": t("activarea a picat ({motiv}) — modelul VECHI a fost repus", motiv=motiv)}, 502
 
 
+@bp.route("/api/train/apply", methods=["POST"])
 def api_train_apply():
     """Aplica cel mai nou model antrenat local (data/finetune/runs) — tranzactie verificata:
     pre-flight in nvr-ai, swap, confirmare cu amprenta, rollback automat la esec."""

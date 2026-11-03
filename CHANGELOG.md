@@ -5,6 +5,11 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 
 ## [Nepublicat]
 
+### Reparat
+- Aplicarea unui model antrenat local din interfață (`/api/train/apply`) dădea 500: decoratorul
+  de rută stătea pe funcția-ajutor `_swap_formal(sursa)`, nu pe handler. Mutat pe
+  `api_train_apply`; revenirea (`/api/train/revert`) nu era afectată.
+
 ## [1.1.0] — 2026-11-02
 
 **Highlights (English).** "Learn the scene" — per-camera change detection that learns each
