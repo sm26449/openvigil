@@ -1,8 +1,9 @@
 # Migrarea pe PostgreSQL + pgvector (2.0.0)
 
-> Stare: **plan aprobat, în lucru pe ramura `feat/postgres`.** Instalarea live rămâne pe
-> `1.1.0` (SQLite), neatinsă, până când 2.0.0 e probat. Țintă de deploy: **EliteDesk**, curat,
-> în stiva lui. pv-stack rămâne complet neatins.
+> Stare: **cod-complet pe ramura `feat/postgres` (PR #13).** Fazele 0–5 făcute (SQLite scos din
+> codul aplicației); 4c (fețe/re-ID/scenă în pgvector) rămâne opțională. Instalarea live rămâne pe
+> `1.1.0` (SQLite), neatinsă, până când 2.0.0 e probat. Țintă de deploy: **EliteDesk**, curat, în
+> stiva lui. pv-stack rămâne complet neatins.
 
 ## 1. De ce
 
@@ -135,7 +136,12 @@ testat.
     cu pasul SigLIP pe crop) — de făcut cu verificare pe stiva reală.
   - **4c — migrarea `faces`/`reid`/`scena`** în `pgvector` (tabele separate: fețe/corp 512-dim,
     scenă 768-dim).
-- **Faza 5 — final.** Backup → `pg_dump` (vezi §8); scot `sqlite3` din tot codul; șterg
+- **Faza 5 — final. ✅ FĂCUTĂ.** Zero `sqlite3` în codul aplicației: `rules` prinde erori generice
+  de jurnal; `backup_nocturn` scrie baza ca `pg/<tabel>.csv` (dump logic prin `COPY`, fără coloanele
+  IDENTITY — **fără `pg_dump`/binare externe**, deci testabil în CI) și o reface cu `incarca_pg()`;
+  `app/schema.py` (migratorul SQLite, nefolosit) șters. `sqlite3` rămâne doar în
+  `scripts/migrare_pg.py` (citește baza veche la cutover) și în fixturile de test.
+- **Faza 5 (plan original) — înlocuit.** Backup → `pg_dump`; scot `sqlite3` din tot codul; șterg
   manipularea fișierelor `.db`; docs; bump **2.0.0**.
 
 ## 7. Scorerul de falsuri (feature-ul care a pornit totul)
@@ -164,16 +170,15 @@ suprimă alarma dacă scor_fals ≥ prag  ȘI  ok_local = 0   (plasa de siguran�
 Avantajul față de zonă manuală / `conf_noapte`: e **țintit per celulă + etichetă + regim**, se
 construiește singur din verdictele deja date, se auto-corectează, și merge pe **toate** camerele.
 
-## 8. Backup / restore
+## 8. Backup / restore (implementat)
 
-`backup_nocturn.py` azi copiază `events.db`/`segmente.db` prin API-ul SQLite și sare peste
-`semantic/` (se reface). După migrare:
-
-- vectorii **care nu se refac** (verdicte FP, fețe) intră în copie prin **`pg_dump -Fc`** al bazei
-  `openvigil`, adăugat în tar-ul Fernet existent;
-- embeddings „rebuildable" (scenă, re-ID din arhivă) pot rămâne în afara copiei dacă vrem backup
-  mic — se regenerează din sursă;
-- restore: `pg_restore` într-o bază goală înainte de pornirea serviciilor.
+`backup_nocturn.py` scrie baza PostgreSQL în tar-ul Fernet ca `pg/<tabel>.csv` — **dump logic prin
+`COPY ... TO STDOUT (FORMAT csv, HEADER)`**, fără coloanele IDENTITY (se regenerează la refacere).
+Am ales `COPY` în loc de `pg_dump` ca să NU depindem de un binar extern în imagine (versiune de
+client egală cu serverul etc.) și ca testul de round-trip să ruleze în CI. Refacerea:
+`incarca_pg(dir)` — `TRUNCATE` + `COPY ... FROM STDIN`, pe coloanele din antetul fiecărui fișier.
+Embeddings „rebuildable" (scenă, re-ID) rămân oricum pe fișiere; fețele (`faces/`) intră în copie
+ca fișiere. `restaureaza()` extrage arhiva (inclusiv `pg/`); `incarca_pg()` încarcă CSV-urile înapoi.
 
 ## 9. Deploy pe EliteDesk
 

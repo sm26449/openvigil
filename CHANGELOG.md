@@ -29,6 +29,15 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   (rata de fals pe pătrățel+etichetă+regim + similaritate cosinus la exemplarele „greșit” vs „ok”),
   cu plasa de siguranță `ok==0`. Motorul + testele; cablarea în bucla de detecție și migrarea
   fețe/re-ID/scenă în pgvector urmează.
+- PostgreSQL, Faza 4b: scorerul **cablat în bucla de detecție** (`detect.CamState._mut_invatat`,
+  `filtru="invatat"` lângă filtrul de zonă) — opt-in per cameră (`scorer_fp` în config) și
+  fail-safe (orice eroare → nu suprimă, alarma tot sună).
+- PostgreSQL, Faza 5: **gata fără SQLite.** Zero `sqlite3` în codul aplicației — `rules` prinde
+  erori generice de jurnal (nu `sqlite3.Error`), `backup_nocturn` scrie baza în arhivă ca
+  `pg/<tabel>.csv` (dump logic prin `COPY`, fără `pg_dump`) și o reface cu `incarca_pg()`,
+  `app/schema.py` (migratorul SQLite, nefolosit) a fost șters. Fețe/re-ID/scenă rămân pe fișiere
+  (nu folosesc SQLite). Migrarea fețe/re-ID/scenă în `pgvector` (4c) rămâne opțională, pentru când
+  apare nevoia de căutare vectorială la scară. Cutover-ul datelor: `scripts/migrare_pg.py`.
 
 ### Reparat
 - Aplicarea unui model antrenat local din interfață (`/api/train/apply`) dădea 500: decoratorul

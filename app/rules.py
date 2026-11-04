@@ -39,7 +39,6 @@ deci buclele sunt imposibile prin constructie.
 """
 import json
 import os
-import sqlite3
 import threading
 import time
 import uuid
@@ -321,8 +320,8 @@ def _journal(tip, cam_id, date):
             entry[k] = v
     try:
         jurnal.insert(entry, ts=now)
-    except sqlite3.Error as e:
-        # jurnalul nu are voie sa doboare lantul de evenimente (reguli, sirene)
+    except Exception as e:
+        # jurnalul (PostgreSQL) nu are voie sa doboare lantul de evenimente (reguli, sirene)
         logare.info(f"[rules] jurnal: {str(e)[:80]}")
     if entry["sev"] != "info":
         # notificare push pe telefoanele abonate (push.py decide nivelul si camerele);
