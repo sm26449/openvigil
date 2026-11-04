@@ -388,18 +388,32 @@ class CamState:
         self._tile_busy = False                     # un singur job de regiuni o data
         self.last_boxes = {"t": 0.0, "boxes": []}   # ultimele chenare (overlay, faza 6)
 
+    def _mut_invatat(self, box, noapte):
+        """True daca detectia cade intr-un patratel invatat ca fals (scorer_fp, memoria
+        verdictelor). FAIL-SAFE: orice eroare (PostgreSQL indisponibil, scorer nepornit) ->
+        False, deci detectia trece mai departe si alarma tot suna. Activat per camera prin
+        `scorer_fp` in config; altfel nici nu ajunge aici."""
+        try:
+            import scorer_fp
+            return scorer_fp.suprima(self.cam_id, box["lbl"], "noapte" if noapte else "zi",
+                                     [box["x"], box["y"], box["w"], box["h"]])
+        except Exception:
+            return False
+
     def process(self, img, res, now):
         """Un cadru + rezultatul lui din lot -> toata logica per-camera."""
         import cv2
         cfg = cam_cfg(self.cam_id)
         zone = cfg.get("zone")
+        invata = bool(cfg.get("scorer_fp"))   # suprima detectiile invatate ca false (scorer_fp)
         # prag mai mare noaptea (recomandare per camera): siluetele nesigure din IR raman afara
         prag_noapte = float(cfg.get("conf_noapte") or 0)
         try:
             import rules
-            e_noapte = bool(prag_noapte) and rules._is_night()
+            noapte = bool(rules._is_night())
         except Exception:
-            e_noapte = False
+            noapte = False
+        e_noapte = bool(prag_noapte) and noapte
         # prag pe vreme rea (global, din Setari): ploaia/ceata umplu cadrul de siluete nesigure
         prag_vreme = 0.0
         try:
@@ -440,6 +454,9 @@ class CamState:
                 continue
             if zone and not _in_zone(zone, (nx1 + nx2) / 2, (ny1 + ny2) / 2):
                 box["filtru"] = "zona"
+                continue
+            if invata and self._mut_invatat(box, noapte):
+                box["filtru"] = "invatat"       # patratel invatat ca fals din verdictele omului
                 continue
             # masina PARCATA nu se re-raporteaza cat sta pe loc (episoade E1):
             # tranzitiile (sosire/plecare) vin din registrul de stationare.
