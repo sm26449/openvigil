@@ -5,6 +5,12 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 
 ## [Nepublicat]
 
+### Adăugat
+- Migrarea pe **PostgreSQL + pgvector** (2.0.0) — fundația (Faza 0): serviciul `db`
+  (`pgvector/pgvector:pg16`, doar pe `127.0.0.1`, datadir sub `DATA_DIR`), modulul `app/db.py`
+  (pool de conexiuni, `conn()`/`tx()`, `aplica()` în tiparul lui `schema.py`) și un Postgres în
+  CI cu test de fum. Nu mută încă niciun tabel — plan complet în `docs/ro/postgres-migrare.md`.
+
 ### Reparat
 - Aplicarea unui model antrenat local din interfață (`/api/train/apply`) dădea 500: decoratorul
   de rută stătea pe funcția-ajutor `_swap_formal(sursa)`, nu pe handler. Mutat pe

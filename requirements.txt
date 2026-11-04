@@ -32,5 +32,9 @@ torchvision==0.28.0
 pywebpush==2.5.0
 # codul QR (SVG) pentru autentificarea in doi pasi; TOTP-ul in sine e in totp.py, fara dependente
 segno==1.6.6
+# PostgreSQL + pgvector (2.0.0): starea structurata si vectorii (fete, re-ID, scena, scorerul
+# de falsuri). Driver psycopg 3 cu pool de conexiuni; pgvector pentru tipul `vector` si distante.
+psycopg[binary,pool]==3.2.3
+pgvector==0.3.6
 # doar pentru dezvoltare/teste
 pytest==9.1.1
