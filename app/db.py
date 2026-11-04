@@ -56,7 +56,7 @@ def pool():
                     _conninfo(),
                     min_size=1,
                     max_size=int(os.environ.get("PG_POOL", "4")),
-                    kwargs={"autocommit": True},
+                    kwargs={"autocommit": True, "connect_timeout": 10},
                     configure=_configure,
                     open=True,
                 )
@@ -80,8 +80,11 @@ def tx():
 
 
 def ping():
-    """True daca baza raspunde; arunca daca nu se poate conecta."""
-    with conn() as c:
+    """True daca baza raspunde; arunca REPEDE (connect_timeout scurt) daca nu se poate conecta.
+    Conexiune directa, NU prin pool — altfel `.connection()` ar astepta timeout-ul pool-ului
+    (~30 s) la fiecare apel cand baza e jos (ex. testele in imagine, fara Postgres)."""
+    import psycopg
+    with psycopg.connect(_conninfo(), connect_timeout=3, autocommit=True) as c:
         c.execute("SELECT 1")
     return True
 

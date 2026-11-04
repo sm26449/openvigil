@@ -17,6 +17,11 @@ import audit  # noqa: E402
 import db  # noqa: E402
 import jurnal  # noqa: E402
 
+# verificam disponibilitatea PostgreSQL O SINGURA DATA pe sesiune (nu la fiecare test): fara
+# server (ex. testele rulate in imaginea Docker, fara `db`) toata suita se sare in cateva
+# secunde, nu blocheaza cate 3 s per test.
+_PG = {"ok": None}
+
 
 @pytest.fixture(autouse=True)
 def _izolare(tmp_path, monkeypatch):
@@ -24,10 +29,14 @@ def _izolare(tmp_path, monkeypatch):
     # propria fixtura in test_lant/test_arhiva)
     monkeypatch.setattr(audit, "FILE", str(tmp_path / "changes.jsonl"))
     # jurnalul e pe PostgreSQL: sare daca nu e disponibil, altfel goleste `events`
-    try:
-        db.ping()
-    except Exception as e:
-        pytest.skip(f"PostgreSQL indisponibil: {e}")
+    if _PG["ok"] is None:
+        try:
+            db.ping()
+            _PG["ok"] = True
+        except Exception:
+            _PG["ok"] = False
+    if not _PG["ok"]:
+        pytest.skip("PostgreSQL indisponibil")
     jurnal.reset()
     jurnal.deschide()
     with db.conn() as c:

@@ -5,6 +5,15 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 
 ## [Nepublicat]
 
+## [2.0.2] — 2026-11-04
+
+### Reparat
+- Testele rulate în imaginea Docker (pasul „Teste in imagine” din release, fără un server
+  Postgres) se blocau ~30 s per test: `conftest` verifica PostgreSQL prin pool la fiecare test,
+  iar `.connection()` aștepta timeout-ul pool-ului. Acum verificarea PG se face o singură dată
+  pe sesiune (cache), iar `db.ping()` se conectează direct cu `connect_timeout` scurt (fail-fast);
+  fără Postgres toată suita se sare în câteva secunde. Pool-ul primește și `connect_timeout=10`.
+
 ## [2.0.1] — 2026-11-04
 
 ### Reparat
