@@ -8,6 +8,7 @@ import time
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app"))
+import db  # noqa: E402
 import lant  # noqa: E402
 import record  # noqa: E402
 import settings  # noqa: E402
@@ -19,8 +20,11 @@ def mediu(tmp_path, monkeypatch):
     rec.mkdir(); arh.mkdir()
     monkeypatch.setattr(record, "REC_DIR", str(rec))
     monkeypatch.setattr(record, "TMP_DIR", str(tmp_path / "tmp"))
+    # lantul de custodie e pe PostgreSQL (Faza 3): golim `segmente` pentru izolare
     lant.reset()
-    monkeypatch.setattr(lant, "DB_FILE", str(tmp_path / "segmente.db"))
+    lant._init()
+    with db.conn() as c:
+        c.execute("TRUNCATE segmente")
     cfg = {"retention_days": 2, "retention_event_days": 10, "retention_min_free_gb": 0,
            "arhiva_dir": str(arh), "arhiva_zile": 30, "arhiva_min_free_gb": 0}
     monkeypatch.setattr(settings, "get", lambda k: cfg.get(k))

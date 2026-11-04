@@ -19,6 +19,11 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   aceeași secundă vine din coloana `seq` (IDENTITY) în locul `rowid`-ului, iar migrarea veche din
   `events.jsonl` a fost scoasă (datele istorice se mută cu `scripts/migrare_pg.py`, care acum
   include și `events`).
+- PostgreSQL, Faza 3: **lanțul de custodie** (`app/lant.py`, tabelul `segmente`) mutat pe
+  PostgreSQL — scris de nvr-record, citit de nvr-web, acum peste aceeași bază (fără WAL între
+  procese). `scripts/migrare_pg.py` mută și `segmente` și **verifică** după migrare că fiecare
+  amprentă SHA-256 a ajuns neschimbată (lanțul rămâne valabil); re-hash-ul fișierelor de pe disc
+  rămâne disponibil prin `verifica()`/fișa probatorie.
 
 ### Reparat
 - Aplicarea unui model antrenat local din interfață (`/api/train/apply`) dădea 500: decoratorul

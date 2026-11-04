@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.join(HERE, "..", "scripts"))
 import db  # noqa: E402
 import jobs  # noqa: E402
 import jurnal  # noqa: E402
+import lant  # noqa: E402
 import marcaje  # noqa: E402
 import push  # noqa: E402
 import migrare_pg  # noqa: E402
@@ -30,8 +31,9 @@ def _pg():
     jobs._init()
     push._init()
     marcaje._init()
+    lant._init()
     with db.conn() as c:
-        c.execute("TRUNCATE jobs, push_abonamente, marcaje")
+        c.execute("TRUNCATE jobs, push_abonamente, marcaje, segmente")
     yield
 
 
@@ -68,7 +70,7 @@ def test_migrare_faza1_si_idempotenta(tmp_path):
     _sqlite_vechi(ev)
 
     rez = migrare_pg.migreaza(ev)
-    assert rez == {"push_abonamente": 1, "jobs": 1, "marcaje": 1, "events": 2}
+    assert rez == {"push_abonamente": 1, "jobs": 1, "marcaje": 1, "events": 2, "segmente": 0}
 
     # datele au ajuns in PG, citite prin API-ul modulelor (acum pe PostgreSQL)
     lst = push.lista()
@@ -78,7 +80,35 @@ def test_migrare_faza1_si_idempotenta(tmp_path):
     assert len(jurnal.query()) == 2 and jurnal.query(cam=5)[0]["eticheta"] == "dog"
 
     # a doua rulare nu mai adauga nimic (ON CONFLICT DO NOTHING)
-    assert migrare_pg.migreaza(ev) == {"push_abonamente": 0, "jobs": 0, "marcaje": 0, "events": 0}
+    assert migrare_pg.migreaza(ev) == {"push_abonamente": 0, "jobs": 0, "marcaje": 0,
+                                       "events": 0, "segmente": 0}
+
+
+def test_migrare_segmente_cu_lantul_intact(tmp_path):
+    """Lantul de custodie: segmentul + amprenta lui se muta in PG, iar re-hash-ul fisierului
+    de pe disc se potriveste cu amprenta migrata (lantul ramane valabil peste migrare)."""
+    import hashlib
+    continut = b"continut video de test"
+    vid = tmp_path / "cam9"
+    vid.mkdir()
+    f = vid / "2026-10-23_10-00-00Z.mp4"
+    f.write_bytes(continut)
+    sha = hashlib.sha256(continut).hexdigest()
+
+    ev = str(tmp_path / "events.db")
+    c = sqlite3.connect(ev)
+    c.execute("CREATE TABLE segmente(cam INTEGER, nume TEXT, epoch INTEGER, cale TEXT, "
+              "octeti INTEGER, sha256 TEXT, calculat REAL, arhivat REAL, PRIMARY KEY(cam,nume))")
+    c.execute("INSERT INTO segmente VALUES(9,?,100,?,?,?,1.0,NULL)",
+              (f.name, str(f), len(continut), sha))
+    c.commit()
+    c.close()
+
+    assert migrare_pg.migreaza(ev)["segmente"] == 1
+    # re-hash-ul fisierului real se potriveste cu amprenta migrata -> lant intact
+    assert lant.verifica(9, f.name)["ok"] is True
+    assert lant.get(9, f.name)["sha256"] == sha
+    assert migrare_pg.migreaza(ev)["segmente"] == 0        # idempotent
 
 
 def test_baza_lipsa_nu_arunca(tmp_path):

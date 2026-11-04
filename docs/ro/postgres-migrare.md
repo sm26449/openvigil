@@ -120,8 +120,12 @@ testat.
   ordinea în aceeași secundă → `seq` (IDENTITY) în locul lui `rowid`; `stats()` folosește
   `pg_total_relation_size`; migrarea `events.jsonl` scoasă (istoricul se mută cu `migrare_pg.py`).
   `conftest.py` sare toată suita dacă PG nu e disponibil (aplicația oricum nu rulează fără bază).
-- **Faza 3 — `segmente`/lanț de custodie.** Scris de nvr-record; migrat cu **re-verificarea
-  lanțului de hash** după import (dovezi — integritate înainte de orice).
+- **Faza 3 — `segmente`/lanț de custodie. ✅ FĂCUTĂ.** `app/lant.py` pe PG (scris de nvr-record,
+  citit de nvr-web — aceeași bază, fără WAL între procese). `INSERT OR REPLACE`→`ON CONFLICT
+  (cam,nume) DO UPDATE`, `instr`→`strpos`, `SELECT *`→coloane explicite, epoch/octeți pe `BIGINT`.
+  `migrare_pg.py` mută `segmente` și **verifică** că fiecare SHA-256 a ajuns neschimbat după
+  migrare (test dedicat re-hash-uiește un fișier real și confirmă potrivirea). Re-hash-ul
+  fișierelor rămâne disponibil oricând prin `verifica()`/fișa probatorie.
 - **Faza 4 — vectorii.** Scorerul FP (vezi §7) + mutarea `faces`/`reid`/`scena` în `pgvector`.
 - **Faza 5 — final.** Backup → `pg_dump` (vezi §8); scot `sqlite3` din tot codul; șterg
   manipularea fișierelor `.db`; docs; bump **2.0.0**.

@@ -17,6 +17,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app"))
 import db  # noqa: E402
 import jobs as _jobs  # noqa: E402
 import jurnal as _jurnal  # noqa: E402
+import lant as _lant  # noqa: E402
 import marcaje as _marcaje  # noqa: E402
 import push as _push  # noqa: E402
 
@@ -104,6 +105,38 @@ def migreaza_events(sc):
     return n
 
 
+def migreaza_segmente(sc):
+    """Lantul de custodie. Pastreaza (cam, nume, epoch, cale, octeti, sha256, calculat, arhivat)."""
+    _lant._init()
+    if "segmente" not in _tabele(sc):
+        return 0
+    cols = ["cam", "nume", "epoch", "cale", "octeti", "sha256", "calculat", "arhivat"]
+    rows = sc.execute(f"SELECT {','.join(cols)} FROM segmente ORDER BY cam, epoch").fetchall()
+    ph = ",".join(["%s"] * len(cols))
+    n = 0
+    with db.conn() as c:
+        for r in rows:
+            cur = c.execute(f"INSERT INTO segmente ({','.join(cols)}) VALUES ({ph}) "
+                            "ON CONFLICT (cam, nume) DO NOTHING", tuple(r[k] for k in cols))
+            n += cur.rowcount
+    return n
+
+
+def verifica_segmente(sc):
+    """Confirma ca fiecare amprenta SHA-256 a ajuns NESCHIMBATA in PostgreSQL — lantul de
+    custodie trebuie sa ramana valabil peste migrare. Returneaza (verificate, nepotriviri).
+    (Re-hash-ul fisierelor de pe disc ramane disponibil oricand prin lant.verifica / fisa.)"""
+    if "segmente" not in _tabele(sc):
+        return (0, 0)
+    src = [(r["cam"], r["nume"], r["sha256"])
+           for r in sc.execute("SELECT cam, nume, sha256 FROM segmente")]
+    with db.conn() as c:
+        dst = {(r[0], r[1]): r[2]
+               for r in c.execute("SELECT cam, nume, sha256 FROM segmente").fetchall()}
+    nepot = sum(1 for cam, nume, sha in src if dst.get((cam, nume)) != sha)
+    return (len(src), nepot)
+
+
 def migreaza(events):
     """Migreaza tabelele din baza SQLite `events`. Intoarce {tabel: nr_randuri noi}."""
     if not os.path.exists(events):
@@ -114,9 +147,15 @@ def migreaza(events):
         rez = {"push_abonamente": migreaza_push(sc),
                "jobs": migreaza_jobs(sc),
                "marcaje": migreaza_marcaje(sc),
-               "events": migreaza_events(sc)}
+               "events": migreaza_events(sc),
+               "segmente": migreaza_segmente(sc)}
+        ver, nepot = verifica_segmente(sc)
     finally:
         sc.close()
+    if ver:
+        print(f"[migrare] lant de custodie: {ver} segmente verificate, {nepot} nepotriviri de hash")
+        if nepot:
+            print("[migrare] ATENTIE: lantul are nepotriviri — investigheaza INAINTE de cutover")
     for tabel, n in rez.items():
         print(f"[migrare] {tabel}: {n} randuri noi in PostgreSQL")
     return rez
