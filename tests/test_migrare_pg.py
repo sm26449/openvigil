@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.join(HERE, "..", "app"))
 sys.path.insert(0, os.path.join(HERE, "..", "scripts"))
 import db  # noqa: E402
 import jobs  # noqa: E402
+import jurnal  # noqa: E402
 import marcaje  # noqa: E402
 import push  # noqa: E402
 import migrare_pg  # noqa: E402
@@ -45,7 +46,13 @@ def _sqlite_vechi(cale):
             cam INTEGER, creat INTEGER, pornit INTEGER, terminat INTEGER);
         CREATE TABLE marcaje(id TEXT PRIMARY KEY, cam INTEGER, ts INTEGER, ts_end INTEGER, t TEXT,
             t_end TEXT, eticheta TEXT, nota TEXT, creat_de TEXT, creat TEXT);
+        CREATE TABLE events(rowid INTEGER PRIMARY KEY, id TEXT UNIQUE, ts INTEGER, t TEXT,
+            tip TEXT, sev TEXT, cam INTEGER, date TEXT);
     """)
+    c.execute("INSERT INTO events(id,ts,t,tip,sev,cam,date) "
+              "VALUES('e1',100,'2026-10-20 10:00:00','detectie','info',5,'{\"eticheta\":\"dog\"}')")
+    c.execute("INSERT INTO events(id,ts,t,tip,sev,cam,date) "
+              "VALUES('e2',200,'2026-10-20 10:05:00','zgomot','atentie',7,'{}')")
     c.execute("INSERT INTO push_abonamente(user,endpoint,p256dh,auth,nivel,agent,creat,ultima,erori) "
               "VALUES('admin','https://push.example/x','P','A','critic','Chrome',1.0,NULL,0)")
     c.execute("INSERT INTO jobs(id,tip,stare,progres,mesaj,parametri,creat_de,creat) "
@@ -61,16 +68,17 @@ def test_migrare_faza1_si_idempotenta(tmp_path):
     _sqlite_vechi(ev)
 
     rez = migrare_pg.migreaza(ev)
-    assert rez == {"push_abonamente": 1, "jobs": 1, "marcaje": 1}
+    assert rez == {"push_abonamente": 1, "jobs": 1, "marcaje": 1, "events": 2}
 
     # datele au ajuns in PG, citite prin API-ul modulelor (acum pe PostgreSQL)
     lst = push.lista()
     assert len(lst) == 1 and lst[0]["user"] == "admin" and lst[0]["nivel"] == "critic"
     assert jobs.get("job1")["stare"] == "gata" and jobs.get("job1")["creat_de"] == "admin"
     assert marcaje.get("m1")["cam"] == 5 and marcaje.get("m1")["eticheta"] == "x"
+    assert len(jurnal.query()) == 2 and jurnal.query(cam=5)[0]["eticheta"] == "dog"
 
     # a doua rulare nu mai adauga nimic (ON CONFLICT DO NOTHING)
-    assert migrare_pg.migreaza(ev) == {"push_abonamente": 0, "jobs": 0, "marcaje": 0}
+    assert migrare_pg.migreaza(ev) == {"push_abonamente": 0, "jobs": 0, "marcaje": 0, "events": 0}
 
 
 def test_baza_lipsa_nu_arunca(tmp_path):

@@ -16,6 +16,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app"))
 import db  # noqa: E402
 import jobs as _jobs  # noqa: E402
+import jurnal as _jurnal  # noqa: E402
 import marcaje as _marcaje  # noqa: E402
 import push as _push  # noqa: E402
 
@@ -82,8 +83,29 @@ def migreaza_marcaje(sc):
     return n
 
 
+def migreaza_events(sc):
+    """Jurnalul: ~sute de mii de randuri, in loturi. Pastreaza id/ts/t/tip/sev/cam/date;
+    `seq`-ul (IDENTITY) se atribuie in ordinea `rowid` veche."""
+    _jurnal._init()
+    if "events" not in _tabele(sc):
+        return 0
+    cols = ["id", "ts", "t", "tip", "sev", "cam", "date"]
+    cur_s = sc.execute(f"SELECT {','.join(cols)} FROM events ORDER BY rowid")
+    ph = ",".join(["%s"] * len(cols))
+    sql = f"INSERT INTO events ({','.join(cols)}) VALUES ({ph}) ON CONFLICT (id) DO NOTHING"
+    n = 0
+    with db.conn() as c:
+        while True:
+            lot = cur_s.fetchmany(5000)
+            if not lot:
+                break
+            c.executemany(sql, [tuple(r[k] for k in cols) for r in lot])
+            n += c.rowcount if (c.rowcount or -1) >= 0 else 0
+    return n
+
+
 def migreaza(events):
-    """Migreaza cele trei tabele din baza SQLite `events`. Intoarce {tabel: nr_randuri}."""
+    """Migreaza tabelele din baza SQLite `events`. Intoarce {tabel: nr_randuri noi}."""
     if not os.path.exists(events):
         print(f"[migrare] {events} nu exista — nimic de migrat")
         return {}
@@ -91,7 +113,8 @@ def migreaza(events):
     try:
         rez = {"push_abonamente": migreaza_push(sc),
                "jobs": migreaza_jobs(sc),
-               "marcaje": migreaza_marcaje(sc)}
+               "marcaje": migreaza_marcaje(sc),
+               "events": migreaza_events(sc)}
     finally:
         sc.close()
     for tabel, n in rez.items():

@@ -5,7 +5,6 @@ import sys
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app"))
-import jurnal  # noqa: E402
 import marcaje  # noqa: E402
 import db  # noqa: E402
 
@@ -79,14 +78,9 @@ def test_update_si_delete():
     assert marcaje.lista() == []
 
 
-def test_marcajele_stau_in_postgres_nu_in_jurnal():
-    """Din 2.0.0 marcajele sunt in PostgreSQL, nu mai impart baza SQLite a jurnalului."""
+def test_marcajele_persista_in_postgres():
+    """Din 2.0.0 marcajele sunt in PostgreSQL (prin app/db.py), nu in SQLite."""
     marcaje.create(5, "2026-10-23 10:00:00")
-    jurnal.insert({"t": "2026-10-23 10:00:00", "tip": "detectie", "cam": 5})
     with db.conn() as c:
         assert c.execute("SELECT COUNT(*) FROM marcaje").fetchone()[0] == 1
-    # baza SQLite a jurnalului NU mai are tabelul marcaje
-    jc = jurnal.conexiune()
-    tabele = {r[0] for r in jc.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-    assert "events" in tabele and "marcaje" not in tabele
-    assert len(marcaje.lista()) == 1 and len(jurnal.query()) == 1   # fiecare in baza lui
+    assert len(marcaje.lista()) == 1

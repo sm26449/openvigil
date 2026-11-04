@@ -13,6 +13,12 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 - PostgreSQL, Faza 1: `push` (abonamente), `jobs` (coada) și `marcaje` (bookmarks) mutate din
   SQLite pe PostgreSQL prin `app/db.py` (nu mai împart baza `events.db` cu jurnalul). Script de
   migrare a datelor one-shot (`scripts/migrare_pg.py`, idempotent) și teste pe Postgres.
+- PostgreSQL, Faza 2: **jurnalul de evenimente** (`app/jurnal.py`, tabelul `events`) mutat pe
+  PostgreSQL. Contractul `query()`/`insert()` neschimbat pentru restul sistemului. Căutarea de
+  text folosește acum `ILIKE` (în PostgreSQL `LIKE` e sensibil la litere mari), ordinea în
+  aceeași secundă vine din coloana `seq` (IDENTITY) în locul `rowid`-ului, iar migrarea veche din
+  `events.jsonl` a fost scoasă (datele istorice se mută cu `scripts/migrare_pg.py`, care acum
+  include și `events`).
 
 ### Reparat
 - Aplicarea unui model antrenat local din interfață (`/api/train/apply`) dădea 500: decoratorul

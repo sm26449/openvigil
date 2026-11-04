@@ -114,8 +114,12 @@ testat.
   `events.db` cu jurnalul); `scripts/migrare_pg.py` (migrare date one-shot, idempotentă) + teste pe
   Postgres. `jobs` a căpătat coloana `seq` (IDENTITY) în locul lui `rowid` pentru ordine; în `push`
   coloana `user` apare citată `"user"` (cuvânt rezervat în PostgreSQL).
-- **Faza 2 — `jurnal`/events.** Suprafața cea mai mare de cititori (`routes_media`, `rules`,
-  `analiza`, `ask`, `verificare`…) — cu grijă, cu paritate pe interogări.
+- **Faza 2 — `jurnal`/events. ✅ FĂCUTĂ.** Tabelul `events` pe PG; contractul `query()`/`insert()`
+  neschimbat pentru cei ~9 consumatori (`rules`, `analiza`, `ask`, `mcp`, `recomandari`, `episoade`,
+  `scena_web`, `routes_cameras`, `server`). Căutarea de text → `ILIKE` (PG `LIKE` e case-sensitive);
+  ordinea în aceeași secundă → `seq` (IDENTITY) în locul lui `rowid`; `stats()` folosește
+  `pg_total_relation_size`; migrarea `events.jsonl` scoasă (istoricul se mută cu `migrare_pg.py`).
+  `conftest.py` sare toată suita dacă PG nu e disponibil (aplicația oricum nu rulează fără bază).
 - **Faza 3 — `segmente`/lanț de custodie.** Scris de nvr-record; migrat cu **re-verificarea
   lanțului de hash** după import (dovezi — integritate înainte de orice).
 - **Faza 4 — vectorii.** Scorerul FP (vezi §7) + mutarea `faces`/`reid`/`scena` în `pgvector`.
