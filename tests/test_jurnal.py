@@ -128,11 +128,11 @@ def test_rules_journal_scrie_si_citeste_prin_postgres(monkeypatch):
 def test_multe_evenimente_raman_rapide():
     base = jurnal._epoch("2026-10-01 00:00:00")
     jurnal._init()
-    with db.tx() as c:
-        c.executemany(jurnal.INSERT, [jurnal._row({"id": f"id{i}", "t": "2026-10-01 00:00:00",
-                                                   "tip": "detectie" if i % 3 else "obiect",
-                                                   "cam": i % 18}, ts=base + i)
-                                      for i in range(30000)])
+    with db.tx() as c, c.cursor() as cur:
+        cur.executemany(jurnal.INSERT, [jurnal._row({"id": f"id{i}", "t": "2026-10-01 00:00:00",
+                                                     "tip": "detectie" if i % 3 else "obiect",
+                                                     "cam": i % 18}, ts=base + i)
+                                        for i in range(30000)])
     t0 = time.time()
     assert len(jurnal.query(limit=20000, tip="obiect")) == 10000
     assert len(jurnal.query(day="2026-10-01", limit=100000)) == 30000

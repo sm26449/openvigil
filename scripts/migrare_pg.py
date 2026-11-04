@@ -94,13 +94,13 @@ def migreaza_events(sc):
     ph = ",".join(["%s"] * len(cols))
     sql = f"INSERT INTO events ({','.join(cols)}) VALUES ({ph}) ON CONFLICT (id) DO NOTHING"
     n = 0
-    with db.conn() as c:
+    with db.conn() as c, c.cursor() as cur:
         while True:
             lot = cur_s.fetchmany(5000)
             if not lot:
                 break
-            c.executemany(sql, [tuple(r[k] for k in cols) for r in lot])
-            n += c.rowcount if (c.rowcount or -1) >= 0 else 0
+            cur.executemany(sql, [tuple(r[k] for k in cols) for r in lot])
+            n += cur.rowcount if (cur.rowcount or -1) >= 0 else 0
     return n
 
 
