@@ -24,6 +24,11 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   procese). `scripts/migrare_pg.py` mută și `segmente` și **verifică** după migrare că fiecare
   amprentă SHA-256 a ajuns neschimbată (lanțul rămâne valabil); re-hash-ul fișierelor de pe disc
   rămâne disponibil prin `verifica()`/fișa probatorie.
+- PostgreSQL, Faza 4a: **scorerul de falsuri** (`app/scorer_fp.py`) — memorie spațială + semantică
+  a verdictelor, în `pgvector` (tabelul `vectori_fp`, SigLIP 768-dim). Scor cu doi termeni
+  (rata de fals pe pătrățel+etichetă+regim + similaritate cosinus la exemplarele „greșit” vs „ok”),
+  cu plasa de siguranță `ok==0`. Motorul + testele; cablarea în bucla de detecție și migrarea
+  fețe/re-ID/scenă în pgvector urmează.
 
 ### Reparat
 - Aplicarea unui model antrenat local din interfață (`/api/train/apply`) dădea 500: decoratorul

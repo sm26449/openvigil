@@ -126,7 +126,15 @@ testat.
   `migrare_pg.py` mută `segmente` și **verifică** că fiecare SHA-256 a ajuns neschimbat după
   migrare (test dedicat re-hash-uiește un fișier real și confirmă potrivirea). Re-hash-ul
   fișierelor rămâne disponibil oricând prin `verifica()`/fișa probatorie.
-- **Faza 4 — vectorii.** Scorerul FP (vezi §7) + mutarea `faces`/`reid`/`scena` în `pgvector`.
+- **Faza 4 — vectorii.** Trei bucăți:
+  - **4a ✅ FĂCUTĂ — scorerul FP** (`app/scorer_fp.py`, tabelul `vectori_fp`, SigLIP 768-dim în
+    `pgvector`): scor pozițional + semantic, plasă `ok==0`, `incarca_din_feedback()`, teste
+    sintetice. Vectorii se trimit ca `'[...]'::vector` (nu depind de înregistrarea tipului pe
+    conexiune); `K=0.5` aliniază MIN_FALS cu PRAG.
+  - **4b — cablarea în `detect.py`** (schimbă comportamentul live: `filtru="invatat"` lângă zonă,
+    cu pasul SigLIP pe crop) — de făcut cu verificare pe stiva reală.
+  - **4c — migrarea `faces`/`reid`/`scena`** în `pgvector` (tabele separate: fețe/corp 512-dim,
+    scenă 768-dim).
 - **Faza 5 — final.** Backup → `pg_dump` (vezi §8); scot `sqlite3` din tot codul; șterg
   manipularea fișierelor `.db`; docs; bump **2.0.0**.
 
