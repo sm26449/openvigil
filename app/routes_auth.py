@@ -129,8 +129,11 @@ def _esec(ip, actiune, name):
 
 @bp.route("/login", methods=["GET", "POST"])
 def login():
-    if not users.load():
+    if users.setup_permis():
         return redirect("/setup")
+    if not users.load():          # fisier prezent dar corupt/gol: blocam, nu ducem la /setup
+        audit.log("conturi necitibile — login blocat")
+        return _pagina(LOGIN_HTML, err=t("Conturile nu pot fi citite pe server — verifică data/users.json")), 503
     if current_user():
         return redirect("/")
     if request.method == "POST":
@@ -193,8 +196,10 @@ def login_2fa():
 
 @bp.route("/setup", methods=["GET", "POST"])
 def setup():
-    """Prima pornire: creeaza contul de administrator. Dispare dupa ce exista conturi."""
-    if users.load():
+    """Prima pornire: creeaza contul de administrator. Dispare dupa ce exista conturi SAU daca
+    users.json exista dar e corupt/gol (atunci NU permitem crearea unui admin fara autentificare —
+    recuperarea se face local pe server)."""
+    if not users.setup_permis():
         return redirect("/login")
     if request.method == "POST":
         name = (request.form.get("user") or "").strip() or "admin"

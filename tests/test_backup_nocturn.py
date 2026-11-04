@@ -54,6 +54,12 @@ def test_creare_si_refacere(mediu, tmp_path):
     assert not (dest / "faces" / "insightface").exists()         # modelele descarcabile nu intra
     assert b"evb1" in (dest / "pg" / "events.csv").read_bytes()  # dump-ul PG contine evenimentul
     assert "cameras.json" in fis and "secret_key" in fis
+    assert manifest.get("complet") and manifest.get("pg_randuri", {}).get("events") == 1
+    # cheie gresita si continut neconform cu manifestul -> ValueError (nu ascunse)
+    with pytest.raises(ValueError):
+        bn.restaureaza(str(f), "A" * 43 + "=", str(tmp_path / "x"))
+    with pytest.raises(ValueError):
+        bn.restaureaza(str(f), k, str(tmp_path / "y"), {"sha256_clar": "0" * 64})
 
 
 def test_incarca_pg_reface_baza(mediu, tmp_path):
@@ -76,16 +82,35 @@ def test_incarca_pg_reface_baza(mediu, tmp_path):
     assert rez["events"] == 1 and jurnal.query()[0]["id"] == "rt1"
 
 
+def test_incarca_pg_atomic(mediu, tmp_path):
+    """incarca_pg e atomic: un CSV invalid in lot face rollback, baza ramane neatinsa
+    (nu lasa events golit de TRUNCATE)."""
+    if not _pg_ok():
+        pytest.skip("PostgreSQL indisponibil")
+    jurnal.insert({"id": "atom1", "t": "2026-10-20 10:00:00", "tip": "detectie", "cam": 3})
+    pg = tmp_path / "pg"
+    pg.mkdir()
+    with db.conn() as c:
+        cols = bn._coloane_ne_identity(c, "events")
+    lista = ", ".join('"%s"' % x for x in cols)
+    with db.conn() as c, c.cursor() as cur, cur.copy(
+            f'COPY "events" ({lista}) TO STDOUT (FORMAT csv, HEADER)') as cp:
+        (pg / "events.csv").write_bytes(b"".join(cp))
+    # al doilea fisier (tabel existent, dar coloana inexistenta) -> COPY esueaza la mijloc
+    (pg / "push.csv").write_bytes(b'"coloana_inexistenta"\nx\n')
+    with pytest.raises(Exception):
+        bn.incarca_pg(str(tmp_path))
+    # events NU a fost golit: TRUNCATE-ul a fost rulat inaintea COPY-ului esuat, dar tranzactia
+    # a facut rollback
+    assert jurnal.query()[0]["id"] == "atom1"
+
+
 def _pg_ok():
     try:
         db.ping()
         return True
     except Exception:
         return False
-    with pytest.raises(ValueError):
-        bn.restaureaza(str(f), "A" * 43 + "=", str(tmp_path / "x"))
-    with pytest.raises(ValueError):
-        bn.restaureaza(str(f), k, str(tmp_path / "y"), {"sha256_clar": "0" * 64})
 
 
 def test_rotatie_lista_si_trimitere(mediu, tmp_path):

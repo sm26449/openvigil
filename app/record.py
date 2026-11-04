@@ -600,11 +600,15 @@ def _arhiveaza(cid, t, p, fn):
             logare.info(f"[record] arhiva cam{cid} {fn}: copia nu are acelasi hash — ramane pe primar")
             return False
         os.replace(tmp, dest)
-        os.remove(p)
+        # registrul INAINTE de stergerea sursei: daca PG pica intre mutare si stergere,
+        # fisierul e in arhiva (dest), registrul il indica acolo, iar sursa ramane — tura
+        # urmatoare reconciliaza idempotent. Invers (sterge apoi muta) pierdea referinta la
+        # o cadere la mijloc. Prindem si exceptiile PG din lant.muta, nu doar OSError.
         if amprenta:
             lant.muta(cid, fn, dest)
+        os.remove(p)
         return True
-    except OSError as e:
+    except Exception as e:
         logare.info(f"[record] arhiva cam{cid} {fn}: {str(e)[:80]}")
         return False
 

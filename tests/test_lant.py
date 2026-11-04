@@ -73,6 +73,53 @@ def test_verificare_mutare_si_curatare(tmp_path):
     assert lant.curata(lambda cam: [], [7]) == 1 and lant.get(7, a[2]) is None
 
 
+def test_recodat_pastreaza_amprenta_originalului(tmp_path):
+    """Dupa re-encodare: lantul retine hash-ul nou (verifica() ramane valabila) dar pastreaza
+    amprenta originalului in sha256_orig si momentul recodarii."""
+    now = 1_800_000_000
+    a = _seg(tmp_path, 9, now - 1000, continut=b"video-brut")
+    lant.inregistreaza(9, a[0], a[1])
+    sha_orig = lant.get(9, a[2])["sha256"]
+    arh = tmp_path / "arhiva"; arh.mkdir()
+    nou = str(arh / a[2])
+    with open(nou, "wb") as f:
+        f.write(b"hevc")
+    lant.recodat(9, a[2], nou)
+    r = lant.get(9, a[2])
+    assert r["cale"] == nou and r["recodat"] and r["arhivat"]
+    assert r["sha256"] == lant.hash_fisier(nou) and r["octeti"] == 4 and r["sha256_orig"] == sha_orig
+    v = lant.verifica(9, a[2])
+    assert v["ok"] is True and v["sha256_orig"] == sha_orig and v["recodat"]
+    # a doua recodare NU pierde amprenta originalului initial
+    nou2 = str(arh / "x2.mp4")
+    with open(nou2, "wb") as f:
+        f.write(b"av1")
+    lant.recodat(9, a[2], nou2)
+    assert lant.get(9, a[2])["sha256_orig"] == sha_orig
+    # segment fara amprenta -> recodat nu face nimic
+    assert lant.recodat(9, "inexistent.mp4", nou2) is None
+
+
+def test_migrarea_adauga_coloanele_de_recodare():
+    """O baza veche (segmente la versiunea 1, fara sha256_orig/recodat) primeste coloanele prin
+    migrarea 2 — calea prin care se face upgrade-ul in productie."""
+    with db.conn() as c:
+        c.execute("DROP TABLE IF EXISTS segmente")
+        c.execute("CREATE TABLE segmente (cam INTEGER NOT NULL, nume TEXT NOT NULL, "
+                  "epoch BIGINT NOT NULL, cale TEXT NOT NULL, octeti BIGINT NOT NULL, "
+                  "sha256 TEXT NOT NULL, calculat DOUBLE PRECISION NOT NULL, "
+                  "arhivat DOUBLE PRECISION, PRIMARY KEY(cam, nume))")
+        c.execute("INSERT INTO schema_versiuni(nume, versiune) VALUES('lant', 1) "
+                  "ON CONFLICT(nume) DO UPDATE SET versiune = 1")
+    lant.reset()
+    db.aplica("lant", lant.SCHEMA, lant.MIGRARI)
+    with db.conn() as c:
+        cols = {r[0] for r in c.execute(
+            "SELECT column_name FROM information_schema.columns WHERE table_name='segmente'"
+        ).fetchall()}
+    assert "sha256_orig" in cols and "recodat" in cols
+
+
 def test_caile_absolute_vechi_se_rezolva_in_radacina_noua(tmp_path, monkeypatch):
     """Lantul scris de o instalare veche (cai absolute de pe gazda) ramane valabil cand codul
     ruleaza din alt director sau din container: se recalculeaza fata de ROOT."""

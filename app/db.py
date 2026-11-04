@@ -89,6 +89,12 @@ def ping():
     return True
 
 
+def _lock_key(nume):
+    """Cheie bigint stabila (independenta de PYTHONHASHSEED) pentru advisory lock-ul per modul."""
+    import hashlib
+    return int.from_bytes(hashlib.sha256(nume.encode()).digest()[:8], "big", signed=True)
+
+
 def _versiune(c, nume):
     c.execute("CREATE TABLE IF NOT EXISTS schema_versiuni "
               "(nume TEXT PRIMARY KEY, versiune INTEGER NOT NULL)")
@@ -106,20 +112,26 @@ def aplica(nume, schema_sql, migrari=None):
     migrari = migrari or {}
     tinta = max([1, *migrari.keys()])
     with pool().connection() as c:
-        c.execute("CREATE EXTENSION IF NOT EXISTS vector")
-        if schema_sql and schema_sql.strip():
-            c.execute(schema_sql)                      # fara parametri: psycopg accepta mai multe instructiuni
-        actuala = _versiune(c, nume)
-        if actuala == 0:
-            c.execute("INSERT INTO schema_versiuni (nume, versiune) VALUES (%s, %s) "
-                      "ON CONFLICT (nume) DO UPDATE SET versiune = EXCLUDED.versiune",
-                      (nume, tinta))
-            return tinta
-        for v in sorted(migrari):
-            if v <= actuala:
-                continue
-            pas = migrari[v]
-            try:
+        # advisory lock la nivel de sesiune, per modul: cele 4 procese (go2rtc/web/record/ai)
+        # pornesc deodata si pot apela aplica() pentru acelasi modul in acelasi timp — fara lock,
+        # doua ar citi versiunea veche si ar aplica aceeasi migrare. Se elibereaza in finally (sau
+        # la inchiderea sesiunii, daca procesul moare).
+        key = _lock_key(nume)
+        c.execute("SELECT pg_advisory_lock(%s)", (key,))
+        try:
+            c.execute("CREATE EXTENSION IF NOT EXISTS vector")
+            if schema_sql and schema_sql.strip():
+                c.execute(schema_sql)                  # fara parametri: psycopg accepta mai multe instructiuni
+            actuala = _versiune(c, nume)
+            if actuala == 0:
+                c.execute("INSERT INTO schema_versiuni (nume, versiune) VALUES (%s, %s) "
+                          "ON CONFLICT (nume) DO UPDATE SET versiune = EXCLUDED.versiune",
+                          (nume, tinta))
+                return tinta
+            for v in sorted(migrari):
+                if v <= actuala:
+                    continue
+                pas = migrari[v]
                 with c.transaction():
                     if callable(pas):
                         pas(c)
@@ -128,8 +140,8 @@ def aplica(nume, schema_sql, migrari=None):
                     c.execute("INSERT INTO schema_versiuni (nume, versiune) VALUES (%s, %s) "
                               "ON CONFLICT (nume) DO UPDATE SET versiune = EXCLUDED.versiune",
                               (nume, int(v)))
-            except Exception:
-                raise
-            logare.info(f"[db] {nume}: migrat la versiunea {v}")
-            actuala = v
-    return actuala
+                logare.info(f"[db] {nume}: migrat la versiunea {v}")
+                actuala = v
+            return actuala
+        finally:
+            c.execute("SELECT pg_advisory_unlock(%s)", (key,))

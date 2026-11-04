@@ -36,12 +36,19 @@ CREATE TABLE IF NOT EXISTS segmente (
     sha256   TEXT    NOT NULL,
     calculat DOUBLE PRECISION NOT NULL,
     arhivat  DOUBLE PRECISION,
+    sha256_orig TEXT,              -- amprenta ORIGINALULUI inainte de o eventuala re-encodare
+    recodat  DOUBLE PRECISION,     -- momentul re-encodarii (reencode.py); NULL = material brut
     PRIMARY KEY (cam, nume)
 );
 CREATE INDEX IF NOT EXISTS seg_cam_epoch ON segmente(cam, epoch);
 """
-COLS = "cam, nume, epoch, cale, octeti, sha256, calculat, arhivat"
-MIGRARI = {}      # migrari viitoare ale tabelei segmente
+COLS = "cam, nume, epoch, cale, octeti, sha256, calculat, arhivat, sha256_orig, recodat"
+MIGRARI = {
+    # 2.0.3: lantul retine derivarea la re-encodare (sha256_orig + recodat) ca verifica() sa
+    # ramana valabila dupa recomprimare, pastrand totusi amprenta originalului
+    2: "ALTER TABLE segmente ADD COLUMN IF NOT EXISTS sha256_orig TEXT; "
+       "ALTER TABLE segmente ADD COLUMN IF NOT EXISTS recodat DOUBLE PRECISION",
+}
 _gata = False
 
 
@@ -104,7 +111,8 @@ def inregistreaza(cam, epoch, cale):
 
 def _rand(r):
     return {"cam": r[0], "nume": r[1], "epoch": r[2], "cale": _abs(r[3]), "octeti": r[4],
-            "sha256": r[5], "calculat": r[6], "arhivat": r[7]}
+            "sha256": r[5], "calculat": r[6], "arhivat": r[7],
+            "sha256_orig": r[8], "recodat": r[9]}
 
 
 def get(cam, nume):
@@ -146,6 +154,25 @@ def muta(cam, nume, cale_noua, arhivat=True):
                   (_rel(cale_noua), time.time() if arhivat else None, cam, nume))
 
 
+def recodat(cam, nume, cale_noua):
+    """Dupa o RE-ENCODARE (reencode.py): fisierul si-a schimbat continutul (alt codec) si s-a
+    mutat in arhiva. Recalculam hash-ul nou si PASTRAM amprenta originalului (prima data) in
+    sha256_orig + momentul recodarii, ca lantul sa ramana onest: verifica() merge pe continutul
+    nou, iar fisa poate arata ca segmentul a fost recomprimat (derivare, nu material brut).
+    Daca segmentul n-are amprenta in lant, nu facem nimic (intoarce None)."""
+    r = get(cam, nume)
+    if not r:
+        return None
+    sha_nou = hash_fisier(cale_noua)
+    octeti = os.path.getsize(cale_noua)
+    orig = r.get("sha256_orig") or r["sha256"]     # pastram PRIMUL original, nu-l rescriem
+    with db.conn() as c:
+        c.execute("UPDATE segmente SET cale=%s, octeti=%s, sha256=%s, sha256_orig=%s, "
+                  "recodat=%s, arhivat=%s WHERE cam=%s AND nume=%s",
+                  (_rel(cale_noua), octeti, sha_nou, orig, time.time(), time.time(), cam, nume))
+    return {"sha256": sha_nou, "sha256_orig": orig}
+
+
 def sterge(cam, nume):
     _init()
     with db.conn() as c:
@@ -162,6 +189,7 @@ def verifica(cam, nume):
         return {"ok": False, "motiv": "fisierul lipseste", "sha256_initial": r["sha256"]}
     acum = hash_fisier(r["cale"])
     return {"ok": acum == r["sha256"], "sha256_acum": acum, "sha256_initial": r["sha256"],
+            "sha256_orig": r.get("sha256_orig"), "recodat": r.get("recodat"),
             "motiv": "" if acum == r["sha256"] else "CONTINUT MODIFICAT dupa inchidere"}
 
 

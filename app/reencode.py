@@ -18,6 +18,7 @@ import threading
 import time
 
 import record
+import lant
 import settings
 import logare
 from i18n import t
@@ -83,11 +84,19 @@ def _reencode_one(path, enc):
         if after < before * (1 - MIN_GAIN) and after > 10000:
             # copia recomprimata merge in nivelul de arhiva (acelasi nume: redarea o vede
             # prin record._files), originalul pleaca de pe discul principal
-            dest_dir = os.path.join(record.archive_dir(), os.path.basename(os.path.dirname(path)))
+            cam_dir = os.path.basename(os.path.dirname(path))     # "camN"
+            fn = os.path.basename(path)
+            dest_dir = os.path.join(record.archive_dir(), cam_dir)
             os.makedirs(dest_dir, exist_ok=True)
-            dest = os.path.join(dest_dir, os.path.basename(path))
+            dest = os.path.join(dest_dir, fn)
             import shutil
             shutil.move(tmp, dest)
+            # lantul de custodie INAINTE de a sterge originalul: continutul s-a schimbat (alt
+            # codec), deci reinregistram hash-ul nou si pastram amprenta originalului. Daca
+            # lantul nu poate fi actualizat (ex. PG jos), exceptia opreste stergerea
+            # originalului — tura urmatoare reia (reconciliere idempotenta).
+            if cam_dir.startswith("cam"):
+                lant.recodat(int(cam_dir[3:]), fn, dest)
             os.remove(path)
             return before - after
         os.remove(tmp)

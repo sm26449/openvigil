@@ -126,8 +126,9 @@ class _CookieSecurePeHttps(SecureCookieSessionInterface):
 
 app.session_interface = _CookieSecurePeHttps()
 
-# migrare: vechea parola unica din Setari devine contul "admin" (acelasi hash)
-if not users.load() and settings.get("web_password"):
+# migrare: vechea parola unica din Setari devine contul "admin" (acelasi hash). Doar la prima
+# pornire REALA (users.json absent) — un fisier corupt nu trebuie suprascris de migrare.
+if users.setup_permis() and settings.get("web_password"):
     users.save([{"user": "admin", "hash": settings.get("web_password"), "role": "admin"}])
     logare.info("[server] parola veche din Setari migrata in contul 'admin'")
 
@@ -186,10 +187,14 @@ def guard():
     if request.method == "GET" and request.headers.get("Sec-Fetch-Site") == "cross-site" \
             and any(p == x or p.startswith(x + "/") for x in GET_CU_EFECT):
         return jsonify({"error": "cerere din alt site"}), 403
-    if not users.load():     # prima pornire: totul duce la crearea contului admin
+    if users.setup_permis():     # prima pornire REALA (users.json absent): totul duce la /setup
         if p.startswith("/api/"):
             return jsonify({"error": t("creează întâi contul de administrator")}), 401
         return redirect("/setup")
+    if not users.load():         # fisier prezent dar corupt/gol: blocam, NU deschidem /setup
+        if p.startswith("/api/"):
+            return jsonify({"error": t("conturile nu pot fi citite pe server")}), 503
+        return t("Conturile nu pot fi citite pe server — verifică data/users.json"), 503
     u = current_user()
     if not u:
         # cookie-ul vechi/revocat se arunca — dar nu si pre-biletul 2FA: utilizatorul e
