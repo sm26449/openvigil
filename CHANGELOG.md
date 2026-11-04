@@ -5,6 +5,14 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 
 ## [Nepublicat]
 
+## [2.0.1] — 2026-11-04
+
+### Reparat
+- Imaginea Docker nu includea driverul PostgreSQL: `psycopg` / `psycopg-binary` / `psycopg-pool`
+  și `pgvector` erau în `requirements.txt` și `requirements-ci.txt` (deci CI-ul trecea), dar
+  lipseau din `requirements.lock`, din care se construiește imaginea (`--no-deps --require-hashes`).
+  Adăugate cu hash-uri; fără ele, serviciile pe 2.0.0 nu porneau (`No module named 'psycopg_pool'`).
+
 ## [2.0.0] — 2026-11-04
 
 ### Adăugat
