@@ -7,6 +7,21 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app"))
 import jurnal  # noqa: E402
 import marcaje  # noqa: E402
+import db  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _pg():
+    """Din 2.0.0 marcajele stau in PostgreSQL (baza partajata intre teste): sare daca PG
+    nu e disponibil, altfel goleste tabelul inainte de fiecare test."""
+    try:
+        db.ping()
+    except Exception as e:
+        pytest.skip(f"PostgreSQL indisponibil: {e}")
+    marcaje._init()
+    with db.conn() as c:
+        c.execute("TRUNCATE marcaje")
+    yield
 
 
 def test_create_moment_si_get():
@@ -64,11 +79,14 @@ def test_update_si_delete():
     assert marcaje.lista() == []
 
 
-def test_sta_in_aceeasi_baza_cu_jurnalul():
+def test_marcajele_stau_in_postgres_nu_in_jurnal():
+    """Din 2.0.0 marcajele sunt in PostgreSQL, nu mai impart baza SQLite a jurnalului."""
     marcaje.create(5, "2026-10-23 10:00:00")
     jurnal.insert({"t": "2026-10-23 10:00:00", "tip": "detectie", "cam": 5})
-    c = jurnal.conexiune()
-    tabele = {r[0] for r in c.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-    assert {"events", "marcaje"} <= tabele
-    jurnal.reset()
-    assert len(marcaje.lista()) == 1 and len(jurnal.query()) == 1   # persistate
+    with db.conn() as c:
+        assert c.execute("SELECT COUNT(*) FROM marcaje").fetchone()[0] == 1
+    # baza SQLite a jurnalului NU mai are tabelul marcaje
+    jc = jurnal.conexiune()
+    tabele = {r[0] for r in jc.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    assert "events" in tabele and "marcaje" not in tabele
+    assert len(marcaje.lista()) == 1 and len(jurnal.query()) == 1   # fiecare in baza lui

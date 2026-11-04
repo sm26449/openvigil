@@ -10,6 +10,9 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   (`pgvector/pgvector:pg16`, doar pe `127.0.0.1`, datadir sub `DATA_DIR`), modulul `app/db.py`
   (pool de conexiuni, `conn()`/`tx()`, `aplica()` în tiparul lui `schema.py`) și un Postgres în
   CI cu test de fum. Nu mută încă niciun tabel — plan complet în `docs/ro/postgres-migrare.md`.
+- PostgreSQL, Faza 1: `push` (abonamente), `jobs` (coada) și `marcaje` (bookmarks) mutate din
+  SQLite pe PostgreSQL prin `app/db.py` (nu mai împart baza `events.db` cu jurnalul). Script de
+  migrare a datelor one-shot (`scripts/migrare_pg.py`, idempotent) și teste pe Postgres.
 
 ### Reparat
 - Aplicarea unui model antrenat local din interfață (`/api/train/apply`) dădea 500: decoratorul

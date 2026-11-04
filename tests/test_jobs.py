@@ -8,12 +8,22 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app"))
 import jobs  # noqa: E402
+import db  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
 def _lucratori(tmp_path, monkeypatch):
+    # din 2.0.0 joburile stau in PostgreSQL (baza partajata): sare daca PG lipseste,
+    # altfel goleste tabelul inainte de fiecare test ca sa fie izolat
+    try:
+        db.ping()
+    except Exception as e:
+        pytest.skip(f"PostgreSQL indisponibil: {e}")
     monkeypatch.setattr(jobs, "DIR", str(tmp_path / "joburi"))
     jobs._handlers.clear()
+    jobs._init()
+    with db.conn() as c:
+        c.execute("TRUNCATE jobs")
     jobs.start(workers=2)
     yield
     jobs.stop()

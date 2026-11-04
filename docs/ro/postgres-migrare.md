@@ -110,8 +110,10 @@ testat.
 - **Faza 0 — fundația.** Serviciul `db` în compose; dependențe (`psycopg`, `pgvector`); CI capătă
   un serviciu Postgres; `app/db.py` + `db.aplica` PG; test de fum pe conexiune. **Niciun tabel
   mutat încă** — zero schimbare de comportament.
-- **Faza 1 — ușoare.** `push`, `jobs`, `marcaje` → PG (+ scripturi de migrare date + teste de
-  paritate).
+- **Faza 1 — ușoare. ✅ FĂCUTĂ.** `push`, `jobs`, `marcaje` → PG prin `app/db.py` (nu mai împart
+  `events.db` cu jurnalul); `scripts/migrare_pg.py` (migrare date one-shot, idempotentă) + teste pe
+  Postgres. `jobs` a căpătat coloana `seq` (IDENTITY) în locul lui `rowid` pentru ordine; în `push`
+  coloana `user` apare citată `"user"` (cuvânt rezervat în PostgreSQL).
 - **Faza 2 — `jurnal`/events.** Suprafața cea mai mare de cititori (`routes_media`, `rules`,
   `analiza`, `ask`, `verificare`…) — cu grijă, cu paritate pe interogări.
 - **Faza 3 — `segmente`/lanț de custodie.** Scris de nvr-record; migrat cu **re-verificarea

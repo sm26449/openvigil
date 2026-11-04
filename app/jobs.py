@@ -7,7 +7,7 @@ minute, chenarele pe clip pana la 45 s + YOLO pe CPU, adaugarea unei camere ~40 
 exporturi plus o camera moarta si interfata ingheta pentru toti. Acum ruta raspunde
 imediat cu 202 + jobul, interfata intreaba /api/jobs/<id> si descarca fisierul la final.
 
-Jobul e un rand in data/events.db (tabelul `jobs`, conexiunea din jurnal.py): tip, stare
+Din 2.0.0 jobul e un rand in PostgreSQL (tabelul `jobs`, vezi app/db.py): tip, stare
 (asteapta / ruleaza / gata / eroare / anulat), progres 0-100, mesaj, parametri, rezultat,
 fisierul produs (data/tmp/joburi/, sters dupa FILE_TTL). Un job identic (acelasi tip +
 parametri) aflat deja in coada se intoarce in loc sa se dubleze — dublu-click-ul pe
@@ -28,8 +28,7 @@ import time
 import traceback
 import uuid
 
-import jurnal
-import schema
+import db
 import logare
 from i18n import t
 
@@ -40,9 +39,12 @@ ROW_TTL = 7 * 86400      # istoricul joburilor se tine o saptamana
 WORKERS = 3              # cate joburi ruleaza simultan (ffmpeg + NVENC: 3 incap lejer)
 FINALE = ("gata", "eroare", "anulat")
 
+# `seq` (IDENTITY) tine ordinea de inserare — inlocuieste `rowid`-ul din SQLite la departajarea
+# joburilor create in aceeasi secunda. Timpii sunt epoch pe BIGINT (nu INTEGER: 2038).
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS jobs (
     id          TEXT    PRIMARY KEY,
+    seq         BIGINT  GENERATED ALWAYS AS IDENTITY,
     tip         TEXT    NOT NULL,
     stare       TEXT    NOT NULL DEFAULT 'asteapta',
     progres     INTEGER NOT NULL DEFAULT 0,
@@ -54,9 +56,9 @@ CREATE TABLE IF NOT EXISTS jobs (
     mime        TEXT,
     creat_de    TEXT,
     cam         INTEGER,
-    creat       INTEGER NOT NULL,
-    pornit      INTEGER,
-    terminat    INTEGER
+    creat       BIGINT  NOT NULL,
+    pornit      BIGINT,
+    terminat    BIGINT
 );
 CREATE INDEX IF NOT EXISTS jobs_creat ON jobs(creat);
 CREATE INDEX IF NOT EXISTS jobs_stare ON jobs(stare);
@@ -69,7 +71,8 @@ _q = queue.Queue()
 _active = {}             # id -> Job (ruleaza acum; pentru anulare)
 _threads = []
 _stop = threading.Event()
-_gata = None
+_lock = threading.Lock()  # serializeaza verificarea-de-duplicat + insert din submit
+_gata = False
 
 
 MAX_ACTIVE_PER_USER = 4   # joburi grele (media) in asteptare/rulare pe acelasi cont
@@ -92,14 +95,11 @@ def register(tip, fn):
 MIGRARI = {}      # migrari viitoare: {2: "ALTER TABLE ..."}
 
 
-def _db():
+def _init():
     global _gata
-    c = jurnal.conexiune()
-    if _gata is not c:
-        with jurnal.lock:
-            schema.aplica(c, "jobs", SCHEMA, MIGRARI)
-        _gata = c
-    return c
+    if not _gata:
+        db.aplica("jobs", SCHEMA, MIGRARI)
+        _gata = True
 
 
 def _dict(row):
@@ -118,10 +118,10 @@ def _dict(row):
 
 
 def _set(jid, **campuri):
-    c = _db()
-    sets = ", ".join(f"{k} = ?" for k in campuri)
-    with jurnal.lock:
-        c.execute(f"UPDATE jobs SET {sets} WHERE id = ?", (*campuri.values(), jid))
+    _init()
+    sets = ", ".join(f"{k} = %s" for k in campuri)
+    with db.conn() as c:
+        c.execute(f"UPDATE jobs SET {sets} WHERE id = %s", (*campuri.values(), jid))
 
 
 class Job:
@@ -161,59 +161,62 @@ class Job:
 def submit(tip, parametri=None, who=None, cam=None, secret=None):
     """Pune un job in coada (sau intoarce cel identic aflat deja in asteptare/rulare).
     Intoarce randul jobului (dict), cu stare 'asteapta'."""
+    _init()
     if tip not in _handlers:
         raise ValueError(f"tip de job necunoscut: {tip}")
     parametri = parametri or {}
     pj = json.dumps(parametri, sort_keys=True, ensure_ascii=False)
-    c = _db()
-    with jurnal.lock:
-        row = c.execute(f"SELECT {','.join(COLS)} FROM jobs WHERE tip = ? AND parametri = ? "
-                        "AND stare IN ('asteapta', 'ruleaza') LIMIT 1", (tip, pj)).fetchone()
-        if row:
-            return _dict(row)
-        if who and tip in GRELE:
-            n = c.execute("SELECT COUNT(*) FROM jobs WHERE creat_de = ? AND stare IN ('asteapta', 'ruleaza') "
-                          "AND tip IN (%s)" % ",".join("?" * len(GRELE)), (who, *GRELE)).fetchone()[0]
-            if n >= MAX_ACTIVE_PER_USER:
-                raise PreaMulte(f"{n} joburi active")
-        jid = uuid.uuid4().hex[:12]
-        c.execute("INSERT INTO jobs (id, tip, parametri, creat_de, cam, creat) "
-                  "VALUES (?,?,?,?,?,?)", (jid, tip, pj, who, cam, int(time.time())))
+    with _lock:
+        with db.conn() as c:
+            row = c.execute(f"SELECT {','.join(COLS)} FROM jobs WHERE tip = %s AND parametri = %s "
+                            "AND stare IN ('asteapta', 'ruleaza') LIMIT 1", (tip, pj)).fetchone()
+            if row:
+                return _dict(row)
+            if who and tip in GRELE:
+                ph = ",".join(["%s"] * len(GRELE))
+                n = c.execute(f"SELECT COUNT(*) FROM jobs WHERE creat_de = %s "
+                              f"AND stare IN ('asteapta', 'ruleaza') AND tip IN ({ph})",
+                              (who, *GRELE)).fetchone()[0]
+                if n >= MAX_ACTIVE_PER_USER:
+                    raise PreaMulte(f"{n} joburi active")
+            jid = uuid.uuid4().hex[:12]
+            c.execute("INSERT INTO jobs (id, tip, parametri, creat_de, cam, creat) "
+                      "VALUES (%s,%s,%s,%s,%s,%s)", (jid, tip, pj, who, cam, int(time.time())))
     _q.put(Job(jid, tip, parametri, who, secret))
     return get(jid)
 
 
 def get(jid):
-    c = _db()
-    with jurnal.lock:
-        row = c.execute(f"SELECT {','.join(COLS)} FROM jobs WHERE id = ?", (jid,)).fetchone()
+    _init()
+    with db.conn() as c:
+        row = c.execute(f"SELECT {','.join(COLS)} FROM jobs WHERE id = %s", (jid,)).fetchone()
     return _dict(row) if row else None
 
 
 def lista(who=None, limit=50, doar_active=False):
     """Cele mai noi joburi (ale unui utilizator, sau toate cand who=None)."""
+    _init()
     cond, args = [], []
     if who is not None:
-        cond.append("creat_de = ?")
+        cond.append("creat_de = %s")
         args.append(who)
     if doar_active:
         cond.append("stare IN ('asteapta', 'ruleaza')")
     sql = f"SELECT {','.join(COLS)} FROM jobs"
     if cond:
         sql += " WHERE " + " AND ".join(cond)
-    sql += " ORDER BY creat DESC, rowid DESC LIMIT ?"
+    sql += " ORDER BY creat DESC, seq DESC LIMIT %s"
     args.append(max(1, int(limit)))
-    c = _db()
-    with jurnal.lock:
+    with db.conn() as c:
         rows = c.execute(sql, args).fetchall()
     return [_dict(r) for r in rows]
 
 
 def cale_fisier(jid):
     """(cale, nume, mime) ale fisierului produs, sau None."""
-    c = _db()
-    with jurnal.lock:
-        row = c.execute("SELECT fisier, nume_fisier, mime FROM jobs WHERE id = ? "
+    _init()
+    with db.conn() as c:
+        row = c.execute("SELECT fisier, nume_fisier, mime FROM jobs WHERE id = %s "
                         "AND stare = 'gata'", (jid,)).fetchone()
     if not row or not row[0] or not os.path.exists(row[0]):
         return None
@@ -274,12 +277,12 @@ def _lucrator():
 def curata(acum=None):
     """Sterge fisierele joburilor mai vechi de FILE_TTL si randurile mai vechi de ROW_TTL.
     Intoarce (fisiere_sterse, randuri_sterse)."""
+    _init()
     acum = acum or time.time()
-    c = _db()
     fisiere = 0
-    with jurnal.lock:
+    with db.conn() as c:
         rows = c.execute("SELECT id, fisier FROM jobs WHERE fisier IS NOT NULL "
-                         "AND terminat IS NOT NULL AND terminat < ?",
+                         "AND terminat IS NOT NULL AND terminat < %s",
                          (int(acum - FILE_TTL),)).fetchall()
         for jid, f in rows:
             try:
@@ -287,8 +290,8 @@ def curata(acum=None):
                 fisiere += 1
             except OSError:
                 pass
-            c.execute("UPDATE jobs SET fisier = NULL WHERE id = ?", (jid,))
-        randuri = c.execute("DELETE FROM jobs WHERE creat < ? AND stare IN ('gata','eroare','anulat')",
+            c.execute("UPDATE jobs SET fisier = NULL WHERE id = %s", (jid,))
+        randuri = c.execute("DELETE FROM jobs WHERE creat < %s AND stare IN ('gata','eroare','anulat')",
                             (int(acum - ROW_TTL),)).rowcount
     # orfane (job sters, fisier ramas)
     try:
@@ -326,10 +329,10 @@ def start(workers=WORKERS):
     global _threads
     if _threads:
         return
+    _init()
     _stop.clear()
-    c = _db()
-    with jurnal.lock:
-        c.execute("UPDATE jobs SET stare = 'eroare', terminat = ?, mesaj = ? "
+    with db.conn() as c:
+        c.execute("UPDATE jobs SET stare = 'eroare', terminat = %s, mesaj = %s "
                   "WHERE stare IN ('asteapta', 'ruleaza')",
                   (int(time.time()), t("serviciul a repornit inainte sa termine")))
     os.makedirs(DIR, exist_ok=True)

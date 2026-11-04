@@ -8,6 +8,7 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app"))
 import push  # noqa: E402
 import users  # noqa: E402
+import db  # noqa: E402
 
 SUB = {"endpoint": "https://push.example/abc", "keys": {"p256dh": "P", "auth": "A"}}
 SUB2 = {"endpoint": "https://push.example/def", "keys": {"p256dh": "P", "auth": "A"}}
@@ -15,7 +16,16 @@ SUB2 = {"endpoint": "https://push.example/def", "keys": {"p256dh": "P", "auth": 
 
 @pytest.fixture(autouse=True)
 def _izolare(tmp_path, monkeypatch):
+    # din 2.0.0 abonamentele stau in PostgreSQL (baza partajata): sare daca PG lipseste,
+    # altfel goleste tabelul inainte de fiecare test
+    try:
+        db.ping()
+    except Exception as e:
+        pytest.skip(f"PostgreSQL indisponibil: {e}")
     push.reset()
+    push._init()
+    with db.conn() as c:
+        c.execute("TRUNCATE push_abonamente")
     monkeypatch.setattr(push, "VAPID_FILE", str(tmp_path / "vapid.json"))
     monkeypatch.setattr(users, "PATH", str(tmp_path / "users.json"))
     users.upsert("admin", password="parola1", role="admin")
