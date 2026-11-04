@@ -6,15 +6,22 @@ import time
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app"))
+import db  # noqa: E402
 import lant  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
-def _izolare(tmp_path, monkeypatch):
-    lant.reset()
-    monkeypatch.setattr(lant, "DB_FILE", str(tmp_path / "segmente.db"))
+def _izolare():
+    # din Faza 3 lantul e pe PostgreSQL (baza partajata): sare daca PG lipseste, altfel
+    # goleste tabelul `segmente` inainte de fiecare test
+    try:
+        db.ping()
+    except Exception as e:
+        pytest.skip(f"PostgreSQL indisponibil: {e}")
+    lant._init()
+    with db.conn() as c:
+        c.execute("TRUNCATE segmente")
     yield
-    lant.reset()
 
 
 def _seg(tmp_path, cam, epoch, continut=b"video"):
@@ -74,12 +81,14 @@ def test_caile_absolute_vechi_se_rezolva_in_radacina_noua(tmp_path, monkeypatch)
     f = rec / "2026-10-25_18-45-08Z.mp4"
     f.write_bytes(b"x" * 100)
     monkeypatch.setattr(lant, "ROOT", str(tmp_path / "radacina"))
-    lant._c().execute("INSERT INTO segmente(cam, nume, epoch, cale, octeti, sha256, calculat) "
-                      "VALUES(1, ?, 1, ?, 100, ?, 1)",
-                      (f.name, "/alta/gazda/data/recordings/cam1/" + f.name, lant.hash_fisier(str(f))))
+    with db.conn() as c:
+        c.execute("INSERT INTO segmente(cam, nume, epoch, cale, octeti, sha256, calculat) "
+                  "VALUES(1, %s, 1, %s, 100, %s, 1)",
+                  (f.name, "/alta/gazda/data/recordings/cam1/" + f.name, lant.hash_fisier(str(f))))
     assert lant.get(1, f.name)["cale"] == str(f)
     assert lant.verifica(1, f.name)["ok"] is True
     # ce se scrie de acum e relativ la radacina
     lant.inregistreaza(1, 2, str(f))
-    rand = lant._c().execute("SELECT cale FROM segmente WHERE cam=1 AND nume=?", (f.name,)).fetchone()
+    with db.conn() as c:
+        rand = c.execute("SELECT cale FROM segmente WHERE cam=1 AND nume=%s", (f.name,)).fetchone()
     assert rand[0] == "data/recordings/cam1/" + f.name

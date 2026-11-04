@@ -7,11 +7,12 @@ instalarii (data/push_vapid.json, generata o data) si il criptam pentru abonat. 
 trece in clar prin Google/Mozilla/Apple, si nu avem nevoie de niciun cont acolo.
 Cerinte: pagina servita pe HTTPS (sau localhost) si permisiunea de notificari.
 
-Abonamentele stau in tabelul `push_abonamente` din baza jurnalului (jurnal.conexiune()),
-cu utilizatorul si nivelul ales (critic / atentie). La trimitere, un eveniment ajunge doar
-la abonatii care AU VOIE sa vada camera (users.allowed_ids), exact ca in interfata.
-Un endpoint care raspunde 404/410 (abonament revocat de browser) se sterge singur.
-Telegram ramane canalul de rezerva: nu depinde de niciun telefon anume.
+Din 2.0.0 abonamentele stau in PostgreSQL (vezi app/db.py), tabelul `push_abonamente`, cu
+utilizatorul si nivelul ales (critic / atentie). ATENTIE: coloana `user` e cuvant rezervat
+in PostgreSQL (`SELECT user` ar da CURRENT_USER), deci apare citata `"user"` in tot SQL-ul.
+La trimitere, un eveniment ajunge doar la abonatii care AU VOIE sa vada camera
+(users.allowed_ids), exact ca in interfata. Un endpoint care raspunde 404/410 (abonament
+revocat de browser) se sterge singur. Telegram ramane canalul de rezerva.
 """
 import base64
 import json
@@ -19,7 +20,7 @@ import os
 import threading
 import time
 
-import jurnal
+import db
 import store
 import users
 import logare
@@ -44,10 +45,27 @@ _SEV_RANK = {"info": 0, "atentie": 1, "critic": 2}
 # serverul le seteaza la pornire: lista camerelor (pentru restrictia pe camere si nume)
 camere_fn = lambda: []          # noqa: E731
 _lock = threading.Lock()
-_gata = None
+_gata = False
 _vapid = None
 # lasat deschis pentru teste: inlocuiesc trimiterea reala cu o functie care inregistreaza
 _webpush = None
+
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS push_abonamente (
+    id       BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "user"   TEXT NOT NULL,
+    endpoint TEXT NOT NULL UNIQUE,
+    p256dh   TEXT NOT NULL,
+    auth     TEXT NOT NULL,
+    nivel    TEXT NOT NULL DEFAULT 'critic',
+    agent    TEXT,
+    creat    DOUBLE PRECISION,
+    ultima   DOUBLE PRECISION,
+    erori    INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS push_user ON push_abonamente("user");
+"""
+MIGRARI = {}
 
 
 # ---- cheile VAPID ----
@@ -90,18 +108,11 @@ def cheie_publica():
 
 
 # ---- abonamentele ----
-def _c():
+def _init():
     global _gata
-    c = jurnal.conexiune()
-    if _gata is not c:
-        with jurnal.lock:
-            c.execute("""CREATE TABLE IF NOT EXISTS push_abonamente(
-                id INTEGER PRIMARY KEY, user TEXT NOT NULL, endpoint TEXT NOT NULL UNIQUE,
-                p256dh TEXT NOT NULL, auth TEXT NOT NULL, nivel TEXT NOT NULL DEFAULT 'critic',
-                agent TEXT, creat REAL, ultima REAL, erori INTEGER NOT NULL DEFAULT 0)""")
-            c.execute("CREATE INDEX IF NOT EXISTS push_user ON push_abonamente(user)")
-        _gata = c
-    return c
+    if not _gata:
+        db.aplica("push", SCHEMA, MIGRARI)
+        _gata = True
 
 
 def _rand(r):
@@ -121,48 +132,48 @@ def aboneaza(user, abonament, nivel="critic", agent=""):
     if not ep.startswith("https://"):
         raise ValueError(t("endpoint-ul trebuie sa fie https"))
     nivel = nivel if nivel in NIVELURI else "critic"
-    c = _c()
-    with jurnal.lock:
-        c.execute("""INSERT INTO push_abonamente(user, endpoint, p256dh, auth, nivel, agent, creat)
-                     VALUES(?,?,?,?,?,?,?)
-                     ON CONFLICT(endpoint) DO UPDATE SET user=excluded.user,
-                       p256dh=excluded.p256dh, auth=excluded.auth, nivel=excluded.nivel,
-                       agent=excluded.agent, erori=0""",
+    _init()
+    with db.conn() as c:
+        c.execute("""INSERT INTO push_abonamente("user", endpoint, p256dh, auth, nivel, agent, creat)
+                     VALUES(%s,%s,%s,%s,%s,%s,%s)
+                     ON CONFLICT(endpoint) DO UPDATE SET "user"=EXCLUDED."user",
+                       p256dh=EXCLUDED.p256dh, auth=EXCLUDED.auth, nivel=EXCLUDED.nivel,
+                       agent=EXCLUDED.agent, erori=0""",
                   (user, ep, str(keys["p256dh"])[:200], str(keys["auth"])[:100], nivel,
                    (agent or "")[:200], time.time()))
-        r = c.execute("SELECT id, user, endpoint, nivel, agent, creat, ultima, erori "
-                      "FROM push_abonamente WHERE endpoint=?", (ep,)).fetchone()
+        r = c.execute('SELECT id, "user", endpoint, nivel, agent, creat, ultima, erori '
+                      "FROM push_abonamente WHERE endpoint=%s", (ep,)).fetchone()
     return _rand(r)
 
 
 def dezaboneaza(user, endpoint, admin=False):
     """Sterge abonamentul; un utilizator doar pe ale lui (adminul pe oricare)."""
-    c = _c()
-    with jurnal.lock:
+    _init()
+    with db.conn() as c:
         if admin:
-            cur = c.execute("DELETE FROM push_abonamente WHERE endpoint=?", (endpoint,))
+            cur = c.execute("DELETE FROM push_abonamente WHERE endpoint=%s", (endpoint,))
         else:
-            cur = c.execute("DELETE FROM push_abonamente WHERE endpoint=? AND user=?",
+            cur = c.execute('DELETE FROM push_abonamente WHERE endpoint=%s AND "user"=%s',
                             (endpoint, user))
     return cur.rowcount > 0
 
 
 def lista(user=None):
-    c = _c()
-    with jurnal.lock:
+    _init()
+    with db.conn() as c:
         if user is None:
-            rows = c.execute("SELECT id, user, endpoint, nivel, agent, creat, ultima, erori "
+            rows = c.execute('SELECT id, "user", endpoint, nivel, agent, creat, ultima, erori '
                              "FROM push_abonamente ORDER BY creat").fetchall()
         else:
-            rows = c.execute("SELECT id, user, endpoint, nivel, agent, creat, ultima, erori "
-                             "FROM push_abonamente WHERE user=? ORDER BY creat", (user,)).fetchall()
+            rows = c.execute('SELECT id, "user", endpoint, nivel, agent, creat, ultima, erori '
+                             'FROM push_abonamente WHERE "user"=%s ORDER BY creat', (user,)).fetchall()
     return [_rand(r) for r in rows]
 
 
 def _toate():
-    c = _c()
-    with jurnal.lock:
-        return c.execute("SELECT id, user, endpoint, nivel, p256dh, auth FROM push_abonamente").fetchall()
+    _init()
+    with db.conn() as c:
+        return c.execute('SELECT id, "user", endpoint, nivel, p256dh, auth FROM push_abonamente').fetchall()
 
 
 # ---- trimiterea ----
@@ -179,18 +190,16 @@ def _trimite_unul(rid, endpoint, p256dh, auth, payload, ttl):
         fn(subscription_info={"endpoint": endpoint, "keys": {"p256dh": p256dh, "auth": auth}},
            data=json.dumps(payload, ensure_ascii=False), vapid_private_key=v["private"],
            vapid_claims={"sub": "mailto:nvr@localhost"}, ttl=ttl, timeout=10)
-        c = _c()
-        with jurnal.lock:
-            c.execute("UPDATE push_abonamente SET ultima=?, erori=0 WHERE id=?", (time.time(), rid))
+        with db.conn() as c:
+            c.execute("UPDATE push_abonamente SET ultima=%s, erori=0 WHERE id=%s", (time.time(), rid))
         return True
     except Exception as e:
         cod = getattr(getattr(e, "response", None), "status_code", None)
-        c = _c()
-        with jurnal.lock:
+        with db.conn() as c:
             if cod in (404, 410):          # abonament revocat de browser
-                c.execute("DELETE FROM push_abonamente WHERE id=?", (rid,))
+                c.execute("DELETE FROM push_abonamente WHERE id=%s", (rid,))
             else:
-                c.execute("UPDATE push_abonamente SET erori=erori+1 WHERE id=?", (rid,))
+                c.execute("UPDATE push_abonamente SET erori=erori+1 WHERE id=%s", (rid,))
         logare.info(f"[push] {endpoint[:40]}…: {cod or str(e)[:80]}")
         return False
 
@@ -268,7 +277,7 @@ def test(user):
 
 
 def reset():
-    """Pentru teste: uita conexiunea si cheile."""
+    """Pentru teste: uita schema verificata si cheile."""
     global _gata, _vapid
-    _gata = None
+    _gata = False
     _vapid = None

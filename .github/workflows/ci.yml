@@ -18,6 +18,25 @@ jobs:
     timeout-minutes: 20
     env:
       TZ: Europe/Bucharest
+      PG_HOST: 127.0.0.1
+      PG_PORT: "5433"
+      PG_DB: openvigil
+      PG_USER: openvigil
+      PG_PASS: openvigil
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: openvigil
+          POSTGRES_USER: openvigil
+          POSTGRES_PASSWORD: openvigil
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U openvigil"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v7
 

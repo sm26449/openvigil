@@ -36,7 +36,9 @@ FISIERE = ["cameras.json", "settings.json", "detect.json", "users.json", "rules.
            "secret_key", "push_vapid.json", "vmd_backup.json", "stream_backup.json"]
 DIRECTOARE = ["plates", "harta", "cases"]     # NU semantic/ (indexul SigLIP, ~2 GB, se reface)
 FETE = ["faces/persons", "faces/embeddings.json", "faces/log.jsonl", "faces/unknown"]
-BAZE = ["events.db", "segmente.db"]          # prin API-ul de backup SQLite (copie consistenta)
+# Baza de date (events, segmente, jobs, push, marcaje, vectori) e in PostgreSQL din 2.0.0:
+# intra in arhiva ca pg/<tabel>.csv — dump logic prin COPY, fara binare externe (vezi
+# _dump_pg_in_tar); refacerea cu incarca_pg().
 _lock = threading.Lock()
 
 
@@ -69,14 +71,65 @@ def backup_dir():
     return (settings.get("backup_dir") or "").strip() or os.path.join(DATA, "backup")
 
 
-def _copie_sqlite(cale, dest):
-    import sqlite3
-    src = sqlite3.connect(cale, timeout=15)
-    dst = sqlite3.connect(dest)
-    with dst:
-        src.backup(dst)
-    src.close()
-    dst.close()
+def _coloane_ne_identity(c, tabel):
+    """Coloanele unui tabel, fara cele IDENTITY (la refacere, identity-ul se regenereaza)."""
+    return [r[0] for r in c.execute(
+        "SELECT column_name FROM information_schema.columns "
+        "WHERE table_schema='public' AND table_name=%s AND is_identity='NO' "
+        "ORDER BY ordinal_position", (tabel,)).fetchall()]
+
+
+def _dump_pg_in_tar(tar):
+    """Dump logic al bazei PostgreSQL in arhiva: pg/<tabel>.csv (COPY ... CSV HEADER, fara
+    coloanele IDENTITY, fara binare externe gen pg_dump). Intoarce intrarile adaugate."""
+    import db
+    adaugate = []
+    with db.conn() as c:
+        tabele = sorted(r[0] for r in c.execute(
+            "SELECT tablename FROM pg_tables WHERE schemaname='public'").fetchall())
+        for tabel in tabele:
+            cols = _coloane_ne_identity(c, tabel)
+            if not cols:
+                continue
+            lista = ", ".join(f'"{x}"' for x in cols)
+            date = bytearray()
+            with c.cursor() as cur, cur.copy(
+                    f'COPY "{tabel}" ({lista}) TO STDOUT (FORMAT csv, HEADER)') as cp:
+                for chunk in cp:
+                    date += chunk
+            arc = f"pg/{tabel}.csv"
+            info = tarfile.TarInfo(name=arc)
+            info.size = len(date)
+            info.mtime = int(time.time())
+            tar.addfile(info, io.BytesIO(bytes(date)))
+            adaugate.append(arc)
+    return adaugate
+
+
+def incarca_pg(dir_sursa):
+    """Incarca inapoi in PostgreSQL CSV-urile pg/<tabel>.csv dintr-un director extras de
+    restaureaza() (refacere / cutover): TRUNCATE + COPY FROM, pe coloanele din antetul fiecarui
+    fisier. Intoarce {tabel: nr_randuri}."""
+    import db
+    d = os.path.join(dir_sursa, "pg")
+    if not os.path.isdir(d):
+        d = dir_sursa
+    rez = {}
+    for fn in sorted(os.listdir(d)):
+        if not fn.endswith(".csv"):
+            continue
+        tabel = fn[:-4]
+        with open(os.path.join(d, fn), "rb") as f:
+            date = f.read()
+        antet = date.split(b"\n", 1)[0].decode()
+        lista = ", ".join(f'"{x.strip()}"' for x in antet.split(","))
+        with db.conn() as c:
+            c.execute(f'TRUNCATE "{tabel}"')
+            with c.cursor() as cur, cur.copy(
+                    f'COPY "{tabel}" ({lista}) FROM STDIN (FORMAT csv, HEADER)') as cp:
+                cp.write(date)
+            rez[tabel] = c.execute(f'SELECT count(*) FROM "{tabel}"').fetchone()[0]
+    return rez
 
 
 def _adauga(tar, cale_abs, nume_arh):
@@ -102,28 +155,18 @@ def creeaza(dest_dir=None, fete=None, data_dir=None, progres=None):
     nume = f"{PREFIX}{stamp}.tar.gz.enc"
     buf = io.BytesIO()
     continut = []
-    tmpdb = []
     with tarfile.open(fileobj=buf, mode="w:gz") as tar:
         for rel in FISIERE + DIRECTOARE + (FETE if fete else []):
             p = os.path.join(data_dir, rel)
             if os.path.exists(p):
                 _adauga(tar, p, rel)
                 continut.append(rel)
-        for rel in BAZE:
-            p = os.path.join(data_dir, rel)
-            if os.path.exists(p):
-                tmp = os.path.join(dest_dir, f".{rel}.{stamp}.tmp")
-                _copie_sqlite(p, tmp)
-                tmpdb.append(tmp)
-                tar.add(tmp, arcname=rel)
-                continut.append(rel)
+        try:
+            continut += _dump_pg_in_tar(tar)
+        except Exception as e:
+            logare.info(f"[backup] dump PostgreSQL: {str(e)[:80]}")
         if progres:
             progres(40, t("arhiva construita"))
-    for tmpf in tmpdb:
-        try:
-            os.remove(tmpf)
-        except OSError:
-            pass
     clar = buf.getvalue()
     sha = hashlib.sha256(clar).hexdigest()
     cript = Fernet(cheie().encode()).encrypt(clar)

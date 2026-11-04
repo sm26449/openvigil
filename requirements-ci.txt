@@ -10,4 +10,7 @@ pillow==12.3.0
 paho-mqtt==2.1.0
 pywebpush==2.5.0
 segno==1.6.6
+# PostgreSQL + pgvector: testul de fum app/db.py ruleaza pe serviciul Postgres din CI
+psycopg[binary,pool]==3.2.3
+pgvector==0.3.6
 pytest==9.1.1

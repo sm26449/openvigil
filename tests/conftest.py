@@ -1,8 +1,11 @@
-"""Fixture comun: jurnalul de evenimente (SQLite) merge intr-un director temporar.
+"""Fixture comun.
 
-Fara asta, orice test care emite un eveniment ar scrie in data/events.db-ul REAL — si,
-rulat ca root, l-ar lasa pe root (serviciul ruleaza ca alt utilizator). Tot aici redirectam
-events.jsonl, ca migrarea sa nu atinga niciodata fisierul adevarat din teste.
+Jurnalul de evenimente e pe PostgreSQL din 2.0.0: fara un server Postgres (CI il porneste,
+vezi .github/workflows/ci.yml), testele se SAR — aplicatia oricum nu ruleaza fara baza. Cand
+PG e disponibil, golim tabelul `events` inainte de fiecare test ca sa fie izolat (baza e
+partajata intre teste). Auditul (JSONL) ramane pe fisier si merge intr-un director temporar,
+ca testele sa nu atinga niciodata fisierul real. (Lantul de custodie e si el pe PostgreSQL din
+Faza 3, cu propria fixtura in test_lant/test_arhiva.)
 """
 import os
 import sys
@@ -11,17 +14,23 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app"))
 import audit  # noqa: E402
+import db  # noqa: E402
 import jurnal  # noqa: E402
-import lant  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
-def _jurnal_in_tmp(tmp_path, monkeypatch):
-    jurnal.reset()
-    monkeypatch.setattr(jurnal, "DB_FILE", str(tmp_path / "events.db"))
-    monkeypatch.setattr(jurnal, "JSONL_FILE", str(tmp_path / "events.jsonl"))
-    # la fel auditul si lantul de custodie: `docker compose run web test` are data/ montat
+def _izolare(tmp_path, monkeypatch):
+    # auditul (JSONL) ramane pe fisier -> director temporar (lantul de custodie e pe PG, cu
+    # propria fixtura in test_lant/test_arhiva)
     monkeypatch.setattr(audit, "FILE", str(tmp_path / "changes.jsonl"))
-    monkeypatch.setattr(lant, "DB_FILE", str(tmp_path / "segmente.db"))
+    # jurnalul e pe PostgreSQL: sare daca nu e disponibil, altfel goleste `events`
+    try:
+        db.ping()
+    except Exception as e:
+        pytest.skip(f"PostgreSQL indisponibil: {e}")
+    jurnal.reset()
+    jurnal.deschide()
+    with db.conn() as c:
+        c.execute("TRUNCATE events")
     yield
     jurnal.reset()

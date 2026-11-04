@@ -1,84 +1,61 @@
 #!/usr/bin/env python3
 """Lantul de custodie al inregistrarilor: SHA-256 la inchiderea fiecarui segment.
 
-Pana acum fisa probatorie calcula hash-ul pe o regenerare a clipului; daca segmentele de
-pe disc erau atinse intre timp, nimeni n-ar fi stiut. Acum serviciul de inregistrare
-hash-uieste fiecare segment imediat ce ffmpeg l-a inchis (un minut dupa ce a inceput
-urmatorul) si tine amprenta in data/segmente.db: (camera, nume, octeti, sha256, cand).
-Fisa probatorie listeaza segmentele-sursa cu hash-urile lor de la inchidere, iar
-`verifica()` recalculeaza oricand si spune daca fisierul mai e cel de atunci. Mutarea in
-arhiva (record.py) se verifica tot prin hash: copia trebuie sa aiba aceeasi amprenta.
+Serviciul de inregistrare hash-uieste fiecare segment imediat ce ffmpeg l-a inchis (un minut
+dupa ce a inceput urmatorul) si tine amprenta in PostgreSQL (tabelul `segmente`):
+(camera, nume, octeti, sha256, cand). Fisa probatorie listeaza segmentele-sursa cu hash-urile
+lor de la inchidere, iar `verifica()` recalculeaza oricand si spune daca fisierul mai e cel de
+atunci. Mutarea in arhiva (record.py) se verifica tot prin hash: copia trebuie sa aiba aceeasi
+amprenta.
 
-Baza e proprie (nu events.db): scriitorul e nvr-record, cititorul nvr-web — doua procese,
-iar WAL + busy_timeout le impaca; schema se creeaza de oricine deschide primul.
+Din 2.0.0 baza e PostgreSQL (app/db.py): scriitorul e nvr-record, cititorul nvr-web — doua
+procese care impart aceeasi baza (mai curat decat WAL-ul SQLite din doua procese).
 """
 import hashlib
 import os
-import sqlite3
 import threading
 import time
+
+import db
 import logare
-import schema
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_FILE = os.path.join(ROOT, "data", "segmente.db")
 MARGINE = 60            # secunde dupa sfarsitul teoretic al segmentului pana il consideram inchis
 PE_TUR = 30             # cate segmente hash-uim intr-un tur (un tur pe minut; ~150 MB fiecare —
                         # mai mult ar concura cu inregistrarea pe disc)
 INAPOI = 6 * 3600       # restanta: doar segmentele din ultimele 6 ore (cele mai noi primele);
                         # un istoric de 14 zile x 18 camere ar insemna ~10 TB de citit degeaba
-_lock = threading.RLock()
-_conn = None
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS segmente (
     cam      INTEGER NOT NULL,
     nume     TEXT    NOT NULL,
-    epoch    INTEGER NOT NULL,
+    epoch    BIGINT  NOT NULL,
     cale     TEXT    NOT NULL,
-    octeti   INTEGER NOT NULL,
+    octeti   BIGINT  NOT NULL,
     sha256   TEXT    NOT NULL,
-    calculat REAL    NOT NULL,
-    arhivat  REAL,
+    calculat DOUBLE PRECISION NOT NULL,
+    arhivat  DOUBLE PRECISION,
     PRIMARY KEY (cam, nume)
 );
 CREATE INDEX IF NOT EXISTS seg_cam_epoch ON segmente(cam, epoch);
 """
-
-
+COLS = "cam, nume, epoch, cale, octeti, sha256, calculat, arhivat"
 MIGRARI = {}      # migrari viitoare ale tabelei segmente
+_gata = False
 
 
-def _c():
-    global _conn
-    with _lock:
-        if _conn is None:
-            os.makedirs(os.path.dirname(DB_FILE), exist_ok=True)
-            c = sqlite3.connect(DB_FILE, check_same_thread=False, isolation_level=None,
-                                timeout=15)
-            c.execute("PRAGMA journal_mode=WAL")
-            c.execute("PRAGMA synchronous=NORMAL")
-            schema.aplica(c, "lant", SCHEMA, MIGRARI)
-            # caile vechi, absolute (ale altei instalari sau ale gazdei, cand rulam in container),
-            # devin relative la radacina proiectului: data/recordings/camN/nume.mp4
-            c.execute("UPDATE segmente SET cale = substr(cale, instr(cale, '/data/recordings/') + 1) "
-                      "WHERE cale LIKE '/%' AND instr(cale, '/data/recordings/') > 0")
-            for suf in ("", "-wal", "-shm"):
-                try:
-                    os.chmod(DB_FILE + suf, 0o600)
-                except OSError:
-                    pass
-            _conn = c
-        return _conn
+def _init():
+    global _gata
+    if not _gata:
+        db.aplica("lant", SCHEMA, MIGRARI)
+        _gata = True
 
 
 def reset():
-    """Pentru teste."""
-    global _conn
-    with _lock:
-        if _conn is not None:
-            _conn.close()
-        _conn = None
+    """Pentru teste: uita ca schema a fost verificata."""
+    global _gata
+    _gata = False
 
 
 def hash_fisier(cale):
@@ -113,10 +90,16 @@ def inregistreaza(cam, epoch, cale):
     sha = hash_fisier(cale)
     octeti = os.path.getsize(cale)
     nume = os.path.basename(cale)
-    with _lock:
-        _c().execute("INSERT OR REPLACE INTO segmente(cam, nume, epoch, cale, octeti, sha256, calculat, arhivat) "
-                     "VALUES(?,?,?,?,?,?,?,NULL)", (cam, nume, int(epoch), _rel(cale), octeti, sha, time.time()))
-    return {"cam": cam, "nume": nume, "epoch": int(epoch), "cale": os.path.abspath(cale), "octeti": octeti, "sha256": sha}
+    _init()
+    with db.conn() as c:
+        c.execute("INSERT INTO segmente (cam, nume, epoch, cale, octeti, sha256, calculat, arhivat) "
+                  "VALUES (%s,%s,%s,%s,%s,%s,%s,NULL) "
+                  "ON CONFLICT (cam, nume) DO UPDATE SET epoch=EXCLUDED.epoch, cale=EXCLUDED.cale, "
+                  "octeti=EXCLUDED.octeti, sha256=EXCLUDED.sha256, calculat=EXCLUDED.calculat, "
+                  "arhivat=EXCLUDED.arhivat",
+                  (cam, nume, int(epoch), _rel(cale), octeti, sha, time.time()))
+    return {"cam": cam, "nume": nume, "epoch": int(epoch), "cale": os.path.abspath(cale),
+            "octeti": octeti, "sha256": sha}
 
 
 def _rand(r):
@@ -125,42 +108,48 @@ def _rand(r):
 
 
 def get(cam, nume):
-    with _lock:
-        r = _c().execute("SELECT * FROM segmente WHERE cam=? AND nume=?", (cam, nume)).fetchone()
+    _init()
+    with db.conn() as c:
+        r = c.execute(f"SELECT {COLS} FROM segmente WHERE cam=%s AND nume=%s", (cam, nume)).fetchone()
     return _rand(r) if r else None
 
 
 def cauta_hash(sha256):
     """Segmentul cu amprenta data (verificarea publica a probelor), sau None."""
-    r = _c().execute("SELECT * FROM segmente WHERE sha256 = ? ORDER BY calculat DESC LIMIT 1",
-                     (sha256,)).fetchone()
+    _init()
+    with db.conn() as c:
+        r = c.execute(f"SELECT {COLS} FROM segmente WHERE sha256 = %s ORDER BY calculat DESC LIMIT 1",
+                      (sha256,)).fetchone()
     return _rand(r) if r else None
 
 
 def lista(cam, since=None, until=None):
     """Segmentele unei camere (cu hash) in [since, until) epoch, in ordine."""
-    q, p = "SELECT * FROM segmente WHERE cam=?", [cam]
+    q, p = f"SELECT {COLS} FROM segmente WHERE cam=%s", [cam]
     if since is not None:
-        q += " AND epoch + 300 > ?"
+        q += " AND epoch + 300 > %s"
         p.append(int(since))
     if until is not None:
-        q += " AND epoch < ?"
+        q += " AND epoch < %s"
         p.append(int(until))
-    with _lock:
-        rows = _c().execute(q + " ORDER BY epoch", p).fetchall()
+    _init()
+    with db.conn() as c:
+        rows = c.execute(q + " ORDER BY epoch", p).fetchall()
     return [_rand(r) for r in rows]
 
 
 def muta(cam, nume, cale_noua, arhivat=True):
     """Dupa mutarea in arhiva: calea noua + momentul."""
-    with _lock:
-        _c().execute("UPDATE segmente SET cale=?, arhivat=? WHERE cam=? AND nume=?",
-                     (_rel(cale_noua), time.time() if arhivat else None, cam, nume))
+    _init()
+    with db.conn() as c:
+        c.execute("UPDATE segmente SET cale=%s, arhivat=%s WHERE cam=%s AND nume=%s",
+                  (_rel(cale_noua), time.time() if arhivat else None, cam, nume))
 
 
 def sterge(cam, nume):
-    with _lock:
-        _c().execute("DELETE FROM segmente WHERE cam=? AND nume=?", (cam, nume))
+    _init()
+    with db.conn() as c:
+        c.execute("DELETE FROM segmente WHERE cam=%s AND nume=%s", (cam, nume))
 
 
 def verifica(cam, nume):
@@ -181,10 +170,11 @@ def tur(files_fn, cams, segment=300, now=None, limita=PE_TUR, inapoi=INAPOI):
     inca amprenta, cele mai NOI primele (lantul e util imediat pentru ce se intampla acum),
     doar din ultimele `inapoi` secunde. files_fn(cam) -> [(epoch, cale, nume)]."""
     now = now or time.time()
+    _init()
     facute = 0
     for cam in cams:
-        with _lock:
-            stiute = {r[0] for r in _c().execute("SELECT nume FROM segmente WHERE cam=?", (cam,))}
+        with db.conn() as c:
+            stiute = {r[0] for r in c.execute("SELECT nume FROM segmente WHERE cam=%s", (cam,)).fetchall()}
         for epoch, cale, nume in sorted(files_fn(cam), reverse=True):
             if nume in stiute or epoch + segment + MARGINE > now or (inapoi and epoch < now - inapoi):
                 continue
@@ -200,14 +190,15 @@ def tur(files_fn, cams, segment=300, now=None, limita=PE_TUR, inapoi=INAPOI):
 
 def curata(files_fn, cams):
     """Uita amprentele fisierelor care nu mai exista (sterse de retentie)."""
+    _init()
     n = 0
     for cam in cams:
         exista = {nume for _, _, nume in files_fn(cam)}
-        with _lock:
-            rows = _c().execute("SELECT nume FROM segmente WHERE cam=?", (cam,)).fetchall()
+        with db.conn() as c:
+            rows = c.execute("SELECT nume FROM segmente WHERE cam=%s", (cam,)).fetchall()
             for (nume,) in rows:
                 if nume not in exista:
-                    _c().execute("DELETE FROM segmente WHERE cam=? AND nume=?", (cam, nume))
+                    c.execute("DELETE FROM segmente WHERE cam=%s AND nume=%s", (cam, nume))
                     n += 1
     return n
 

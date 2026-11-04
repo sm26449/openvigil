@@ -5,6 +5,40 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 
 ## [Nepublicat]
 
+### Adăugat
+- Migrarea pe **PostgreSQL + pgvector** (2.0.0) — fundația (Faza 0): serviciul `db`
+  (`pgvector/pgvector:pg16`, doar pe `127.0.0.1`, datadir sub `DATA_DIR`), modulul `app/db.py`
+  (pool de conexiuni, `conn()`/`tx()`, `aplica()` în tiparul lui `schema.py`) și un Postgres în
+  CI cu test de fum. Nu mută încă niciun tabel — plan complet în `docs/ro/postgres-migrare.md`.
+- PostgreSQL, Faza 1: `push` (abonamente), `jobs` (coada) și `marcaje` (bookmarks) mutate din
+  SQLite pe PostgreSQL prin `app/db.py` (nu mai împart baza `events.db` cu jurnalul). Script de
+  migrare a datelor one-shot (`scripts/migrare_pg.py`, idempotent) și teste pe Postgres.
+- PostgreSQL, Faza 2: **jurnalul de evenimente** (`app/jurnal.py`, tabelul `events`) mutat pe
+  PostgreSQL. Contractul `query()`/`insert()` neschimbat pentru restul sistemului. Căutarea de
+  text folosește acum `ILIKE` (în PostgreSQL `LIKE` e sensibil la litere mari), ordinea în
+  aceeași secundă vine din coloana `seq` (IDENTITY) în locul `rowid`-ului, iar migrarea veche din
+  `events.jsonl` a fost scoasă (datele istorice se mută cu `scripts/migrare_pg.py`, care acum
+  include și `events`).
+- PostgreSQL, Faza 3: **lanțul de custodie** (`app/lant.py`, tabelul `segmente`) mutat pe
+  PostgreSQL — scris de nvr-record, citit de nvr-web, acum peste aceeași bază (fără WAL între
+  procese). `scripts/migrare_pg.py` mută și `segmente` și **verifică** după migrare că fiecare
+  amprentă SHA-256 a ajuns neschimbată (lanțul rămâne valabil); re-hash-ul fișierelor de pe disc
+  rămâne disponibil prin `verifica()`/fișa probatorie.
+- PostgreSQL, Faza 4a: **scorerul de falsuri** (`app/scorer_fp.py`) — memorie spațială + semantică
+  a verdictelor, în `pgvector` (tabelul `vectori_fp`, SigLIP 768-dim). Scor cu doi termeni
+  (rata de fals pe pătrățel+etichetă+regim + similaritate cosinus la exemplarele „greșit” vs „ok”),
+  cu plasa de siguranță `ok==0`. Motorul + testele; cablarea în bucla de detecție și migrarea
+  fețe/re-ID/scenă în pgvector urmează.
+- PostgreSQL, Faza 4b: scorerul **cablat în bucla de detecție** (`detect.CamState._mut_invatat`,
+  `filtru="invatat"` lângă filtrul de zonă) — opt-in per cameră (`scorer_fp` în config) și
+  fail-safe (orice eroare → nu suprimă, alarma tot sună).
+- PostgreSQL, Faza 5: **gata fără SQLite.** Zero `sqlite3` în codul aplicației — `rules` prinde
+  erori generice de jurnal (nu `sqlite3.Error`), `backup_nocturn` scrie baza în arhivă ca
+  `pg/<tabel>.csv` (dump logic prin `COPY`, fără `pg_dump`) și o reface cu `incarca_pg()`,
+  `app/schema.py` (migratorul SQLite, nefolosit) a fost șters. Fețe/re-ID/scenă rămân pe fișiere
+  (nu folosesc SQLite). Migrarea fețe/re-ID/scenă în `pgvector` (4c) rămâne opțională, pentru când
+  apare nevoia de căutare vectorială la scară. Cutover-ul datelor: `scripts/migrare_pg.py`.
+
 ### Reparat
 - Aplicarea unui model antrenat local din interfață (`/api/train/apply`) dădea 500: decoratorul
   de rută stătea pe funcția-ajutor `_swap_formal(sursa)`, nu pe handler. Mutat pe
