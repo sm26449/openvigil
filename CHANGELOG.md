@@ -5,6 +5,8 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 
 ## [Nepublicat]
 
+## [2.0.0] — 2026-11-04
+
 ### Adăugat
 - Migrarea pe **PostgreSQL + pgvector** (2.0.0) — fundația (Faza 0): serviciul `db`
   (`pgvector/pgvector:pg16`, doar pe `127.0.0.1`, datadir sub `DATA_DIR`), modulul `app/db.py`
