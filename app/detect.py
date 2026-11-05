@@ -388,32 +388,61 @@ class CamState:
         self._tile_busy = False                     # un singur job de regiuni o data
         self.last_boxes = {"t": 0.0, "boxes": []}   # ultimele chenare (overlay, faza 6)
 
-    def _mut_invatat(self, box, noapte):
+    def _mut_invatat(self, box, noapte, img=None, semantic=False):
         """True daca detectia cade intr-un patratel invatat ca fals (scorer_fp, memoria
         verdictelor). FAIL-SAFE: orice eroare (PostgreSQL indisponibil, scorer nepornit) ->
         False, deci detectia trece mai departe si alarma tot suna. Activat per camera prin
-        `scorer_fp` in config; altfel nici nu ajunge aici."""
+        `scorer_fp` in config; altfel nici nu ajunge aici. Cand `semantic` e activ (flag
+        `scorer_semantic`, dupa backfill de embedding-uri), verificam intai verdictul pozitional
+        (ieftin, cache-uit) si doar daca ar suprima calculam embedding-ul crop-ului, lasand dovada
+        „real" sa blocheze suprimarea (B2)."""
         try:
             import scorer_fp
-            return scorer_fp.suprima(self.cam_id, box["lbl"], "noapte" if noapte else "zi",
-                                     [box["x"], box["y"], box["w"], box["h"]])
+            regim = "noapte" if noapte else "zi"
+            xywh = [box["x"], box["y"], box["w"], box["h"]]
+            if not scorer_fp.scor(self.cam_id, box["lbl"], regim, xywh)["suprima"]:
+                return False                       # nu e candidat -> gata, fara embedding
+            if not (semantic and img is not None):
+                return True                        # comportament pur pozitional (B2 oprit)
+            # candidat pozitional: cerem dovada semantica inainte sa suprimam un posibil OM REAL
+            emb = self._embed_box(img, box)
+            if emb is None:
+                return True
+            return scorer_fp.scor(self.cam_id, box["lbl"], regim, xywh, emb=emb)["suprima"]
         except Exception:
             return False
 
-    def process(self, img, res, now):
-        """Un cadru + rezultatul lui din lot -> toata logica per-camera."""
-        import cv2
+    def _embed_box(self, img, box):
+        """Embedding SigLIP al crop-ului (box normalizat in `img`); None la orice problema."""
+        try:
+            import cv2
+            import semantic
+            from PIL import Image
+            h, w = img.shape[:2]
+            x1 = max(0, int(box["x"] * w))
+            y1 = max(0, int(box["y"] * h))
+            x2 = min(w, int((box["x"] + box["w"]) * w))
+            y2 = min(h, int((box["y"] + box["h"]) * h))
+            if x2 - x1 < 4 or y2 - y1 < 4:
+                return None
+            pil = Image.fromarray(cv2.cvtColor(img[y1:y2, x1:x2], cv2.COLOR_BGR2RGB))
+            vecs = semantic.embed_images([pil])
+            return list(vecs[0]) if vecs is not None and len(vecs) else None
+        except Exception:
+            return None
+
+    def _context(self):
+        """Config + regim curent pentru filtrul de eligibilitate. Calculat o data per cadru
+        (process) sau per job (tiling), ca ambele cai sa aplice IDENTIC zona, suprimarea
+        invatata si pragurile noapte/meteo."""
         cfg = cam_cfg(self.cam_id)
-        zone = cfg.get("zone")
-        invata = bool(cfg.get("scorer_fp"))   # suprima detectiile invatate ca false (scorer_fp)
-        # prag mai mare noaptea (recomandare per camera): siluetele nesigure din IR raman afara
-        prag_noapte = float(cfg.get("conf_noapte") or 0)
         try:
             import rules
             noapte = bool(rules._is_night())
         except Exception:
             noapte = False
-        e_noapte = bool(prag_noapte) and noapte
+        # prag mai mare noaptea (recomandare per camera): siluetele nesigure din IR raman afara
+        prag_noapte = float(cfg.get("conf_noapte") or 0)
         # prag pe vreme rea (global, din Setari): ploaia/ceata umplu cadrul de siluete nesigure
         prag_vreme = 0.0
         try:
@@ -424,6 +453,38 @@ class CamState:
                     prag_vreme = 0.0
         except Exception:
             prag_vreme = 0.0
+        return {"zone": cfg.get("zone"), "invata": bool(cfg.get("scorer_fp")),
+                "semantic": bool(cfg.get("scorer_semantic")),
+                "noapte": noapte, "e_noapte": bool(prag_noapte) and noapte,
+                "prag_noapte": prag_noapte, "prag_vreme": prag_vreme}
+
+    def _gate_comun(self, box, ctx, img=None):
+        """Filtrul comun de eligibilitate pe un box normalizat in CADRUL INTREG. Intoarce
+        numele filtrului care il respinge, sau None daca trece. Partajat de substream
+        (process) si de tiling (_tile_job), ca suprimarea invatata / zona / pragurile
+        noapte-meteo / marginea sa se aplice la fel pe ambele cai (altfel tiling-ul emitea
+        evenimente `sursa=regiune` ocolind exact aceste filtre). MARIMEA ramane specifica
+        caii (process: MIN/MAX_AREA; tiling: TILE_MAX_AREA, ca sa prinda obiecte mici)."""
+        if ctx["e_noapte"] and box["conf"] < ctx["prag_noapte"]:
+            return "noapte"
+        if ctx["prag_vreme"] and box["conf"] < ctx["prag_vreme"]:
+            return "vreme"
+        nx1, ny1 = box["x"], box["y"]
+        nx2, ny2 = box["x"] + box["w"], box["y"] + box["h"]
+        # lipit de marginea cadrului = obiect taiat sau artefact
+        if (nx1 < EDGE_MARGIN or ny1 < EDGE_MARGIN
+                or nx2 > 1 - EDGE_MARGIN or ny2 > 1 - EDGE_MARGIN):
+            return "margine"
+        if ctx["zone"] and not _in_zone(ctx["zone"], (nx1 + nx2) / 2, (ny1 + ny2) / 2):
+            return "zona"
+        if ctx["invata"] and self._mut_invatat(box, ctx["noapte"], img, ctx["semantic"]):
+            return "invatat"       # patratel invatat ca fals din verdictele omului
+        return None
+
+    def process(self, img, res, now):
+        """Un cadru + rezultatul lui din lot -> toata logica per-camera."""
+        import cv2
+        ctx = self._context()   # zona, suprimare invatata, praguri noapte/meteo (comun cu tiling)
         h, w = img.shape[:2]
         hits = set()
         vazute = []      # TOATE chenarele + de ce au fost aruncate — overlay-ul (faza 6)
@@ -441,22 +502,9 @@ class CamState:
             if area < MIN_AREA or area > MAX_AREA:
                 box["filtru"] = "marime"
                 continue
-            if e_noapte and box["conf"] < prag_noapte:
-                box["filtru"] = "noapte"
-                continue
-            if prag_vreme and box["conf"] < prag_vreme:
-                box["filtru"] = "vreme"
-                continue
-            # lipit de marginea cadrului = obiect taiat sau artefact
-            if (nx1 < EDGE_MARGIN or ny1 < EDGE_MARGIN
-                    or nx2 > 1 - EDGE_MARGIN or ny2 > 1 - EDGE_MARGIN):
-                box["filtru"] = "margine"
-                continue
-            if zone and not _in_zone(zone, (nx1 + nx2) / 2, (ny1 + ny2) / 2):
-                box["filtru"] = "zona"
-                continue
-            if invata and self._mut_invatat(box, noapte):
-                box["filtru"] = "invatat"       # patratel invatat ca fals din verdictele omului
+            respins = self._gate_comun(box, ctx, img)   # noapte/meteo/margine/zona/invatat (comun cu tiling)
+            if respins:
+                box["filtru"] = respins
                 continue
             # masina PARCATA nu se re-raporteaza cat sta pe loc (episoade E1):
             # tranzitiile (sosire/plecare) vin din registrul de stationare.
@@ -576,6 +624,7 @@ class CamState:
                                            classes=list(CLASSES), device=_device,
                                            verbose=False)[0]
             now = time.time()
+            ctx = self._context()   # acelasi filtru de eligibilitate ca substream-ul (zona/invatat/praguri)
             gasit = []
             chenare = {}     # eticheta -> chenarul ei in CADRUL INTREG (pt. cautarea pe regiune)
             for b in res.boxes:
@@ -587,6 +636,13 @@ class CamState:
                 # cele mari sunt deja prinse de detectia normala pe substream
                 area = ((bx2 - bx1) / W) * ((by2 - by1) / H)
                 if area > TILE_MAX_AREA:
+                    continue
+                # chenarul normalizat in CADRUL INTREG, trecut prin ACELASI gate ca substream-ul:
+                # altfel un fals suprimat pe substream tot producea eveniment `sursa=regiune`
+                box = {"x": (px1 + bx1) / W, "y": (py1 + by1) / H,
+                       "w": (bx2 - bx1) / W, "h": (by2 - by1) / H,
+                       "lbl": lbl, "conf": round(float(b.conf), 2)}
+                if self._gate_comun(box, ctx, img):
                     continue
                 gasit.append(lbl)
                 if lbl not in chenare or float(b.conf) > chenare[lbl][4]:
