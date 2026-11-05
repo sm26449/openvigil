@@ -5,6 +5,24 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 
 ## [Nepublicat]
 
+## [2.0.3] — 2026-11-05
+
+### Reparat
+- **Restore atomic** (`backup_nocturn`): refacerea validează toate CSV-urile întâi, apoi
+  TRUNCATE + COPY într-o singură tranzacție — o cădere la mijloc sau un CSV invalid lasă baza
+  neatinsă (rollback), nu pe jumătate restaurată.
+- **Backupul eșuează explicit** la orice eroare PostgreSQL, în loc să rotească peste copiile bune
+  o arhivă incompletă. Dump consistent dintr-un singur snapshot (`REPEATABLE READ READ ONLY`) și
+  ordonat după cheia IDENTITY; manifestul notează rândurile per tabel (`pg_randuri`) și `complet`.
+- **Lanțul de custodie rămâne valabil după re-encodare**: `lant` reține derivarea (coloane noi
+  `sha256_orig` + `recodat`, migrarea 2), iar `reencode` actualizează lanțul *înainte* de a șterge
+  originalul. La arhivare, registrul se scrie tot înainte de ștergerea sursei.
+- **Un `users.json` corupt sau gol nu mai deschide `/setup`** (altfel oricine putea crea un admin
+  fără autentificare): `setup_permis()` distinge „fișier absent” de „corupt” → blocaj 503, nu
+  prima pornire.
+- **Migrările de schemă nu se mai aplică concurent**: advisory lock PostgreSQL per modul, ca cele
+  patru procese (go2rtc/web/record/ai) care pornesc deodată să nu ruleze aceeași migrare în paralel.
+
 ## [2.0.2] — 2026-11-04
 
 ### Reparat
