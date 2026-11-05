@@ -5,6 +5,26 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 
 ## [Nepublicat]
 
+## [2.0.5] — 2026-11-05
+
+### Reparat
+- **Scorerul de falsuri își urmărește feedback-ul** (B4/B5): după fiecare verdict, memoria
+  (`vectori_fp`) se re-sincronizează din `feedback.jsonl` pentru acea cameră (în fundal); înainte
+  nimic nu o actualiza automat. Dedup după `id` (ultimul verdict al unei detecții contează), ca
+  verdictele repetate să nu umfle numărătoarea. Reîncărcarea e atomică (o tranzacție, rollback la
+  eroare), nu ștergeri + inserări care puteau lăsa memoria goală.
+- **Transportul de evenimente web↔AI e idempotent și corect datat** (Lot C): fiecare eveniment
+  primește la sursă un id stabil (`_eid`), deci un retry din spool (sau un răspuns HTTP pierdut) nu
+  mai duplică jurnalul și nu mai repetă acțiunile (sirenă/MQTT/webhook/push/Telegram). Ora originii
+  (`_origine`) datează evenimentul la producere, nu la recepție — cele recuperate după o pană nu mai
+  apar la ora revenirii, iar severitatea zi/noapte e corectă. Eroarea de persistență nu mai e
+  înghițită tăcut.
+
+### Documentație
+- Sincronizare cu PostgreSQL: README, `docs/operare.md`, `docs/ai-contract.md`, `docs/nvr-ai.md` și
+  manualele EN/RO nu mai descriu SQLite (`events.db`/`segmente.db`); `data/` are datadir-ul PG în
+  `data/pg/`. `server_main.py`: fișierul e rulat de entrypoint-ul containerului (Docker Compose).
+
 ## [2.0.4] — 2026-11-05
 
 ### Reparat
