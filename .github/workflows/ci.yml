@@ -23,6 +23,9 @@ jobs:
       PG_DB: openvigil
       PG_USER: openvigil
       PG_PASS: openvigil
+      # confirma ca baza Postgres de mai jos e de unica folosinta: conftest refuza sa faca
+      # TRUNCATE pe o baza nemarcata (protectie anti-productie).
+      OPENVIGIL_TEST_DB: "1"
     services:
       postgres:
         image: pgvector/pgvector:pg16
