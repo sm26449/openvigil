@@ -46,7 +46,7 @@ pornești; lanțul de custodie ține căi relative, deci nu se pierde nimic. La 
 (nivelul de arhivă; în Setări → Înregistrare pui `arhiva_dir = /opt/openvigil/data/arhiva`, calea
 din container) și `BACKUP_DIR` (copiile nocturne, fără altă setare).
 
-- `data/` (sau `DATA_DIR` din `.env`) conține tot: înregistrări, baze de date SQLite, setări,
+- `data/` (sau `DATA_DIR` din `.env`) conține tot: înregistrări, datadir-ul PostgreSQL (`data/pg/`), setări,
   camere cu parole, conturi, modele AI locale. Backup-ul lui `data/` fără `recordings/` e mic
   și suficient pentru a reface instalarea.
 - Copia nocturnă (Setări → Sistem) scrie în `data/backup/` o arhivă criptată cu cheia din
@@ -66,7 +66,7 @@ Stack-ul e complet descris de depozit + `.env`; tot ce e al instalației stă î
 |---|---|
 | codul | `git clone` (aceeași versiune: `OPENVIGIL_VERSION` din `.env`) |
 | `.env` | copiat ca atare (0600); conține porturile, `DATA_DIR`, `RECORDINGS_DIR` etc. |
-| `DATA_DIR` | copiat cu `rsync -a` **cu stack-ul oprit** (bazele SQLite); dacă directorul e criptat pe gazdă (fscrypt), copiezi conținutul descuiat sau duci și cheia |
+| `DATA_DIR` | copiat cu `rsync -a` **cu stack-ul oprit** (datadir-ul PostgreSQL din `data/pg/` nu se copiază la cald); dacă directorul e criptat pe gazdă (fscrypt), copiezi conținutul descuiat sau duci și cheia |
 | `RECORDINGS_DIR`, `ARHIVA_DIR`, `BACKUP_DIR` | copiate dacă vrei istoricul; altfel directoare goale, ale lui `PUID:PGID` |
 | `MODELS_DIR` | opțional; se descarcă din nou la prima pornire (~15 GB) |
 | Docker + Compose, `nvidia-container-toolkit` pe GPU | `install.sh` le pune |

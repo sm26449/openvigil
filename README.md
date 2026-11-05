@@ -50,9 +50,10 @@ Taken on the built-in demo mode (synthetic cameras), so no real footage.
 - **Accounts**: admin and per-camera viewers, 2FA (TOTP), revocable sessions, CSRF, strict
   CSP, audit log, public `/verifica` page to verify an exported clip by hash.
 - **Resilience**: recorders fall back from go2rtc to the camera directly and come back on
-  their own; nightly encrypted backup of configuration and databases; everything in
-  `data/` is plain files and SQLite you can read without the app. Recordings, the archive tier
-  and the backups can each live on a separate disk.
+  their own; nightly encrypted backup of the configuration and the PostgreSQL database;
+  recordings, the archive tier, config and the encrypted backups in `data/` are plain files you
+  can read without the app. Recordings, the archive tier and the backups can each live on a
+  separate disk.
 
 ### Also in the box
 
@@ -112,8 +113,8 @@ Taken on the built-in demo mode (synthetic cameras), so no real footage.
   stack, one script.
 - **Honest about what it is.** Written for one real installation and published as is: it
   wants an NVIDIA GPU for the heavy models, it has one active author, and it will have rough
-  edges on hardware it has not seen. Everything in `data/` is plain files and SQLite, so you
-  are never locked in.
+  edges on hardware it has not seen. Recordings, config and backups in `data/` are plain files
+  and the database is standard PostgreSQL, so you are never locked in.
 
 ## Architecture
 
@@ -225,7 +226,7 @@ want other internal tools behind the same login.
 ```
 data/
   recordings/camN/YYYY-MM-DD/HH-MM-SSZ.mp4   segments (UTC names)
-  events.db, segmente.db, settings.json      journal, chain of custody, settings
+  pg/, settings.json                         PostgreSQL datadir (journal, chain of custody, jobs) + settings (mode 600)
   cameras.json, users.json, go2rtc.yaml      cameras (with passwords, mode 600), accounts
   faces/, plates/, reid/, dataset/, finetune/ AI data and training material
   backup/                                    nightly Fernet-encrypted backups (key in data/backup_key)

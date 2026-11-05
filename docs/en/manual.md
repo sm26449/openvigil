@@ -103,7 +103,7 @@ playback does a concat with `inpoint` through the go2rtc template `vodcat` + tra
 In the Recordings tab: **Export** interval (from / to, max 30 min) + **⬇ MP4** button.
 The export (like the evidence sheet, clips, boxes, the case-file ZIP and adding a
 camera) runs in the **job queue** (`app/jobs.py`, 3 workers, the `jobs` table in
-`data/events.db`): the route answers 202 + job, the interface follows `/api/jobs/<id>` in the tray
+PostgreSQL): the route answers 202 + job, the interface follows `/api/jobs/<id>` in the tray
 at the bottom right (progress from ffmpeg, cancel) and downloads the file from
 `/api/jobs/<id>/fisier` (kept for one hour). Web threads no longer sit blocked on ffmpeg.
 Clicking the timeline pre-fills the interval (+2 min). Local = instant cut (`-c copy`);
@@ -116,7 +116,7 @@ The dots on the playback bar = the detections (green) and alarms (red) of the se
 **Bookmarks:** the *Bookmark* button (in Recordings, during playback, or in the HD
 overlay) puts a golden flag with your label at the played moment; bookmarks stay on the
 timeline (both bars), have their own list on the right (click = play, *case file* = a ±15 s
-piece of evidence into a case file, ✕ = delete) and live in `data/events.db` (the `marcaje` table,
+piece of evidence into a case file, ✕ = delete) and live in PostgreSQL (the `marcaje` table,
 `app/marcaje.py`, API `/api/marcaje`). The operator only places them on their own cameras.
 
 ### The "Alarms" tab (snapshots + clips)
@@ -241,7 +241,8 @@ LPR 39 readings and zero plates with names — the pieces existed but were not p
   paste a SHA-256; the answer says whether it is an export produced by this NVR (when, from which
   camera, what interval, who requested it) or a raw segment from the chain of custody, and that it has not
   been modified since. The exports registry is `data/exporturi.jsonl` (written on every
-  export, since 2026-10-25); segments are looked up by hash in `segmente.db` (`lant.cauta_hash`).
+  export, since 2026-10-25); segments are looked up by hash in the chain of custody table
+  `segmente` in PostgreSQL (`lant.cauta_hash`).
   Every public verification goes into the audit (only the first 16 characters of the fingerprint).
 
 ## The event feed next to Live (stage 1 of the interface analysis, 2026-10-24)
@@ -331,7 +332,7 @@ A dedicated tab with four sections (sidebar, like Settings):
   MQTT message on any topic). Actions run in a separate thread and are logged
   with the result of each; loops are impossible (the `regula` event does not
   trigger rules). "Test" button = runs the actions now.
-- **Events** — the permanent log (`data/events.db`, SQLite in WAL mode, retention
+- **Events** — the permanent log (the `events` table in PostgreSQL, retention
   by days from Settings → Retention, one year by default): ALL
   events go through `hooks.emit()` and end up here, with filters by type/camera/day,
   CSV download and a "clip" link to the recording of the moment. The default view
@@ -598,7 +599,7 @@ Any event logged with severity >= warning (`rules._journal`) reaches the subscri
 at the right level and with access to the camera (the account's camera restriction), with the link
 `/#pb/<cam>/<day>/<sec>` straight into playback (click on the notification = jump to the moment in the open
 window). The VAPID keys generate themselves (`data/push_vapid.json`, 0600); subscriptions
-live in `events.db` (the `push_abonamente` table); an endpoint that answers 404/410 is
+live in PostgreSQL (the `push_abonamente` table); an endpoint that answers 404/410 is
 deleted by itself. Settings -> Notifications shows (to the admin) all subscribed devices.
 Telegram remains the fallback channel, it does not depend on any phone.
 
@@ -664,7 +665,7 @@ All from the Recordings tab (`app/analiza.py`, `app/routes_analiza.py`), on the 
 - **Encrypted nightly copy** (Settings → Tools; `app/backup_nocturn.py`): daily at
   `backup_ora`, an encrypted tar.gz (Fernet, key from `data/backup_key`, 0600) with everything that
   cannot be rebuilt: the configuration, accounts, rules, incidents, case files, the mode, the map,
-  the event log and the segment fingerprints (consistent SQLite copies), the face
+  the event log and the segment fingerprints (one consistent PostgreSQL snapshot), the face
   library (people + embeddings, without the downloadable models), the audit, the session key
   and the push keys. NOT included: the recordings, photos, the dataset, the semantic index (rebuildable).
   ~35 MB, ~6 s. Local in `backup_dir` (default `data/backup`, the last `backup_pastreaza`),
@@ -675,7 +676,7 @@ All from the Recordings tab (`app/analiza.py`, `app/routes_analiza.py`), on the 
   <file.tar.gz.enc> <destination> [--cheie ...]` (with the services stopped, destination `data/`).
   The restore test runs in pytest (`tests/test_backup_nocturn.py`: create → restore
   → compare, wrong key refused).
-- **Chain of custody** (`app/lant.py`, `data/segmente.db`): nvr-record computes SHA-256
+- **Chain of custody** (`app/lant.py`, the `segmente` table in PostgreSQL): nvr-record computes SHA-256
   for each segment one minute after it closes (newest first, 30 per minute,
   only the last 6 hours as backlog) and keeps the fingerprint with the time it was computed. The evidence
   sheet (`/api/export/report`) lists the clip's source segments with the hash from
@@ -727,7 +728,7 @@ All from the Recordings tab (`app/analiza.py`, `app/routes_analiza.py`), on the 
   needs readable MP4s, and the manufacturers (Hikvision, Dahua, UniFi) either do not encrypt at all
   or keep the key on the device. With fscrypt (ext4 `encrypt`, policy v2, AES-256-XTS) everything in
   `data/` — recordings, photos, `cameras.json` with the camera passwords, `users.json`,
-  `events.db`, faces, plates, `go2rtc.yaml` (moved here from `go2rtc/`) — is encrypted
+  the PostgreSQL datadir (`pg/`), faces, plates, `go2rtc.yaml` (moved here from `go2rtc/`) — is encrypted
   transparently; processes see everything in clear as long as the key is in the kernel.
   - **The master key** `/etc/nvr/master.key` (root, 0600, 32 random bytes) is the
     `nvr-auto` protector; `nvr-unlock.service` (oneshot, before nvr-go2rtc/web/record/ai, which

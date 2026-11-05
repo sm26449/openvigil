@@ -60,7 +60,7 @@ Rata de evenimente e mică (zeci/min) → HTTP e suficient; cadrele nu trec nici
 
 **Config partajat pe disc:** `data/settings.json`, `data/cameras.json`,
 `data/detect.json`, `data/rules.json` — scrise de web (UI), citite de nvr-ai (urmărește
-mtime, ca `nvr-record`). `data/events.db` (jurnalul SQLite) are **un singur writer** (web).
+mtime, ca `nvr-record`). Jurnalul de evenimente (PostgreSQL, tabelul `events`) are **un singur writer** (web).
 
 ## Fluxul de evenimente (decizia critică)
 
