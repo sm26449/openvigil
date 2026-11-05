@@ -28,6 +28,7 @@ def _pg():
         db.ping()
     except Exception as e:
         pytest.skip(f"PostgreSQL indisponibil: {e}")
+    scorer_fp.reset()        # goleste cache-ul de numere + circuit breaker (izolare intre teste)
     scorer_fp._init()
     with db.conn() as c:
         c.execute("TRUNCATE vectori_fp")
@@ -102,3 +103,56 @@ def test_incarca_din_feedback(tmp_path):
     scorer_fp.incarca_din_feedback(str(p))
     s = scorer_fp.scor(6, "person", "noapte", HOT)
     assert s["fals"] == 5
+
+
+# --- B2: vetoul semantic (dovada „real" blocheaza suprimarea; invarianta: doar scoate suprimare) ---
+
+def test_veto_blocheaza_suprimarea_pentru_crop_nou():
+    """Celula invatata ca fals (pozitional ar suprima), dar embedding-ul NU seamana cu niciun
+    fals invatat -> obiect nou/real -> veto -> NU suprimam."""
+    for _ in range(3):
+        scorer_fp.adauga(6, "person", "noapte", HOT, "gresit", emb=V(0))
+    assert scorer_fp.scor(6, "person", "noapte", HOT)["suprima"] is True       # pozitional (fara emb)
+    s = scorer_fp.scor(6, "person", "noapte", HOT, emb=V(5))                   # crop diferit de falsuri
+    assert s["veto"] is True and s["suprima"] is False
+
+
+def test_fara_veto_cand_cropul_seamana_cu_falsul():
+    """Acelasi crop ca falsurile invatate -> fara veto -> suprimarea pozitionala ramane."""
+    for _ in range(3):
+        scorer_fp.adauga(6, "person", "noapte", HOT, "gresit", emb=V(0))
+    s = scorer_fp.scor(6, "person", "noapte", HOT, emb=V(0))
+    assert s["veto"] is False and s["suprima"] is True
+
+
+def test_veto_cand_seamana_mai_mult_cu_un_exemplar_real():
+    """Un exemplar „ok" (real) apropiat de crop (chiar in alta celula) blocheaza suprimarea."""
+    for _ in range(3):
+        scorer_fp.adauga(6, "person", "noapte", HOT, "gresit", emb=V(0))
+    scorer_fp.adauga(6, "person", "zi", ALT, "ok", emb=V(5))   # real, alt patratel -> ok ramane 0 in HOT
+    s = scorer_fp.scor(6, "person", "noapte", HOT, emb=V(5))
+    assert s["veto"] is True and s["suprima"] is False
+
+
+# --- B3: cache pe celule + invalidare la adauga + circuit breaker fail-open ---
+
+def test_cache_serveste_si_adaugarea_il_invalideaza():
+    for _ in range(3):
+        scorer_fp.adauga(6, "person", "noapte", HOT, "gresit")
+    assert scorer_fp.scor(6, "person", "noapte", HOT)["fals"] == 3      # populeaza cache-ul
+    with db.conn() as c:
+        c.execute("DELETE FROM vectori_fp WHERE cam=6")                # ocolim adauga
+    assert scorer_fp.scor(6, "person", "noapte", HOT)["fals"] == 3      # inca din cache
+    scorer_fp.adauga(6, "person", "noapte", HOT, "ok")                 # adauga invalideaza celula
+    assert scorer_fp.scor(6, "person", "noapte", HOT)["ok"] == 1       # numere proaspete
+
+
+def test_circuit_breaker_fail_open(monkeypatch):
+    """PG picat la numarare -> (0,0) fail-open (nu suprima nimic), iar dupa CB_PRAG erori
+    breaker-ul se deschide (ocolim PG un timp)."""
+    def crapa(*a, **k):
+        raise RuntimeError("PG jos")
+    monkeypatch.setattr(scorer_fp, "_numara", crapa)
+    for _ in range(scorer_fp.CB_PRAG):
+        assert scorer_fp.scor(6, "person", "noapte", HOT)["suprima"] is False
+    assert scorer_fp.stare()["cb_deschis"] is True

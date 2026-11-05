@@ -23,6 +23,7 @@ def _pg():
         db.ping()
     except Exception as e:
         pytest.skip(f"PostgreSQL indisponibil: {e}")
+    scorer_fp.reset()        # goleste cache-ul de numere + circuit breaker (izolare intre teste)
     scorer_fp._init()
     with db.conn() as c:
         c.execute("TRUNCATE vectori_fp")
@@ -45,5 +46,38 @@ def test_gate_e_fail_safe(monkeypatch):
 
     def crapa(*a, **k):
         raise RuntimeError("PG picat")
-    monkeypatch.setattr(scorer_fp, "suprima", crapa)
+    monkeypatch.setattr(scorer_fp, "scor", crapa)   # _mut_invatat cheama scor() (pozitional + veto)
     assert cs._mut_invatat(HOT, noapte=True) is False
+
+
+# --- B1: gate-ul comun (acelasi filtru pe substream SI pe tiling/`regiune`) ---
+
+def _ctx(**over):
+    baza = {"zone": None, "invata": False, "semantic": False, "noapte": False,
+            "e_noapte": False, "prag_noapte": 0.0, "prag_vreme": 0.0}
+    baza.update(over)
+    return baza
+
+
+def test_gate_comun_aplica_suprimarea_invatata():
+    """Fix B1: suprimarea invatata trebuie sa prinda si calea de tiling (prin _gate_comun),
+    nu doar substream-ul."""
+    cs = detect.CamState(6)
+    box = {**HOT, "conf": 0.9}
+    ctx = _ctx(invata=True, noapte=True)
+    assert cs._gate_comun(box, ctx) is None                 # memoria goala -> trece
+    for _ in range(3):
+        scorer_fp.adauga(6, "person", "noapte", HOT_BOX, "gresit")
+    assert cs._gate_comun(box, ctx) == "invatat"            # invatat ca fals -> respins pe AMBELE cai
+
+
+def test_gate_comun_zona_si_praguri():
+    cs = detect.CamState(6)
+    poly = [[0.025, 0.025], [0.2, 0.025], [0.2, 0.2], [0.025, 0.2]]
+    ctx = _ctx(zone=poly, e_noapte=True, prag_noapte=0.5)
+    inauntru = {"lbl": "person", "x": 0.03, "y": 0.03, "w": 0.02, "h": 0.02, "conf": 0.9}
+    afara = {"lbl": "person", "x": 0.5, "y": 0.5, "w": 0.02, "h": 0.02, "conf": 0.9}
+    slab = {"lbl": "person", "x": 0.03, "y": 0.03, "w": 0.02, "h": 0.02, "conf": 0.3}
+    assert cs._gate_comun(inauntru, ctx) is None            # in zona, conf peste pragul de noapte
+    assert cs._gate_comun(afara, ctx) == "zona"             # in afara zonei
+    assert cs._gate_comun(slab, ctx) == "noapte"            # conf sub pragul de noapte
