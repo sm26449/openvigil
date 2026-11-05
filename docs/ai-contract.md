@@ -20,7 +20,7 @@
 
 | Ce | Proprietar | De ce |
 |----|-----------|-------|
-| Reguli, jurnal (`events.db`, SQLite), MQTT, webhook | **nvr-web** | stare in-memory (cooldown-uri) care nu poate exista în două procese |
+| Reguli, jurnal (PostgreSQL, tabelul `events`), MQTT, webhook | **nvr-web** | stare in-memory (cooldown-uri) care nu poate exista în două procese |
 | Notificări Telegram pentru față/număr (`notify.face/plate`) | **nvr-ai** | singurul apelant după pas 1; cooldown-urile au un singur stăpân |
 | Modelele: YOLO partajat, verify, InsightFace + anti-spoof, ALPR, Qwen VLM, SigLIP | **nvr-ai** | VRAM: o instanță de fiecare |
 | Indexul semantic (`data/semantic/`) | **nvr-ai scrie** (worker + backfill + prune); web trimite doar (zi, nume) la `/semantic/index` | modelul e acolo (#9 pas 3) |

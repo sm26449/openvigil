@@ -103,7 +103,7 @@ redarea face concat cu `inpoint` prin template-ul go2rtc `vodcat` + transcodare 
 In tabul Inregistrari: interval **Export** (de la / pana la, max 30 min) + buton **⬇ MP4**.
 Exportul (ca si fisa probatorie, clipurile, chenarele, ZIP-ul de dosar si adaugarea unei
 camere) ruleaza in **coada de joburi** (`app/jobs.py`, 3 lucratori, tabelul `jobs` din
-`data/events.db`): ruta raspunde 202 + job, interfata urmareste `/api/jobs/<id>` in tava
+PostgreSQL): ruta raspunde 202 + job, interfata urmareste `/api/jobs/<id>` in tava
 din dreapta-jos (progres din ffmpeg, anulare) si descarca fisierul din
 `/api/jobs/<id>/fisier` (pastrat o ora). Firele web nu mai stau blocate dupa ffmpeg.
 Click pe timeline pre-completeaza intervalul (+2 min). Local = taiere instant (`-c copy`);
@@ -116,7 +116,7 @@ Punctele de pe bara de playback = detectiile (verde) si alarmele (rosu) din ziua
 **Marcaje (bookmarks):** butonul *Marcaj* (in Inregistrari, in timpul redarii, sau in
 overlay-ul HD) pune un steag auriu cu eticheta ta la momentul redat; marcajele raman pe
 timeline (ambele bare), au lista proprie in dreapta (click = redare, *dosar* = proba de
-±15 s intr-un dosar de caz, ✕ = stergere) si stau in `data/events.db` (tabelul `marcaje`,
+±15 s intr-un dosar de caz, ✕ = stergere) si stau in PostgreSQL (tabelul `marcaje`,
 `app/marcaje.py`, API `/api/marcaje`). Operatorul le pune doar pe camerele lui.
 
 ### Tabul "Alarme" (snapshot-uri + clipuri)
@@ -242,7 +242,8 @@ LPR 39 de citiri si zero numere cu nume — piesele existau, dar nu produceau.)
   lipesti SHA-256; raspunsul spune daca e un export produs de acest NVR (cand, de pe ce
   camera, ce interval, cine l-a cerut) sau un segment brut din lantul de custodie, si ca nu a
   fost modificat de atunci. Registrul exporturilor e `data/exporturi.jsonl` (scris la fiecare
-  export, din 2026-10-25); segmentele se cauta dupa hash in `segmente.db` (`lant.cauta_hash`).
+  export, din 2026-10-25); segmentele se cauta dupa hash in tabelul `segmente` din PostgreSQL
+  (`lant.cauta_hash`).
   Fiecare verificare publica intra in audit (doar primele 16 caractere ale amprentei).
 
 ## Fluxul de evenimente langa Live (treapta 1 din analiza de interfata, 2026-10-24)
@@ -332,7 +333,7 @@ Tab dedicat cu patru sectiuni (sidebar, ca la Setari):
   mesaj MQTT pe orice topic). Actiunile ruleaza in thread separat si se jurnalizeaza
   cu rezultatul fiecareia; buclele sunt imposibile (evenimentul „regula" nu
   declanseaza reguli). Buton „testeaza" = ruleaza actiunile acum.
-- **Evenimente** — jurnalul permanent (`data/events.db`, SQLite in mod WAL, retentie
+- **Evenimente** — jurnalul permanent (tabelul `events` din PostgreSQL, retentie
   pe zile din Setari → Retentie, implicit un an): TOATE
   evenimentele trec prin `hooks.emit()` si ajung aici, cu filtre pe tip/camera/zi,
   descarcare CSV si legatura „clip" catre inregistrarea momentului. Vederea implicita
@@ -600,7 +601,7 @@ Orice eveniment jurnalizat cu severitate >= atentie (`rules._journal`) ajunge la
 cu nivelul potrivit si cu acces la camera (restrictia pe camere a contului), cu legatura
 `/#pb/<cam>/<zi>/<sec>` direct in redare (click pe notificare = sare la moment in fereastra
 deschisa). Cheile VAPID se genereaza singure (`data/push_vapid.json`, 0600); abonamentele
-stau in `events.db` (tabelul `push_abonamente`); un endpoint care raspunde 404/410 se
+stau in PostgreSQL (tabelul `push_abonamente`); un endpoint care raspunde 404/410 se
 sterge singur. Setari -> Notificari arata (adminului) toate dispozitivele abonate.
 Telegram ramane canalul de rezerva, nu depinde de niciun telefon.
 
@@ -666,7 +667,7 @@ Toate din tabul Inregistrari (`app/analiza.py`, `app/routes_analiza.py`), pe cam
 - **Copia nocturna criptata** (Setari → Unelte; `app/backup_nocturn.py`): zilnic la
   `backup_ora`, un tar.gz criptat (Fernet, cheia din `data/backup_key`, 0600) cu tot ce nu
   se poate reface: configuratia, conturile, regulile, incidentele, dosarele, modul, harta,
-  jurnalul de evenimente si amprentele segmentelor (copii SQLite consistente), biblioteca
+  jurnalul de evenimente si amprentele segmentelor (un snapshot PostgreSQL consistent), biblioteca
   de fete (persoane + embeddings, fara modelele descarcabile), audit, cheia de sesiune si
   cheile push. NU intra: inregistrarile, pozele, dataset-ul, indexul semantic (se reface).
   ~35 MB, ~6 s. Local in `backup_dir` (implicit `data/backup`, ultimele `backup_pastreaza`),
@@ -677,7 +678,7 @@ Toate din tabul Inregistrari (`app/analiza.py`, `app/routes_analiza.py`), pe cam
   <fisier.tar.gz.enc> <destinatie> [--cheie ...]` (cu serviciile oprite, destinatia `data/`).
   Testul de restaurare ruleaza in pytest (`tests/test_backup_nocturn.py`: creare → refacere
   → comparare, cheie gresita refuzata).
-- **Lant de custodie** (`app/lant.py`, `data/segmente.db`): nvr-record calculeaza SHA-256
+- **Lant de custodie** (`app/lant.py`, tabelul `segmente` din PostgreSQL): nvr-record calculeaza SHA-256
   pentru fiecare segment la un minut dupa inchidere (cele mai noi primele, 30 pe minut,
   doar ultimele 6 ore ca restanta) si tine amprenta cu momentul calcularii. Fisa
   probatorie (`/api/export/report`) listeaza segmentele-sursa ale clipului cu hash-ul de la
@@ -729,7 +730,7 @@ Toate din tabul Inregistrari (`app/analiza.py`, `app/routes_analiza.py`), pe cam
   nevoie de MP4-uri citibile, iar producatorii (Hikvision, Dahua, UniFi) nu cripteaza deloc
   sau tin cheia pe aparat. Cu fscrypt (ext4 `encrypt`, politica v2, AES-256-XTS) tot ce e in
   `data/` — inregistrari, poze, `cameras.json` cu parolele camerelor, `users.json`,
-  `events.db`, fete, placute, `go2rtc.yaml` (mutat aici din `go2rtc/`) — e criptat
+  datadir-ul PostgreSQL (`pg/`), fete, placute, `go2rtc.yaml` (mutat aici din `go2rtc/`) — e criptat
   transparent; procesele vad totul in clar cat timp cheia e in kernel.
   - **Cheia-master** `/etc/nvr/master.key` (root, 0600, 32 de octeti aleatori) e protectorul
     `nvr-auto`; `nvr-unlock.service` (oneshot, inainte de nvr-go2rtc/web/record/ai, care au
