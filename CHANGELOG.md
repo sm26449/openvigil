@@ -5,6 +5,22 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 
 ## [Nepublicat]
 
+## [2.0.4] — 2026-11-05
+
+### Reparat
+- **Tiling-ul nu mai ocolește filtrele de eligibilitate** (scorer/detecție, Lot B): un singur gate
+  comun (noapte/meteo/margine/**zonă**/**învățat**) pe box-uri normalizate în cadrul întreg, aplicat
+  identic pe substream și pe calea de tiling (`sursa="regiune"`). Înainte, un fals suprimat pe
+  substream — sau un obiect în afara zonei — tot producea eveniment + notificare prin tiling.
+- **Un om real nou nu mai poate fi suprimat** într-o celulă IR învățată ca fals: suprimarea = candidat
+  pozițional **și** fără veto semantic. Dovada că detecția e reală (seamănă cu un exemplar „ok", sau
+  nu seamănă cu niciun fals învățat) **blochează** suprimarea (embedding SigLIP la live, în spatele
+  flag-ului per-cameră `scorer_semantic`, implicit oprit). Invariantă: suprimarea nouă e un subset
+  strict al celei vechi, deci nu se pot rata în plus detecții reale.
+- **Scorerul nu mai întârzie detecția tuturor camerelor** când PostgreSQL e degradat: cache pe celule
+  + circuit breaker + `statement_timeout` scurt; la eroare, fail-open (nu suprimă). Un „ok" proaspăt
+  ridică imediat mutul (invalidarea celulei la scriere).
+
 ## [2.0.3] — 2026-11-05
 
 ### Reparat
