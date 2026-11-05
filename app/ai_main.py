@@ -20,6 +20,7 @@ import re
 import sys
 import threading
 import time
+import uuid
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -99,8 +100,9 @@ def _spool_add(payload):
 
 
 def _spool_flush():
-    """Reincearca la 15 s; cand web-ul revine, evenimentele pleaca in ordine, cu momentul
-    lor original (`date.moment_spool`) ca jurnalul sa le dateze corect."""
+    """Reincearca la 15 s; cand web-ul revine, evenimentele pleaca in ordine, cu id-ul si
+    momentul lor original (`date._eid` / `date._origine`) ca jurnalul sa le dateze corect si
+    sa nu le duplice."""
     while True:
         time.sleep(15)
         with _spool_lock:
@@ -143,10 +145,17 @@ def _spool_flush():
 
 def emit(tip, cam, date):
     """Trimite evenimentul la nvr-web (proprietarul reguli/MQTT/jurnal); daca web-ul nu
-    raspunde, il pune in spool si il livreaza cand revine."""
+    raspunde, il pune in spool si il livreaza cand revine.
+
+    Fiecare eveniment primeste la SURSA un id stabil (`_eid`) si ora originii (`_origine`, epoch):
+    - `_eid` face livrarea idempotenta — un retry din spool (sau un raspuns HTTP pierdut) poarta
+      acelasi id, deci web-ul il dedupleaza (jurnal + actiuni) in loc sa-l repete (C1).
+    - `_origine` dateaza evenimentul la momentul producerii, nu al receptiei — cele recuperate
+      dupa o pana nu mai apar la ora revenirii, iar severitatea zi/noapte e corecta (C2)."""
+    date = {**(date or {}), "_origine": time.time()}
+    date.setdefault("_eid", uuid.uuid4().hex[:12])
     payload = {"token": TOKEN, "tip": tip, "cam": cam, "date": date}
     if not _trimite(payload):
-        payload["date"] = {**(date or {}), "moment_spool": time.strftime("%Y-%m-%d %H:%M:%S")}
         _spool_add(payload)
 
 

@@ -291,10 +291,16 @@ def _is_night(now_hhmm=None):
 
 
 def _journal(tip, cam_id, date):
-    now = time.time()
-    entry = {"id": uuid.uuid4().hex[:12],
+    """Jurnalizeaza evenimentul si declanseaza efectele colaterale (push, Telegram scena).
+    Intoarce True daca e NOU, False daca id-ul a mai fost procesat (retry din spool) — atunci
+    efectele NU se repeta. `_origine`/`_eid` (puse la sursa de ai_main.emit) dau ora originii si
+    id-ul stabil; evenimentele nascute in web au doar `now` + un uuid."""
+    origine = date.get("_origine")
+    now = float(origine) if origine else time.time()   # ora ORIGINII (C2), nu a receptiei
+    ora = time.strftime("%H:%M", time.localtime(now))
+    entry = {"id": date.get("_eid") or uuid.uuid4().hex[:12],   # id stabil la sursa (C1)
              "t": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(now)), "tip": tip,
-             "sev": severity(tip, date, _is_night())}
+             "sev": severity(tip, date, _is_night(ora))}
     if cam_id is not None:
         entry["cam"] = cam_id
     try:
@@ -308,6 +314,8 @@ def _journal(tip, cam_id, date):
     # "tip" din date (subtipul alarmei de camera: VMD, linedetection...) nu are voie
     # sa suprascrie tipul evenimentului — devine "subtip".
     for k, v in date.items():
+        if k in ("_origine", "_eid"):
+            continue                     # campuri de transport (C1/C2): nu intra in jurnal
         if k in ("id", "t", "tip", "cam", "sev"):
             k = "subtip" if k == "tip" else "ev_" + k
         if isinstance(v, (str, int, float, bool)) and len(str(v)) <= 120:
@@ -319,10 +327,15 @@ def _journal(tip, cam_id, date):
             # cardul n-are traseu; episoadele sunt putine, jurnalul nu se umfla
             entry[k] = v
     try:
-        jurnal.insert(entry, ts=now)
+        nou = jurnal.insert(entry, ts=now)
     except Exception as e:
-        # jurnalul (PostgreSQL) nu are voie sa doboare lantul de evenimente (reguli, sirene)
+        # jurnalul (PostgreSQL) nu are voie sa doboare lantul de evenimente (reguli, sirene).
+        # N-am putut confirma persistenta -> tratam ca NOU: mai bine un efect in plus la un retry
+        # decat o alarma reala pierduta cat PG e jos.
         logare.info(f"[rules] jurnal: {str(e)[:80]}")
+        nou = True
+    if not nou:
+        return False                     # id deja procesat (retry din spool) -> fara push/scena
     if entry["sev"] != "info":
         # notificare push pe telefoanele abonate (push.py decide nivelul si camerele);
         # tot ce e >= atentie e un incident — exact ce arata si panoul „De tratat"
@@ -338,6 +351,7 @@ def _journal(tip, cam_id, date):
             scena_web.notifica(entry)
         except Exception as e:
             logare.info(f"[rules] scena telegram: {str(e)[:80]}")
+    return True
 
 
 def journal(limit=200, tip=None, cam=None, day=None, min_sev=None, text=None, since=None):
@@ -494,7 +508,8 @@ def on_event(tip, cam_id, date):
     # (facuta in camctl inainte de emit) + poza in tabul Alarme (snaps, separat de jurnal).
     is_vmd = tip == "alarma_camera" and (date or {}).get("tip") == "VMD"
     if tip != "regula" and not is_vmd:   # "regula" se jurnalizeaza la declansare, cu rezultate
-        _journal(tip, cam_id, date)
+        if _journal(tip, cam_id, date) is False:
+            return                       # eveniment deja procesat (retry din spool) -> fara actiuni
     if tip not in TRIGGER_TYPES:
         return
     now = time.time()
