@@ -71,63 +71,90 @@ def backup_dir():
     return (settings.get("backup_dir") or "").strip() or os.path.join(DATA, "backup")
 
 
+def _coloane(c, tabel):
+    """(coloane ne-identity, coloane identity) ale unui tabel, in ordinea definitiei.
+    La refacere pastram doar coloanele ne-identity (identity-ul il regenereaza PostgreSQL);
+    coloanele identity le folosim doar ca sa ORDONAM dump-ul, ca refacerea sa pastreze
+    ordinea randurilor (ex. evenimente din aceeasi secunda)."""
+    rows = c.execute(
+        "SELECT column_name, is_identity FROM information_schema.columns "
+        "WHERE table_schema='public' AND table_name=%s ORDER BY ordinal_position",
+        (tabel,)).fetchall()
+    ne = [r[0] for r in rows if r[1] == "NO"]
+    ident = [r[0] for r in rows if r[1] == "YES"]
+    return ne, ident
+
+
 def _coloane_ne_identity(c, tabel):
-    """Coloanele unui tabel, fara cele IDENTITY (la refacere, identity-ul se regenereaza)."""
-    return [r[0] for r in c.execute(
-        "SELECT column_name FROM information_schema.columns "
-        "WHERE table_schema='public' AND table_name=%s AND is_identity='NO' "
-        "ORDER BY ordinal_position", (tabel,)).fetchall()]
+    """Doar coloanele ne-identity (pastrata pentru compatibilitate / teste)."""
+    return _coloane(c, tabel)[0]
 
 
 def _dump_pg_in_tar(tar):
     """Dump logic al bazei PostgreSQL in arhiva: pg/<tabel>.csv (COPY ... CSV HEADER, fara
-    coloanele IDENTITY, fara binare externe gen pg_dump). Intoarce intrarile adaugate."""
+    coloanele IDENTITY, fara binare externe gen pg_dump). Toate tabelele se citesc din ACELASI
+    snapshot (o singura tranzactie REPEATABLE READ READ ONLY), ordonate dupa identity ca
+    refacerea sa pastreze ordinea. Orice eroare se PROPAGA — o copie fara baza relationala nu
+    trebuie sa para reusita. Intoarce {tabel: nr_randuri}."""
     import db
-    adaugate = []
-    with db.conn() as c:
+    randuri = {}
+    with db.tx() as c:
+        c.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
         tabele = sorted(r[0] for r in c.execute(
             "SELECT tablename FROM pg_tables WHERE schemaname='public'").fetchall())
         for tabel in tabele:
-            cols = _coloane_ne_identity(c, tabel)
+            cols, ident = _coloane(c, tabel)
             if not cols:
                 continue
             lista = ", ".join(f'"{x}"' for x in cols)
+            ordine = (" ORDER BY " + ", ".join(f'"{x}"' for x in ident)) if ident else ""
             date = bytearray()
             with c.cursor() as cur, cur.copy(
-                    f'COPY "{tabel}" ({lista}) TO STDOUT (FORMAT csv, HEADER)') as cp:
+                    f'COPY (SELECT {lista} FROM "{tabel}"{ordine}) TO STDOUT (FORMAT csv, HEADER)') as cp:
                 for chunk in cp:
                     date += chunk
+            n = c.execute(f'SELECT count(*) FROM "{tabel}"').fetchone()[0]
             arc = f"pg/{tabel}.csv"
             info = tarfile.TarInfo(name=arc)
             info.size = len(date)
             info.mtime = int(time.time())
             tar.addfile(info, io.BytesIO(bytes(date)))
-            adaugate.append(arc)
-    return adaugate
+            randuri[tabel] = n
+    return randuri
 
 
 def incarca_pg(dir_sursa):
     """Incarca inapoi in PostgreSQL CSV-urile pg/<tabel>.csv dintr-un director extras de
-    restaureaza() (refacere / cutover): TRUNCATE + COPY FROM, pe coloanele din antetul fiecarui
-    fisier. Intoarce {tabel: nr_randuri}."""
+    restaureaza() (refacere / cutover). ATOMIC: validam toate fisierele INAINTE de orice
+    mutatie, apoi TRUNCATE + COPY FROM pentru toate tabelele INTR-O SINGURA TRANZACTIE — un CSV
+    invalid sau o cadere la mijloc face rollback si lasa baza NEATINSA (altfel un TRUNCATE in
+    autocommit ar lasa un tabel gol). Intoarce {tabel: nr_randuri}."""
     import db
     d = os.path.join(dir_sursa, "pg")
     if not os.path.isdir(d):
         d = dir_sursa
-    rez = {}
-    for fn in sorted(os.listdir(d)):
-        if not fn.endswith(".csv"):
-            continue
-        tabel = fn[:-4]
+    fisiere = sorted(fn for fn in os.listdir(d) if fn.endswith(".csv"))
+    if not fisiere:
+        raise ValueError("nicio tabela de incarcat (pg/*.csv lipseste)")
+    # validam si citim totul INAINTE de a atinge baza
+    incarcari = []
+    for fn in fisiere:
         with open(os.path.join(d, fn), "rb") as f:
             date = f.read()
-        antet = date.split(b"\n", 1)[0].decode()
-        lista = ", ".join(f'"{x.strip()}"' for x in antet.split(","))
-        with db.conn() as c:
+        antet = date.split(b"\n", 1)[0]
+        if not antet.strip():
+            raise ValueError(f"{fn}: antet lipsa / fisier gol")
+        lista = ", ".join(f'"{x.strip()}"' for x in antet.decode().split(","))
+        incarcari.append((fn[:-4], lista, date))
+    rez = {}
+    with db.tx() as c:                                   # rollback automat la orice exceptie
+        for tabel, _lista, _date in incarcari:
             c.execute(f'TRUNCATE "{tabel}"')
+        for tabel, lista, date in incarcari:
             with c.cursor() as cur, cur.copy(
                     f'COPY "{tabel}" ({lista}) FROM STDIN (FORMAT csv, HEADER)') as cp:
                 cp.write(date)
+        for tabel, _lista, _date in incarcari:
             rez[tabel] = c.execute(f'SELECT count(*) FROM "{tabel}"').fetchone()[0]
     return rez
 
@@ -161,10 +188,11 @@ def creeaza(dest_dir=None, fete=None, data_dir=None, progres=None):
             if os.path.exists(p):
                 _adauga(tar, p, rel)
                 continut.append(rel)
-        try:
-            continut += _dump_pg_in_tar(tar)
-        except Exception as e:
-            logare.info(f"[backup] dump PostgreSQL: {str(e)[:80]}")
+        # dump-ul PostgreSQL: orice eroare OPRESTE copia (creeaza arunca -> ruleaza nu mai
+        # roteste peste copiile bune si marcheaza ok:False) — o arhiva fara baza relationala
+        # nu trebuie sa para reusita
+        pg_randuri = _dump_pg_in_tar(tar)
+        continut += [f"pg/{tb}.csv" for tb in pg_randuri]
         if progres:
             progres(40, t("arhiva construita"))
     clar = buf.getvalue()
@@ -178,7 +206,7 @@ def creeaza(dest_dir=None, fete=None, data_dir=None, progres=None):
     os.replace(tmp, cale)
     manifest = {"fisier": nume, "creat": stamp, "octeti": len(cript), "octeti_clar": len(clar),
                 "sha256_clar": sha, "cheie": amprenta_cheie(), "continut": continut,
-                "versiune": 1}
+                "pg_randuri": pg_randuri, "complet": True, "versiune": 1}
     with open(cale[:-len(".tar.gz.enc")] + ".json", "w") as f:
         json.dump(manifest, f, indent=2, ensure_ascii=False)
     if progres:

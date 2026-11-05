@@ -32,13 +32,32 @@ ROLES = ("admin", "operator", "viewer")
 _lock = threading.Lock()
 
 
-def load():
+def _raw_load():
+    """(conturi, stare) unde stare e 'absent' (users.json inca nu exista — prima pornire reala),
+    'ok' (citit) sau 'corupt' (exista dar nu se poate citi/parsa). Distinge prima pornire de un
+    fisier stricat: un users.json corupt NU trebuie tratat ca „fara conturi", altfel ar redeschide
+    /setup si ar permite crearea unui administrator FARA autentificare."""
     try:
         with open(PATH) as f:
             data = json.load(f)
-            return data if isinstance(data, list) else []
-    except (FileNotFoundError, ValueError):
-        return []
+    except FileNotFoundError:
+        return [], "absent"
+    except (ValueError, OSError):
+        return [], "corupt"
+    if not isinstance(data, list):
+        return [], "corupt"
+    return data, "ok"
+
+
+def load():
+    return _raw_load()[0]
+
+
+def setup_permis():
+    """True DOAR la prima pornire reala (users.json inca nu exista). Un fisier prezent dar gol sau
+    corupt NU deschide /setup — in acel caz interfata se blocheaza si cere interventie locala."""
+    lst, stare = _raw_load()
+    return stare == "absent" and not lst
 
 
 def _write(lst):

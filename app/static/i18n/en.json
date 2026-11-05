@@ -2359,5 +2359,7 @@
  "{f} exemple de fundal și {o} de obiecte învățate din verdictele tale": "{f} background and {o} object examples learned from your verdicts",
  "învățat din verdicte": "learned from verdicts",
  "Arată și necunoscuții și fundalul (ploaie, umbre, frunze, fundal învățat)": "Also show unknowns and background (rain, shadows, leaves, learned background)",
- "({n} ascunși)": "({n} hidden)"
+ "({n} ascunși)": "({n} hidden)",
+ "Conturile nu pot fi citite pe server — verifică data/users.json": "Accounts cannot be read on the server — check data/users.json",
+ "conturile nu pot fi citite pe server": "accounts cannot be read on the server"
 }

@@ -23,6 +23,31 @@ def test_fara_fisier_inseamna_niciun_cont():
     assert users.get("admin") is None
 
 
+def test_setup_permis_doar_la_fisier_absent():
+    assert users._raw_load() == ([], "absent")
+    assert users.setup_permis() is True
+    users.upsert("admin", password="parola1", role="admin")
+    assert users._raw_load()[1] == "ok" and users.setup_permis() is False
+
+
+def test_fisier_corupt_nu_deschide_setup():
+    """users.json corupt NU trebuie tratat ca prima pornire: altfel oricine ar putea crea un
+    administrator fara autentificare prin /setup."""
+    with open(users.PATH, "w") as f:
+        f.write("{ nu e json valid")
+    lst, stare = users._raw_load()
+    assert lst == [] and stare == "corupt"
+    assert users.setup_permis() is False           # BLOCAT, nu prima pornire
+    assert users.load() == []                       # compat: load() ramane []
+
+
+def test_fisier_gol_valid_nu_deschide_setup():
+    with open(users.PATH, "w") as f:
+        f.write("[]")
+    assert users._raw_load() == ([], "ok")
+    assert users.setup_permis() is False            # prezent dar fara conturi -> nu redeschidem setup
+
+
 def test_creare_si_verificare_parola():
     users.upsert("admin", password="parola1", role="admin")
     assert users.verify("admin", "parola1")["role"] == "admin"
