@@ -102,15 +102,18 @@ INSERT = ("INSERT INTO events (id, ts, t, tip, sev, cam, date) "
 
 def insert(entry, ts=None):
     """Scrie un eveniment (dictionar plat, ca cel intors de query). Apoi, cel mult o
-    data pe ora, sterge ce a trecut de retentie."""
+    data pe ora, sterge ce a trecut de retentie. Intoarce True daca randul a fost inserat,
+    False daca `id`-ul exista deja (ON CONFLICT DO NOTHING) — pentru dedup la retry."""
     global _last_trim
     _init()
     with db.conn() as c:
-        c.execute(INSERT, _row(entry, ts))
+        cur = c.execute(INSERT, _row(entry, ts))
+        nou = cur.rowcount > 0        # 0 randuri = id deja prezent (duplicat)
     now = time.time()
     if now - _last_trim >= TRIM_EVERY:
         _last_trim = now
         trim()
+    return nou
 
 
 def _keep_days():

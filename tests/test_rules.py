@@ -165,6 +165,53 @@ def test_on_event_cooldown(monkeypatch):
     assert fired == ["test"]
 
 
+def _sincron(monkeypatch):
+    """Ruleaza _run_actions sincron + colecteaza declansarile (ca test_on_event_cooldown)."""
+    fired = []
+    monkeypatch.setattr(rules, "_run_actions", lambda r, t, c, d: fired.append(r["nume"]))
+
+    class FakeThread:
+        def __init__(self, target=None, args=(), daemon=None):
+            self._t, self._a = target, args
+
+        def start(self):
+            self._t(*self._a)
+    monkeypatch.setattr(rules.threading, "Thread", FakeThread)
+    return fired
+
+
+def test_eid_stabil_dedup_jurnal_si_actiuni(monkeypatch):
+    """C1: acelasi eveniment livrat de doua ori (retry din spool, acelasi _eid) -> jurnalizat o
+    singura data si actiunile se executa o singura data."""
+    fired = _sincron(monkeypatch)
+    rules.upsert(_regula(cooldown=5))
+    date = {"eticheta": "person", "_eid": "retry-123", "_origine": 1793000000.0}
+    rules.on_event("detectie", 1, dict(date))
+    rules.on_event("detectie", 1, dict(date))     # retry: acelasi _eid
+    assert len(rules.journal()) == 1              # jurnalizat o singura data (ON CONFLICT pe id)
+    assert fired == ["test"]                      # actiunea o singura data
+    e = rules.journal()[0]
+    assert e["id"] == "retry-123"                 # id-ul stabil de la sursa
+    assert "_eid" not in e and "ev__eid" not in e and "_origine" not in e   # campuri de transport, nu in jurnal
+
+
+def test_eid_diferit_nu_se_dedupeaza(monkeypatch):
+    _sincron(monkeypatch)
+    rules.on_event("detectie", 1, {"eticheta": "person", "_eid": "a"})
+    rules.on_event("detectie", 1, {"eticheta": "person", "_eid": "b"})
+    assert len(rules.journal()) == 2
+
+
+def test_origine_dateaza_la_producere_nu_receptie(monkeypatch):
+    """C2: jurnalul foloseste ora ORIGINII (`_origine`), nu a receptiei."""
+    _sincron(monkeypatch)
+    import time
+    origine = time.time() - 3600       # produs acum o ora, livrat acum (ex. recuperat din spool)
+    rules.on_event("detectie", 1, {"eticheta": "person", "_eid": "o1", "_origine": origine})
+    e = rules.journal()[0]
+    assert e["t"] == time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(origine))
+
+
 def test_on_event_jurnalizeaza_tot():
     rules.on_event("zgomot", 5, {"motiv": "prag depasit", "nivel_db": -20})
     rules.on_event("detectie", 1, {"eticheta": "dog"})
