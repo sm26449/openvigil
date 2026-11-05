@@ -101,7 +101,22 @@ def feedback_adauga(cam, eid, verdict, eticheta=None, poza=None, cine=None, surs
         _index_eticheta(r["cam"], r["poza"], r["eticheta"])
     if r["poza"]:
         _fundal_invata(r["cam"], r["poza"], r)
+    _scorer_sync(r["cam"])
     return r
+
+
+def _scorer_sync(cam):
+    """Dupa un verdict, memoria scorerului de falsuri (vectori_fp) se re-sincronizeaza din
+    feedback.jsonl pentru acea camera (audit B4 — altfel nimic nu o actualiza automat). Pozitional
+    (embedding-urile le adauga separat serviciul AI, cand `scorer_semantic` e pornit). In fundal,
+    ca sa nu intarzie raspunsul; niciodata nu arunca."""
+    def _job():
+        try:
+            import scorer_fp
+            scorer_fp.incarca_din_feedback(FEEDBACK, doar_cam=int(cam))
+        except Exception as e:
+            logare.info(f"[scena] scorer sync cam{cam}: {str(e)[:80]}")
+    threading.Thread(target=_job, daemon=True).start()
 
 
 def _fundal_invata(cam, poza, rand):

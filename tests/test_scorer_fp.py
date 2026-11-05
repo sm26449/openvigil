@@ -156,3 +156,52 @@ def test_circuit_breaker_fail_open(monkeypatch):
     for _ in range(scorer_fp.CB_PRAG):
         assert scorer_fp.scor(6, "person", "noapte", HOT)["suprima"] is False
     assert scorer_fp.stare()["cb_deschis"] is True
+
+
+# --- B4/B5: dedup dupa id (ultimul verdict), reincarcare atomica ---
+
+def _scrie(tmp_path, *entries):
+    import json
+    p = tmp_path / "feedback.jsonl"
+    p.write_text("\n".join(json.dumps(e) for e in entries) + "\n")
+    return str(p)
+
+
+def test_dedup_dupa_id_nu_umfla_numaratoarea(tmp_path):
+    """Acelasi verdict repetat pe aceeasi detectie (acelasi id) se numara O SINGURA DATA."""
+    comun = {"cam": 6, "verdict": "gresit", "eticheta_initiala": "person", "regiune": HOT}
+    p = _scrie(tmp_path,
+               {**comun, "id": "d1", "t": "2026-11-04 02:00:00"},
+               {**comun, "id": "d1", "t": "2026-11-04 02:01:00"},   # duplicat -> ignorat
+               {**comun, "id": "d2", "t": "2026-11-04 02:02:00"},
+               {**comun, "id": "d3", "t": "2026-11-04 02:03:00"})
+    assert scorer_fp.incarca_din_feedback(p) == 3                   # nu 4
+    assert scorer_fp.scor(6, "person", "noapte", HOT)["fals"] == 3
+
+
+def test_ultimul_verdict_scoate_detectia(tmp_path):
+    """Daca omul se razgandeste (gresit -> ok pe acelasi id), ultimul verdict conteaza."""
+    comun = {"cam": 6, "eticheta_initiala": "person", "regiune": HOT}
+    p = _scrie(tmp_path,
+               {**comun, "id": "d1", "verdict": "gresit", "t": "2026-11-04 02:00:00"},
+               {**comun, "id": "d1", "verdict": "ok", "t": "2026-11-04 02:05:00"})
+    scorer_fp.incarca_din_feedback(p)
+    s = scorer_fp.scor(6, "person", "noapte", HOT)
+    assert s["fals"] == 0 and s["ok"] == 1
+
+
+def test_reincarcare_atomica_rollback(tmp_path):
+    """Un embedding invalid face INSERT-ul sa crape IN tranzactie -> rollback; memoria veche ramane."""
+    comun = {"cam": 6, "verdict": "gresit", "eticheta_initiala": "person", "regiune": HOT}
+    p = _scrie(tmp_path,
+               {**comun, "id": "d1", "t": "2026-11-04 02:00:00"},
+               {**comun, "id": "d2", "t": "2026-11-04 02:01:00"},
+               {**comun, "id": "d3", "t": "2026-11-04 02:02:00"})
+    assert scorer_fp.incarca_din_feedback(p) == 3
+    assert scorer_fp.scor(6, "person", "noapte", HOT)["fals"] == 3
+
+    def embed_dim_gresit(_poza):
+        return [0.1, 0.2, 0.3]            # 3-dim in loc de 768 -> ::vector esueaza la INSERT
+    with pytest.raises(Exception):
+        scorer_fp.incarca_din_feedback(p, embed_fn=embed_dim_gresit)
+    assert scorer_fp.scor(6, "person", "noapte", HOT)["fals"] == 3   # neschimbat (rollback)

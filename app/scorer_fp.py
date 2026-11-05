@@ -215,12 +215,19 @@ def suprima(cam, eticheta, regim, box, emb=None):
 
 
 def incarca_din_feedback(cale, embed_fn=None, doar_cam=None):
-    """Populeaza memoria din data/scena/feedback.jsonl (verdictele pe detectii). `embed_fn(poza)`
-    -> embedding SigLIP sau None (optional; fara el memoria e pur pozitionala). Idempotent prin
-    golire + reincarcare pentru camerele atinse. Intoarce cate randuri a scris."""
+    """Reconstruieste memoria din data/scena/feedback.jsonl (verdictele pe detectii).
+
+    DEDUP dupa `id`: ultimul verdict al unei detectii conteaza (ca in scena_web.feedback_citeste).
+    Altfel verdictele repetate pe aceeasi detectie umflau artificial numaratoarea si puteau trece
+    de MIN_FALS fals (audit B4). Daca verdictul final nu mai e „gresit"/„ok" (omul s-a razgandit),
+    detectia iese din memorie. `embed_fn(poza)` -> embedding SigLIP sau None (optional; fara el
+    memoria e pur pozitionala). Inlocuire ATOMICA: o singura tranzactie (DELETE camere + INSERT-uri,
+    rollback la orice eroare), nu stergeri + inserari in autocommit care puteau lasa memoria goala
+    sau incompleta la un crash (audit B5). Intoarce cate randuri a scris."""
     import json
     _init()
-    randuri = []
+    ultim = {}                              # id -> ultimul rand cu acel id (ultimul cuvant conteaza)
+    fara_id = 0
     for ln in open(cale, encoding="utf-8"):
         ln = ln.strip()
         if not ln:
@@ -229,6 +236,13 @@ def incarca_din_feedback(cale, embed_fn=None, doar_cam=None):
             e = json.loads(ln)
         except ValueError:
             continue
+        eid = e.get("id")
+        if eid is None:                     # randuri legacy fara id: fiecare numarat o data
+            fara_id += 1
+            eid = f"_fara_id_{fara_id}"
+        ultim[str(eid)] = e
+    randuri = []
+    for e in ultim.values():
         cam = e.get("cam")
         verdict = e.get("verdict")
         box = e.get("regiune")
@@ -238,13 +252,19 @@ def incarca_din_feedback(cale, embed_fn=None, doar_cam=None):
         if doar_cam is not None and int(cam) != int(doar_cam):
             continue
         ora = int((e.get("t") or "1970-01-01 12")[11:13] or 12)
-        randuri.append((int(cam), eticheta, regim_din_ora(ora), box, verdict,
+        randuri.append((int(cam), eticheta, regim_din_ora(ora), list(box), verdict,
                         e.get("poza"), embed_fn(e.get("poza")) if embed_fn else None))
     cams = {r[0] for r in randuri}
-    with db.conn() as cn:
+    if doar_cam is not None:
+        cams.add(int(doar_cam))             # camera ceruta se goleste chiar daca nu mai are randuri
+    with db.tx() as cn:                     # inlocuire ATOMICA: DELETE + INSERT in aceeasi tranzactie
         for cam in cams:
             cn.execute("DELETE FROM vectori_fp WHERE cam=%s", (cam,))
-    for cam, eticheta, regim, box, verdict, poza, emb in randuri:
-        adauga(cam, eticheta, regim, box, verdict, emb=emb, poza=poza)
+        for cam, eticheta, regim, box, verdict, poza, emb in randuri:
+            r, c = celula(box)
+            cn.execute("INSERT INTO vectori_fp (cam, eticheta, regim, cel_r, cel_c, verdict, box, poza, ts, emb) "
+                       "VALUES (%s,%s,%s,%s,%s,%s,%s::jsonb,%s,%s,%s::vector)",
+                       (cam, eticheta, regim, r, c, verdict, json.dumps(list(box)), poza,
+                        time.time(), _vec(emb)))
     _cache.clear()   # memoria s-a schimbat -> invalidam cache-ul de numere (B3)
     return len(randuri)
