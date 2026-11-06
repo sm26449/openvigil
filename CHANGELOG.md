@@ -5,6 +5,8 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 
 ## [Nepublicat]
 
+## [2.0.12] — 2026-11-06
+
 ### Adăugat
 - **Butoane de verdict ✓/✕ pe notificările Telegram de FAȚĂ și NUMĂR** (ca cele de la detecții),
   cu acțiuni reale. Pentru o față recunoscută (`👤 <nume>`): „✓ e <nume>" (semnal de încredere) și
