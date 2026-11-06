@@ -5,6 +5,18 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 
 ## [Nepublicat]
 
+## [2.0.7] — 2026-11-06
+
+### Reparat
+- **LPR (numere) se declanșează și din tiling, nu doar din substream**: camerele de stradă văd
+  vehiculele mai ales prin calea de tiling (mici/departe în cadru), iar LPR pornea doar din `process`
+  (substream), pe un vehicul proaspăt confirmat. De când detecțiile s-au mutat pe tiling (~1-2 nov),
+  majoritatea mașinilor nu mai declanșau nicio citire — de aici „nu mai detectăm numere". Acum un
+  vehicul proaspăt prins prin tiling trimite același job LPR (același throttle `ACTIVE_TTL`, partajat
+  cu substream-ul → fără dublare; `plates.process` are cooldown propriu per placuță). Modelul ALPR și
+  cadrul HD erau intacte (confirmat: 11/12 crop-uri istorice recitite) — regresia era pierderea
+  oportunităților de citire.
+
 ## [2.0.6] — 2026-11-06
 
 ### Reparat
