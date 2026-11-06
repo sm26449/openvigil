@@ -1,4 +1,8 @@
 {
+ "🆘 {cam}: posibilă cădere — o persoană pare căzută ({ora})": "🆘 {cam}: possible fall — a person appears to have fallen ({ora})",
+ "Alertă la cădere pornită": "Fall alert on",
+ "Alertă la cădere oprită": "Fall alert off",
+ "Detectează o persoană căzută și imobilă (pose + confirmare VLM) și escaladează": "Detects a fallen, motionless person (pose + VLM confirmation) and escalates",
  "Da, e {nume}": "Yes, it's {nume}",
  "Nu e {nume}": "Not {nume}",
  "✓ e {nume} ({cine})": "✓ it's {nume} ({cine})",

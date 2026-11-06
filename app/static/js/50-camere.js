@@ -738,6 +738,18 @@ function openCamPanel(c) {
     };
     aiWrap.append(sirenBtn);
   }
+  const cadereBtn = document.createElement('button');
+  cadereBtn.className = 'panel-toggle' + (c.cadere ? ' on' : '');
+  cadereBtn.title = t('Detectează o persoană căzută și imobilă (pose + confirmare VLM) și escaladează');
+  cadereBtn.innerHTML = icon('alarm', 14) + ' ' + (c.cadere ? t('Alertă la cădere pornită') : t('Alertă la cădere oprită'));
+  cadereBtn.onclick = async () => {
+    c.cadere = !c.cadere;
+    await post(`/api/cam/${c.id}/detect`, { cadere: c.cadere });
+    cadereBtn.className = 'panel-toggle' + (c.cadere ? ' on' : '');
+    cadereBtn.innerHTML = icon('alarm', 14) + ' ' + (c.cadere ? t('Alertă la cădere pornită') : t('Alertă la cădere oprită'));
+    flashP(t('Salvat'));
+  };
+  aiWrap.append(cadereBtn);
   body.appendChild(section(t('Detecție AI (pe server)'), aiWrap));
 
   // Detectii in firmware
