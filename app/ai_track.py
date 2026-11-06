@@ -268,6 +268,7 @@ class BatchLoop(threading.Thread):
         self._hd = {}                  # cam_id -> (t, cadru HD) pentru decupajele scenei
         self._scena_scris = {}         # cam_id -> cand am scris ultima data harta pe disc
         self._zona_citita = {}         # cam_id -> cand am recitit zona de detectie (detect.json)
+        self._nec_tacut = {}           # cam_id -> cati „necunoscut" am tacut (vreme rea + noapte)
 
     def _sync(self, want):
         for c in list(self.readers):
@@ -402,6 +403,13 @@ def _dir_scena(cam_id):
     return d
 
 
+def _taci_necunoscut(eticheta, vreme_rea, e_noapte):
+    """Vreme rea + noapte: un candidat „necunoscut" e mai ales artefact (ploaie/reflexe) — nu-l
+    jurnalizam si nu-l notificam (doar il numaram). Clasificarea ramane, deci orice iese real
+    (person/car/...) trece normal, iar YOLO prinde oamenii independent de scena-change."""
+    return eticheta == "necunoscut" and bool(vreme_rea) and bool(e_noapte)
+
+
 def _scena_schimbare(self, c, frame, now, model):
     """Pasul de detectie pe schimbare al unei camere: hraneste motorul, clasifica
     candidatii maturi pe decupaj, emite `scena_candidat`, scrie harta pe disc la un minut."""
@@ -430,6 +438,13 @@ def _scena_schimbare(self, c, frame, now, model):
             img_hd = detect._fetch_frame(c, "_main")
             self._hd[c] = (now, img_hd)
         hd = img_hd
+    e_noapte = False
+    if maturi:
+        try:
+            import rules
+            e_noapte = rules._is_night()
+        except Exception:
+            e_noapte = False
     for cand in maturi:
         nbox = cand.nbox(sc.w, sc.h)
         crop = scena.decupaj(hd if hd is not None else frame, nbox)
@@ -445,6 +460,12 @@ def _scena_schimbare(self, c, frame, now, model):
         scena_fundal.aplica(c, emb, rez)
         cand.clasificat = rez
         cand.ultima_clasificare = now
+        # vreme rea + noapte: „necunoscut" = mai ales artefacte (ploaie/reflexe). Il clasificam (ca
+        # orice iese real — person/car/... — sa treaca normal, iar YOLO prinde oamenii independent),
+        # dar nu-l jurnalizam si nu-l notificam — doar il numaram, ca sa nu inecam jurnalul.
+        if _taci_necunoscut(rez["eticheta"], sc.vreme_rea, e_noapte):
+            self._nec_tacut[c] = self._nec_tacut.get(c, 0) + 1
+            continue
         fn = f"{time.strftime('%Y%m%d-%H%M%S', time.localtime(now))}-{cand.id}.jpg"
         cale = os.path.join(_dir_scena(c), fn)
         ok, buf = cv2.imencode(".jpg", crop, [cv2.IMWRITE_JPEG_QUALITY, 85])
@@ -473,7 +494,7 @@ def _scena_schimbare(self, c, frame, now, model):
         try:
             import json
             with open(os.path.join(d, "stare.json"), "w") as f:
-                json.dump({**sc.stare(), "t": now}, f)
+                json.dump({**sc.stare(), "necunoscut_tacut": self._nec_tacut.get(c, 0), "t": now}, f)
         except OSError:
             pass
 
