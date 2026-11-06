@@ -5,6 +5,12 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 
 ## [Nepublicat]
 
+### Reparat
+- **Antetul — corectie**: compactarea nav-ului din 2.0.10 nu strangea efectiv butoanele (padding-ul
+  pus era identic cu cel implicit), asa ca pe desktop nav-ul tot derula orizontal. Acum butoanele nav se
+  string realmente sub 1920px (padding mai mic + gap mai mic) — toate tab-urile incap fara scroll
+  (verificat 1440-1920px pe instanta live).
+
 ## [2.0.10] — 2026-11-06
 
 ### Reparat
