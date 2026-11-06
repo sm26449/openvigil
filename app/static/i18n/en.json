@@ -2363,5 +2363,6 @@
  "Conturile nu pot fi citite pe server — verifică data/users.json": "Accounts cannot be read on the server — check data/users.json",
  "conturile nu pot fi citite pe server": "accounts cannot be read on the server",
  "Numele persoanei din acest crop": "Name of the person in this crop",
- "Nume persoană nouă": "New person's name"
+ "Nume persoană nouă": "New person's name",
+ "Caută în jurnalul de modificări": "Search the change log"
 }

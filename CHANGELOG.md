@@ -6,10 +6,12 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 ## [Nepublicat]
 
 ### Reparat
-- **Accesibilitate + UX (audit UI)**: thumbnail-urile de eveniment din Redare au acum `alt` (erau fără
-  atribut → cititoarele de ecran citeau URL-ul); câmpurile de nume la înrolarea feței (`#fc-name` și
-  „cine e?") au `aria-label`; iar `/api/thumb/<cam>` pentru o cameră offline întoarce un placeholder
-  SVG „fără semnal" (200) în loc de 502 — gata cu imaginea stricată și eroarea din consolă.
+- **Accesibilitate + UX (audit UI)**: thumbnail-urile de eveniment din Redare și poster-ul fișei HD au
+  acum `alt` (erau fără atribut → cititoarele de ecran citeau URL-ul); câmpurile fără etichetă vizibilă
+  au `aria-label` (nume la înrolarea feței `#fc-name` + „cine e?", căutarea din Jurnal `#log-q`); iar
+  `/api/thumb/<cam>` pentru o cameră offline întoarce un placeholder SVG „fără semnal" (200) în loc de
+  502 — gata cu imaginea stricată și eroarea din consolă. (Audit Playwright: 8 ecrane principale + 9
+  panouri Setări + AI + fișă × desktop/mobil; zero overflow, zero erori de consolă.)
 - **Antetul încape fără scroll orizontal pe desktop**: pe lățimi sub ~1920px, antetul se compactează ușor
   (butonul „Adaugă cameră" rămâne doar „+", căutarea se plafonează, bara de puls dispare) ca toate
   tab-urile principale (Live…Stare) să fie vizibile fără a derula nav-ul; compactarea mai strânsă începe
