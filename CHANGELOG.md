@@ -5,12 +5,13 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 
 ## [Nepublicat]
 
+## [2.0.10] — 2026-11-06
+
+### Reparat
 - **Modalele sunt dialoguri accesibile**: toate ferestrele suprapuse (mască, heatmap, regiune, zonă,
   numărare, dosare, rezumat, clip, poză, adaugă cameră, HD) au acum `role="dialog"`, `aria-modal="true"`
   și un nume accesibil (`aria-labelledby` la titlul lor), iar la deschidere focusul intră în dialog —
   cititoarele de ecran le anunță corect, iar navigarea cu tastatura începe în modal (Esc le închidea deja).
-
-### Reparat
 - **Accesibilitate + UX (audit UI)**: thumbnail-urile de eveniment din Redare și poster-ul fișei HD au
   acum `alt` (erau fără atribut → cititoarele de ecran citeau URL-ul); câmpurile fără etichetă vizibilă
   au `aria-label` (nume la înrolarea feței `#fc-name` + „cine e?", căutarea din Jurnal `#log-q`); iar
