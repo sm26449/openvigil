@@ -5,6 +5,13 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 
 ## [Nepublicat]
 
+### Schimbat
+- **Mai puțin zgomot de scenă pe vreme rea + noapte**: candidații de scenă clasificați „necunoscut"
+  (mai ales artefacte de ploaie/reflexe) nu se mai jurnalizează și nu se mai notifică în acel regim —
+  doar se numără (`necunoscut_tacut` în `stare.json`). Clasificarea rămâne, deci orice iese real
+  (person/car/…) trece normal, iar YOLO prinde oamenii independent de scene-change. (cam14 făcea
+  ~1400 „necunoscut"/noapte-ploaie direct în jurnal.)
+
 ### Reparat
 - **Cursa de import `transformers` la pornirea nvr-ai**: numele lazy (`AutoModel`, `AutoProcessor`,
   `AutoModelForImageTextToText`, CLIP) se rezolvă acum eager, într-un singur fir, înainte de firele
