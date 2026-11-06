@@ -145,6 +145,18 @@ document.addEventListener('keydown', (e) => {
   }
   if (hdCam) closeHD();
 });
+// Accesibilitate: cand un overlay (role=dialog) se deschide — clasa `hidden` dispare — mutam focusul
+// in dialogul insusi (are tabindex=-1), ca cititorul de ecran sa-i anunte numele si navigarea cu
+// tastatura sa inceapa in el, nu in fundal. Inchiderea (Esc / butonul X) ramane ca inainte.
+for (const [ov] of OVERLAY_CLOSE) {
+  const el = $(ov);
+  if (!el) continue;
+  new MutationObserver(() => {
+    if (!el.classList.contains('hidden') && !el.contains(document.activeElement)) {
+      try { el.focus({ preventScroll: true }); } catch (_) {}
+    }
+  }).observe(el, { attributes: true, attributeFilter: ['class'] });
+}
 let ptzKey = null, ptzKeyT = null;
 const PTZ_KEYS = { ArrowLeft: { pan: -60 }, ArrowRight: { pan: 60 }, ArrowUp: { tilt: 60 }, ArrowDown: { tilt: -60 },
   '+': { zoom: 60 }, '=': { zoom: 60 }, '-': { zoom: -60 }, PageUp: { zoom: 60 }, PageDown: { zoom: -60 } };
