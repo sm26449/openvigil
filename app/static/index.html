@@ -47,9 +47,9 @@
 </div>
 
 <!-- Modal: adaugare camera manuala -->
-<div id="addcam-overlay" class="hidden">
+<div id="addcam-overlay" class="hidden" role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="addcam-title">
   <form id="addcam-form">
-    <h2>Adaugă camera</h2>
+    <h2 id="addcam-title">Adaugă camera</h2>
     <p class="hint">Camera Hikvision accesată direct pe IP (nu prin NVR).</p>
     <label>Nume <input name="name" placeholder="ex. Poarta" autocomplete="off"></label>
     <label>Producator / protocol
@@ -1190,7 +1190,7 @@
 </section>
 
 <!-- editor zona de detectie -->
-<div id="zone-overlay" class="hidden">
+<div id="zone-overlay" class="hidden" role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="zone-title">
   <div id="zone-bar">
     <span id="zone-title"></span>
     <span class="hint">Click pe imagine = adaugi colț · minim 3 colțuri</span>
@@ -1203,7 +1203,7 @@
 </div>
 
 <!-- Etapa 5: cautare pe regiune (un dreptunghi pe cadru -> detecțiile zilei care l-au atins) -->
-<div id="reg-overlay" class="ov-full hidden">
+<div id="reg-overlay" class="ov-full hidden" role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="reg-title">
   <div class="ov-bar">
     <span class="ov-title" id="reg-title"></span>
     <span class="hint">Trage un dreptunghi pe imagine · rezultatele apar în dreapta · click pe unul = redă</span>
@@ -1216,7 +1216,7 @@
 </div>
 
 <!-- Etapa 5: harta de caldura (traseele oamenilor din episoade, pe cadru) -->
-<div id="heat-overlay" class="ov-full hidden">
+<div id="heat-overlay" class="ov-full hidden" role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="heat-title">
   <div class="ov-bar">
     <span class="ov-title" id="heat-title"></span>
     <div class="seg" id="heat-zile" role="group" aria-label="Interval">
@@ -1229,7 +1229,7 @@
 </div>
 
 <!-- Etapa 5: masca de confidentialitate (dreptunghiuri innegrite pe live, redare, exporturi) -->
-<div id="mask-overlay" class="ov-full hidden">
+<div id="mask-overlay" class="ov-full hidden" role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="mask-title">
   <div class="ov-bar">
     <span class="ov-title" id="mask-title"></span>
     <span class="hint">Trage dreptunghiuri peste ce nu trebuie văzut (strada, vecinul) · se aplică pe live, HD, redare, clipuri și exporturi; înregistrarea rămâne întreagă</span>
@@ -1242,7 +1242,7 @@
 </div>
 
 <!-- editor linii/zone de numarare (nvr-ai: numarare, intrari, viteza) -->
-<div id="count-overlay" class="hidden">
+<div id="count-overlay" class="hidden" role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="count-title">
   <div id="count-bar">
     <span id="count-title"></span>
     <div class="seg" id="count-mode" role="group">
@@ -1272,7 +1272,7 @@
 </div>
 
 <!-- viewer poze (tabul Alarme) -->
-<div id="ph-overlay" class="hidden">
+<div id="ph-overlay" class="hidden" role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="ph-cap">
   <div id="ph-bar">
     <span id="ph-cap"></span>
     <span id="ph-count"></span>
@@ -1289,7 +1289,7 @@
 </div>
 
 <!-- HD overlay (click pe o camera) -->
-<div id="hd-overlay" class="hidden">
+<div id="hd-overlay" class="hidden" role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="hd-title">
   <div id="hd-bar">
     <span id="hd-title"></span>
     <div id="hd-ctrls"></div>
@@ -1318,7 +1318,7 @@
 </div>
 
 <!-- player de clip (video in jurul unui eveniment AI) -->
-<div id="clip-modal" class="hidden">
+<div id="clip-modal" class="hidden" role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="clip-cap">
   <div id="clip-box">
     <div id="clip-head">
       <span id="clip-cap"></span>
@@ -1336,10 +1336,10 @@
 </div>
 
 <!-- rezumatul zilei -->
-<div id="digest-modal" class="hidden">
+<div id="digest-modal" class="hidden" role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="digest-title">
   <div id="digest-box">
     <div id="digest-head">
-      <b>Rezumatul zilei</b>
+      <b id="digest-title">Rezumatul zilei</b>
       <input type="date" id="digest-day" aria-label="Ziua rezumatului">
       <button id="digest-close" aria-label="Închide">✕</button>
     </div>
@@ -1348,7 +1348,7 @@
 </div>
 
 <!-- dosare de caz: pachet de probe pentru un incident -->
-<div id="cases-modal" class="hidden">
+<div id="cases-modal" class="hidden" role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="cases-title">
   <div id="cases-box">
     <div id="cases-head">
       <b id="cases-title">Dosare de caz</b>
