@@ -13,7 +13,8 @@ import settings  # noqa: E402
 import telegram_bot  # noqa: E402
 
 CFG = {"telegram_token": "t", "telegram_chat": "42", "scena_telegram": True,
-       "scena_telegram_cooldown": 300, "scena_vocabular": ["om", "pisică", "tractor"]}
+       "scena_telegram_cooldown": 300, "scena_telegram_cooldown_necunoscut": 900,
+       "scena_vocabular": ["om", "pisică", "tractor"]}
 
 
 @pytest.fixture(autouse=True)
@@ -47,11 +48,12 @@ def test_feedback_scris_si_citit():
 
 
 def test_de_trimis_filtru_si_cooldown():
-    e = {"cam": 14, "id": "a1", "poza": "p.jpg", "eticheta": "necunoscut"}
+    # eticheta numita (nu „necunoscut"): cooldown normal de 300 s pe camera
+    e = {"cam": 14, "id": "a1", "poza": "p.jpg", "eticheta": "mașină", "sursa": "yolo-world", "incredere": 0.7}
     assert scena_web.de_trimis(e, now=1000)
-    assert not scena_web.de_trimis({**e, "id": "a2"}, now=1100)       # cooldown pe camera
+    assert not scena_web.de_trimis({**e, "id": "a2"}, now=1100)       # cooldown pe camera (100<300)
     assert scena_web.de_trimis({**e, "cam": 6}, now=1100)             # alta camera, liber
-    assert scena_web.de_trimis({**e, "id": "a3"}, now=1400)
+    assert scena_web.de_trimis({**e, "id": "a3"}, now=1400)           # 400>300
     assert not scena_web.de_trimis({**e, "eticheta": "ploaie", "cam": 101}, now=1)
     assert not scena_web.de_trimis({**e, "poza": None, "cam": 101}, now=1)
     CFG["scena_telegram"] = False
@@ -59,6 +61,14 @@ def test_de_trimis_filtru_si_cooldown():
         assert not scena_web.de_trimis({**e, "cam": 13}, now=1)
     finally:
         CFG["scena_telegram"] = True
+
+
+def test_cooldown_mai_lung_pentru_necunoscut():
+    """„necunoscut" (cerere de verdict) pleaca pe cooldown-ul lui, mai lung (900 s), nu pe cel normal."""
+    e = {"cam": 14, "id": "n1", "poza": "p.jpg", "eticheta": "necunoscut"}
+    assert scena_web.de_trimis(e, now=1000)                           # prima cerere pleaca
+    assert not scena_web.de_trimis({**e, "id": "n2"}, now=1400)       # 400 < 900 -> sarit (era <300 inainte)
+    assert scena_web.de_trimis({**e, "id": "n3"}, now=1901)           # 901 > 900 -> pleaca din nou
 
 
 def test_noaptea_doar_etichete_sigure(monkeypatch):
