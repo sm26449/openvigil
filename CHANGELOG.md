@@ -5,6 +5,8 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 
 ## [Nepublicat]
 
+## [2.0.9] — 2026-11-06
+
 ### Schimbat
 - **Mai puține cereri de verdict „necunoscut" pe Telegram**: candidatul „necunoscut" (o cerere de
   verdict, nu o alarmă) pleacă acum pe un cooldown separat, mai lung (`scena_telegram_cooldown_necunoscut`,
