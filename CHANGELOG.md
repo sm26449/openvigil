@@ -5,6 +5,13 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 
 ## [Nepublicat]
 
+### Reparat
+- **Cursa de import `transformers` — rezolvare completă**: numele lazy se rezolvă acum în firul
+  PRINCIPAL, înainte de pornirea serverului HTTP al nvr-ai (deci înainte ca primul enqueue de la web
+  să poată porni worker-ul de indexare). Fix-ul din 2.0.9 o făcea în firul de modele, concurent cu
+  worker-ul, și încă lăsa o apariție `cannot import name 'AutoModel'` la pornire. Benign (auto-reluat),
+  dar acum eliminat la sursă.
+
 ## [2.0.9] — 2026-11-06
 
 ### Schimbat
