@@ -10,6 +10,10 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   atribut → cititoarele de ecran citeau URL-ul); câmpurile de nume la înrolarea feței (`#fc-name` și
   „cine e?") au `aria-label`; iar `/api/thumb/<cam>` pentru o cameră offline întoarce un placeholder
   SVG „fără semnal" (200) în loc de 502 — gata cu imaginea stricată și eroarea din consolă.
+- **Antetul încape fără scroll orizontal pe desktop**: pe lățimi sub ~1920px, antetul se compactează ușor
+  (butonul „Adaugă cameră" rămâne doar „+", căutarea se plafonează, bara de puls dispare) ca toate
+  tab-urile principale (Live…Stare) să fie vizibile fără a derula nav-ul; compactarea mai strânsă începe
+  acum de la 1550px (de la 1500px).
 - **Cursa de import `transformers` — rezolvare completă**: numele lazy se rezolvă acum în firul
   PRINCIPAL, înainte de pornirea serverului HTTP al nvr-ai (deci înainte ca primul enqueue de la web
   să poată porni worker-ul de indexare). Fix-ul din 2.0.9 o făcea în firul de modele, concurent cu
