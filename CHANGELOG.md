@@ -5,6 +5,8 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 
 ## [Nepublicat]
 
+## [2.0.11] — 2026-11-06
+
 ### Reparat
 - **Antetul — corectie**: compactarea nav-ului din 2.0.10 nu strangea efectiv butoanele (padding-ul
   pus era identic cu cel implicit), asa ca pe desktop nav-ul tot derula orizontal. Acum butoanele nav se
