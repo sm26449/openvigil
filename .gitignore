@@ -16,3 +16,7 @@ tests/*.png
 
 # instalare clasica (fara Docker)
 go2rtc/
+
+# Cheia serviciului de alerte (alertd) — secret, nu se comite
+alertd.env
+alertd*.env

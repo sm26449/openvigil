@@ -5,6 +5,15 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 
 ## [Nepublicat]
 
+### Adăugat
+- **Reguli de analiză — fundația + prima regulă (căderea unei persoane).** Strat subțire peste
+  percepție: percepție → candidat → confirmare → politică → escaladare (vezi `docs/reguli-analiza.md`).
+  Momentan: logica pură testată (`reguli.py` — scor geometric de cădere din keypoints COCO-17, mașină
+  de stări dwell, cooldown), orchestratorul `cadere.py` (pose + confirmare VLM + dwell → eveniment
+  `cadere`), wrapper-ul de pose `cadere_pose.py` (yolo11n-pose, nvr-ai) și clientul de escaladare
+  `escaladare.py` (`POST /v1/fire` către un serviciu extern de alerte — Telegram/SMS/email — decuplat,
+  oprit fără cheie). Cârligul în bucla de detecție + UI-ul vin separat.
+
 ## [2.0.12] — 2026-11-06
 
 ### Adăugat
