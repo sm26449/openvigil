@@ -5,6 +5,16 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 
 ## [Nepublicat]
 
+## [2.0.6] — 2026-11-06
+
+### Reparat
+- **Memoria semantică a scorerului (B2) supraviețuiește verdictelor**: re-sincronizarea pozițională
+  de după fiecare verdict (`scena_web._scorer_sync` → `incarca_din_feedback` fără `embed_fn`) păstrează
+  acum embeddings-urile deja scrise (match pe `(cam, poza)`), în loc să le șteargă odată cu restul
+  memoriei camerei. Fără asta, veto-ul semantic activat pe o cameră (`scorer_semantic`) redevenea inert
+  — pur pozițional — la primul verdict următor. Un backfill de embeddings rămâne persistent; verdictele
+  ulterioare actualizează doar partea pozițională, iar detecțiile noi fără embedding rămân poziționale.
+
 ## [2.0.5] — 2026-11-05
 
 ### Reparat

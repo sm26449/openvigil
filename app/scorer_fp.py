@@ -223,7 +223,12 @@ def incarca_din_feedback(cale, embed_fn=None, doar_cam=None):
     detectia iese din memorie. `embed_fn(poza)` -> embedding SigLIP sau None (optional; fara el
     memoria e pur pozitionala). Inlocuire ATOMICA: o singura tranzactie (DELETE camere + INSERT-uri,
     rollback la orice eroare), nu stergeri + inserari in autocommit care puteau lasa memoria goala
-    sau incompleta la un crash (audit B5). Intoarce cate randuri a scris."""
+    sau incompleta la un crash (audit B5).
+
+    FARA `embed_fn`, embeddings-urile deja existente se PASTREAZA (match pe (cam, poza)): altfel
+    re-sync-ul pozitional de dupa fiecare verdict (B4, `scena_web._scorer_sync`) ar sterge memoria
+    semantica (B2) incarcata separat cu SigLIP. Asa, un backfill cu embed_fn ramane, iar verdictele
+    urmatoare doar actualizeaza partea pozitionala. Intoarce cate randuri a scris."""
     import json
     _init()
     ultim = {}                              # id -> ultimul rand cu acel id (ultimul cuvant conteaza)
@@ -241,7 +246,7 @@ def incarca_din_feedback(cale, embed_fn=None, doar_cam=None):
             fara_id += 1
             eid = f"_fara_id_{fara_id}"
         ultim[str(eid)] = e
-    randuri = []
+    sel = []
     for e in ultim.values():
         cam = e.get("cam")
         verdict = e.get("verdict")
@@ -252,19 +257,35 @@ def incarca_din_feedback(cale, embed_fn=None, doar_cam=None):
         if doar_cam is not None and int(cam) != int(doar_cam):
             continue
         ora = int((e.get("t") or "1970-01-01 12")[11:13] or 12)
-        randuri.append((int(cam), eticheta, regim_din_ora(ora), list(box), verdict,
-                        e.get("poza"), embed_fn(e.get("poza")) if embed_fn else None))
-    cams = {r[0] for r in randuri}
+        sel.append((int(cam), eticheta, regim_din_ora(ora), list(box), verdict, e.get("poza")))
+    cams = {r[0] for r in sel}
     if doar_cam is not None:
         cams.add(int(doar_cam))             # camera ceruta se goleste chiar daca nu mai are randuri
+    # fara embed_fn: pastram embeddings-urile deja scrise (match pe (cam, poza)), ca re-sync-ul
+    # pozitional de dupa fiecare verdict sa nu stearga memoria semantica incarcata separat (B2)
+    pastrate = {}
+    if embed_fn is None and cams:
+        with db.conn() as cn:
+            for pc, pp, pe in cn.execute(
+                    "SELECT cam, poza, emb::text FROM vectori_fp "
+                    "WHERE cam = ANY(%s) AND emb IS NOT NULL AND poza IS NOT NULL",
+                    (list(cams),)).fetchall():
+                pastrate[(int(pc), pp)] = pe
+    randuri = []
+    for cam, eticheta, regim, box, verdict, poza in sel:
+        if embed_fn is not None:
+            emb_lit = _vec(embed_fn(poza))
+        else:
+            emb_lit = pastrate.get((cam, poza))      # literalul '[...]' deja in baza, sau None
+        randuri.append((cam, eticheta, regim, box, verdict, poza, emb_lit))
     with db.tx() as cn:                     # inlocuire ATOMICA: DELETE + INSERT in aceeasi tranzactie
         for cam in cams:
             cn.execute("DELETE FROM vectori_fp WHERE cam=%s", (cam,))
-        for cam, eticheta, regim, box, verdict, poza, emb in randuri:
+        for cam, eticheta, regim, box, verdict, poza, emb_lit in randuri:
             r, c = celula(box)
             cn.execute("INSERT INTO vectori_fp (cam, eticheta, regim, cel_r, cel_c, verdict, box, poza, ts, emb) "
                        "VALUES (%s,%s,%s,%s,%s,%s,%s::jsonb,%s,%s,%s::vector)",
                        (cam, eticheta, regim, r, c, verdict, json.dumps(list(box)), poza,
-                        time.time(), _vec(emb)))
+                        time.time(), emb_lit))
     _cache.clear()   # memoria s-a schimbat -> invalidam cache-ul de numere (B3)
     return len(randuri)
