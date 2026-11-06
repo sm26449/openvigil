@@ -37,10 +37,13 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FACES_DIR = os.path.join(ROOT, "data", "faces")
 PERSONS_DIR = os.path.join(FACES_DIR, "persons")
 UNKNOWN_DIR = os.path.join(FACES_DIR, "unknown")
+RECENT_DIR = os.path.join(FACES_DIR, "recent")   # crop-urile RECUNOSCUTE, pastrate la notificare
 EMB_FILE = os.path.join(FACES_DIR, "embeddings.json")
 MODEL_ROOT = os.path.join(FACES_DIR, "insightface")
 LOG_FILE = os.path.join(FACES_DIR, "log.jsonl")
+FB_FILE = os.path.join(FACES_DIR, "feedback.jsonl")   # verdictele omului pe recunoasteri (Telegram)
 LOG_MAX = 20000
+RECENT_MAX = 500       # plafonul crop-urilor recunoscute pastrate (cele mai vechi se sterg)
 
 UNIFACE_DIR = os.path.join(FACES_DIR, "uniface")
 MIN_FACE = 40          # px latura minima a fetei; sub atat embedding-ul e nesigur
@@ -709,6 +712,75 @@ def safe_path(rel):
     return p if p.startswith(FACES_DIR + os.sep) else None
 
 
+# ---- crop-ul recunoscut + verdictul omului (butoanele ✓/✕ de pe Telegram) ----
+def _prune_recent():
+    files = []
+    for day in (os.listdir(RECENT_DIR) if os.path.isdir(RECENT_DIR) else []):
+        dd = os.path.join(RECENT_DIR, day)
+        if os.path.isdir(dd):
+            files += [os.path.join(dd, f) for f in os.listdir(dd)]
+    files.sort(key=os.path.getmtime)
+    for p in files[:-RECENT_MAX] if len(files) > RECENT_MAX else []:
+        try:
+            os.remove(p)
+        except OSError:
+            pass
+
+
+def save_recognized(cam_id, img, bbox, name):
+    """Crop-ul unei fete RECUNOSCUTE, pastrat la notificare in data/faces/recent/<zi>/, cu
+    nume <HHMMSS>_cam<id>_<nume>.jpg — asa verdictul „✕ nu e el" de pe Telegram (fara stare)
+    stie pe ce crop lucreaza. Ruleaza in nvr-ai (are modelul). Intoarce (zi, HHMMSS) sau None."""
+    import cv2
+    zi, hms = time.strftime("%Y-%m-%d"), time.strftime("%H%M%S")
+    d = os.path.join(RECENT_DIR, zi)
+    os.makedirs(d, exist_ok=True)
+    ok, buf = cv2.imencode(".jpg", _crop(img, bbox), [cv2.IMWRITE_JPEG_QUALITY, 92])
+    if not ok:
+        return None
+    with open(os.path.join(d, f"{hms}_cam{int(cam_id)}_{name}.jpg"), "wb") as fh:
+        fh.write(buf.tobytes())
+    _prune_recent()
+    return zi, hms
+
+
+def _append_feedback(entry):
+    try:
+        os.makedirs(FACES_DIR, exist_ok=True)
+        with open(FB_FILE, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        if sum(1 for _ in open(FB_FILE)) > LOG_MAX:
+            store.atomic_write_text(FB_FILE, "".join(open(FB_FILE).readlines()[-LOG_MAX // 2:]))
+    except OSError:
+        pass
+
+
+def feedback(cam_id, nume, verdict, zi, hms, cine=None):
+    """Verdictul omului pe o recunoastere (butoanele de pe Telegram). verdict in ('ok','gresit').
+    „gresit" = recunoastere falsa: crop-ul salvat de save_recognized merge in unknown/<zi>/ (cu
+    numele cerut de unknown_list: <HHMMSS>_cam<id>.jpg), ca fata sa ramana pentru re-ID dar fara
+    eticheta gresita; o va reaseza langa semenii ei urmatoarea regrupare din nvr-ai (ruleaza la
+    fiecare crop necunoscut nou). „ok" = doar semnal de incredere. Ruleaza in nvr-web (doar
+    fisiere, fara model). Intoarce {verdict, mutat}."""
+    if verdict not in ("ok", "gresit"):
+        raise ValueError("verdict")
+    rec = os.path.join(RECENT_DIR, zi, f"{hms}_cam{int(cam_id)}_{nume}.jpg")
+    mutat = None
+    if verdict == "gresit" and os.path.isfile(rec):
+        import shutil
+        dd = os.path.join(UNKNOWN_DIR, zi)
+        os.makedirs(dd, exist_ok=True)
+        dst = os.path.join(dd, f"{hms}_cam{int(cam_id)}.jpg")
+        if not os.path.exists(dst):          # coliziune rara (doi oameni, aceeasi secunda+camera): pastram primul
+            shutil.move(rec, dst)
+            mutat = f"unknown/{zi}/{os.path.basename(dst)}"
+    _append_feedback({"t": time.strftime("%Y-%m-%d %H:%M:%S"), "cam": int(cam_id),
+                      "nume": nume, "verdict": verdict,
+                      **({"crop": mutat} if mutat else {}),
+                      **({"cine": cine} if cine else {})})
+    return {"verdict": verdict, "mutat": mutat}
+
+
 # ---- cadrul HD + fluxul per detectie ----
 def hd_frame(cam):
     """Cadru mainstream direct de pe camera (ISAPI picture) — fetele au nevoie de
@@ -802,11 +874,16 @@ def process(cam_id, sub_img, cam_entry):
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (80, 200, 120), 2)
         ok, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 88])
         jpeg = buf.tobytes() if ok else None
-        for name, sim, _ in names:
+        for name, sim, bbox in names:
             if name not in consemnate:
                 continue   # re-recunoastere sub minutul de racord: doar badge-ul viu
             snaps.save_frame(cam_id, name, img)
-            notify.face(cam_id, name, jpeg)
+            ref = None
+            try:
+                ref = save_recognized(cam_id, img, bbox, name)   # crop-ul pentru butoanele de verdict
+            except Exception as e:
+                logare.info(f"[faces] crop recunoscut cam{cam_id}: {str(e)[:60]}")
+            notify.face(cam_id, name, jpeg, ref=ref)
             try:
                 import hooks
                 hooks.emit("persoana", cam_id, nume=name, similaritate=round(sim, 3))

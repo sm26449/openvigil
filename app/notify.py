@@ -143,16 +143,36 @@ def detection(cam_id, label, jpeg=None, poza=None):
          + (("\n" + t("E corect?")) if taste else "") + link(cam_id), jpeg=jpeg, key=(cam_id, label), taste=taste)
 
 
-def face(cam_id, person, jpeg=None):
-    """Notificare pentru o persoana recunoscuta (Face ID) — cu numele ei."""
+def face(cam_id, person, jpeg=None, ref=None):
+    """Notificare pentru o persoana recunoscuta (Face ID) — cu numele ei. `ref` = (zi, HHMMSS)
+    al crop-ului salvat de faces.save_recognized: cu el, mesajul are butoanele ✓/✕ (fata_feedback),
+    iar verdictul „nu e el" muta crop-ul live in unknown/ pentru re-etichetare."""
     if not settings.get("face_notify"):
         return
-    send(f"👤 {_cam_name(cam_id)}: {person} ({time.strftime('%H:%M:%S')})" + link(cam_id),
-         jpeg=jpeg, key=(cam_id, "fata-" + person))
+    taste = None
+    try:
+        import fata_feedback
+        if ref:
+            taste = fata_feedback.taste(cam_id, ref[0], ref[1], person)
+    except Exception as e:
+        logare.info(f"[notify] butoane fata: {str(e)[:60]}")
+    send(f"👤 {_cam_name(cam_id)}: {person} ({time.strftime('%H:%M:%S')})"
+         + (("\n" + t("E corect?")) if taste else "") + link(cam_id),
+         jpeg=jpeg, key=(cam_id, "fata-" + person), taste=taste)
 
 
-def plate(cam_id, numar, nume=None, jpeg=None):
-    """Notificare pentru un numar de inmatriculare citit (LPR)."""
+def plate(cam_id, numar, nume=None, jpeg=None, crop=None):
+    """Notificare pentru un numar de inmatriculare citit (LPR). `crop` = calea crop-ului salvat
+    de plates (crops/<zi>/<HHMMSS>_<placa>.jpg): cu ea, mesajul are butoanele ✓/✕ (numar_feedback),
+    iar verdictul „greșit" scoate citirea din jurnal."""
+    taste = None
+    try:
+        import numar_feedback
+        ref = numar_feedback.din_crop(cam_id, crop, numar)
+        if ref:
+            taste = numar_feedback.taste(cam_id, ref[0], ref[1], numar)
+    except Exception as e:
+        logare.info(f"[notify] butoane numar: {str(e)[:60]}")
     if nume:
         if not settings.get("lpr_notify_known"):
             return
@@ -167,8 +187,9 @@ def plate(cam_id, numar, nume=None, jpeg=None):
             text = t("🚗 {cam}: număr {numar}", cam=_cam_name(cam_id), numar=numar)
         else:
             return
-    send(f"{text} ({time.strftime('%H:%M:%S')})" + link(cam_id), jpeg=jpeg,
-         key=(cam_id, "lpr-" + numar))
+    send(f"{text} ({time.strftime('%H:%M:%S')})"
+         + (("\n" + t("Numărul e corect?")) if taste else "") + link(cam_id),
+         jpeg=jpeg, key=(cam_id, "lpr-" + numar), taste=taste)
 
 
 def _cam_name(cam_id):
