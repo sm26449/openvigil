@@ -650,6 +650,12 @@ class CamState:
                                     round((bx2 - bx1) / W, 3), round((by2 - by1) / H, 3),
                                     float(b.conf)]
             chenare = {k: v[:4] for k, v in chenare.items()}
+            # vehicule PROASPETE (prima aparitie dupa ACTIVE_TTL) prinse prin tiling: si ele
+            # declanseaza LPR, ca pe substream. Camerele de strada vad vehiculele mai ales prin
+            # tiling (mici/departe), iar LPR pornea DOAR din `process` (substream), ratand
+            # majoritatea masinilor. `self.active` e comun cu substream-ul -> fara dublare.
+            proaspete = {l for l in set(gasit)
+                         if l not in self.active or now - self.active[l] > ACTIVE_TTL}
             for lbl in set(gasit):
                 if lbl not in self.active or now - self.active[lbl] > ACTIVE_TTL:
                     self.recent.appendleft(
@@ -666,6 +672,10 @@ class CamState:
                     except Exception:
                         pass
                 self.active[lbl] = now
+            # vehicul proaspat prins prin tiling -> LPR (acelasi job greu ca pe substream;
+            # plates.process are cooldown propriu per placuta, deci nu dubleaza jurnalul)
+            if proaspete & VEHICLES and plates.enabled():
+                _pools()[1].submit(self._lpr_job, img.copy())
             if gasit:
                 logare.info(f"[detect] cam{self.cam_id}: regiune -> {sorted(set(gasit))}")
         except Exception as e:
