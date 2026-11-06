@@ -354,7 +354,11 @@ def _fetch_frame(cam_id, sufix=""):
         r = requests.get(f"{C.GO2RTC_API}/api/frame.jpeg",
                          params={"src": f"cam{cam_id}{sufix}"}, timeout=8)
         if r.ok and r.content:
-            return cv2.imdecode(np.frombuffer(r.content, np.uint8), cv2.IMREAD_COLOR)
+            img = cv2.imdecode(np.frombuffer(r.content, np.uint8), cv2.IMREAD_COLOR)
+            # go2rtc poate da 200 cu un corp non-JPEG/trunchiat cand fluxul e picat (cam6 isi
+            # pierde mainstream-ul) -> imdecode None sau un cadru minuscul; nu-l dam mai departe
+            if img is not None and img.shape[0] >= 32 and img.shape[1] >= 32:
+                return img
     except requests.RequestException:
         pass
     return None
