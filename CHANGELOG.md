@@ -5,6 +5,14 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 
 ## [Nepublicat]
 
+### Reparat
+- **Cursa de import `transformers` la pornirea nvr-ai**: numele lazy (`AutoModel`, `AutoProcessor`,
+  `AutoModelForImageTextToText`, CLIP) se rezolvă acum eager, într-un singur fir, înainte de firele
+  care le importă concurent (worker-ul de indexare semantică, describe, scena_lume) — elimină
+  `cannot import name 'AutoModel' from 'transformers'`. Era benign (reluat de 4× și auto-recuperat),
+  dar amâna ~10s indexarea semantică a unui lot la restart. Doar clase, fără greutăți → nu atinge
+  ordinea bf16 de încărcare a modelelor.
+
 ## [2.0.8] — 2026-11-06
 
 ### Reparat
