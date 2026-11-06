@@ -295,7 +295,13 @@ def de_trimis(entry, now=None):
                     f"{float(entry.get('incredere') or 0):.2f}) e sub pragul {prag_noapte(cam)}")
         return False
     now = now or time.time()
-    cd = int(settings.get("scena_telegram_cooldown") or 0)
+    # „necunoscut" e o cerere de verdict, nu o alarma — o lasam mai rar pe Telegram decat o
+    # detectie numita (person/car/...), ca sa nu inece omul. Timer-ul e comun pe camera: o
+    # detectie numita recenta blocheaza oricum un „necunoscut" apropiat (si invers, ca inainte).
+    if eticheta == "necunoscut":
+        cd = int(settings.get("scena_telegram_cooldown_necunoscut") or 0)
+    else:
+        cd = int(settings.get("scena_telegram_cooldown") or 0)
     with _ultim_lock:
         de_cand = now - _ultim.get(cam, 0)
         if de_cand < cd:

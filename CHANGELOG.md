@@ -6,6 +6,10 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 ## [Nepublicat]
 
 ### Schimbat
+- **Mai puține cereri de verdict „necunoscut" pe Telegram**: candidatul „necunoscut" (o cerere de
+  verdict, nu o alarmă) pleacă acum pe un cooldown separat, mai lung (`scena_telegram_cooldown_necunoscut`,
+  implicit 900 s), nu pe cel al detecțiilor numite (300 s) — mai puțin spam, fără a întârzia alarmele
+  numite (person/car/…). (Neutrele — ploaie/umbră/frunze — tot nu pleacă; „necunoscut" noaptea/pe ploaie tot e sărit.)
 - **Mai puțin zgomot de scenă pe vreme rea + noapte**: candidații de scenă clasificați „necunoscut"
   (mai ales artefacte de ploaie/reflexe) nu se mai jurnalizează și nu se mai notifică în acel regim —
   doar se numără (`necunoscut_tacut` în `stare.json`). Clasificarea rămâne, deci orice iese real
