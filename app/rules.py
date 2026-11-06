@@ -200,6 +200,8 @@ VEHICULE = {"car", "truck", "bus", "motorcycle"}
 def severity(tip, date, is_night):
     """info / atentie / critic, dupa tip + context + zi/noapte. Fara efecte."""
     d = date or {}
+    if tip == "cadere":
+        return "critic"                                  # om cazut, confirmat (pose + VLM)
     if tip == "fata_falsa":
         return "critic"                                  # tentativa de pacaleala
     if tip == "persoana_necunoscuta":
@@ -351,6 +353,19 @@ def _journal(tip, cam_id, date):
             scena_web.notifica(entry)
         except Exception as e:
             logare.info(f"[rules] scena telegram: {str(e)[:80]}")
+    if tip == "cadere":
+        # alerta primara pe canalele proprii + escaladare la serviciul extern (Telegram+SMS)
+        try:
+            import notify
+            import escaladare
+            nume = notify._cam_name(cam_id)
+            legatura = notify.link(cam_id, now)
+            notify.send(t("🆘 {cam}: posibilă cădere — o persoană pare căzută ({ora})",
+                          cam=nume, ora=ora) + legatura, key=(cam_id, "cadere"))
+            escaladare.escaladeaza({"nume_cam": nume, "cam": cam_id, "ora": ora,
+                                    "link": (legatura or "").strip()})
+        except Exception as e:
+            logare.info(f"[rules] cadere: {str(e)[:80]}")
     return True
 
 

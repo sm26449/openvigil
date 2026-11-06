@@ -362,6 +362,17 @@ class BatchLoop(threading.Thread):
                 except Exception as e:
                     logare.info(f"[ai-track] cam{c} update: {str(e)[:100]}")
                     continue
+                # regula de cadere: pe persoanele urmarite, doar pe camerele cu `cadere` pornit
+                # (bloc propriu — o eroare aici NU are voie sa opreasca urmarirea)
+                if detect.cam_cfg(c).get("cadere"):
+                    try:
+                        import cadere
+                        persoane = [(int(row[4]), (float(row[0]), float(row[1]), float(row[2]), float(row[3])))
+                                    for row in tracked if len(row) >= 7 and _clase.get(int(row[6])) == "person"]
+                        if persoane:
+                            cadere.pas_pe_cadru(c, frame, persoane, now, self.emit_fn)
+                    except Exception as e:
+                        logare.info(f"[cadere] cam{c}: {str(e)[:80]}")
                 # obiect nou/disparut: hranim watcher-ul cu cadrul + boxurile in miscare
                 if c in scene_cams:
                     sw = self.scenes.get(c)

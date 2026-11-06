@@ -2,7 +2,9 @@
 Verifică gating pe mărime, persistența (dwell), confirmarea VLM și emiterea evenimentului."""
 import os
 import sys
+import types
 
+import numpy as np
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app"))
@@ -91,3 +93,80 @@ def test_vlm_oprit_emite_direct(monkeypatch):
     C.verifica(6, None, BBOX_OM, "t1", now=0, keypoints_fn=kp)
     ev = C.verifica(6, None, BBOX_OM, "t1", now=6, keypoints_fn=kp)   # fără confirm_fn
     assert ev is not None
+
+
+# ---- glue-ul live ----
+def test_severitate_cadere_critic():
+    import rules
+    assert rules.severity("cadere", {}, is_night=False) == "critic"
+    assert rules.severity("cadere", {}, is_night=True) == "critic"
+
+
+def test_confirma_si_emite_cu_vlm(monkeypatch):
+    emise = []
+    monkeypatch.setattr(C.settings, "get", lambda k: {"cadere_vlm": True}[k])
+    monkeypatch.setattr(C, "_vlm_confirm", lambda f, b: True)
+    ok = C.confirma_si_emite(6, None, (0, 0, 10, 10), {"scor": 0.7},
+                             lambda tip, cam, date: emise.append((tip, cam, date)))
+    assert ok is True and emise == [("cadere", 6, {"scor": 0.7})]
+    emise.clear()
+    monkeypatch.setattr(C, "_vlm_confirm", lambda f, b: False)
+    assert C.confirma_si_emite(6, None, (0, 0, 10, 10), {"scor": 0.7},
+                               lambda *a: emise.append(a)) is False
+    assert emise == []
+
+
+def test_confirma_vlm_esuat_lasa_sa_treaca(monkeypatch):
+    emise = []
+    monkeypatch.setattr(C.settings, "get", lambda k: {"cadere_vlm": True}[k])
+    def boom(f, b):
+        raise RuntimeError("VLM jos")
+    monkeypatch.setattr(C, "_vlm_confirm", boom)
+    assert C.confirma_si_emite(6, None, (0, 0, 10, 10), {"scor": 0.7},
+                               lambda tip, cam, date: emise.append(1)) is True
+    assert emise == [1]
+
+
+def test_confirma_vlm_oprit_nu_cheama_vlm(monkeypatch):
+    emise = []
+    monkeypatch.setattr(C.settings, "get", lambda k: {"cadere_vlm": False}[k])
+    monkeypatch.setattr(C, "_vlm_confirm",
+                        lambda f, b: (_ for _ in ()).throw(AssertionError("nu chema VLM")))
+    assert C.confirma_si_emite(6, None, (0, 0, 10, 10), {"scor": 0.7},
+                               lambda tip, cam, date: emise.append(1)) is True
+    assert emise == [1]
+
+
+def test_vlm_confirm_parsing(monkeypatch):
+    import describe
+    frame = np.zeros((20, 20, 3), np.uint8)
+    cazuri = [("Da", True), ("da, pare căzută", True), ("Nu.", False), ("nu", False),
+              ("o persoană în picioare", False), ("lying on the ground", True)]
+    for ans, exp in cazuri:
+        monkeypatch.setattr(describe, "describe_crop", lambda pil, prompt, a=ans: a)
+        assert C._vlm_confirm(frame, (0, 0, 20, 20)) is exp, ans
+
+
+def test_pas_pe_cadru_emite_dupa_dwell(monkeypatch):
+    class FakeThread:                      # rulează ținta inline, determinist
+        def __init__(self, target=None, args=(), **k):
+            self._t, self._a = target, args
+        def start(self):
+            self._t(*self._a)
+    monkeypatch.setattr(C.threading, "Thread", FakeThread)
+    fake_pose = types.ModuleType("cadere_pose")
+    fake_pose.keypoints = lambda img, b: CULCAT
+    monkeypatch.setitem(sys.modules, "cadere_pose", fake_pose)
+    monkeypatch.setattr(C, "_vlm_confirm", lambda f, b: True)
+    vals = {"cadere_scor_prag": 0.6, "cadere_dwell_s": 6, "cadere_pose_conf": 0.5,
+            "cadere_persoana_min_px": 60, "cadere_vlm": True}
+    monkeypatch.setattr(C.settings, "get", lambda k: vals[k])
+    C.reset(); C._last_pose.clear()
+    frame = np.zeros((400, 400, 3), np.uint8)
+    emise = []
+    pers = [(7, (0, 0, 300, 320))]
+    C.pas_pe_cadru(6, frame, pers, now=0, emit_fn=lambda tip, cam, d: emise.append((tip, cam, d)))
+    C.pas_pe_cadru(6, frame, pers, now=3, emit_fn=lambda tip, cam, d: emise.append((tip, cam, d)))
+    assert emise == []
+    C.pas_pe_cadru(6, frame, pers, now=6, emit_fn=lambda tip, cam, d: emise.append((tip, cam, d)))
+    assert len(emise) == 1 and emise[0][0] == "cadere" and emise[0][1] == 6 and "scor" in emise[0][2]

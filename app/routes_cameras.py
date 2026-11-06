@@ -202,6 +202,7 @@ def api_cameras():
         on = detect.enabled()
         auto = detect.auto_siren_on()
         out = [{**c, "detect": c["id"] in on, "auto_siren": c["id"] in auto,
+                "cadere": bool(detect.cam_cfg(c["id"]).get("cadere")),
                 "zone": detect.cam_cfg(c["id"]).get("zone"),
                 "playback": c["playback"] or (c["source"] == "ext"
                                               and record.has_recordings(c["id"]))}
@@ -515,7 +516,8 @@ def api_detect(cam_id):
     detect.set_detect(cam_id,
                       on=b.get("on") if "on" in b else None,
                       auto_siren=b.get("auto_siren") if "auto_siren" in b else None,
-                      conf_noapte=b.get("conf_noapte") if "conf_noapte" in b else None)
+                      conf_noapte=b.get("conf_noapte") if "conf_noapte" in b else None,
+                      cadere=b.get("cadere") if "cadere" in b else None)
     return jsonify({"ok": True, **detect.cam_cfg(cam_id)})
 
 

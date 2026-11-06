@@ -6,13 +6,16 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 ## [Nepublicat]
 
 ### Adăugat
-- **Reguli de analiză — fundația + prima regulă (căderea unei persoane).** Strat subțire peste
-  percepție: percepție → candidat → confirmare → politică → escaladare (vezi `docs/reguli-analiza.md`).
-  Momentan: logica pură testată (`reguli.py` — scor geometric de cădere din keypoints COCO-17, mașină
-  de stări dwell, cooldown), orchestratorul `cadere.py` (pose + confirmare VLM + dwell → eveniment
-  `cadere`), wrapper-ul de pose `cadere_pose.py` (yolo11n-pose, nvr-ai) și clientul de escaladare
-  `escaladare.py` (`POST /v1/fire` către un serviciu extern de alerte — Telegram/SMS/email — decuplat,
-  oprit fără cheie). Cârligul în bucla de detecție + UI-ul vin separat.
+- **Reguli de analiză + prima regulă: alertă la căderea unei persoane.** Strat subțire peste
+  percepție (percepție → candidat → confirmare → politică → escaladare, vezi `docs/reguli-analiza.md`).
+  Pe camerele cu „Alertă la cădere" pornit (comutator în fișa camerei), pentru fiecare persoană
+  urmărită rulează pose (`yolo11n-pose`) → scor geometric de cădere (orizontalitatea trunchiului +
+  raport bbox + poziția capului) → dacă rămâne jos ≥ `cadere_dwell_s` (persistență) → confirmare VLM
+  (Qwen, în fundal, ca să nu blocheze detecția) → eveniment `cadere` (severitate `critic`). nvr-web
+  ridică un incident critic + pop-up + Telegram propriu și **escaladează** printr-un `POST /v1/fire`
+  către serviciul extern de alerte (fan-out Telegram + SMS + email), decuplat și oprit fără cheie —
+  alerta primară pleacă oricum. Praguri reglabile (`cadere_*`), pose doar când o persoană e prezentă
+  (cost per eveniment). Logica pură e testată fără model (keypoints/VLM injectate).
 
 ## [2.0.12] — 2026-11-06
 
