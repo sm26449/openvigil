@@ -49,7 +49,7 @@ def test_stats_numara_pe_zile_si_necunoscute(tmp_path, monkeypatch):
 def _notify_cu(monkeypatch, cfg):
     trimise = []
     monkeypatch.setattr(notify.settings, "get", lambda k: cfg.get(k))
-    monkeypatch.setattr(notify, "send", lambda text, jpeg=None, key=None, sync=False: trimise.append(text))
+    monkeypatch.setattr(notify, "send", lambda text, jpeg=None, key=None, sync=False, taste=None: trimise.append(text))
     monkeypatch.setattr(notify, "link", lambda cam, ts=None: "")
     monkeypatch.setattr(notify, "_cam_name", lambda c: f"cam{c}")
     return trimise

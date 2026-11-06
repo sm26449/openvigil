@@ -28,6 +28,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PLATES_DIR = os.path.join(ROOT, "data", "plates")
 CROPS_DIR = os.path.join(PLATES_DIR, "crops")
 LOG_FILE = os.path.join(PLATES_DIR, "log.jsonl")
+FB_FILE = os.path.join(PLATES_DIR, "feedback.jsonl")   # verdictele omului pe citiri (Telegram)
 KNOWN_FILE = os.path.join(PLATES_DIR, "known.json")
 
 CROP_MARGIN = 0.25
@@ -142,11 +143,71 @@ def reads(limit=100):
 
 def clear_log():
     import shutil
-    for p in (LOG_FILE,):
+    for p in (LOG_FILE, FB_FILE):
         if os.path.isfile(p):
             os.remove(p)
     if os.path.isdir(CROPS_DIR):
         shutil.rmtree(CROPS_DIR)
+
+
+# ---- verdictul omului pe o citire (butoanele ✓/✕ de pe Telegram) ----
+def _append_feedback(entry):
+    try:
+        os.makedirs(PLATES_DIR, exist_ok=True)
+        with open(FB_FILE, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        if sum(1 for _ in open(FB_FILE)) > LOG_MAX:
+            import store
+            store.atomic_write_text(FB_FILE, "".join(open(FB_FILE).readlines()[-LOG_MAX // 2:]))
+    except OSError:
+        pass
+
+
+def drop_reading(cam_id, numar, crop):
+    """Scoate din jurnalul de citiri (log.jsonl) randul cu acest crop (cheia unica cam+timp+placa);
+    sterge si crop-ul de pe disc. Intoarce True daca a scos ceva. Rescriere atomica — rar si scurt,
+    ciocnirea cu o citire noua a aceleiasi camere e practic imposibila (citirile sunt la secunde)."""
+    try:
+        with open(LOG_FILE, encoding="utf-8") as f:
+            lines = f.readlines()
+    except OSError:
+        return False
+    pastrate, scos = [], False
+    for ln in lines:
+        try:
+            r = json.loads(ln)
+        except ValueError:
+            pastrate.append(ln)
+            continue
+        if (not scos and r.get("crop") == crop and r.get("numar") == numar
+                and int(r.get("cam", -1)) == int(cam_id)):
+            scos = True          # doar primul rand potrivit (crop-ul e cheie unica)
+            continue
+        pastrate.append(ln)
+    if scos:
+        import store
+        store.atomic_write_text(LOG_FILE, "".join(pastrate))
+        p = safe_path(crop)
+        if p and os.path.isfile(p):
+            try:
+                os.remove(p)
+            except OSError:
+                pass
+    return scos
+
+
+def feedback(cam_id, numar, verdict, crop=None, cine=None):
+    """Verdictul omului pe o citire LPR. verdict in ('ok','gresit'). „gresit" scoate citirea
+    din jurnal (drop_reading) ca sa nu mai conteze ca o trecere reala; „ok" = semnal de incredere.
+    Intoarce {verdict, scos}."""
+    if verdict not in ("ok", "gresit"):
+        raise ValueError("verdict")
+    scos = drop_reading(cam_id, numar, crop) if verdict == "gresit" and crop else False
+    _append_feedback({"t": time.strftime("%Y-%m-%d %H:%M:%S"), "cam": int(cam_id),
+                      "numar": numar, "verdict": verdict,
+                      **({"crop": crop} if crop else {}),
+                      **({"cine": cine} if cine else {})})
+    return {"verdict": verdict, "scos": scos}
 
 
 def safe_path(rel):
@@ -270,21 +331,21 @@ def process(cam_id, sub_img, cam_entry):
                      "numar": plate, "incredere": round(conf, 3),
                      **({"nume": nume} if nume else {}),
                      **({"crop": crop} if crop else {})})
-        out.append((plate, conf, nume, (bb.x1, bb.y1, bb.x2, bb.y2)))
+        out.append((plate, conf, nume, (bb.x1, bb.y1, bb.x2, bb.y2), crop))
     if out:
         import cv2
         import snaps
         import notify
-        for plate, conf, nume, (x1, y1, x2, y2) in out:
+        for plate, conf, nume, (x1, y1, x2, y2), _ in out:
             cv2.rectangle(img, (x1, y1), (x2, y2), (60, 160, 255), 2)
             cv2.putText(img, plate + (f" ({nume})" if nume else ""),
                         (x1, max(20, y1 - 8)),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (60, 160, 255), 2)
         ok, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 88])
         jpeg = buf.tobytes() if ok else None
-        for plate, conf, nume, _ in out:
+        for plate, conf, nume, _, crop in out:
             snaps.save_frame(cam_id, plate, img)
-            notify.plate(cam_id, plate, nume, jpeg)
+            notify.plate(cam_id, plate, nume, jpeg, crop=crop)
             try:
                 import hooks
                 hooks.emit("numar", cam_id, numar=plate, nume=nume,
@@ -293,5 +354,5 @@ def process(cam_id, sub_img, cam_entry):
                 pass
         logare.info(f"[plates] cam{cam_id}: "
               + ", ".join(f"{p} ({c:.2f}{', ' + n if n else ''})"
-                          for p, c, n, _ in out))
-    return [p for p, _, _, _ in out]
+                          for p, c, n, _, _ in out))
+    return [p for p, _, _, _, _ in out]

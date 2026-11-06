@@ -844,6 +844,19 @@ def api_cam_scena(cam_id):
     # implicit, lista arata ce are nume: necunoscutii si fundalul (ploaie, umbre, frunze, fundalul
     # invatat) sunt cu zecile pe ora si ar ingropa restul; raman in cifrele „pana acum”
     candidati = toti if cu_fundal else [c for c in toti if (c.get("eticheta") or "necunoscut") not in scena_clasa.NEUTRE or fb.get(c["id"])][:limit]
+    ascunsi = len(toti) - len(candidati)
+    # verdictele pe detectii YOLO (id „d-…", sursa „detectie") nu au eveniment scena_candidat in
+    # jurnal; le aratam totusi ca niste carduri cu verdict, langa cele de scena (#4b). Decupajul
+    # e deja in data/scena/<cam>/ (scris de detectie_feedback), deci imaginea se incarca la fel.
+    ids = {c["id"] for c in candidati}
+    detectii = [{"id": r["id"], "poza": r.get("poza"),
+                 "eticheta": r.get("eticheta_initiala") or r.get("eticheta"),
+                 "sursa": "detectie", "incredere": r.get("incredere"),
+                 "regiune": r.get("regiune"), "t": r.get("t")}
+                for r in fb.values()
+                if str(r.get("id") or "").startswith("d-") and r.get("poza") and r["id"] not in ids]
+    if detectii:
+        candidati = sorted(list(candidati) + detectii, key=lambda c: c.get("t") or "", reverse=True)[:limit]
     # cea mai noua analiza a fiecarui candidat (query da intai cele noi -> parcurgem invers)
     analize = {a.get("candidat"): a for a in reversed(jurnal.query(limit=limit, tip="scena_analiza", cam=cam_id))}
     etichete, verdicte = {}, {"ok": 0, "gresit": 0, "necunoscut": 0}
@@ -862,7 +875,7 @@ def api_cam_scena(cam_id):
         "fundal": os.path.exists(os.path.join(d, "fundal.jpg")),
         "instabil": os.path.exists(os.path.join(d, "instabil.png")),
         "candidati": candidati, "etichete": etichete, "verdicte": verdicte, "cu_fundal": cu_fundal,
-        "fundal_exemple": fundal_ex, "obiecte_exemple": obiecte_ex, "ascunsi": len(toti) - len(candidati),
+        "fundal_exemple": fundal_ex, "obiecte_exemple": obiecte_ex, "ascunsi": max(0, ascunsi),
         "vocabular": _vocabular(), "telegram": bool(settings.get("scena_telegram")),
         "telegram_posibil": bool(settings.get("telegram_token") and settings.get("telegram_chat"))})
 

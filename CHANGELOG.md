@@ -5,6 +5,20 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 
 ## [Nepublicat]
 
+### Adăugat
+- **Butoane de verdict ✓/✕ pe notificările Telegram de FAȚĂ și NUMĂR** (ca cele de la detecții),
+  cu acțiuni reale. Pentru o față recunoscută (`👤 <nume>`): „✓ e <nume>" (semnal de încredere) și
+  „✕ nu e <nume>" — crop-ul feței, salvat acum la notificare (`faces.save_recognized`, în
+  `data/faces/recent/`), **se mută în `data/faces/unknown/`** pentru re-etichetare (fața rămâne pentru
+  re-ID, dar fără eticheta greșită; o reașază următoarea regrupare). Pentru un număr citit
+  (`🚗 <placă>`): „✓ corect" și „✕ greșit" — citirea **iese din `data/plates/log.jsonl`** (nu mai
+  contează ca trecere reală) și crop-ul ei se șterge. Fiecare verdict se jurnalizează
+  (`data/faces/feedback.jsonl`, `data/plates/feedback.jsonl`). Module noi `fata_feedback.py` (`fv|`) și
+  `numar_feedback.py` (`nv|`), rutate în `telegram_bot` lângă `dt|` (detecții) și `sc|` (scenă).
+- **Verdictele pe detecții în fișa camerei**: verdictele date pe detecțiile YOLO de pe Telegram
+  (sursă „detectie") apar acum ca niște carduri cu verdict în secțiunea „Învață scena" a fișei camerei,
+  lângă cele de scenă (decupajul era deja salvat).
+
 ## [2.0.11] — 2026-11-06
 
 ### Reparat

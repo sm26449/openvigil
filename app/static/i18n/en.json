@@ -1,4 +1,15 @@
 {
+ "Da, e {nume}": "Yes, it's {nume}",
+ "Nu e {nume}": "Not {nume}",
+ "✓ e {nume} ({cine})": "✓ it's {nume} ({cine})",
+ "✕ nu e {nume} ({cine})": "✕ not {nume} ({cine})",
+ "Notat: pus la reetichetare.": "Noted: queued for relabeling.",
+ "Notat.": "Noted.",
+ "Greșit": "Wrong",
+ "✕ greșit, scos din jurnal ({cine})": "✕ wrong, removed from log ({cine})",
+ "Notat: scos din jurnal.": "Noted: removed from log.",
+ "Numărul e corect?": "Is the plate correct?",
+ "detecție YOLO": "YOLO detection",
  "_meta": {
   "nume": "English"
  },
