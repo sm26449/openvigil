@@ -174,6 +174,7 @@ async function hdGoLive() {
   // poster instant: ultimul cadru cunoscut (same-origin, cache 20s) — umple ecranul cat
   // timp substream-ul isi negociaza primul cadru, ca sa nu mai fie zona goala/"loading".
   const poster = document.createElement('img');
+  poster.alt = '';   // decorativ: doar un cadru-poster sub video, pana porneste fluxul
   poster.src = gridFrame(hdCam.id) || `/api/thumb/${hdCam.id}`;
   poster.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none';
   wrap.appendChild(poster);

@@ -114,7 +114,7 @@ async function loadFaces() {
       <div class="fc-unk" data-rel="${u.rel}">
         <img src="${u.url}" alt="" loading="lazy" title="${t('cam {id}', { id: u.cam })} — ${u.time}">
         <div class="fc-unk-act">
-          <input placeholder="${t('cine e?')}" autocomplete="off">
+          <input placeholder="${t('cine e?')}" autocomplete="off" aria-label="${t('Numele persoanei din acest crop')}">
           <button class="fc-name-btn" title="${t('Înrolează față cu acest nume')}">✓</button>
           <button class="fc-unk-del" title="${t('Șterge crop-ul')}">✕</button>
         </div>

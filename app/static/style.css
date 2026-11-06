@@ -456,7 +456,17 @@ h2[data-ic] { display: flex; align-items: center; gap: var(--s2); }
 #pulse .pz:hover { opacity: 1; transform: scaleY(1.12); }
 #add-cam { white-space: nowrap; display: inline-flex; align-items: center; gap: var(--s1); min-height: 36px; }
 #add-cam .plus { font-size: var(--fs-lg); line-height: 1; }
-@media (max-width: 1500px) {
+/* Desktop ingust (sub ~latimea la care antetul plin incape): compactare USOARA ca TOATE tab-urile
+   principale sa fie vizibile fara scroll orizontal — „Adauga camera” ramane doar „+” (cu titlu),
+   cautarea se plafoneaza, bara de puls dispare. Restul (iconite nav, mod, status) raman. */
+@media (max-width: 1920px) {
+  #add-cam > span:not(.plus) { display: none; }
+  #add-cam { padding: var(--s2) var(--s3); }
+  #q-global { max-width: 200px; }
+  #pulse { display: none; }
+  header > nav button { padding: var(--s2) var(--s3); }
+}
+@media (max-width: 1550px) {
   header > nav button .ic { display: none; }
   #mod-chip button span { display: none; }            /* doar pictogramele; titlul spune modul */
   #add-cam > span:not(.plus) { display: none; }       /* ramane „+”, cu titlu */

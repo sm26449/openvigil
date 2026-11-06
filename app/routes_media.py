@@ -146,10 +146,26 @@ def _chenare(path):
     return data
 
 
+# placeholder pentru o camera fara cadru (offline): un <img> primeste o imagine valida (200),
+# nu un 502 care lasa iconita de imagine stricata + o eroare in consola. Icon „fara semnal”,
+# neutru lingvistic, pe fundalul inchis al interfetei.
+_THUMB_GOL = (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180" viewBox="0 0 320 180" '
+    'role="img" aria-label="fara semnal">'
+    '<rect width="320" height="180" fill="#20242b"/>'
+    '<g fill="none" stroke="#5a6472" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">'
+    '<rect x="126" y="74" width="46" height="34" rx="4"/>'
+    '<path d="M172 84l18-9v34l-18-9z"/>'
+    '<line x1="116" y1="62" x2="206" y2="120"/>'
+    '</g></svg>'
+)
+
+
 @bp.route("/api/thumb/<int:cam_id>")
 def api_thumb(cam_id):
     """Imagine recenta a camerei — pentru pagina de administrare si liste, unde 18 (sau 100)
-    de fluxuri video ar fi risipa. Vine din go2rtc, cache scurt in memoria browserului."""
+    de fluxuri video ar fi risipa. Vine din go2rtc, cache scurt in memoria browserului.
+    Fara cadru (camera offline) -> un placeholder SVG (200), nu un 502 care strica <img>-ul."""
     try:
         r = requests.get(f"{C.GO2RTC_API}/api/frame.jpeg",
                          params={"src": f"cam{cam_id}"}, timeout=12)
@@ -159,7 +175,9 @@ def api_thumb(cam_id):
             return resp
     except requests.RequestException:
         pass
-    return jsonify({"error": t("indisponibil")}), 502
+    resp = Response(_THUMB_GOL, mimetype="image/svg+xml")
+    resp.headers["Cache-Control"] = "public, max-age=10"
+    return resp
 
 
 DAY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")

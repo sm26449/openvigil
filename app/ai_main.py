@@ -1091,19 +1091,9 @@ def main():
         # ScalarType BFloat16". Deci: SigLIP -> Qwen -> buclele. Costul e ~un minut de
         # detectie amanata la restartul (rar al) lui nvr-ai.
         import semantic
-        # Rezolvam EAGER, intr-un singur fir, numele lazy din transformers pe care firele de mai
-        # jos (worker-ul de indexare semantica, describe, scena_lume) le vor importa concurent.
-        # `import transformers` NU ajunge: numele sunt lazy (_LazyModule), iar doua fire care fac
-        # `from transformers import X` pe nume diferite pot vedea modulul pe jumatate incarcat
-        # („cannot import name AutoModel"). Doar clase, fara greutati -> nu atinge ordinea bf16.
-        if semantic.enabled() or settings.get("person_describe") or settings.get("scena_cams"):
-            import transformers  # noqa: F401
-        if semantic.enabled():
-            from transformers import AutoModel, AutoProcessor  # noqa: F401
-        if settings.get("person_describe"):
-            from transformers import AutoModelForImageTextToText, AutoProcessor  # noqa: F401
-        if settings.get("scena_cams"):
-            from transformers import CLIPTextModelWithProjection, CLIPTokenizer  # noqa: F401
+        # numele transformers sunt deja rezolvate eager in firul principal, inainte de `serve`
+        # (vezi main), ca worker-ul de indexare pornit de un enqueue HTTP sa nu prinda importul
+        # la mijloc. Aici doar incarcam modelele, in ordinea bf16 stricta de mai jos.
         if semantic.enabled():
             try:
                 semantic._get_model()
@@ -1126,6 +1116,22 @@ def main():
         detect.sync()                         # bucla de detectie (#9 pas 2) — AICI
         # watch-ul porneste ABIA acum: prima lui iteratie ar chema sync inainte de vreme
         threading.Thread(target=watch_settings, daemon=True).start()
+
+    # Rezolvam EAGER numele lazy din transformers in firul PRINCIPAL, INAINTE de serverul HTTP si de
+    # firul de modele: primul enqueue HTTP de la web (imediat ce ai-ul urca) porneste worker-ul de
+    # indexare, care face `from transformers import AutoModel` concurent cu incarcarea modelelor si
+    # vede modulul pe jumatate („cannot import name AutoModel"). Facut aici, intr-un singur fir inainte
+    # de `serve`, niciun alt fir nu mai poate prinde importul la mijloc. Doar clase, fara greutati ->
+    # nu atinge ordinea bf16 (care ramane in _modelele_apoi_buclele).
+    import semantic as _sem
+    if _sem.enabled() or settings.get("person_describe") or settings.get("scena_cams"):
+        import transformers  # noqa: F401
+        if _sem.enabled():
+            from transformers import AutoModel, AutoProcessor  # noqa: F401
+        if settings.get("person_describe"):
+            from transformers import AutoModelForImageTextToText  # noqa: F401
+        if settings.get("scena_cams"):
+            from transformers import CLIPTextModelWithProjection, CLIPTokenizer  # noqa: F401
 
     threading.Thread(target=_modelele_apoi_buclele, daemon=True).start()
     from waitress import serve
