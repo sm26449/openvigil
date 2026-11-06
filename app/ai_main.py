@@ -1091,8 +1091,19 @@ def main():
         # ScalarType BFloat16". Deci: SigLIP -> Qwen -> buclele. Costul e ~un minut de
         # detectie amanata la restartul (rar al) lui nvr-ai.
         import semantic
-        if semantic.enabled() or settings.get("person_describe"):
-            import transformers  # noqa: F401  (import unic, inaintea firelor care il vor)
+        # Rezolvam EAGER, intr-un singur fir, numele lazy din transformers pe care firele de mai
+        # jos (worker-ul de indexare semantica, describe, scena_lume) le vor importa concurent.
+        # `import transformers` NU ajunge: numele sunt lazy (_LazyModule), iar doua fire care fac
+        # `from transformers import X` pe nume diferite pot vedea modulul pe jumatate incarcat
+        # („cannot import name AutoModel"). Doar clase, fara greutati -> nu atinge ordinea bf16.
+        if semantic.enabled() or settings.get("person_describe") or settings.get("scena_cams"):
+            import transformers  # noqa: F401
+        if semantic.enabled():
+            from transformers import AutoModel, AutoProcessor  # noqa: F401
+        if settings.get("person_describe"):
+            from transformers import AutoModelForImageTextToText, AutoProcessor  # noqa: F401
+        if settings.get("scena_cams"):
+            from transformers import CLIPTextModelWithProjection, CLIPTokenizer  # noqa: F401
         if semantic.enabled():
             try:
                 semantic._get_model()
