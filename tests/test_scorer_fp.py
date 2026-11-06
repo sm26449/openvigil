@@ -205,3 +205,30 @@ def test_reincarcare_atomica_rollback(tmp_path):
     with pytest.raises(Exception):
         scorer_fp.incarca_din_feedback(p, embed_fn=embed_dim_gresit)
     assert scorer_fp.scor(6, "person", "noapte", HOT)["fals"] == 3   # neschimbat (rollback)
+
+
+def test_embeddings_pastrate_la_resync_pozitional(tmp_path):
+    """Backfill cu embed_fn scrie embeddings; re-sync-ul pozitional (fara embed_fn, ca
+    `_scorer_sync` dupa un verdict) le PASTREAZA (match pe (cam, poza)), deci vetoul semantic B2
+    ramane activ — nu revine pe tacute la pur pozitional."""
+    comun = {"cam": 6, "verdict": "gresit", "eticheta_initiala": "person", "regiune": HOT}
+    p = _scrie(tmp_path,
+               {**comun, "id": "d1", "t": "2026-11-04 02:00:00", "poza": "a.jpg"},
+               {**comun, "id": "d2", "t": "2026-11-04 02:01:00", "poza": "b.jpg"},
+               {**comun, "id": "d3", "t": "2026-11-04 02:02:00", "poza": "c.jpg"})
+    scorer_fp.incarca_din_feedback(p, embed_fn=lambda _poza: V(0))        # backfill: falsuri ~ V(0)
+    assert scorer_fp.scor(6, "person", "noapte", HOT, emb=V(5))["veto"] is True   # crop nou -> veto
+
+    scorer_fp.incarca_din_feedback(p)                                    # re-sync POZITIONAL (fara embed_fn)
+    s = scorer_fp.scor(6, "person", "noapte", HOT, emb=V(5))
+    assert s["fals"] == 3 and s["veto"] is True and s["suprima"] is False  # embeddings au supravietuit
+
+    # o detectie noua, fara embedding in baza, ramane pur pozitionala (nimic de pastrat)
+    q = _scrie(tmp_path,
+               {**comun, "id": "d1", "t": "2026-11-04 02:00:00", "poza": "a.jpg"},
+               {**comun, "id": "d4", "t": "2026-11-04 02:03:00", "poza": "nou.jpg"})
+    scorer_fp.incarca_din_feedback(q)                                    # d2,d3 ies; d4 nou, fara emb
+    with db.conn() as c:
+        fara = c.execute("SELECT count(*) FROM vectori_fp WHERE cam=6 AND emb IS NULL").fetchone()[0]
+        cu = c.execute("SELECT count(*) FROM vectori_fp WHERE cam=6 AND emb IS NOT NULL").fetchone()[0]
+    assert cu == 1 and fara == 1          # 'a.jpg' si-a pastrat emb, 'nou.jpg' n-are
