@@ -6,6 +6,10 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 ## [Nepublicat]
 
 ### Reparat
+- **Accesibilitate + UX (audit UI)**: thumbnail-urile de eveniment din Redare au acum `alt` (erau fără
+  atribut → cititoarele de ecran citeau URL-ul); câmpurile de nume la înrolarea feței (`#fc-name` și
+  „cine e?") au `aria-label`; iar `/api/thumb/<cam>` pentru o cameră offline întoarce un placeholder
+  SVG „fără semnal" (200) în loc de 502 — gata cu imaginea stricată și eroarea din consolă.
 - **Cursa de import `transformers` — rezolvare completă**: numele lazy se rezolvă acum în firul
   PRINCIPAL, înainte de pornirea serverului HTTP al nvr-ai (deci înainte ca primul enqueue de la web
   să poată porni worker-ul de indexare). Fix-ul din 2.0.9 o făcea în firul de modele, concurent cu

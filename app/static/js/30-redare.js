@@ -81,7 +81,7 @@ async function drawEventDots(ch, date) {
       tl.appendChild(dot);
       const row = document.createElement('div');
       row.className = 'ev-row';
-      row.innerHTML = html`<img loading="lazy" src="${ev.url}"><span>${ev.time}<br>` +
+      row.innerHTML = html`<img loading="lazy" src="${ev.url}" alt=""><span>${ev.time}<br>` +
                       html`<b>${AL_ICO[ev.label] || '⚠'} ${t(alNume(ev.label))}</b></span>`;
       row.onclick = () => playFrom(date, ev.sec);
       ev.row = row;
