@@ -186,6 +186,19 @@ DEFAULTS = {
     "ntp_server": "",
     "views": [],
     "default_view": "",
+    # Escaladarea alertelor critice catre un serviciu extern de notificari (POST /v1/fire).
+    # Gol la cheie = oprit; alerta primara (Telegramul propriu) pleaca oricum.
+    "alert_service_url": "http://127.0.0.1:5090/v1/fire",
+    "alert_service_key": "",
+    "alert_service_type": "nvr_cadere",
+    # Regula de cadere (vezi docs/reguli-analiza.md). Pornire per camera in detect.json
+    # (cheia `cadere`), ca `scena_noapte`. Pragurile aici sunt globale, reglabile din UI.
+    "cadere_pose_conf": 0.5,        # incredere minima pe keypoints
+    "cadere_scor_prag": 0.6,        # pragul scorului geometric de cadere
+    "cadere_dwell_s": 6,            # cat trebuie sa ramana jos
+    "cadere_vlm": True,             # confirmare VLM inainte de escaladare
+    "cadere_cooldown_s": 120,       # intre doua alerte pe aceeasi camera
+    "cadere_persoana_min_px": 60,   # ignora persoanele prea mici (departe)
 }
 
 
