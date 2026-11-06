@@ -394,7 +394,11 @@ def goluri(cam_id, start_ts, end_ts):
     lipsa materialului la inceput/sfarsit. Lista concat lipeste segmentele cap la cap, deci
     un gol INTOARCE timpul in clip: filigranul (pts:localtime) ar arata o ora gresita, iar
     timeline-ul s-ar desincroniza — apelantii refuza filigranul peste un gol sau il declara."""
-    sel = sorted((t, t + SEGMENT) for t, _, _ in _files(cam_id) if t + SEGMENT > start_ts and t < end_ts)
+    # capat la `now`: segmentul in curs de scriere nu acopera pana la t+SEGMENT (in viitor),
+    # ci doar pana acum — altfel un gol la marginea live ar fi ascuns (simetric cu `coverage`)
+    now = time.time()
+    sel = sorted((t, min(t + SEGMENT, now)) for t, _, _ in _files(cam_id)
+                 if t + SEGMENT > start_ts and t < end_ts)
     out = []
     cursor = start_ts
     for a, b in sel:

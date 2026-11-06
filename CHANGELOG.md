@@ -5,6 +5,18 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 
 ## [Nepublicat]
 
+## [2.0.8] — 2026-11-06
+
+### Reparat
+- **Golurile de înregistrare nu mai ascund marginea live** (Lot C C3): `goluri()` taie acum capătul
+  segmentului în curs de scriere la `now` (simetric cu `coverage()`), nu la `t + SEGMENT` (în viitor) —
+  un interval cerut dincolo de prezent nu mai pare acoperit, iar filigranul/timeline-ul nu se mai
+  desincronizează peste marginea live.
+- **Cadrele invalide de la go2rtc nu mai intră în detecție** (Lot C C4): `_fetch_frame` întoarce un
+  cadru doar dacă e decodabil și de dimensiune rezonabilă (≥ 32×32). go2rtc poate răspunde 200 cu un
+  corp non-JPEG/trunchiat când fluxul e picat (cam6 își pierde mainstream-ul); înainte un astfel de
+  „cadru" ajungea mai departe la detecție/LPR/fețe.
+
 ## [2.0.7] — 2026-11-06
 
 ### Reparat
