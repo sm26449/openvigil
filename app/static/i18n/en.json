@@ -1520,6 +1520,11 @@
   "other": "tampering reported {n} times today"
  },
  "Salvat": "Saved",
+ "Se conectează": "Connecting",
+ "se verifică": "checking",
+ "Unele secțiuni nu s-au încărcat — salvarea e blocată ca să nu suprascrie configurația. Reîncarcă.": "Some sections failed to load — saving is blocked to avoid overwriting the configuration. Reload.",
+ "Actualizat acum": "Updated just now",
+ "⚠ Date învechite — ultima actualizare la {cand}": "⚠ Stale data — last updated at {cand}",
  "Salvat — lucratorii pornesc în câteva secunde ✓": "Saved — the workers start in a few seconds ✓",
  "Salvat ✓": "Saved ✓",
  "Salvat.": "Saved.",

@@ -29,12 +29,20 @@ function checksHtml(containerId, checked) {
   }
 }
 const checkedOf = (id) => [...$(id).querySelectorAll('input:checked')].map((c) => c.value);
+// numar dintr-un input, cu default DOAR cand e gol sau invalid — NU cand e 0: pentru praguri in
+// dBFS, 0 e o valoare valida, iar `+value || def` o inlocuia cu default-ul (audit S2).
+const numSau = (sel, def) => { const v = $(sel).value.trim(); return v === '' || Number.isNaN(+v) ? def : +v; };
+// Incarcarea Setarilor e fragmentata pe mai multe endpointuri; daca unul pica, campurile lui
+// raman goale/implicite, iar salvarea globala (care serializeaza TOT formularul) le-ar scrie peste
+// configuratia reala. Flag-ul blocheaza salvarea cand o sectiune nu s-a incarcat (audit S1).
+let incarcareOk = true;
 
 async function loadSettings(force = false) {
   // Re-intrare in tabul Setari cu modificari nesalvate: NU reincarcam formularul, am pierde
   // draftul (editai pragul si la revenire sarea inapoi la valoarea salvata — audit #6, rest).
   // „Renunta" cheama loadSettings(true) ca sa reincarce intentionat.
   if (!force && savedSnapshot !== null && snapshotSettings() !== savedSnapshot) return;
+  incarcareOk = true;   // loaderele de mai jos il pun pe false daca pica
   const s = await (await fetch('/api/settings')).json();
   $('#s-tg-token').value = s.telegram_token;
   $('#s-tg-chat').value = s.telegram_chat;
@@ -81,6 +89,10 @@ async function loadSettings(force = false) {
   }, 4000);
   savedSnapshot = snapshotSettings();
   checkDirty();
+  // daca o sectiune n-a incarcat, blocam salvarea globala — altfel am scrie default-uri peste
+  // configuratia reala (audit S1). Se deblocheaza la o reincarcare reusita.
+  if ($('#s-save')) $('#s-save').disabled = !incarcareOk;
+  if (!incarcareOk) flash('#s-msg-save', t('Unele secțiuni nu s-au încărcat — salvarea e blocată ca să nu suprascrie configurația. Reîncarcă.'), true);
   const pane = localStorage.getItem('setPane');
   if (pane && $('#pane-' + pane)) document.querySelector(`.snav-item[data-pane="${pane}"]`)?.click();
   clearInterval(sysTimer);
@@ -562,9 +574,9 @@ function settingsBody() {
     webhook_events: [...$('#wh-events').querySelectorAll('input:checked')].map((c) => c.dataset.ev),
     api_token: $('#wh-token').value.trim(),
     noise_alarm_enabled: $('#noise-on').checked,
-    noise_threshold_db: +$('#noise-thr').value || -25,
-    noise_sustain_sec: +$('#noise-sustain').value || 5,
-    noise_spike_db: +$('#noise-spike').value || 18,
+    noise_threshold_db: numSau('#noise-thr', -25),
+    noise_sustain_sec: numSau('#noise-sustain', 5),
+    noise_spike_db: numSau('#noise-spike', 18),
     auto_siren_sound: $('#s-auto-sound').value,
     auto_siren_volume: +$('#s-auto-vol').value,
     auto_siren_times: +$('#s-auto-times').value,
@@ -754,7 +766,7 @@ async function loadNoise(liveOnly = false) {
           <div class="noise-graph" title="${t('ultimele minute')}">${bars}
             <u style="bottom:${pos(thr)}%"></u></div></div></div>`;
     })}`;
-  } catch {}
+  } catch { if (!liveOnly) incarcareOk = false; }   // doar incarcarea completa (nu poll-ul) blocheaza salvarea (audit S1)
 }
 $('#noise-on').onchange = checkDirty;
 $('#inc-gap').oninput = checkDirty;
@@ -780,7 +792,7 @@ async function loadHooks() {
     $('#wh-log').innerHTML = lista(w.jurnal, (r) => html`<div class="wh-row ${r.ok ? 'ok' : 'rau'}">
           <span>${r.t.slice(11)}</span><b>${r.ok ? t('trimis') : t('esuat')}</b>
           <i>${r.detaliu}</i><u>${r.url}</u></div>`, html`<p class="hint">${t('Nicio livrare inca.')}</p>`);
-  } catch {}
+  } catch { incarcareOk = false; }   // audit S1
 }
 $('#wh-test').onclick = async () => {
   const el = $('#wh-test-res');
@@ -906,20 +918,22 @@ async function loadRetention() {
       ' ' + esc(zile < d.setari.retention_days
         ? t('Încă nu s-a atins limita de vârstă — spațiul decide.')
         : t('Se șterge după vârstă, conform setărilor.'));
-  } catch {}
+  } catch { incarcareOk = false; }   // audit S1
 }
 
 
+let sysUltima = 0;
 async function loadSystem() {
   try {
     const s = await (await fetch('/api/system')).json();
+    sysUltima = Date.now();
     const pct = (a, b) => Math.min(100, Math.round(a / b * 100));
     const bar = (label, val, txt, warn) =>
       html`<div class="sys-item"><span>${label}</span>
       <div class="sys-bar"><i style="width:${val}%" class="${warn ? 'warn' : ''}"></i></div>
       <small>${txt}</small></div>`;
     const diskUsed = pct(s.disk_total_gb - s.disk_free_gb, s.disk_total_gb);
-    $('#sys-stats').innerHTML = html`${
+    $('#sys-stats').innerHTML = html`<div class="sys-fresh">${t('Actualizat acum')}</div>${
       bar(t('Procesor'), s.cpu, t('{cpu}% din {cores} nuclee · incarcare {load}', { cpu: s.cpu, cores: s.cores, load: s.load[0] }), s.cpu > 85)}${
       bar(t('Memorie'), pct(s.ram_used_gb, s.ram_total_gb), `${s.ram_used_gb} / ${s.ram_total_gb} GB`, false)}${
       bar(t('Disc'), diskUsed, t('{free} GB liberi · inregistrari {rec} GB', { free: s.disk_free_gb, rec: s.rec_gb }), diskUsed > 90)}
@@ -927,7 +941,12 @@ async function loadSystem() {
       ${raw(t('{in} Mbps intră {out} Mbps ies', { in: html`<b>${s.net.in_mbps}</b>`, out: html`<b>${s.net.out_mbps}</b>` }))}</div>
       <small>${t('pornit de {n} zile', { n: Math.round(s.uptime_h / 24) })}</small></div>
       <div class="sys-item"><span>${t('Versiune')}</span><small>OpenVigil ${ME.versiune || 'dev'} · <a href="https://github.com/sm26449/openvigil/releases" target="_blank" rel="noopener">${t('release-uri')}</a></small></div>${notifStatusHtml(s.notificari)}${nvrStatusHtml(s.nvr)}${aiStatusHtml(s.ai)}`;
-  } catch (e) { console.error('[stare] starea sistemului nu s-a putut afișa:', e); }
+  } catch (e) {
+    console.error('[stare] starea sistemului nu s-a putut afișa:', e);
+    // nu stergem datele, dar le marcam vechi — altfel par actuale desi actualizarea a picat (audit ST1)
+    const f = $('#sys-stats') && $('#sys-stats').querySelector('.sys-fresh');
+    if (f) { f.classList.add('invechit'); f.textContent = t('⚠ Date învechite — ultima actualizare la {cand}', { cand: sysUltima ? new Date(sysUltima).toLocaleTimeString(LIMBA) : '—' }); }
+  }
 }
 
 // pe unde pot pleca alertele; rosu cand nu exista niciun canal (altfel totul ramane in jurnal)
@@ -1100,7 +1119,7 @@ async function loadBackupNocturn() {
         cheie: esc(d.cheie_amprenta), dir: esc(d.director) }))
       : raw(t('{titlu} la {cand}: {e}', { titlu: html`<b>${t('Ultima copie a EȘUAT')}</b>`, cand: esc(cand(d.stare.la)), e: esc(d.stare.eroare) }));
     $('#bn-lista').innerHTML = lista((d.copii || []).slice(0, 8), (b) => html`<div class="push-row"><b>${b.creat}</b><span class="hint">${t('{mb} MB · {n} elemente', { mb: (b.octeti / 2 ** 20).toFixed(1), n: (b.continut || []).length })}</span></div>`, '');
-  } catch {}
+  } catch { incarcareOk = false; }   // audit S1
 }
 $('#bn-acum').onclick = async () => {
   const j = await runJob('/api/backup/acum', { method: 'POST' }, { download: false });

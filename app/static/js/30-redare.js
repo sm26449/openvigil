@@ -43,29 +43,35 @@ function compact(date, sec) {
 
 let curSegments = [];
 async function searchRecordings() {
+  // Jeton de context camera/zi: intreg timeline-ul (segmente, evenimente, marcaje) il verifica,
+  // ca un raspuns venit tarziu de la camera selectata ANTERIOR sa nu scrie peste cea curenta
+  // (audit R1). Protectia playerului (pbGen) nu acoperea aceste incarcari.
+  const gen = ++pbCtxGen;
   const ch = +$('#pb-cam').value;
   const date = $('#pb-date').value;
   $('#pb-info').textContent = t('Caut...');
   const url = `/api/recordings?channel=${ch}&start=${date}T00:00:00Z&end=${date}T23:59:59Z`;
   const r = await fetch(url);
   const d = await r.json();
+  if (gen !== pbCtxGen) return;   // alta camera/zi aleasa cat am asteptat
   if (d.error) { $('#pb-info').textContent = t('Eroare: {err}', { err: d.error }); return; }
   curSegments = d.segments || [];
   $('#pb-info').textContent = t('{n} segmente înregistrate', { n: d.count });
   renderTimeline(date);
-  drawEventDots(ch, date);
-  drawPbMarks(ch, date);
+  drawEventDots(ch, date, gen);
+  drawPbMarks(ch, date, gen);
 }
 
 // marcaje pe timeline + lista laterala de evenimente (navigabila cu ⏮ ⏭)
 let pbEvents = [];
-async function drawEventDots(ch, date) {
+async function drawEventDots(ch, date, gen) {
   const tl = $('#timeline'), list = $('#pb-evlist');
   list.innerHTML = '';
   pbEvents = [];
   try {
     const items = (await (await fetch(`/api/alarms?date=${date}`)).json())
       .filter((i) => i.cam === ch);
+    if (gen !== undefined && gen !== pbCtxGen) return;   // alta camera/zi cat am asteptat (audit R1)
     pbEvents = items.map((it) => {
       const [h, m, s] = it.time.split(':').map(Number);
       return { ...it, sec: h * 3600 + m * 60 + s };
@@ -93,7 +99,7 @@ async function drawEventDots(ch, date) {
 }
 
 // navigare: eveniment anterior/urmator si sarituri fine fata de pozitia curenta
-let pbPos = null, pbDate = null, pbStart = null, pbPaused = false, pbGen = 0;
+let pbPos = null, pbDate = null, pbStart = null, pbPaused = false, pbGen = 0, pbCtxGen = 0;
 const pbVideos = () => [...$('#player').querySelectorAll('video')];
 function pbJump(sec) {
   if (pbDate === null) return;
@@ -196,11 +202,12 @@ function tSec(t, date, capat = 0) {
   const [h, m, s] = t.slice(11, 19).split(':').map(Number);
   return h * 3600 + m * 60 + s || capat;
 }
-async function loadMarks(cam, date, tl, list, onPlay) {
+async function loadMarks(cam, date, tl, list, onPlay, valid) {
   let marks = [];
   try {
     marks = (await (await fetch(`/api/marcaje?cam=${cam}&day=${date}`)).json()).marcaje || [];
   } catch {}
+  if (valid && !valid()) return;   // contextul camera/zi s-a schimbat cat am asteptat (audit R1)
   for (const el of tl.querySelectorAll('.marcaj')) el.remove();
   for (const m of marks) {
     const a = tSec(m.t, date), b = tSec(m.t_end, date);
@@ -250,8 +257,9 @@ async function addMark(cam, date, sec, reload) {
   const r = await post('/api/marcaje', { cam, start: `${date} ${hms(sec)}`, eticheta });
   if (r && r.id) { toast(t('Marcaj pus la {ora}.', { ora: hms(sec) })); reload(); }
 }
-function drawPbMarks(ch, date) {
-  loadMarks(ch, date, $('#timeline'), $('#pb-marks'), (sec) => playFrom(date, sec)).then(relayoutTimeline);
+function drawPbMarks(ch, date, gen) {
+  loadMarks(ch, date, $('#timeline'), $('#pb-marks'), (sec) => playFrom(date, sec),
+            () => gen === undefined || gen === pbCtxGen).then(relayoutTimeline);
 }
 async function addMarkInterval(cam, date, a, b) {
   const eticheta = prompt(t('Marcaj {a} – {b} — eticheta:', { a: hms(a), b: hms(b) }));

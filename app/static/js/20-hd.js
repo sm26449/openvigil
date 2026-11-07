@@ -7,7 +7,7 @@ import { S } from './state.js';
 import { $, ADMIN, CAN_ACT, DET_RO, HD_MODE, gridFrame, html, icon, streamEl, t, talkStop, toast } from './00-core.js';
 import { show } from './05-navigare.js';
 import { ZOOM_MAX_MS, buildCtrls, post } from './10-live.js';
-import { addMark, attachDigitalZoom, compact, hms, loadMarks, localDay, pad, searchRecordings, secOfDay } from './30-redare.js';
+import { addMark, attachDigitalZoom, compact, hms, loadMarks, localDay, pad, playFrom, searchRecordings, secOfDay } from './30-redare.js';
 import { AL_RO } from './40-evenimente.js';
 import { hdBufferTarget, hdHeightParam } from './60-setari.js';
 /* ---------- HD on-demand (click pe o camera) ---------- */
@@ -359,13 +359,15 @@ for (const b of document.querySelectorAll('#hd-shift button[data-back]')) {
   b.onclick = () => hdPlayAt(new Date(Date.now() - b.dataset.back * 1000));
 }
 $('#hd-topb').onclick = () => {
-  // duce camera + momentul curent in tabul Inregistrari (context complet)
-  const c = hdCam;
+  // duce camera + momentul curent in tabul Inregistrari (context complet): daca te uiti la o
+  // inregistrare (time-shift), pastram si SECUNDA ca redarea sa se deschida exact acolo, nu doar
+  // camera+ziua de azi (audit R2). Capturam inainte de closeHD (care reseteaza hdCam/hdPos).
+  const c = hdCam, sec = hdPos, zi = localDay();
   closeHD().then(() => {
     show('pb');
     $('#pb-cam').value = c.id;
-    $('#pb-date').value = localDay();
-    searchRecordings();
+    $('#pb-date').value = zi;
+    searchRecordings().then(() => { if (sec !== null) playFrom(zi, sec); });
   });
 };
 

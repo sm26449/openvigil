@@ -452,6 +452,22 @@ setInterval(() => {
   if (hdCam || !$('#live').classList.contains('hidden') || !$('#harta').classList.contains('hidden')) pollEvents();
 }, 3000);
 
+// Punctul de stare reflecta fluxul REAL (audit L1): verde doar cand playerul chiar avanseaza
+// cadre; altfel „se conecteaza" (gri). Nu mai aratam „live" doar fiindca tile-ul exista in DOM.
+const _dotCt = new WeakMap();
+setInterval(() => {
+  if (document.hidden || $('#live').classList.contains('hidden')) return;
+  for (const tile of document.querySelectorAll('#grid .tile')) {
+    const dot = tile.querySelector('.dot'), v = tile.querySelector('video');
+    if (!dot || !v) continue;   // mod previzualizare (imagini): nu evaluam fluxul aici
+    const ct = v.videoWidth > 0 ? v.currentTime : -1;
+    const live = ct > 0 && ct !== _dotCt.get(dot);
+    _dotCt.set(dot, ct);
+    dot.classList.toggle('conectare', !live);
+    dot.setAttribute('aria-label', live ? t('Live') : t('Se conectează'));
+  }
+}, 2500);
+
 async function deleteCamera(c) {
   if (!confirm(t('Ștergi camera "{name}" ({ip})?', { name: c.name, ip: c.ip }))) return;
   const r = await fetch(`/api/cameras/${c.id}`, { method: 'DELETE' });

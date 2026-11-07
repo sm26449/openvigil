@@ -3,6 +3,27 @@
 Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [2.0.17] — 2026-11-07
+
+### Reparat
+- **Corectitudinea stării afișate și a salvărilor (al cincilea tur de audit).** Interfața nu mai
+  poate confirma o salvare eșuată, afișa datele altei camere sau sugera că sistemul funcționează
+  când telemetria lipsește:
+  - **Reguli:** modificarea unei reguli **oprite** nu o mai reactivează (ar fi putut reporni sirene,
+    relee sau notificări) — starea „activă" se păstrează, nu se forțează la editare.
+  - **Salvări verificate:** configurarea AI (fețe/plăci) și comutatoarele din panoul camerei
+    (detecție, anunț automat, alertă la cădere) confirmă „Salvat" **doar** după un răspuns valid și
+    revin la starea dinainte la eșec; controlul e blocat cât e cererea în curs.
+  - **Setări:** dacă o secțiune nu s-a încărcat, salvarea globală e **blocată** (altfel ar fi scris
+    valori implicite peste configurația reală); pragul `0 dBFS` nu mai e înlocuit cu `-25`.
+  - **Context cameră/zi/moment:** la Înregistrări, un răspuns întârziat de la camera selectată
+    anterior nu mai scrie peste timeline-ul (segmente, evenimente, marcaje) camerei curente;
+    trecerea HD → Înregistrări păstrează și secunda vizionată; adnotarea nu mai înlocuiește cadrul
+    curent cu un răspuns întârziat.
+  - **Sănătate reală:** punctul de stare din Live e verde doar când fluxul chiar dă cadre (altfel
+    „se conectează"); în lista de camere, lipsa telemetriei apare ca „se verifică", nu verde; panoul
+    de stare din Setări marchează datele drept învechite când actualizarea eșuează.
+
 ## [2.0.16] — 2026-11-07
 
 ### Reparat
