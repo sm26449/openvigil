@@ -2433,5 +2433,18 @@
   "mișcare": "motion",
   "în regulă": "all good",
   "actualizat {ora}": "updated {ora}",
-  "Centru de sănătate: serverul, canalele, AI-ul și fiecare cameră": "Health center: server, channels, AI and every camera"
+  "Centru de sănătate: serverul, canalele, AI-ul și fiecare cameră": "Health center: server, channels, AI and every camera",
+  "probă în dosar": "evidence in case file",
+  "o probă acoperă cel mult 7 zile": "an evidence range spans at most 7 days",
+  "probă invalidă: {e}": "invalid evidence: {e}",
+  "probă inexistentă": "evidence not found",
+  "Probe": "Evidence",
+  "până la {data}": "until {data}",
+  "(fără motiv)": "(no reason)",
+  "Ridică protecția": "Remove protection",
+  "Nicio probă. Selectează un interval pe timeline și apasă „🔒 probă”.": "No evidence yet. Select a range on the timeline and press “🔒 evidence”.",
+  "Ridici protecția acestui interval? Va putea fi șters la curățare.": "Remove protection for this range? It may then be deleted during cleanup.",
+  "Păstrează {a} – {b} ca probă — motivul (ex. „efracție poartă”):": "Keep {a} – {b} as evidence — reason (e.g. “gate break-in”):",
+  "Interval păstrat ca probă — scutit de curățare.": "Range kept as evidence — exempt from cleanup.",
+  "🔒 probă": "🔒 evidence"
 }

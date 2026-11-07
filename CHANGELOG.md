@@ -3,6 +3,19 @@
 Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [2.0.23] — 2026-11-08
+
+### Adăugat
+- **„Păstrează ca probă"** — selectezi un interval pe timeline (în Înregistrări) și apeși
+  *🔒 probă*: intervalul e **scutit de curățare**. Retenția nu-l mai șterge — nici după vârstă,
+  nici garda de spațiu când discul se umple (atunci se **alarmează** în loc să-l taie). Probele
+  se văd ca o bandă verde cu lacăt pe timeline, au listă proprie (click = redare, ✕ = ridică
+  protecția) și pot avea un termen (altfel pe termen nedefinit). Footage-ul adăugat la un
+  **dosar de caz se auto-protejează**, așa că un dosar nu-și mai pierde propriul material la
+  curățare. Probele stau în PostgreSQL (`app/probe.py`, API `/api/probe`); operatorul le pune
+  doar pe camerele lui. Dacă baza nu răspunde, retenția **amână** curățarea o oră în loc să
+  riște o probă.
+
 ## [2.0.22] — 2026-11-08
 
 ### Adăugat

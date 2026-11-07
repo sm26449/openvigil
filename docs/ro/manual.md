@@ -119,6 +119,16 @@ timeline (ambele bare), au lista proprie in dreapta (click = redare, *dosar* = p
 ±15 s intr-un dosar de caz, ✕ = stergere) si stau in PostgreSQL (tabelul `marcaje`,
 `app/marcaje.py`, API `/api/marcaje`). Operatorul le pune doar pe camerele lui.
 
+**Probe („pastreaza ca proba"):** selectezi un interval pe timeline (tragere) si apesi
+*🔒 proba* — intervalul e scutit de curatare: retentia nu-l mai sterge (nici de varsta, nici
+garda de spatiu la disc plin), iar daca discul chiar se umple se alarmeaza in loc sa-l taie.
+Probele se vad ca o banda verde cu lacat pe timeline si au lista proprie in dreapta (click =
+redare, ✕ = ridica protectia). Pot avea un termen (`pana_la`, altfel pe termen nedefinit).
+Footage-ul pus intr-un dosar de caz se auto-protejeaza (sursa `dosar:<id>`). Stau in
+PostgreSQL (tabelul `probe`, `app/probe.py`, API `/api/probe`); operatorul doar pe camerele
+lui. Retentia (`app/record.py`) citeste protectiile active o data pe tura; daca baza nu
+raspunde, amana curatarea o ora in loc sa riste o proba.
+
 ### Tabul "Alarme" (snapshot-uri + clipuri)
 La fiecare detectie YOLO (cu chenarele desenate) si la fiecare alarma de camera (miscare,
 intruziune etc.) se salveaza o poza in `data/snapshots/YYYY-MM-DD/` (cooldown 60s per
