@@ -48,20 +48,25 @@ async function loadAdnotare(pastreaza = false) {
   adDeschide(adIdx);
 }
 
+let adGen = 0;
 async function adDeschide(i) {
   if (i < 0 || i >= adCadre.length) return;
   if (adDirty && !confirm(t('Ai modificări nesalvate pe cadrul curent. Le pierzi?'))) return;
   adDirty = false; adUndo = []; adSel = -1; adDrag = null; adTemp = null;
   adIdx = i;
+  // Jeton pentru selectie + imagine: daca alegi alt cadru inainte sa vina raspunsul, cererea
+  // veche nu mai inlocuieste cadrul curent (nici metadata, nici imaginea la onload) — audit A3.
+  const gen = ++adGen;
   const c = adCadre[i];
   for (const r of document.querySelectorAll('#ad-list .ad-row')) r.classList.toggle('on', +r.dataset.i === i);
   const on = document.querySelector('#ad-list .ad-row.on'); if (on) on.scrollIntoView({ block: 'nearest' });
   let d;
   try { d = await (await fetch(`/api/adnotare/cadru/${c.split}/${encodeURIComponent(c.fn)}`)).json(); } catch { return; }
+  if (gen !== adGen) return;   // alt cadru selectat cat am asteptat
   if (!d || d.error) return;
   adCur = d;
   adImg = new Image();
-  adImg.onload = adDeseneaza;
+  adImg.onload = () => { if (gen === adGen) adDeseneaza(); };
   adImg.src = `/api/adnotare/img/${c.split}/${encodeURIComponent(c.fn)}`;
   $('#ad-info').textContent = `${c.split}/${c.fn} · ${d.w}×${d.h} · ${t('{n} chenare', { n: d.boxes.length })}${d.verificat ? ' · ' + t('verificat {cand}', { cand: d.verificat.t }) + (d.verificat.cine ? ' ' + t('de {cine}', { cine: d.verificat.cine }) : '') : ''}`;
   adLegenda();

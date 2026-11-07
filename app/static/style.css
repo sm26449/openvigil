@@ -122,6 +122,7 @@ header > nav button.active { background: var(--accent); color: #fff; }
 .tile .dot { position: absolute; left: var(--s2); top: var(--s2); width: 8px; height: 8px;
   border-radius: var(--r-pill); background: var(--ok-hi); box-shadow: 0 0 0 2px rgba(0,0,0,.45);
   pointer-events: none; z-index: 2; }
+.tile .dot.conectare { background: var(--text-3); }   /* fara cadre inca: nu „live" fals (audit L1) */
 .tile.alerting .dot { background: var(--alarm-hi); animation: pulse 1.4s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: .25; } }
 .tile .del { position: absolute; right: 6px; top: 6px; background: rgba(0,0,0,.6); color: #fff; border: 0; border-radius: var(--r1); padding: var(--s1) var(--s2); font-size: var(--fs-sm); cursor: pointer; opacity: 0; transition: opacity .15s; }
@@ -681,6 +682,7 @@ body.panel-open #cams { margin-right: 420px; }
 .row-state.s-ok { color: var(--ok-hi); }
 .row-state.s-alarm { color: var(--alarm-hi); }
 .row-state.s-down { color: var(--warn); }
+.row-state.s-unknown { color: var(--text-3); }   /* telemetrie neverificata inca (audit C2) */
 .row-gb { font-size: var(--fs-xs); color: var(--text-3); text-align: right; }
 .cams-empty { padding: var(--s5); text-align: center; color: var(--text-3); font-size: var(--fs-sm); }
 
@@ -706,6 +708,8 @@ body.panel-open #cams { margin-right: 420px; }
 .sys-grid { display: grid; gap: var(--s3); }
 .sys-item { display: grid; grid-template-columns: 76px 1fr; gap: var(--s2) var(--s3);
   align-items: center; font-size: var(--fs-sm); color: var(--text-2); }
+.sys-fresh { font-size: var(--fs-xs); color: var(--text-3); margin-bottom: var(--s2); }
+.sys-fresh.invechit { color: var(--warn); font-weight: 600; }   /* telemetrie veche (audit ST1) */
 .sys-item small { grid-column: 2; font-size: var(--fs-xs); color: var(--text-3); }
 .sys-bar { height: 6px; background: var(--surface-2); border-radius: var(--r-pill); overflow: hidden; }
 .sys-bar i { display: block; height: 100%; background: var(--accent); transition: width .4s ease; }

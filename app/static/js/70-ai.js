@@ -139,8 +139,12 @@ for (const [id, key] of [['fc-on', 'enabled'], ['fc-notify', 'notify'],
                          ['fc-desc', 'describe']]) {
   const el = $('#' + id);
   if (el) el.onchange = async () => {
-    await post('/api/faces/config', { [key]: el.checked });
-    flash('#fc-msg', t('Salvat ✓'));
+    el.disabled = true;   // blocat cat e cererea in curs
+    const r = await post('/api/faces/config', { [key]: el.checked });
+    el.disabled = false;
+    // confirmam DOAR pe raspuns valid; la esec revenim bifa (audit A1)
+    if (r && !r.error) flash('#fc-msg', t('Salvat ✓'));
+    else { el.checked = !el.checked; flash('#fc-msg', t('Eroare la salvare'), true); }
   };
 }
 $('#fc-thr') && ($('#fc-thr').onchange = async () => {
@@ -279,24 +283,28 @@ async function loadPlates() {
 }
 $('#lp-cams') && ($('#lp-cams').onchange = async () => {
   const ids = [...$('#lp-cams').selectedOptions].map((o) => +o.value);
-  await post('/api/plates/config', { alert_cams: ids });
-  flash('#lp-msg', ids.length ? t('Alertă doar pe {n} camere ✓', { n: ids.length }) : t('Alertă pe toate camerele ✓'));
+  const r = await post('/api/plates/config', { alert_cams: ids });
+  if (r && !r.error) flash('#lp-msg', ids.length ? t('Alertă doar pe {n} camere ✓', { n: ids.length }) : t('Alertă pe toate camerele ✓'));
+  else flash('#lp-msg', t('Eroare la salvare'), true);
 });
 $('#lp-sure') && ($('#lp-sure').onchange = async () => {
-  await post('/api/plates/config', { sure_conf: +$('#lp-sure').value });
-  flash('#lp-msg', t('Prag salvat ✓'));
+  const r = await post('/api/plates/config', { sure_conf: +$('#lp-sure').value });
+  flash('#lp-msg', r && !r.error ? t('Prag salvat ✓') : t('Eroare la salvare'), !(r && !r.error));
 });
 for (const [id, key] of [['lp-on', 'enabled'], ['lp-nk', 'notify_known'],
                          ['lp-na', 'notify_all'], ['lp-nu', 'notify_unknown']]) {
   const el = $('#' + id);
   if (el) el.onchange = async () => {
-    await post('/api/plates/config', { [key]: el.checked });
-    flash('#lp-msg', t('Salvat ✓'));
+    el.disabled = true;
+    const r = await post('/api/plates/config', { [key]: el.checked });
+    el.disabled = false;
+    if (r && !r.error) flash('#lp-msg', t('Salvat ✓'));
+    else { el.checked = !el.checked; flash('#lp-msg', t('Eroare la salvare'), true); }   // audit A1
   };
 }
 $('#lp-conf') && ($('#lp-conf').onchange = async () => {
-  await post('/api/plates/config', { min_conf: +$('#lp-conf').value });
-  flash('#lp-msg', t('Prag salvat ✓'));
+  const r = await post('/api/plates/config', { min_conf: +$('#lp-conf').value });
+  flash('#lp-msg', r && !r.error ? t('Prag salvat ✓') : t('Eroare la salvare'), !(r && !r.error));
 });
 $('#lp-add') && ($('#lp-add').onclick = async () => {
   const r = await post('/api/plates/known',
@@ -494,6 +502,7 @@ async function regulaDin({ tip, valoare = '', cam = null, nume = '' }) {
   document.querySelector('.ainav-item[data-pane="reguli"]')?.click();
   await loadRules();        // optiunile declansatorului si lista de camere se refac aici
   await loadRuLinii();
+  $('#ru-id').value = ''; ruActiv = true;   // regula NOUA din acest eveniment (nu editam alta ramasa in form)
   const trig = $('#ru-trigger');
   if (trig && [...trig.options].some((o) => o.value === tip)) { trig.value = tip; buildRuleValueList(); }
   if ($('#ru-value')) $('#ru-value').value = valoare;
@@ -501,7 +510,13 @@ async function regulaDin({ tip, valoare = '', cam = null, nume = '' }) {
   if ($('#ru-name')) $('#ru-name').value = nume;
   $('#ru-name')?.scrollIntoView({ block: 'center' }); $('#ru-name')?.focus();
 }
+// Starea „activă" a regulii in curs de editat: o pastram si o retrimitem la salvare, ca
+// modificarea numelui unei reguli OPRITE sa n-o reactiveze (ar reporni sirene/relee/notificari
+// — audit A2). Noua regula / «regula din asta» = activa implicit. Pornirea/oprirea se face din
+// butonul din lista.
+let ruActiv = true;
 function fillRuleForm(r) {
+  ruActiv = r.activ !== false;
   $('#ru-id').value = r.id;
   $('#ru-form-title').textContent = t('Modifici: {nume}', { nume: r.nume });
   $('#ru-cancel').classList.remove('hidden');
@@ -533,6 +548,7 @@ function fillRuleForm(r) {
   window.scrollTo({ top: $('#ru-form-title').offsetTop - 80 });
 }
 function clearRuleForm() {
+  ruActiv = true;
   $('#ru-id').value = '';
   $('#ru-form-title').textContent = t('Adaugă o regula');
   $('#ru-cancel').classList.add('hidden');
@@ -562,7 +578,7 @@ $('#ru-save') && ($('#ru-save').onclick = async () => {
   const body = {
     id: $('#ru-id').value || undefined,
     nume: $('#ru-name').value.trim(),
-    activ: true,
+    activ: ruActiv,   // pastram starea existenta (audit A2), nu reactivam o regula oprita la editare
     declansator: { tip: $('#ru-trigger').value, valoare: $('#ru-value').value.trim() },
     camere: [...$('#ru-cams').selectedOptions].map((o) => +o.value),
     grupuri: [...$('#ru-groups').selectedOptions].map((o) => o.value),

@@ -456,10 +456,18 @@ function buildCamsTable() {
     caps.innerHTML = lista(capIcons.filter(([k]) => f[k]),
       ([, ic, lab]) => html`<span title="${t(lab)}">${icon(ic, 14)}</span>`, '<i>—</i>');
 
-    const p = pulseData[c.id] || {};
+    // Fara telemetrie (pulseData lipseste sau rec necunoscut) NU afisam verde „in regula" —
+    // asta ar sugera ca supravegherea merge cand de fapt n-am verificat (audit C2). Starea
+    // implicita e „se verifica", verde doar dupa o masuratoare reala.
+    const p = pulseData[c.id];
     const st = document.createElement('span');
-    st.className = 'row-state ' + (p.alarm ? 's-alarm' : p.rec === false ? 's-down' : 's-ok');
-    st.textContent = p.alarm ? t('alarma') : p.rec === false ? t('nu scrie') : t('în regula');
+    let stCls, stTxt;
+    if (!p || p.rec === undefined || p.rec === null) { stCls = 's-unknown'; stTxt = t('se verifică'); }
+    else if (p.alarm) { stCls = 's-alarm'; stTxt = t('alarma'); }
+    else if (p.rec === false) { stCls = 's-down'; stTxt = t('nu scrie'); }
+    else { stCls = 's-ok'; stTxt = t('în regula'); }
+    st.className = 'row-state ' + stCls;
+    st.textContent = stTxt;
     st.dataset.cam = c.id;   // completat cu ultimul segment / golurile de azi (camSanatate)
 
     const rec = document.createElement('span');
@@ -714,8 +722,12 @@ function openCamPanel(c) {
   aiBtn.className = 'panel-toggle' + (c.detect ? ' on' : '');
   aiBtn.innerHTML = icon('paw', 14) + ' ' + (c.detect ? t('Detecție pornită') : t('Detecție oprită'));
   aiBtn.onclick = async () => {
-    c.detect = !c.detect;
-    await post(`/api/cam/${c.id}/detect`, { on: c.detect });
+    const nou = !c.detect;
+    aiBtn.disabled = true;
+    const r = await post(`/api/cam/${c.id}/detect`, { on: nou });   // schimbam starea DOAR pe raspuns valid (audit C1)
+    aiBtn.disabled = false;
+    if (!r || r.error) { flashP(t('Eroare la salvare')); return; }
+    c.detect = nou;
     aiBtn.className = 'panel-toggle' + (c.detect ? ' on' : '');
     aiBtn.innerHTML = icon('paw', 14) + ' ' + (c.detect ? t('Detecție pornită') : t('Detecție oprită'));
     buildCamsTable(); flashP(t('Salvat'));
@@ -730,8 +742,12 @@ function openCamPanel(c) {
     sirenBtn.className = 'panel-toggle' + (c.auto_siren ? ' on' : '');
     sirenBtn.innerHTML = icon('alarm', 14) + ' ' + (c.auto_siren ? t('Anunț automat pornit') : t('Anunț automat oprit'));
     sirenBtn.onclick = async () => {
-      c.auto_siren = !c.auto_siren;
-      await post(`/api/cam/${c.id}/detect`, { auto_siren: c.auto_siren });
+      const nou = !c.auto_siren;
+      sirenBtn.disabled = true;
+      const r = await post(`/api/cam/${c.id}/detect`, { auto_siren: nou });
+      sirenBtn.disabled = false;
+      if (!r || r.error) { flashP(t('Eroare la salvare')); return; }
+      c.auto_siren = nou;
       sirenBtn.className = 'panel-toggle' + (c.auto_siren ? ' on' : '');
       sirenBtn.innerHTML = icon('alarm', 14) + ' ' + (c.auto_siren ? t('Anunț automat pornit') : t('Anunț automat oprit'));
       flashP(t('Salvat'));
@@ -743,8 +759,12 @@ function openCamPanel(c) {
   cadereBtn.title = t('Detectează o persoană căzută și imobilă (pose + confirmare VLM) și escaladează');
   cadereBtn.innerHTML = icon('alarm', 14) + ' ' + (c.cadere ? t('Alertă la cădere pornită') : t('Alertă la cădere oprită'));
   cadereBtn.onclick = async () => {
-    c.cadere = !c.cadere;
-    await post(`/api/cam/${c.id}/detect`, { cadere: c.cadere });
+    const nou = !c.cadere;
+    cadereBtn.disabled = true;
+    const r = await post(`/api/cam/${c.id}/detect`, { cadere: nou });
+    cadereBtn.disabled = false;
+    if (!r || r.error) { flashP(t('Eroare la salvare')); return; }
+    c.cadere = nou;
     cadereBtn.className = 'panel-toggle' + (c.cadere ? ' on' : '');
     cadereBtn.innerHTML = icon('alarm', 14) + ' ' + (c.cadere ? t('Alertă la cădere pornită') : t('Alertă la cădere oprită'));
     flashP(t('Salvat'));
