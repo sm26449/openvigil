@@ -8,7 +8,7 @@ import { $, ADMIN, CAN_ACT, DET_RO, EV_RO, HLS_SUFFIX, html, icon, lista, stream
 import { camLinks } from './05-navigare.js';
 import { hdCam, openHD } from './20-hd.js';
 import { hartaEvents } from './25-harta.js';
-import { buildPbCams, openMaskEditor, shotFromVideo, stamp } from './30-redare.js';
+import { activeVideo, buildPbCams, openMaskEditor, shotFromVideo, stamp } from './30-redare.js';
 import { openCountEditor, openZoneEditor } from './50-camere.js';
 /* ---------- vizualizari salvate: filtru + aranjare, reutilizabile cu un click ---------- */
 let views = [], defaultView = '';
@@ -373,7 +373,8 @@ function buildCtrls(c, container, full) {
     const bs = mkBtn(icon('camera'), t('Salvează cadrul curent ca imagine'));
     bs.onclick = (e) => {
       e.stopPropagation();
-      shotFromVideo(container.querySelector('video'),
+      // in HD containerul are substream + HD suprapuse: salvam HD-ul vizibil, nu substream-ul
+      shotFromVideo(activeVideo(container),
                     `cam${c.id}_${stamp()}.jpg`);
     };
     bar.appendChild(bs);

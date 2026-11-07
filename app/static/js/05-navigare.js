@@ -6,7 +6,7 @@
 import { S } from './state.js';
 import { $, ADMIN, CAN_ACT, LIMBA, ME, html, icon, t, toast } from './00-core.js';
 import { ZOOM_MAX_MS, pollEvents, post } from './10-live.js';
-import { closeHD, hdCam, openHD } from './20-hd.js';
+import { closeHD, hdCam, hdIsLive, openHD } from './20-hd.js';
 import { loadHarta } from './25-harta.js';
 import { localDay, pbDate, pbPos, playFrom, searchRecordings } from './30-redare.js';
 import { loadAlarms, loadIncidents, loadJournal, refreshIncBadge } from './40-evenimente.js';
@@ -166,7 +166,9 @@ function ptzKeyStop() {
   post(`/api/cam/${cam}/ptz`, { pan: 0, tilt: 0, zoom: 0 });
 }
 document.addEventListener('keydown', (e) => {
-  if (!hdCam || !CAN_ACT || inInput(e) || e.repeat || !(e.key in PTZ_KEYS)) return;
+  // Doar in HD LIVE: cat timp te uiti la o inregistrare (time-shift), sagetile nu mai rotesc
+  // camera reala — ar misca liveul in timp ce privesti trecutul (audit #3).
+  if (!hdCam || !CAN_ACT || !hdIsLive() || inInput(e) || e.repeat || !(e.key in PTZ_KEYS)) return;
   const f = hdCam.features || {}, d = PTZ_KEYS[e.key];
   if ((d.zoom && !f.zoom) || ((d.pan || d.tilt) && !f.ptz)) return;
   e.preventDefault();

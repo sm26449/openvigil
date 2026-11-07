@@ -132,10 +132,11 @@ function streamEl(name, mode = 'mse,webrtc', lazy = false, bufferTarget = 0) {
   // Buffer de jitter (secunde): 0 = low-latency (lipit de live, pt. HD/PTZ); >0 = mod fluid
   // (grila), tine un buffer care absoarbe variatiile de retea -> imagine neteda ca "Fluent".
   el.bufferTarget = bufferTarget;
-  // Cand schimbi tabul, playerul se deconecteaza ca sa nu consume degeaba — dar abia
-  // dupa DISCONNECT_TIMEOUT. Implicit 5s inseamna ca orice comutare scurta de tab cere
-  // reconectare completa la intoarcere (WebSocket nou + asteptare keyframe ~2.5s).
-  // Cu 90s, reveniri sub un minut si jumatate sunt instantanee.
+  // Cand schimbi tabul (sau derulezi un tile in afara ecranului) playerul se deconecteaza ca
+  // sa nu consume degeaba — dar abia dupa DISCONNECT_TIMEOUT, ca reveniri sub un minut si
+  // jumatate sa fie instantanee (fara WebSocket nou + asteptare keyframe ~2.5s). Fereastra
+  // asta lunga se aplica DOAR cat timp elementul ramane in DOM; cand e scos de tot (inchidere
+  // HD, schimbare sursa, reconstruire grila) video-rtc.js il opreste imediat (vezi acolo).
   el.DISCONNECT_TIMEOUT = 90000;
   // Streaming lenes: un tile derulat in afara ecranului se deconecteaza (dupa
   // DISCONNECT_TIMEOUT) si se reconecteaza singur la revenire. La 100 de camere e
