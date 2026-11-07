@@ -366,7 +366,8 @@ async function loadAiStare() {
   if (a) pune('ai-stare-adnot', t('{total} cadre etichetate · {verificate} verificate de om · {nesigure} în coada de nesigure',
     { total: a.total || 0, verificate: a.verificate || 0, nesigure: a.nesigure || 0 }));
 }
-$('#tab-ai') && $('#tab-ai').addEventListener('click', loadAiStare);
+// loadAiStare se cheama acum din initView() (40-evenimente) — un singur loc pentru pornirea
+// ecranelor, ca sa mearga la fel din butonul de tab si din deep-link (audit #7, #20)
 if (!$('#ai').classList.contains('hidden')) setTimeout(loadAiStare, 500);
 
 /* ---------- tabul AI: navigarea pe sectiuni ---------- */
@@ -575,4 +576,4 @@ $('#ru-save') && ($('#ru-save').onclick = async () => {
   if (r && !r.error) { clearRuleForm(); flash('#ru-msg', t('Regula salvată ✓')); loadRules(); }
 });
 
-export { loadFaces, loadPlates, loadRules, loadTrack, regulaDin };
+export { loadAiStare, loadFaces, loadPlates, loadRules, loadTrack, regulaDin };

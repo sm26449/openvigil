@@ -520,6 +520,7 @@
  "Căutare semantică în alarme": "Semantic search in alarms",
  "Căutare:": "Search:",
  "Căutarea nu a mers ({motiv}) — reîncearcă": "Search failed ({motiv}) — try again",
+ "Căutarea nu a mers — reîncearcă": "Search failed — try again",
  "căutarea semantică nu e pornită (Setări → Detecție)": "semantic search is not enabled (Settings → Detection)",
  "Da alarma la zgomot": "Raise alarm on noise",
  "da-i un nume": "give it a name",

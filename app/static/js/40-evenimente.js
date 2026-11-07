@@ -12,7 +12,7 @@ import { hartaCritic } from './25-harta.js';
 import { curSegments, localDay, pad, pbSetSpeed, playFrom, renderMultiList, searchRecordings } from './30-redare.js';
 import { buildCamsTable } from './50-camere.js';
 import { loadSettings } from './60-setari.js';
-import { loadFaces, loadPlates, loadRules, loadTrack } from './70-ai.js';
+import { loadAiStare, loadFaces, loadPlates, loadRules, loadTrack } from './70-ai.js';
 /* ---------- panou de incidente: triaj in timp real ---------- */
 let incFilter = 'noi';
 /* lista se incarca progresiv: 30 de randuri, apoi inca 30 cand ajungi la capat (120 odata
@@ -348,24 +348,30 @@ async function refreshIncBadge() {
   } catch {}
 }
 
+// Pornirea fiecarui ecran, intr-un SINGUR loc: o cheama si butoanele de tab, si rutarea pe
+// hash (deep-link). Inainte doar butoanele initializau, deci un link direct catre #set, #pb,
+// #ai sau #cams deschidea ecranul gol sau invechit (audit #7, #20). harta/live/ev isi fac
+// initul in show()/showEv(), deci nu apar aici.
+async function initView(view) {
+  if (view === 'pb') { if (!curSegments.length && $('#pb-cam').value) searchRecordings(); }
+  else if (view === 'set') loadSettings();
+  else if (view === 'ai') { loadAiStare(); loadFaces(); loadPlates(); loadRules(); loadTrack(); }
+  else if (view === 'cams') {
+    buildCamsTable();
+    try {   // spatiul ocupat per camera, o singura cerere
+      const s = await (await fetch('/api/storage')).json();
+      storageData = s.per_cam_gb || {};
+      buildCamsTable();
+    } catch {}
+  }
+}
 $('#tab-live').onclick = () => show('live');
 $('#tab-harta').onclick = () => show('harta');
 $('#tab-ev').onclick = () => showEv(evPane);
-$('#tab-pb').onclick = () => { show('pb'); if (!curSegments.length && $('#pb-cam').value) searchRecordings(); };
-$('#tab-ai').onclick = () => {
-  show('ai');
-  loadFaces(); loadPlates(); loadRules(); loadTrack();
-};
-$('#tab-cams').onclick = async () => {
-  show('cams');
-  buildCamsTable();
-  try {   // spatiul ocupat per camera, o singura cerere
-    const s = await (await fetch('/api/storage')).json();
-    storageData = s.per_cam_gb || {};
-    buildCamsTable();
-  } catch {}
-};
-$('#tab-set').onclick = () => { show('set'); loadSettings(); };
+$('#tab-pb').onclick = () => { show('pb'); initView('pb'); };
+$('#tab-ai').onclick = () => { show('ai'); initView('ai'); };
+$('#tab-cams').onclick = () => { show('cams'); initView('cams'); };
+$('#tab-set').onclick = () => { show('set'); initView('set'); };
 $('#pb-search').onclick = searchRecordings;
 $('#pb-cam').addEventListener('change', () => {
   S.pbExtra = S.pbExtra.filter((x) => x !== +$('#pb-cam').value);
@@ -975,5 +981,5 @@ $('#ev-grup') && ($('#ev-grup').onchange = loadJournal);
 // scrisa doar de ecranul Evenimente
 let storageData = {};
 
-export { AL_ICO, AL_RO, EV_TIP_RO, alNume, evCompact, loadAlarms, loadIncidents, loadJournal, openCases, openClip, refreshIncBadge, storageData, wireClips };
+export { AL_ICO, AL_RO, EV_TIP_RO, alNume, evCompact, initView, loadAlarms, loadIncidents, loadJournal, openCases, openClip, refreshIncBadge, storageData, wireClips };
 document.addEventListener('incident-schimbat', () => { loadIncidents(); refreshIncBadge(); });
