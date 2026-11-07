@@ -157,6 +157,7 @@
       Export: <input type="time" id="exp-a" step="1" aria-label="Export de la ora"> – <input type="time" id="exp-b" step="1" aria-label="Export până la ora">
       <button id="exp-btn" title="Descarcă intervalul ca fișier MP4 (max 30 min)">Descarcă MP4</button>
       <label class="inline" title="Gravează camera și ora în imagine (pentru probe)"><input type="checkbox" id="exp-wm"> filigran</label>
+      <button id="pb-exports" class="link-btn" title="Toate exporturile recente: stare, interval, rezultat, descărcare din nou">📁 Exporturile mele</button>
     </span>
     <span class="exp an">
       <button id="pb-regiune" title="Desenezi un dreptunghi pe cadru și vezi toate detecțiile zilei care l-au atins">Caută pe regiune</button>
@@ -1357,6 +1358,21 @@
       <button id="cases-close" aria-label="Închide">✕</button>
     </div>
     <div id="cases-body"></div>
+  </div>
+</div>
+
+<!-- Pagina „Exporturi": istoricul exporturilor (MP4, clip, dosar ZIP, raport, time-lapse) cu
+     stare, interval, rezultat parțial/eroare și descărcare din nou — nu mai depinzi de tava
+     tranzitorie sau de refresh. Fișierele se păstrează ~1 oră pe server. -->
+<div id="exports-modal" class="hidden" role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="exports-title">
+  <div id="exports-box">
+    <div id="exports-head">
+      <b id="exports-title">Exporturi</b>
+      <span class="hint">Fișierele se păstrează aproximativ o oră.</span>
+      <button id="exports-refresh" class="link-btn" title="Reîmprospătează">↻</button>
+      <button id="exports-close" aria-label="Închide">✕</button>
+    </div>
+    <div id="exports-list"></div>
   </div>
 </div>
 
