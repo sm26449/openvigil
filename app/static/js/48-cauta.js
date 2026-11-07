@@ -12,6 +12,7 @@ import { openFisa } from './45-fisa.js';
 
 const PLACUTA = /^[A-Z]{1,2}\s?\d{2,3}\s?[A-Z]{3}$/i;
 let qRez = [], qCat = '', qUltim = '';
+let qOk = 0, qErr = 0;   // surse interogate cu succes / esuate — ca „nimic gasit" sa nu ascunda o eroare (audit #11)
 
 async function cauta(q) {
   q = (q || '').trim();
@@ -24,7 +25,13 @@ async function cauta(q) {
   if (!dlg.open) dlg.showModal();
   const zile = +($('#cauta-zile').value || 30);
   const names = Object.fromEntries(S.cameras.map((c) => [c.id, c.name]));
-  const j = async (u) => { try { const r = await fetch(u); return r.ok ? await r.json() : null; } catch { return null; } };
+  qOk = 0; qErr = 0;
+  // null = sursa a esuat (retea sau raspuns non-ok); un rezultat gol vine ca {..:[]} (truthy).
+  // Asa distingem o cautare picata de una care chiar n-a gasit nimic.
+  const j = async (u) => {
+    try { const r = await fetch(u); if (!r.ok) { qErr++; return null; } qOk++; return await r.json(); }
+    catch { qErr++; return null; }
+  };
   const qd = fdia(q);
   const [sem, pl, jur, hist] = await Promise.all([
     PLACUTA.test(q) ? null : j(`/api/search?q=${encodeURIComponent(q)}&days=${zile}&limit=40`),   // un numar nu e o descriere de poza
@@ -68,9 +75,12 @@ function qRender() {
     const c = b.dataset.cat; b.classList.toggle('on', c === qCat);
     b.textContent = b.dataset.txt + (c ? ` ${nr[c] || 0}` : ` ${qRez.length}`);
   }
-  $('#cauta-info').textContent = !qRez.length ? t('nimic pentru „{q}”', { q: qUltim })
-    : qCat ? t('{n} rezultate pentru „{q}”', { n: items.length, q: qUltim })
-    : t('{n} rezultate din toate sursele pentru „{q}”', { n: items.length, q: qUltim });
+  $('#cauta-info').textContent = qRez.length
+    ? (qCat ? t('{n} rezultate pentru „{q}”', { n: items.length, q: qUltim })
+      : t('{n} rezultate din toate sursele pentru „{q}”', { n: items.length, q: qUltim }))
+    // fara rezultate: daca TOATE sursele interogate au esuat, e o eroare, nu „gol"
+    : (qOk === 0 && qErr > 0) ? t('Căutarea nu a mers — reîncearcă')
+    : t('nimic pentru „{q}”', { q: qUltim });
   $('#cauta-grid').innerHTML = lista(items, (r, i) => html`
     <button class="q-item" data-i="${i}" data-cat="${r.cat}">
       ${r.poza ? html`<img src="${r.poza}" alt="" loading="lazy">` : html`<span class="q-noimg">${r.cat === 'persoane' ? '👤' : '•'}</span>`}

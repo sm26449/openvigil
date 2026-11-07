@@ -9,7 +9,7 @@ import { ZOOM_MAX_MS, pollEvents, post } from './10-live.js';
 import { closeHD, hdCam, hdIsLive, openHD } from './20-hd.js';
 import { loadHarta } from './25-harta.js';
 import { localDay, pbDate, pbPos, playFrom, searchRecordings } from './30-redare.js';
-import { loadAlarms, loadIncidents, loadJournal, refreshIncBadge } from './40-evenimente.js';
+import { initView, loadAlarms, loadIncidents, loadJournal, refreshIncBadge } from './40-evenimente.js';
 import { pulseData } from './50-camere.js';
 import { meDlg } from './60-setari.js';
 /* ---------- taburi ---------- */
@@ -105,6 +105,7 @@ async function routeHash() {
     }
     if (view === 'ev' || EV_ALIAS[view]) { showEv(EV_ALIAS[view] || a || evPane, false); return; }
     if (!VIEWS.includes(view)) return;
+    if (view !== 'pb') { show(view, false); initView(view); return; }   // deep-link: arata SI initializeaza ecranul
     if (view === 'pb' && a) {
       show('pb', false);
       if (!$('#pb-cam').querySelector(`option[value="${+a}"]`)) return;
@@ -118,7 +119,7 @@ async function routeHash() {
       if (sec !== null) playFrom(zi, sec);
       return;
     }
-    show(view, false);
+    show(view, false); initView(view);   // #pb fara camera: tot cauta inregistrarile zilei
   } finally { routing = false; }
 }
 window.addEventListener('hashchange', routeHash);
