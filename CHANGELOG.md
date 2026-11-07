@@ -3,6 +3,17 @@
 Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [2.0.22] — 2026-11-08
+
+### Adăugat
+- **Centru de sănătate** (tab-ul „Stare" din antet) — un singur loc pentru „merge totul?": serverul
+  (procesor, memorie, disc liber, mărimea înregistrărilor, trafic rețea, uptime), canalele de alertă
+  (Telegram / e-mail / push, cu avertisment când nu există niciunul), subsistemele AI (serviciu, GPU,
+  fețe / LPR / descriere / semantic — pornit vs. model încărcat, MQTT, reguli active), starea NVR-ului
+  și o grilă cu fiecare cameră (ultima imagine, insigne REC / alarmă / mișcare, scrie? / goluri azi? /
+  sabotaj?). Rândurile problematice ies în evidență. Patru apeluri în paralel, redesenare la cerere;
+  nimic nu se salvează. Închidere cu Esc.
+
 ## [2.0.21] — 2026-11-08
 
 ### Adăugat
