@@ -64,3 +64,24 @@ def test_persistenta_intre_incarcari():
     cases.add_proba(cid, 14, "s", "e")
     # o "noua sesiune" citeste acelasi fisier
     assert cases.get(cid)["probe"][0]["cam"] == 14
+
+
+def test_add_proba_concurent_nu_pierde():
+    # read-modify-write atomic: mai multe fire adauga probe simultan, toate trebuie sa ramana
+    # (audit #5: inainte, doua adaugari concomitente lasau o singura proba, fara eroare)
+    import threading
+    cid = cases.create("Caz concurent")["id"]
+    fire_n, per = 8, 20
+    bariera = threading.Barrier(fire_n)
+
+    def worker(k):
+        bariera.wait()
+        for i in range(per):
+            cases.add_proba(cid, 1, f"2026{k:02d}{i:02d}T000000Z", f"2026{k:02d}{i:02d}T000100Z")
+
+    fire = [threading.Thread(target=worker, args=(k,)) for k in range(fire_n)]
+    for t in fire:
+        t.start()
+    for t in fire:
+        t.join()
+    assert len(cases.get(cid)["probe"]) == fire_n * per

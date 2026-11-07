@@ -93,7 +93,7 @@ async function drawEventDots(ch, date) {
 }
 
 // navigare: eveniment anterior/urmator si sarituri fine fata de pozitia curenta
-let pbPos = null, pbDate = null, pbStart = null, pbPaused = false;
+let pbPos = null, pbDate = null, pbStart = null, pbPaused = false, pbGen = 0;
 const pbVideos = () => [...$('#player').querySelectorAll('video')];
 function pbJump(sec) {
   if (pbDate === null) return;
@@ -599,6 +599,7 @@ $('#pb-multi').onclick = () => {
 };
 
 async function playFrom(date, sec) {
+  const gen = ++pbGen;   // ultima cerere castiga: un raspuns vechi nu mai scrie in player (audit #1)
   const primar = +$('#pb-cam').value;
   // clic dupa ultimul material al zilei: spunem imediat, fara sa pornim fluxuri goale
   const ultim = curSegments.length ? secOfDay(curSegments[curSegments.length - 1].end) : 0;
@@ -639,6 +640,7 @@ async function playFrom(date, sec) {
     fetch(`/api/play?channel=${ch}&start=${start}&end=${end}&speed=${pbSpeed}${hdHeightParam()}`)
       .then((r) => r.json()).then((d) => ({ ch, d })).catch(() => ({ ch, d: { error: t('rețea') } })));
   const raspunsuri = await Promise.all(cereri);
+  if (gen !== pbGen) return;   // alta redare (alta camera/moment) a pornit intre timp — abandonam
 
   const rele = raspunsuri.filter((x) => x.d.error);
   if (rele.length === raspunsuri.length) {

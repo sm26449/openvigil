@@ -32,6 +32,7 @@ def api_events_journal():
                 min_sev=request.args.get("sev") or None)
     from server import _visible_ids
     vis = _visible_ids()
+    args["cams"] = vis   # restrictia de camere intra IN query (inainte de ORDER/LIMIT), nu doar post-filtru (audit #9)
     doar_vizibile = (lambda lst: [e for e in lst if vis is None or e.get("cam") is None or e.get("cam") in vis])
     if request.args.get("grup"):
         return jsonify({"episodes": doar_vizibile(rules.episodes(**args)),

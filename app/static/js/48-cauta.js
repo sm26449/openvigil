@@ -12,11 +12,13 @@ import { openFisa } from './45-fisa.js';
 
 const PLACUTA = /^[A-Z]{1,2}\s?\d{2,3}\s?[A-Z]{3}$/i;
 let qRez = [], qCat = '', qUltim = '';
-let qOk = 0, qErr = 0;   // surse interogate cu succes / esuate — ca „nimic gasit" sa nu ascunda o eroare (audit #11)
+let qEroare = false, qGen = 0;   // qEroare: toate sursele interogate au esuat (ca „nimic gasit" sa
+// nu ascunda o eroare, audit #11). qGen: ultima cautare castiga (audit #2).
 
 async function cauta(q) {
   q = (q || '').trim();
   if (!q) return;
+  const gen = ++qGen;
   qUltim = q;
   const dlg = $('#cauta'); if (!dlg) return;
   $('#cauta-q').textContent = q;
@@ -25,12 +27,13 @@ async function cauta(q) {
   if (!dlg.open) dlg.showModal();
   const zile = +($('#cauta-zile').value || 30);
   const names = Object.fromEntries(S.cameras.map((c) => [c.id, c.name]));
-  qOk = 0; qErr = 0;
-  // null = sursa a esuat (retea sau raspuns non-ok); un rezultat gol vine ca {..:[]} (truthy).
-  // Asa distingem o cautare picata de una care chiar n-a gasit nimic.
+  // Contoare LOCALE per cerere (nu module-level): doua cautari concurente nu-si mai amesteca
+  // numaratoarea. null = sursa a esuat (retea sau raspuns non-ok); un rezultat gol vine ca
+  // {..:[]} (truthy) — asa distingem o cautare picata de una care chiar n-a gasit nimic.
+  let ok = 0, err = 0;
   const j = async (u) => {
-    try { const r = await fetch(u); if (!r.ok) { qErr++; return null; } qOk++; return await r.json(); }
-    catch { qErr++; return null; }
+    try { const r = await fetch(u); if (!r.ok) { err++; return null; } ok++; return await r.json(); }
+    catch { err++; return null; }
   };
   const qd = fdia(q);
   const [sem, pl, jur, hist] = await Promise.all([
@@ -39,6 +42,8 @@ async function cauta(q) {
     j(`/api/journal?limit=300&text=${encodeURIComponent(q)}&zile=${zile}`),   // descrierile VLM, rezumatele episoadelor, nume, numere (fara diacritice)
     j(`/api/faces/history?name=${encodeURIComponent(q)}&limit=60`),
   ]);
+  if (gen !== qGen) return;   // o cautare mai noua a pornit intre timp — nu publicam rezultate vechi
+  qEroare = ok === 0 && err > 0;
   const rez = [];
   for (const p of ((sem && sem.results) || [])) {
     rez.push({ cat: 'poze', cam: p.cam, t: `${p.day} ${p.time}`, titlu: t(DET_RO[p.label] || AL_RO[p.label] || p.label) + (p.sursa === 'scena' ? ' 🧩' : ''), poza: p.url, tip: 'detectie', det: p.label });
@@ -79,7 +84,7 @@ function qRender() {
     ? (qCat ? t('{n} rezultate pentru „{q}”', { n: items.length, q: qUltim })
       : t('{n} rezultate din toate sursele pentru „{q}”', { n: items.length, q: qUltim }))
     // fara rezultate: daca TOATE sursele interogate au esuat, e o eroare, nu „gol"
-    : (qOk === 0 && qErr > 0) ? t('Căutarea nu a mers — reîncearcă')
+    : qEroare ? t('Căutarea nu a mers — reîncearcă')
     : t('nimic pentru „{q}”', { q: qUltim });
   $('#cauta-grid').innerHTML = lista(items, (r, i) => html`
     <button class="q-item" data-i="${i}" data-cat="${r.cat}">

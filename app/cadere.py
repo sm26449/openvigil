@@ -7,6 +7,7 @@ Politica și escaladarea (incident critic, Telegram, alertd) le face nvr-web pe 
 Pose și VLM sunt INJECTATE (`keypoints_fn`, `confirm_fn`), ca orchestratorul să fie testabil
 fără model. În viață le dau `cadere_pose.keypoints` și o întrebare la Qwen.
 """
+import re
 import threading
 import time
 
@@ -140,5 +141,27 @@ def _vlm_confirm(frame_bgr, bbox):
         return False
     pil = Image.fromarray(cv2.cvtColor(frame_bgr[y1:y2, x1:x2], cv2.COLOR_BGR2RGB))
     ans = (describe.describe_crop(pil, PROMPT_CADERE) or "").strip().lower()
-    return ans.startswith("da") or any(w in ans for w in
-        ("căzut", "cazut", "întins", "intins", "prăbuș", "prabus", "fallen", "lying", "collapsed"))
+    return _raspuns_cadere(ans)
+
+
+_NEG_PREFIX = re.compile(r"^\s*(nu|no|nope|negativ|incert|neclar|nesigur)\b")
+_POZ_PREFIX = re.compile(r"^\s*(da|yes|yep|afirmativ)\b")
+_POZ_CUV = ("căzut", "cazut", "întins", "intins", "prăbuș", "prabus",
+            "fallen", "lying", "collapsed", "pe jos", "on the ground", "la sol")
+_NEG_CUV = ("nu ", "n-", " not ", "no ", "niciun", "nicio",
+            "în picioare", "in picioare", "standing", "sitting", "așezat", "asezat")
+
+
+def _raspuns_cadere(ans):
+    """Verdict strict pe raspunsul VLM (da / nu / neconcludent). Negatia explicita castiga, ca
+    «nu, persoana nu este cazuta» sa NU iasa pozitiv doar fiindca apare cuvantul «cazut» (audit
+    #8). Raspuns gol sau neconcludent -> False (nu escaladam pe nesiguranta)."""
+    if not ans:
+        return False
+    if _NEG_PREFIX.search(ans):
+        return False
+    if _POZ_PREFIX.search(ans):
+        return True
+    neg = any(n in ans for n in _NEG_CUV)
+    poz = any(p in ans for p in _POZ_CUV)
+    return poz and not neg

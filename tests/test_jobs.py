@@ -91,6 +91,19 @@ def test_dedup_job_identic_in_coada():
     assert d["id"] != a["id"]
 
 
+def test_dedup_pe_proprietar():
+    # acelasi export cerut de doi utilizatori -> joburi DIFERITE: altfel al doilea primea jobul
+    # primului, pe care verificarile de acces i-l refuzau apoi (audit #6)
+    poarta = threading.Event()
+    jobs.register("lent", lambda j: poarta.wait(5) and {})
+    a1 = jobs.submit("lent", {"x": 1}, who="alice")
+    a2 = jobs.submit("lent", {"x": 1}, who="alice")   # acelasi user + parametri -> acelasi job
+    b1 = jobs.submit("lent", {"x": 1}, who="bob")     # alt user -> job propriu
+    assert a2["id"] == a1["id"]
+    assert b1["id"] != a1["id"] and b1["creat_de"] == "bob"
+    poarta.set()
+
+
 def test_anulare_in_asteptare_si_in_rulare():
     poarta = threading.Event()
 
