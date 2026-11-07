@@ -136,7 +136,6 @@ window.addEventListener('popstate', (e) => {
 const OVERLAY_CLOSE = [['#mask-overlay', '#mask-close'], ['#heat-overlay', '#heat-close'], ['#reg-overlay', '#reg-close'],
   ['#zone-overlay', '#zone-close'], ['#count-overlay', '#count-close'], ['#addcam-overlay', '#addcam-cancel'],
   ['#cases-modal', '#cases-close'], ['#digest-modal', '#digest-close'], ['#clip-modal', '#clip-close'], ['#ph-overlay', '#ph-close']];
-const inInput = (e) => ['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target || {}).tagName) || (e.target && e.target.isContentEditable);
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;           // si din campurile formularului (focusul e in overlay)
   if (meDlg && meDlg.open) return;                      // dialogul nativ se inchide singur
@@ -159,7 +158,10 @@ const focusabile = (el) => [...el.querySelectorAll(
   .filter((x) => x.getClientRects().length);
 function inerteazaFundal(modal, on) {
   for (const copil of document.body.children) {
-    if (copil === modal) continue;
+    // <dialog>-urile native isi fac singure modalitatea (showModal pune restul inert prin
+    // top-layer). Daca le-am pune NOI `inert`, un dialog nativ deschis peste foaia „Mai mult"
+    // ramanea inert si fara focus — showModal nu scoate atributul (audit #16, regresie).
+    if (copil === modal || copil.tagName === 'DIALOG') continue;
     if (on) copil.setAttribute('inert', '');
     else copil.removeAttribute('inert');
   }
@@ -168,8 +170,11 @@ function modalDeschis(el) {
   focusInainte = document.activeElement;
   inerteazaFundal(el, true);
   if (!el.contains(document.activeElement)) {
-    const f = focusabile(el);
-    try { (f[0] || el).focus({ preventScroll: true }); } catch (_) {}
+    // Preferam containerul (are tabindex=-1): cititorul de ecran ii anunta numele, iar focusul
+    // „neutru" lasa sagetile sa comande camera in HD (nu un control anume). Foaia „Mai mult"
+    // n-are tabindex, deci acolo focusam primul element.
+    const tinta = el.hasAttribute('tabindex') ? el : (focusabile(el)[0] || el);
+    try { tinta.focus({ preventScroll: true }); } catch (_) {}
   }
 }
 function modalInchis(el) {
@@ -209,9 +214,12 @@ function ptzKeyStop() {
   post(`/api/cam/${cam}/ptz`, { pan: 0, tilt: 0, zoom: 0 });
 }
 document.addEventListener('keydown', (e) => {
-  // Doar in HD LIVE: cat timp te uiti la o inregistrare (time-shift), sagetile nu mai rotesc
-  // camera reala — ar misca liveul in timp ce privesti trecutul (audit #3).
-  if (!hdCam || !CAN_ACT || !hdIsLive() || inInput(e) || e.repeat || !(e.key in PTZ_KEYS)) return;
+  // Doar in HD LIVE (in time-shift sagetile ar roti liveul in timp ce privesti trecutul) SI doar
+  // cand focusul e „neutru" — pe overlay-ul HD insusi sau pe body, nu pe un control (buton,
+  // slider, timeline): altfel sagetile furau tastatura controlului focusat (audit #3).
+  const a = document.activeElement;
+  const neutru = !a || a === document.body || a.id === 'hd-overlay';
+  if (!hdCam || !CAN_ACT || !hdIsLive() || !neutru || e.repeat || !(e.key in PTZ_KEYS)) return;
   const f = hdCam.features || {}, d = PTZ_KEYS[e.key];
   if ((d.zoom && !f.zoom) || ((d.pan || d.tilt) && !f.ptz)) return;
   e.preventDefault();

@@ -30,7 +30,11 @@ function checksHtml(containerId, checked) {
 }
 const checkedOf = (id) => [...$(id).querySelectorAll('input:checked')].map((c) => c.value);
 
-async function loadSettings() {
+async function loadSettings(force = false) {
+  // Re-intrare in tabul Setari cu modificari nesalvate: NU reincarcam formularul, am pierde
+  // draftul (editai pragul si la revenire sarea inapoi la valoarea salvata — audit #6, rest).
+  // „Renunta" cheama loadSettings(true) ca sa reincarce intentionat.
+  if (!force && savedSnapshot !== null && snapshotSettings() !== savedSnapshot) return;
   const s = await (await fetch('/api/settings')).json();
   $('#s-tg-token').value = s.telegram_token;
   $('#s-tg-chat').value = s.telegram_chat;
@@ -1228,7 +1232,7 @@ $('#s-save').onclick = async () => {
     flash('#s-msg-save', t('Salvat'));
   } else flash('#s-msg-save', t('Eroare la salvare'), true);
 };
-$('#s-revert').onclick = () => { loadSettings(); };
+$('#s-revert').onclick = () => { loadSettings(true); };   // „Renunta": reincarca intentionat, peste draft
 for (const btn of document.querySelectorAll('.s-test')) {
   btn.onclick = async () => {
     const ch = btn.dataset.ch;

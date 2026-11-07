@@ -178,6 +178,7 @@ async function hdGoLive(gen) {
   const wrap = $('#hd-player');
   if (gen === undefined) gen = ++hdGen;   // apelat direct (butonul „live"): jeton propriu
   if (wrap._hdMon) { clearInterval(wrap._hdMon); wrap._hdMon = null; }
+  if (wrap._pbTimer) { clearTimeout(wrap._pbTimer); wrap._pbTimer = null; }   // timerul de time-shift
   wrap.innerHTML = '';
   wrap.style.position = 'relative';
   // poster instant: ultimul cadru cunoscut (same-origin, cache 20s) — umple ecranul cat
@@ -235,6 +236,7 @@ async function hdPlayAt(when) {
   const wrap = $('#hd-player');
   const gen = ++hdGen;
   if (wrap._hdMon) { clearInterval(wrap._hdMon); wrap._hdMon = null; }   // opresc monitorul HD-live
+  if (wrap._pbTimer) { clearTimeout(wrap._pbTimer); wrap._pbTimer = null; }
   stopHdBoxes();   // chenarele sunt LIVE (din bucla curenta) — pe inregistrare ar minti
   const date = localDay();
   const sec = when.getHours() * 3600 + when.getMinutes() * 60 + when.getSeconds();
@@ -246,7 +248,15 @@ async function hdPlayAt(when) {
   if (gen !== hdGen || !hdCam) return;   // depasit (alta camera / live / inchis) cat am asteptat
   if (d.error) { wrap.innerHTML = html`<span class="hd-err">${d.error}</span>`; return; }
   wrap.innerHTML = '';
-  setTimeout(() => wrap.appendChild(streamEl(d.stream, HD_MODE, false, hdBufferTarget())), 400);
+  // Micul delay (ca go2rtc sa porneasca ffmpeg-ul) trebuie sa verifice si el generatia: daca
+  // inchizi HD-ul sau schimbi camera in cele 400 ms, callbackul NU mai adauga un player intr-un
+  // overlay ascuns (audit #1, rest). Timerul se anuleaza si explicit la inchidere/schimbare.
+  if (wrap._pbTimer) clearTimeout(wrap._pbTimer);
+  wrap._pbTimer = setTimeout(() => {
+    wrap._pbTimer = null;
+    if (gen !== hdGen || !hdCam) return;
+    wrap.appendChild(streamEl(d.stream, HD_MODE, false, hdBufferTarget()));
+  }, 400);
   attachDigitalZoom(wrap);
   hdMark(sec);
   hdPos = sec;
@@ -430,6 +440,7 @@ function closeHD(fromPop = false) {
   ++hdGen;   // orice fetch /api/play inca in zbor nu mai scrie intr-un overlay inchis
   const wrap = $('#hd-player');
   if (wrap._hdMon) { clearInterval(wrap._hdMon); wrap._hdMon = null; }
+  if (wrap._pbTimer) { clearTimeout(wrap._pbTimer); wrap._pbTimer = null; }   // timerul de time-shift
   if (wrap._dzoomReset) wrap._dzoomReset();
   $('#hd-overlay').classList.add('hidden');
   $('#hd-ctrls').innerHTML = '';
