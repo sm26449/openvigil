@@ -1095,7 +1095,7 @@ body.no-admin #ph-fix, body.no-admin #quick-links { display: none !important; }
 .ad-list { width: 230px; flex: none; max-height: 70vh; overflow-y: auto; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r2); padding: 4px; }
 .ad-row { display: flex; gap: 6px; align-items: center; padding: 4px 6px; border-radius: var(--r1); cursor: pointer; font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
 .ad-row:hover { background: var(--surface); } .ad-row.on { background: var(--accent); color: #fff; }
-.ad-row .n { margin-left: auto; opacity: .8; } .ad-row .v { color: var(--ok); } .ad-row.on .v { color: #fff; }
+.ad-row .n { margin-left: auto; opacity: .8; } .ad-row .v { color: var(--ok-hi); } .ad-row.on .v { color: #fff; }
 .ad-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 #ad-canvas { width: 100%; max-height: 62vh; background: #000; border-radius: var(--r2); cursor: crosshair; touch-action: none; }
 .ad-foot { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
@@ -1171,12 +1171,12 @@ body.no-admin #tab-ai { display: none !important; }   /* AI = configurare, doar 
 .ru-days { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; }
 #ru-groups { width: 100%; background: var(--surface-2); color: var(--text);
   border: 1px solid var(--line); border-radius: var(--r1); }
-.ev-dur { color: var(--ok, #4caf7d); white-space: nowrap; min-width: 52px;
+.ev-dur { color: var(--ok-hi, #4caf7d); white-space: nowrap; min-width: 52px;
   font-variant-numeric: tabular-nums; }
 
 /* starea AI din pagina Stare */
 .ai-row .ai-cells { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: var(--fs-sm); }
-.ai-on { color: var(--ok, #4caf7d); }
+.ai-on { color: var(--ok-hi, #4caf7d); }
 .ai-off { color: var(--text-2); }
 .ai-warm { color: var(--warn, #d4a72c); }
 
@@ -1366,7 +1366,7 @@ button.ask-clip { background: none; border: 0; color: inherit; cursor: pointer; 
 .inc-when { color: var(--text-2); font-size: var(--fs-xs); margin-left: 6px;
   font-variant-numeric: tabular-nums; }
 .inc-done { display: inline-block; font-size: var(--fs-xs); margin-top: 2px; font-weight: 600; }
-.inc-done.inc-confirmat { color: var(--ok, #4caf7d); }
+.inc-done.inc-confirmat { color: var(--ok-hi, #4caf7d); }
 .inc-done.inc-fals { color: var(--text-3, #888); }
 .inc-felie { display: contents; }
 .inc-mai { align-self: center; min-height: 44px; padding: var(--s2) var(--s5); margin: var(--s2) 0; background: var(--surface-2); color: var(--text-2); border: 1px solid var(--line); border-radius: var(--r-pill); cursor: pointer; font-size: var(--fs-sm); }
@@ -1545,7 +1545,9 @@ dialog#cauta .fisa-head select { font-size: var(--fs-xs); }
 .q-item .q-noimg { width: 96px; height: 54px; display: flex; align-items: center; justify-content: center; font-size: 22px; background: var(--surface); border-radius: var(--r1); flex: none; }
 .q-item .q-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: var(--fs-xs); }
 .q-item .q-titlu { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-@media (max-width: 800px) { #q-global { display: none; } }
+/* ascunderea din antet se aliniaza cu pragul foii mobile (760px), unde cautarea reapare in
+   foaia „Mai mult"; la 800px ramanea un gol de 40px fara cautare nicaieri (audit #17) */
+@media (max-width: 760px) { #q-global { display: none; } }
 /* sanatatea camerei in lista */
 .row-state small { display: block; font-size: 10.5px; line-height: 1.2; color: var(--text-3); font-weight: 400; white-space: normal; }
 .row-state.s-goluri small { color: var(--warn); }
@@ -1563,7 +1565,7 @@ dialog#reid::backdrop { background: rgba(0, 0, 0, .6); }
 .reid-item .r-acts { display: flex; gap: 6px; }
 /* starea canalelor de notificare */
 .sys-item.sys-alarm { outline: 1px solid var(--alarm); border-radius: var(--r1); }
-.sys-item .sys-net b.ok { color: var(--ok); } .sys-item .sys-net b.off { color: var(--text-3); font-weight: 400; }
+.sys-item .sys-net b.ok { color: var(--ok-hi); } .sys-item .sys-net b.off { color: var(--text-3); font-weight: 400; }
 .sys-item.sys-alarm small { color: var(--alarm-hi); }
 
 
@@ -1734,4 +1736,10 @@ dialog#reid::backdrop { background: rgba(0, 0, 0, .6); }
 .scena-analiza i { color: var(--fg-2, inherit); font-weight: 400; }
 .scena-vocab { margin-top: var(--s3); }
 .scena-vocab textarea { width: 100%; margin: var(--s2) 0; font-family: inherit; }
-@media (max-width: 760px) { .scena-card, .scena-card img, .scena-fara { width: calc(50% - var(--s2)); } }
+/* pe telefon cardul scenei ia jumatate de rand; imaginea (si placeholderul) umple cardul.
+   Inainte erau si ele la 50% — dar fiind copii ai cardului, 50% insemna sfert de ecran, deci
+   imaginea aparea redimensionata de doua ori (audit #18). */
+@media (max-width: 760px) {
+  .scena-card { width: calc(50% - var(--s2)); }
+  .scena-card img, .scena-card .scena-fara { width: 100%; }
+}

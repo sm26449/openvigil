@@ -146,18 +146,60 @@ document.addEventListener('keydown', (e) => {
   }
   if (hdCam) closeHD();
 });
-// Accesibilitate: cand un overlay (role=dialog) se deschide — clasa `hidden` dispare — mutam focusul
-// in dialogul insusi (are tabindex=-1), ca cititorul de ecran sa-i anunte numele si navigarea cu
-// tastatura sa inceapa in el, nu in fundal. Inchiderea (Esc / butonul X) ramane ca inainte.
-for (const [ov] of OVERLAY_CLOSE) {
-  const el = $(ov);
+/* Accesibilitatea modalelor „facute de mana" (cele cu clasa .hidden, plus HD si foaia „Mai
+   mult"): <dialog>-urile native (fisa, cauta, contul meu, re-ID) au deja din showModal() focus
+   trap + fundal inert + revenirea focusului; aici le aducem si pe celelalte la acelasi nivel
+   (audit #16). La deschidere: tinem minte ce era focusat, inertam restul paginii si mutam
+   focusul in modal. Cat e deschis, Tab se invarte doar in el. La inchidere: scoatem inert si
+   readucem focusul pe elementul care l-a deschis. Toate sunt copii directi ai <body>. */
+const MODALE = [...OVERLAY_CLOSE.map(([ov]) => ov), '#hd-overlay', '#sheet'];
+let focusInainte = null;
+const focusabile = (el) => [...el.querySelectorAll(
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+  .filter((x) => x.getClientRects().length);
+function inerteazaFundal(modal, on) {
+  for (const copil of document.body.children) {
+    if (copil === modal) continue;
+    if (on) copil.setAttribute('inert', '');
+    else copil.removeAttribute('inert');
+  }
+}
+function modalDeschis(el) {
+  focusInainte = document.activeElement;
+  inerteazaFundal(el, true);
+  if (!el.contains(document.activeElement)) {
+    const f = focusabile(el);
+    try { (f[0] || el).focus({ preventScroll: true }); } catch (_) {}
+  }
+}
+function modalInchis(el) {
+  inerteazaFundal(el, false);   // intai scoatem inert, altfel elementul-tinta ar fi needfocusabil
+  if (focusInainte && document.contains(focusInainte)) {
+    try { focusInainte.focus({ preventScroll: true }); } catch (_) {}
+  }
+  focusInainte = null;
+}
+for (const sel of MODALE) {
+  const el = $(sel);
   if (!el) continue;
   new MutationObserver(() => {
-    if (!el.classList.contains('hidden') && !el.contains(document.activeElement)) {
-      try { el.focus({ preventScroll: true }); } catch (_) {}
-    }
+    const deschis = !el.classList.contains('hidden');
+    if (deschis && !el._modalOn) { el._modalOn = true; modalDeschis(el); }
+    else if (!deschis && el._modalOn) { el._modalOn = false; modalInchis(el); }
   }).observe(el, { attributes: true, attributeFilter: ['class'] });
 }
+// capcana de Tab: cat e un modal propriu deschis, focusul nu iese din el
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Tab') return;
+  const modal = MODALE.map((s) => $(s)).find((el) => el && !el.classList.contains('hidden'));
+  if (!modal) return;
+  const f = focusabile(modal);
+  if (!f.length) { e.preventDefault(); return; }
+  const prim = f[0], ultim = f[f.length - 1];
+  if (!modal.contains(document.activeElement)) { e.preventDefault(); prim.focus(); }
+  else if (e.shiftKey && document.activeElement === prim) { e.preventDefault(); ultim.focus(); }
+  else if (!e.shiftKey && document.activeElement === ultim) { e.preventDefault(); prim.focus(); }
+});
 let ptzKey = null, ptzKeyT = null;
 const PTZ_KEYS = { ArrowLeft: { pan: -60 }, ArrowRight: { pan: 60 }, ArrowUp: { tilt: 60 }, ArrowDown: { tilt: -60 },
   '+': { zoom: 60 }, '=': { zoom: 60 }, '-': { zoom: -60 }, PageUp: { zoom: 60 }, PageDown: { zoom: -60 } };
