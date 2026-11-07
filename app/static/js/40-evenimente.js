@@ -18,7 +18,7 @@ let incFilter = 'noi';
 /* lista se incarca progresiv: 30 de randuri, apoi inca 30 cand ajungi la capat (120 odata
    insemnau 16 ecrane de derulat pe telefon). Ordinea ramane cea de prioritate (critic sus). */
 const INC_PAS = 30;
-let incToate = [], incArat = 0, incRand = null, incObs = null;
+let incToate = [], incArat = 0, incRand = null, incObs = null, incSig = '';
 function cand(ts) {
   // „18:57:16” azi, „ieri 18:57”, altfel „23.10 18:57” — ca sa stii dintr-o privire cat de vechi e
   const zi = ts.slice(0, 10), ora = ts.slice(11, 19);
@@ -69,7 +69,10 @@ const EV_ICO = { persoana_necunoscuta: '👤', persoana: '👤', fata_falsa: '�
   numar: '🚗', detectie: '👁', obiect: '🎯', alarma_camera: '⚠', zgomot: '🔊',
   camera_offline: '📵', intrus: '🚨', trecere: '⳹', intrare_zona: '▱',
   parcare_inceput: '🅿', parcare_sfarsit: '🅿', episod: '🚶' };
-async function loadIncidents() {
+// auto=true: apel din polling-ul de la 6s. Nu reconstruim lista daca nimic nu s-a schimbat
+// (altfel pierdeam scroll-ul, hover-ul si cate carduri erau desfasurate la fiecare tic — audit
+// #13); cand chiar s-a schimbat, pastram cate erau afisate si pozitia de scroll.
+async function loadIncidents(auto = false) {
   try {
     const qs = incFilter === 'noi' ? 'noi=1'
       : incFilter === 'critic' ? 'limit=120' : 'limit=120';
@@ -77,6 +80,12 @@ async function loadIncidents() {
     const names = Object.fromEntries(S.cameras.map((c) => [c.id, c.name]));
     let inc = d.incidente || [];
     if (incFilter === 'critic') inc = inc.filter((e) => e.sev === 'critic');
+    const sig = JSON.stringify(inc.map((e) => [e.id, e.stare, e.tratat_de || '']));
+    if (auto && sig === incSig) return;   // nimic nou/schimbat: lasam lista exact cum e
+    incSig = sig;
+    const list0 = $('#inc-list');
+    const prevArat = auto ? incArat : 0;       // cate carduri erau desfasurate (le re-desfasuram)
+    const scrollTop = list0.scrollTop, docTop = (document.scrollingElement || {}).scrollTop || 0;
     $('#inc-info').textContent = incFilter === 'noi'
       ? t('{n} de tratat', { n: inc.length }) : t('{n} incidente', { n: inc.length });
     incRand = (e) => {
@@ -122,7 +131,13 @@ async function loadIncidents() {
     incToate = inc; incArat = 0;
     const list = $('#inc-list');
     list.innerHTML = inc.length ? '' : html`<p class="hint">${t('Niciun incident de tratat. Liniște.')}</p>`;
-    if (inc.length) arataInc();
+    if (inc.length) {
+      arataInc();
+      // la refresh automat re-desfasuram pana la cate erau, ca paginarea sa nu sara la 30
+      while (auto && incArat < prevArat && incArat < incToate.length) arataInc();
+      list.scrollTop = scrollTop;
+      if (docTop && document.scrollingElement) document.scrollingElement.scrollTop = docTop;
+    }
   } catch {}
 }
 for (const b of document.querySelectorAll('#inc-filter button')) {

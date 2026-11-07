@@ -72,7 +72,7 @@ async function loadSettings() {
   clearInterval(noiseTimer);
   noiseTimer = setInterval(() => {
     if (document.hidden || $('#set').classList.contains('hidden')) return;
-    loadNoise();
+    loadNoise(true);   // doar telemetria; campurile editabile raman cum le-a lasat omul
     if (Date.now() - noiseProfAt > 300000) { noiseProfAt = Date.now(); loadNoiseProfile(); }
   }, 4000);
   savedSnapshot = snapshotSettings();
@@ -711,14 +711,19 @@ async function loadNoiseProfile() {
   } catch {}
 }
 
-async function loadNoise() {
+// liveOnly=true: reimprospatam DOAR graficul live al microfoanelor (telemetrie), nu si
+// campurile editabile (prag, sustain, spike, gap). Altfel polling-ul de la 4s stergea peste
+// o modificare nesalvata — editai pragul la -45 si revenea la -25 dupa poll (audit #6).
+async function loadNoise(liveOnly = false) {
   try {
     const d = await (await fetch('/api/noise?minutes=15')).json();
-    $('#noise-on').checked = d.reguli.noise_alarm_enabled;
-    $('#inc-gap').value = d.reguli.incident_gap_sec ?? 300;
-    $('#noise-thr').value = d.reguli.noise_threshold_db;
-    $('#noise-sustain').value = d.reguli.noise_sustain_sec;
-    $('#noise-spike').value = d.reguli.noise_spike_db;
+    if (!liveOnly) {
+      $('#noise-on').checked = d.reguli.noise_alarm_enabled;
+      $('#inc-gap').value = d.reguli.incident_gap_sec ?? 300;
+      $('#noise-thr').value = d.reguli.noise_threshold_db;
+      $('#noise-sustain').value = d.reguli.noise_sustain_sec;
+      $('#noise-spike').value = d.reguli.noise_spike_db;
+    }
     if (!d.camere.length) {
       $('#noise-live').innerHTML = html`<p class="hint">${t('Nicio camera cu microfon conectat. Camerele cu intrare de linie au nevoie de un microfon extern.')}</p>`;
       return;

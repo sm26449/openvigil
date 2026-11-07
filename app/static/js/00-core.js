@@ -250,6 +250,16 @@ document.addEventListener('click', (e) => {
   e.preventDefault();
   runJob(a.getAttribute('href'));
 });
+// La (re)incarcarea paginii reatasam urmarirea la joburile inca in lucru ale utilizatorului:
+// a pornit un export/dosar si a dat refresh -> tava revine cu progresul si fisierul se descarca
+// singur la final (serverul tine jobul cat ruleaza; vezi /api/jobs?active=1) (audit #12).
+async function recoverJobs() {
+  try {
+    const d = await (await fetch('/api/jobs?active=1')).json();
+    for (const j of (d.joburi || [])) jobWait(j, { download: true });
+  } catch {}
+}
+recoverJobs();
 
 // push-to-talk: element ascuns doar-microfon pe acelasi stream (go2rtc face backchannel ISAPI)
 function talkStart(c, btn) {
