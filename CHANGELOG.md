@@ -3,6 +3,17 @@
 Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [2.0.20] — 2026-11-08
+
+### Reparat / Îmbunătățit
+- **Navigare și accesibilitate (auditul 5, Lot A).**
+  - **T5** — subpaginile AI (Persoane / Mașini / Reguli) se încarcă lazy, doar cea activă, nu toate
+    deodată la intrarea în AI.
+  - **T2** — subnavurile AI și Setări au acum model de taburi ARIA (role=tablist/tab/tabpanel,
+    aria-selected, aria-controls) — citibile de cititoarele de ecran.
+  - **T3** — subpaginile AI și Setări au adresă proprie (`#ai/<secțiune>`, `#set/<secțiune>`): un
+    link direct deschide exact secțiunea, iar navigarea e previzibilă.
+
 ## [2.0.19] — 2026-11-07
 
 ### Adăugat

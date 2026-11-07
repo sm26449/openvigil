@@ -1212,12 +1212,22 @@ $('#s-digest-now') && ($('#s-digest-now').onclick = async () => {
   flash('#s-msg-digest', d && d.ok ? t('Rezumatul a plecat ✓') : (d && d.error) || t('Eroare'), !!(d && d.error));
 });
 
+$('#set-nav')?.setAttribute('role', 'tablist');   // model de taburi ARIA (audit T2)
+for (const p of document.querySelectorAll('.set-pane')) p.setAttribute('role', 'tabpanel');
 for (const b of document.querySelectorAll('.snav-item')) {
+  b.setAttribute('role', 'tab');
+  b.setAttribute('aria-controls', 'pane-' + b.dataset.pane);
+  b.setAttribute('aria-selected', b.classList.contains('on') ? 'true' : 'false');
   b.onclick = () => {
-    for (const x of document.querySelectorAll('.snav-item')) x.classList.toggle('on', x === b);
+    for (const x of document.querySelectorAll('.snav-item')) {
+      x.classList.toggle('on', x === b);
+      x.setAttribute('aria-selected', x === b ? 'true' : 'false');   // stare de tab (audit T2)
+    }
     for (const p of document.querySelectorAll('.set-pane'))
       p.classList.toggle('hidden', p.id !== 'pane-' + b.dataset.pane);
     localStorage.setItem('setPane', b.dataset.pane);
+    const h = '#set/' + b.dataset.pane;   // adresa proprie pentru subpagina (audit T3)
+    if (location.hash !== h) history.replaceState(history.state, '', h);
     window.scrollTo({ top: 0 });
   };
 }
