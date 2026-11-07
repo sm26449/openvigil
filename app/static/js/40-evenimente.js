@@ -80,7 +80,10 @@ async function loadIncidents(auto = false) {
     const names = Object.fromEntries(S.cameras.map((c) => [c.id, c.name]));
     let inc = d.incidente || [];
     if (incFilter === 'critic') inc = inc.filter((e) => e.sev === 'critic');
-    const sig = JSON.stringify(inc.map((e) => [e.id, e.stare, e.tratat_de || '']));
+    // semnatura urmareste si severitatea + detaliul afisat (text/nume/numar/eticheta), nu doar
+    // id/stare/operator — altfel o schimbare de continut a cardului ramanea neafisata (audit E5)
+    const sig = JSON.stringify(inc.map((e) => [e.id, e.stare, e.tratat_de || '', e.sev || '',
+      e.text || e.nume || e.numar || e.eticheta || '']));
     if (auto && sig === incSig) return;   // nimic nou/schimbat: lasam lista exact cum e
     incSig = sig;
     const list0 = $('#inc-list');
@@ -609,15 +612,22 @@ async function semanticSearch() {
   }
   if (d.error) { $('#al-info').textContent = d.error; return; }
   const names = Object.fromEntries(S.cameras.map((c) => [c.id, c.name]));
-  alList = d.results.map((p) => ({
+  // Cautarea semantica merge pe TOATE camerele vizibile, ultimele 30 de zile — alt domeniu decat
+  // ziua/camera din galerie. Aplicam filtrul de camera al galeriei pe rezultate si spunem EXPLICIT
+  // domeniul temporal, ca omul sa nu creada ca investigheaza doar ziua/camera selectata (audit E1).
+  const camF = $('#al-cam').value;
+  let rez = d.results;
+  if (camF) rez = rez.filter((p) => String(p.cam) === String(camF));
+  alList = rez.map((p) => ({
     url: p.url, time: p.time, label: p.label, cam: p.cam, date: p.day, sursa: p.sursa,
     cap: `${p.day} ${p.time} — ${names[p.cam] || 'cam ' + p.cam} — ${p.sursa === 'scena' ? t(p.label) + ' · ' + t('scenă') : alNume(p.label)}`,
   }));
   $('#al-pills').innerHTML = '';
   $('#al-chart').innerHTML = '';
+  const undeTxt = camF ? (names[+camF] || t('cam {id}', { id: camF })) : t('toate camerele');
   $('#al-info').textContent = alList.length
-    ? t('{n} rezultate pentru "{q}" (cele mai potrivite primele)', { n: alList.length, q })
-    : t('nimic găsit pentru "{q}"', { q });
+    ? t('{n} rezultate — {unde}, ultimele 30 de zile, pentru „{q}” (cele mai potrivite primele)', { n: alList.length, unde: undeTxt, q })
+    : t('nimic găsit pentru „{q}” — {unde}, ultimele 30 de zile', { q, unde: undeTxt });
   const grid = $('#al-grid');
   grid.innerHTML = '';
   alList.forEach((p, i) => {

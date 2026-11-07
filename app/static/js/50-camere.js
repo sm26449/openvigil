@@ -297,8 +297,10 @@ function refreshBulkBar() {
   $('#bulk-count').textContent = t('{n} camere selectate', { n: selected.size });
 }
 $('#sel-all').onclick = () => {
-  const shown = S.cameras.filter((c) => matches(c, filt.cams));
-  const allIn = shown.every((c) => selected.has(c.id));
+  // doar camerele de pe PAGINA curenta, nu toate cele filtrate de pe alte pagini — altfel o
+  // operatie in masa ar atinge mai multe camere decat cele vazute pe ecran (audit C6)
+  const shown = paginaCamere;
+  const allIn = shown.length > 0 && shown.every((c) => selected.has(c.id));
   for (const c of shown) allIn ? selected.delete(c.id) : selected.add(c.id);
   buildCamsTable();
 };
@@ -353,6 +355,7 @@ let sortBy = localStorage.getItem('camSort') || 'id';
 let sortDir = localStorage.getItem('camSortDir') === '-1' ? -1 : 1;
 let page = 1;
 let pageSize = +(localStorage.getItem('camPageSize') ?? 25);
+let paginaCamere = [];   // camerele de pe PAGINA curenta — „selecteaza tot ce se vede" ia doar atat (audit C6)
 let openCam = null;      // camera deschisa in panou (pentru evidentiere)
 let pulseData = {};      // stare live per camera (din /api/pulse)
     // spatiu ocupat per camera (din /api/storage)
@@ -392,6 +395,7 @@ function buildCamsTable() {
   const pages = Math.max(1, Math.ceil(all.length / per));
   if (page > pages) page = pages;
   const shown = pageSize ? all.slice((page - 1) * per, page * per) : all;
+  paginaCamere = shown;
   renderPager(all.length, pages);
 
   const head = document.createElement('div');
@@ -1092,7 +1096,7 @@ async function renderScena(c, box) {
   }
 }
 
-export { SOUND_RO, buildCamsTable, openCountEditor, openZoneEditor, pulseData };
+export { SOUND_RO, buildCamsTable, closeCamPanel, openCountEditor, openZoneEditor, pulseData };
 
 /* ---------- sanatatea fiecarei camere in lista: ultimul segment, reporniri, golurile de azi ----------
    Datele vin din /api/continuity (un singur apel pentru toata lista), dupa ce randurile exista;

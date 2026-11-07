@@ -259,6 +259,7 @@ for (const id of ['ad-split', 'ad-nev', 'ad-cam']) { const el = $('#' + id); if 
 window.addEventListener('resize', () => { if (!$('#aipane-adnot').classList.contains('hidden')) adDeseneaza(); });
 document.addEventListener('keydown', (e) => {
   if ($('#aipane-adnot').classList.contains('hidden') || $('#ai').classList.contains('hidden')) return;
+  if (document.querySelector('dialog[open]')) return;   // un modal nativ e deasupra — nu confirmam cadrul din fundal (audit A4)
   if (/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
   if (e.key === 'ArrowRight') { adDeschide(adIdx + 1); e.preventDefault(); }
   else if (e.key === 'ArrowLeft') { adDeschide(adIdx - 1); e.preventDefault(); }

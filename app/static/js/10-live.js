@@ -93,7 +93,8 @@ $('#view-save').onclick = async () => {
 let previewMode = localStorage.getItem('preview') === '1';
 let previewImgs = [];
 setInterval(() => {
-  if (document.hidden || !previewMode) return;
+  // doar cand Live e pe ecran: altfel reimprospatam poze degeaba pe trafic cat omul e in Setari etc. (audit L4)
+  if (document.hidden || !previewMode || $('#live').classList.contains('hidden')) return;
   for (const p of previewImgs) {
     if (p.el.isConnected) p.el.src = `/api/thumb/${p.id}?t=${Date.now()}`;
   }

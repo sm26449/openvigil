@@ -3,6 +3,27 @@
 Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [2.0.19] — 2026-11-07
+
+### Adăugat
+- **Versiunea care rulează, vizibilă în antet** (lângă „OpenVigil") — utilă mai ales în dezvoltare,
+  ca să știi pe ce build ești.
+
+### Reparat
+- **Căutare (auditul 5, E1–E5).**
+  - Căutarea semantică din galerie respectă filtrul de cameră și spune explicit domeniul temporal
+    („toate camerele, ultimele 30 de zile"), ca să nu pară că investighezi doar ziua/camera selectată.
+  - Căutarea globală: rezultatele parțiale sunt semnalate („rezultate parțiale — indisponibile: …")
+    în loc să pară complete când o sursă pică; aceeași perioadă se aplică tuturor surselor (numere și
+    persoane erau nefiltrate temporal); la filtrul „Poze" ordinea e după relevanță, nu cronologică.
+  - Refresh-ul incidentelor urmărește și severitatea + detaliul afișat, nu doar id/stare/operator.
+- **Camere.** Panoul de administrare al camerei se închide când părăsești secțiunea Camere;
+  „selectează tot ce se vede" selectează doar pagina curentă, nu și camerele de pe alte pagini.
+- **Adnotare.** Scurtăturile de tastatură se suspendă când e deschis un dialog (nu mai confirmă cadrul
+  din fundal).
+- **Setări.** Avertisment la închiderea/reîmprospătarea paginii dacă există modificări nesalvate.
+- **Live.** Previzualizările (imagini reîmprospătate) nu mai consumă trafic cât ești pe alt ecran.
+
 ## [2.0.18] — 2026-11-07
 
 ### Reparat

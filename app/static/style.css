@@ -43,6 +43,8 @@ header h1 { font-size: var(--fs-md); margin: 0; color: var(--text); font-weight:
   letter-spacing: .06em; text-transform: uppercase; }
 header h1::before { content: "●"; color: var(--ok-hi); margin-right: var(--s2); font-size: 9px;
   vertical-align: middle; }
+#ver-badge { font-size: 9px; color: var(--text-3); font-weight: 400; letter-spacing: 0;
+  text-transform: none; margin-left: 5px; vertical-align: super; }   /* versiunea care ruleaza */
 /* taburile pe un singur rand: iau tot spatiul liber din antet si, daca tot nu incap, deruleaza orizontal in loc sa se rupa pe 3 randuri */
 header > nav { display: flex; gap: var(--s2); flex: 1 1 auto; min-width: 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
 header > nav::-webkit-scrollbar { display: none; }

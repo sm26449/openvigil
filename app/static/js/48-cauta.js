@@ -12,8 +12,8 @@ import { openFisa } from './45-fisa.js';
 
 const PLACUTA = /^[A-Z]{1,2}\s?\d{2,3}\s?[A-Z]{3}$/i;
 let qRez = [], qCat = '', qUltim = '';
-let qEroare = false, qGen = 0;   // qEroare: toate sursele interogate au esuat (ca „nimic gasit" sa
-// nu ascunda o eroare, audit #11). qGen: ultima cautare castiga (audit #2).
+let qEroare = false, qGen = 0, qEsecuri = [];   // qEroare: toate sursele au esuat (#11); qGen:
+// ultima cautare castiga (#2); qEsecuri: sursele picate, pentru avertisment de rezultate partiale (E2).
 
 async function cauta(q) {
   q = (q || '').trim();
@@ -30,30 +30,39 @@ async function cauta(q) {
   // Contoare LOCALE per cerere (nu module-level): doua cautari concurente nu-si mai amesteca
   // numaratoarea. null = sursa a esuat (retea sau raspuns non-ok); un rezultat gol vine ca
   // {..:[]} (truthy) — asa distingem o cautare picata de una care chiar n-a gasit nimic.
-  let ok = 0, err = 0;
-  const j = async (u) => {
-    try { const r = await fetch(u); if (!r.ok) { err++; return null; } ok++; return await r.json(); }
-    catch { err++; return null; }
+  let ok = 0;
+  qEsecuri = [];   // numele surselor care au esuat, ca sa anuntam rezultate PARTIALE (audit E2)
+  const j = async (u, nume) => {
+    try { const r = await fetch(u); if (!r.ok) { qEsecuri.push(nume); return null; } ok++; return await r.json(); }
+    catch { qEsecuri.push(nume); return null; }
   };
   const qd = fdia(q);
   const [sem, pl, jur, hist] = await Promise.all([
-    PLACUTA.test(q) ? null : j(`/api/search?q=${encodeURIComponent(q)}&days=${zile}&limit=40`),   // un numar nu e o descriere de poza
-    j(`/api/plates?q=${encodeURIComponent(q.replace(/\s+/g, ''))}`),
-    j(`/api/journal?limit=300&text=${encodeURIComponent(q)}&zile=${zile}`),   // descrierile VLM, rezumatele episoadelor, nume, numere (fara diacritice)
-    j(`/api/faces/history?name=${encodeURIComponent(q)}&limit=60`),
+    PLACUTA.test(q) ? null : j(`/api/search?q=${encodeURIComponent(q)}&days=${zile}&limit=40`, t('Poze')),   // un numar nu e o descriere de poza
+    j(`/api/plates?q=${encodeURIComponent(q.replace(/\s+/g, ''))}`, t('Numere')),
+    j(`/api/journal?limit=300&text=${encodeURIComponent(q)}&zile=${zile}`, t('Jurnal')),   // descrierile VLM, rezumatele episoadelor, nume, numere (fara diacritice)
+    j(`/api/faces/history?name=${encodeURIComponent(q)}&limit=60`, t('Persoane')),
   ]);
   if (gen !== qGen) return;   // o cautare mai noua a pornit intre timp — nu publicam rezultate vechi
-  qEroare = ok === 0 && err > 0;
+  qEroare = ok === 0 && qEsecuri.length > 0;
+  // Perioada uniforma pe TOATE sursele (audit E3): numerele si persoanele nu au filtru de perioada
+  // pe server, deci le taiem client-side la aceeasi fereastra ca semantic/jurnal (`zile`).
+  const taiat = new Date(Date.now() - zile * 86400000);
+  const cutoffZi = `${taiat.getFullYear()}-${String(taiat.getMonth() + 1).padStart(2, '0')}-${String(taiat.getDate()).padStart(2, '0')}`;
+  const inFereastra = (ts) => (ts || '').slice(0, 10) >= cutoffZi;
   const rez = [];
-  for (const p of ((sem && sem.results) || [])) {
-    rez.push({ cat: 'poze', cam: p.cam, t: `${p.day} ${p.time}`, titlu: t(DET_RO[p.label] || AL_RO[p.label] || p.label) + (p.sursa === 'scena' ? ' 🧩' : ''), poza: p.url, tip: 'detectie', det: p.label });
-  }
+  // pozele semantice vin ordonate dupa POTRIVIRE; pastram rangul ca sa putem sorta dupa relevanta (audit E4)
+  ((sem && sem.results) || []).forEach((p, i) => {
+    rez.push({ cat: 'poze', cam: p.cam, t: `${p.day} ${p.time}`, rel: i, titlu: t(DET_RO[p.label] || AL_RO[p.label] || p.label) + (p.sursa === 'scena' ? ' 🧩' : ''), poza: p.url, tip: 'detectie', det: p.label });
+  });
   for (const r of ((pl && pl.reads) || [])) {
+    if (!inFereastra(r.t)) continue;
     if (!qd || fdia(r.numar).includes(qd.replace(/\s+/g, '')) || fdia(r.nume || '').includes(qd)) {
       rez.push({ cat: 'numere', cam: r.cam, t: r.t, titlu: r.numar + (r.nume ? ` (${r.nume})` : ''), poza: r.url, tip: 'numar', det: r.numar });
     }
   }
   for (const h of ((hist && hist.history) || [])) {
+    if (!inFereastra(h.t)) continue;
     rez.push({ cat: 'persoane', cam: h.cam, t: h.t, titlu: `${h.nume} · ${Math.round(h.sim * 100)}%`, tip: 'persoana', det: h.nume, cine: h.nume });
   }
   const qcuv = qd.split(/\s+/).filter(Boolean);
@@ -74,18 +83,25 @@ async function cauta(q) {
 
 function qRender() {
   const names = Object.fromEntries(S.cameras.map((c) => [c.id, c.name]));
-  const items = (qCat ? qRez.filter((r) => r.cat === qCat) : qRez).slice(0, 120);
+  let items = qCat ? qRez.filter((r) => r.cat === qCat) : qRez;
+  // la filtrul „Poze" pastram ordinea dupa POTRIVIRE (rangul semantic), nu cronologica — altfel
+  // relevanta cautarii se pierdea (audit E4). Celelalte categorii / „Toate" raman dupa timp.
+  if (qCat === 'poze') items = [...items].sort((a, b) => (a.rel ?? 1e9) - (b.rel ?? 1e9));
+  items = items.slice(0, 120);
   const nr = {}; for (const r of qRez) nr[r.cat] = (nr[r.cat] || 0) + 1;
   for (const b of document.querySelectorAll('#cauta-chips button')) {
     const c = b.dataset.cat; b.classList.toggle('on', c === qCat);
     b.textContent = b.dataset.txt + (c ? ` ${nr[c] || 0}` : ` ${qRez.length}`);
   }
-  $('#cauta-info').textContent = qRez.length
+  // rezultate partiale: unele surse au raspuns, altele au picat — o spunem explicit, ca lista sa
+  // nu para completa (audit E2)
+  const partial = qEsecuri.length ? ' · ' + t('rezultate parțiale — indisponibile: {surse}', { surse: qEsecuri.join(', ') }) : '';
+  $('#cauta-info').textContent = (qRez.length
     ? (qCat ? t('{n} rezultate pentru „{q}”', { n: items.length, q: qUltim })
       : t('{n} rezultate din toate sursele pentru „{q}”', { n: items.length, q: qUltim }))
     // fara rezultate: daca TOATE sursele interogate au esuat, e o eroare, nu „gol"
     : qEroare ? t('Căutarea nu a mers — reîncearcă')
-    : t('nimic pentru „{q}”', { q: qUltim });
+    : t('nimic pentru „{q}”', { q: qUltim })) + partial;
   $('#cauta-grid').innerHTML = lista(items, (r, i) => html`
     <button class="q-item" data-i="${i}" data-cat="${r.cat}">
       ${r.poza ? html`<img src="${r.poza}" alt="" loading="lazy">` : html`<span class="q-noimg">${r.cat === 'persoane' ? '👤' : '•'}</span>`}

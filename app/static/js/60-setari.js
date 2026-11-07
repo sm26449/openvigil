@@ -1243,6 +1243,11 @@ document.addEventListener('input', (e) => {
 document.addEventListener('change', (e) => {
   if (e.target.closest('#set')) checkDirty();
 });
+// Avertisment la inchidere/refresh daca sunt modificari nesalvate in Setari — altfel se pierdeau
+// fara niciun semn (audit S3). Doar cand chiar exista draft (snapshotul difera de cel salvat).
+window.addEventListener('beforeunload', (e) => {
+  if (savedSnapshot !== null && snapshotSettings() !== savedSnapshot) { e.preventDefault(); e.returnValue = ''; }
+});
 $('#s-save').onclick = async () => {
   const payload = settingsBody();
   const trimis = JSON.stringify(payload);   // ce TRIMITEM acum, nu ce e in formular dupa await
