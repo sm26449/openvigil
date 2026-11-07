@@ -625,9 +625,14 @@ body.wall #wall-exit { display: block; }
 .row-ai.on { color: var(--accent-hi); }
 .row-go { color: var(--text-3); font-size: var(--fs-lg); text-align: right; }
 @media (max-width: 860px) {
-  .cam-row { grid-template-columns: 28px 56px 1fr 90px 20px; }
-  .cam-row > .row-caps, .cam-row > .row-group, .cam-row > .row-ai { display: none; }
+  /* layout mobil pe 2 randuri (audit C4): [bifa, miniatura, nume] sus; [sanatate, mod inreg.] jos.
+     Restul coloanelor (grup, capabilitati, AI, spatiu, sageata) se ascund — randul e clickabil tot. */
+  .cam-row { grid-template-columns: 28px 56px 1fr; align-items: center; row-gap: 2px; }
+  .cam-row > .row-caps, .cam-row > .row-group, .cam-row > .row-ai,
+  .cam-row > .row-gb, .cam-row > .row-go { display: none; }
   .cam-row-head { display: none; }
+  .cam-row > .row-state { grid-column: 2; justify-self: start; }
+  .cam-row > .row-rec { grid-column: 3; justify-self: start; }
 }
 
 /* ---- panou lateral cu setarile unei camere ---- */
@@ -672,7 +677,12 @@ body.wall #wall-exit { display: block; }
 body.panel-open #cams { margin-right: 420px; }
 @media (max-width: 900px) { body.panel-open #cams { margin-right: 0; } }
 #cams { transition: margin-right .18s ease; }
-.cam-row { grid-template-columns: 28px 64px minmax(150px,2fr) 100px 96px 84px 100px 60px 72px 18px; }
+/* Grila completa (10 coloane) DOAR pe desktop: fara media query, aceasta regula (fiind mai jos in
+   fisier) suprascria layout-ul mobil de la max-width:860px si inghesuia randul pe telefon — „Continuu"
+   ajungea intr-o coloana de ~18px (audit C4). Scopata la min-width, mobilul foloseste layout-ul redus. */
+@media (min-width: 861px) {
+  .cam-row { grid-template-columns: 28px 64px minmax(150px,2fr) 100px 96px 84px 100px 60px 72px 18px; }
+}
 .cam-row-head .sortable { cursor: pointer; user-select: none; }
 .cam-row-head .sortable:hover { color: var(--text); }
 .cam-row-head .sorted { color: var(--accent-hi); }
@@ -1071,6 +1081,8 @@ body.no-admin #ph-fix, body.no-admin #quick-links { display: none !important; }
 
 #user-chip { color: var(--text-2); font-size: var(--fs-sm); white-space: nowrap; }
 #user-chip a { color: var(--accent-hi); }
+/* „Contul meu" e buton (focusabil, Enter/Space nativ — audit T1), dar aratat ca textul dinainte */
+.me-open { background: none; border: 0; padding: 0; margin: 0; font: inherit; color: inherit; cursor: pointer; }
 
 /* ---------- administrare utilizatori (Setari -> Sistem) ---------- */
 .u-row { display: flex; align-items: center; gap: 8px; padding: 6px 0;

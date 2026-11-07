@@ -891,10 +891,15 @@ $('#cam-panel-close').onclick = closeCamPanel;
 // sageti sus/jos parcurg lista, Enter deschide camera
 document.addEventListener('keydown', (e) => {
   if ($('#cams').classList.contains('hidden')) return;
-  if (!['ArrowDown', 'ArrowUp'].includes(e.key)) return;
   if (/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
   const rows = [...document.querySelectorAll('#cams-table .cam-row:not(.cam-row-head)')];
   if (!rows.length) return;
+  if (e.key === 'Enter') {   // Enter deschide randul evidentiat (promis in comentariu, lipsea — audit C5)
+    const r = rows.find((x) => x.classList.contains('kb'));
+    if (r) { e.preventDefault(); r.click(); }
+    return;
+  }
+  if (!['ArrowDown', 'ArrowUp'].includes(e.key)) return;
   e.preventDefault();
   const cur = rows.findIndex((r) => r.classList.contains('kb'));
   rows.forEach((r) => r.classList.remove('kb'));
