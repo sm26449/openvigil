@@ -2108,6 +2108,8 @@
  "Șterge crop-ul": "Delete the crop",
  "Șterge dosarul": "Delete case",
  "Șterge marcajul": "Delete the bookmark",
+ "Șterge poza": "Delete photo",
+ "Scoate doar acest snapshot (nu schimbă triajul incidentelor). Ca să corectezi AI-ul, folosește recatalogarea de mai sus.": "Removes only this snapshot (does not change incident triage). To correct the AI, use the relabeling above.",
  "Șterge planul": "Delete plan",
  "Șterge poziția aleasă": "Delete the selected position",
  "șterge toate": "delete all",

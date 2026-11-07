@@ -222,6 +222,11 @@ export class VideoRTC extends HTMLElement {
      * document's DOM.
      */
     disconnectedCallback() {
+        if (!this.isConnected) {
+            // scos de tot din DOM: scoatem listenerii globali si observerul legati de el (audit #14)
+            if (this._onVisibility) { document.removeEventListener('visibilitychange', this._onVisibility); this._onVisibility = null; }
+            if (this._io) { this._io.disconnect(); this._io = null; }
+        }
         if (this.background || this.disconnectTID) return;
         if (this.wsState === WebSocket.CLOSED && this.pcState === WebSocket.CLOSED) return;
 
@@ -294,18 +299,22 @@ export class VideoRTC extends HTMLElement {
 
         if (this.background) return;
 
+        // Pastram referintele ca sa le putem scoate cand elementul e demontat de tot — altfel
+        // fiecare reconstruire a grilei lasa in urma cate un listener visibilitychange pe
+        // `document` si cate un observer (audit #14: urca 4 -> 13 dupa trei refaceri).
         if ('hidden' in document && this.visibilityCheck) {
-            document.addEventListener('visibilitychange', () => {
+            this._onVisibility = () => {
                 if (document.hidden) {
                     this.disconnectedCallback();
                 } else if (this.isConnected) {
                     this.connectedCallback();
                 }
-            });
+            };
+            document.addEventListener('visibilitychange', this._onVisibility);
         }
 
         if ('IntersectionObserver' in window && this.visibilityThreshold) {
-            const observer = new IntersectionObserver(entries => {
+            this._io = new IntersectionObserver(entries => {
                 entries.forEach(entry => {
                     if (!entry.isIntersecting) {
                         this.disconnectedCallback();
@@ -314,7 +323,7 @@ export class VideoRTC extends HTMLElement {
                     }
                 });
             }, {threshold: this.visibilityThreshold});
-            observer.observe(this);
+            this._io.observe(this);
         }
     }
 
