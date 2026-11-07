@@ -176,7 +176,9 @@ function buildLive() {
     tile.title = t('Click pentru HD');
     tile.tabIndex = 0;
     tile.onclick = () => openHD(c);
-    tile.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openHD(c); } };
+    // Doar cand DALA insasi are focus: Enter/Space pe un control copil (ascultat, sirena…) nu mai
+    // deschide si HD pe langa actiunea lui (audit L2).
+    tile.onkeydown = (e) => { if (e.target === tile && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openHD(c); } };
     const al = document.createElement('div');
     al.className = 'alert hidden';
     tile.appendChild(al);
@@ -219,6 +221,14 @@ function mkBtn(inner, title, cls) {
    din ecran, fereastra isi pierde focusul), comanda ramane activa si lentila merge pana
    la capat. De aceea oprim si dupa 4 secunde, si la pierderea focusului. */
 const ZOOM_MAX_MS = 4000;
+// Un SINGUR manager pentru oprirea comenzilor tinute apasat (zoom/PTZ) cand fereastra pierde
+// focusul. Inainte, fiecare buton isi adauga propriul listener window.blur si nu-l scotea
+// niciodata — se acumulau la fiecare reconstruire a controalelor (audit T4). Acum butoanele
+// doar se inscriu/desinscriu intr-un set, iar un singur handler window.blur ii opreste pe toti.
+const _ptzOpritori = new Set();
+window.addEventListener('blur', () => { for (const s of [..._ptzOpritori]) { try { s(); } catch {} } });
+function ptzTine(fn) { _ptzOpritori.add(fn); }
+function ptzGata(fn) { _ptzOpritori.delete(fn); }
 function zoomBtns(c, dupa) {
   const out = [];
   for (const [ic, spd, txt] of [['zoomin', 60, 'Apropie (ține apăsat)'], ['zoomout', -60, 'Depărtează (ține apăsat)']]) {
@@ -228,6 +238,7 @@ function zoomBtns(c, dupa) {
       if (e) e.stopPropagation();
       if (timer === null) return;
       clearTimeout(timer); timer = null;
+      ptzGata(stop);
       b.classList.remove('zooming');
       await post(`/api/cam/${c.id}/ptz`, { zoom: 0 });
       if (dupa) dupa();
@@ -236,13 +247,13 @@ function zoomBtns(c, dupa) {
       e.stopPropagation(); e.preventDefault();
       b.setPointerCapture?.(e.pointerId);
       b.classList.add('zooming');
+      ptzTine(stop);
       timer = setTimeout(() => stop(), ZOOM_MAX_MS);
       post(`/api/cam/${c.id}/ptz`, { zoom: spd });
     };
     b.onpointerup = stop;
     b.onpointercancel = stop;
     b.onlostpointercapture = () => stop();
-    window.addEventListener('blur', () => stop());
     out.push(b);
   }
   return out;
@@ -580,4 +591,4 @@ async function loadCameras() {
   if (!views.length) loadViews(true);
 }
 
-export { ZOOM_MAX_MS, buildCtrls, buildLive, deleteCamera, filt, loadCameras, matches, pollEvents, popupTile, post, renderGroupChips, renderViews, zoomBtns };
+export { ZOOM_MAX_MS, buildCtrls, buildLive, deleteCamera, filt, loadCameras, matches, pollEvents, popupTile, post, ptzGata, ptzTine, renderGroupChips, renderViews, zoomBtns };

@@ -3,6 +3,22 @@
 Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [2.0.18] — 2026-11-07
+
+### Reparat
+- **Utilizabilitate: hartă, listă de camere, tastatură (auditul 5, Top-5 #4).**
+  - **Harta:** tragerea unei camere salvează acum poziția (nu se mai reconstruia SVG-ul în timpul
+    tragerii, ceea ce rupea gestul și pierdea salvarea); o eroare de încărcare se distinge de „harta
+    neconfigurată" și oferă „Reîncearcă"; marcajele și camerele neplasate se pot deschide/poziționa
+    de la tastatură (focus + Enter/Space + nume accesibil).
+  - **Lista de camere pe mobil:** layout dedicat pe două rânduri (miniatură + nume, apoi sănătate +
+    mod de înregistrare) — nu se mai înghesuie zece coloane pe un ecran de telefon; `Enter` pe rândul
+    evidențiat deschide camera (lipsea, deși era promis).
+  - **Live:** `Enter`/`Space` pe un control din dala camerei nu mai deschide și HD pe lângă acțiunea
+    lui; „Contul meu" din antet e acum buton (focusabil, cu tastatura).
+  - **Robustețe:** opritoarele comenzilor PTZ ținute apăsat nu mai acumulează listeneri `window.blur`
+    la fiecare reconstruire a controalelor — un singur manager comun le oprește la pierderea focusului.
+
 ## [2.0.17] — 2026-11-07
 
 ### Reparat

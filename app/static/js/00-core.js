@@ -112,7 +112,7 @@ if (!ADMIN) document.body.classList.add('no-admin');
 if (!CAN_ACT) document.body.classList.add('viewer');
 if (ME.user) {
   const rol = ADMIN ? '' : ` (${ME.role === 'operator' ? t('operator') : t('vizualizare')})`;
-  $('#user-chip').innerHTML = html`<span class="me-open" title="${t('Contul meu: 2FA, notificari push, dispozitive')}">${ME.user}${rol}${ME.totp ? ' 🔐' : ''}</span> · <a href="/logout">${t('ieși')}</a>`;
+  $('#user-chip').innerHTML = html`<button type="button" class="me-open" title="${t('Contul meu: 2FA, notificari push, dispozitive')}">${ME.user}${rol}${ME.totp ? ' 🔐' : ''}</button> · <a href="/logout">${t('ieși')}</a>`;
 }
 
 // mode 'mse,webrtc' pt. grila (substream Main, WebRTC merge); 'mse' pt. HD/playback

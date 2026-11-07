@@ -13,14 +13,15 @@ import { openHD } from './20-hd.js';
    Starea vine din /api/events (alarma, detectie) si /api/pulse (inregistreaza?); un
    incident critic face marcajul sa pulseze. Click = HD. Adminul editeaza: trage camerele,
    roteste directia si deschiderea conului din panoul lateral. */
-let hartaPlanuri = [], hartaPid = localStorage.getItem('hartaPlan') || '', hartaEdit = false, hartaSel = null;
+let hartaPlanuri = [], hartaPid = localStorage.getItem('hartaPlan') || '', hartaEdit = false, hartaSel = null, hartaEroare = false;
 const hartaMk = {};
 const hartaPlan = () => hartaPlanuri.find((p) => p.id === hartaPid) || hartaPlanuri[0];
 async function loadHarta() {
   try {
     const d = await (await fetch('/api/harta')).json();
     hartaPlanuri = d.planuri || [];
-  } catch { hartaPlanuri = []; }
+    hartaEroare = false;
+  } catch { hartaEroare = true; }   // NU stergem planurile — pastram ultima harta valida (audit H2)
   const sel = $('#harta-plan');
   sel.innerHTML = html`${hartaPlanuri.map((p) => html`<option value="${p.id}">${p.nume}</option>`)}`;
   sel.classList.toggle('hidden', hartaPlanuri.length < 2 && !hartaEdit);
@@ -40,8 +41,14 @@ function renderHarta() {
   $('#harta-side').classList.toggle('hidden', !hartaEdit || !p);
   if (!p) {
     img.removeAttribute('src'); wrap.classList.add('gol');
-    empty.textContent = ADMIN ? t('Niciun plan încă. Apasă „Editează” → „Plan nou”, apoi încarcă o imagine (schiță curții, o captura din satelit) și așază camerele.')
-                              : t('Administratorul nu a configurat încă harta proprietății.');
+    if (hartaEroare) {
+      // eroare de incarcare != harta neconfigurata: nu lasam adminul sa creada ca trebuie refacuta (audit H2)
+      empty.innerHTML = html`${t('Harta nu s-a putut încărca.')} <button id="harta-retry" class="link-btn">${t('Reîncearcă')}</button>`;
+      const rb = $('#harta-retry'); if (rb) rb.onclick = loadHarta;
+    } else {
+      empty.textContent = ADMIN ? t('Niciun plan încă. Apasă „Editează” → „Plan nou”, apoi încarcă o imagine (schiță curții, o captura din satelit) și așază camerele.')
+                                : t('Administratorul nu a configurat încă harta proprietății.');
+    }
     empty.classList.remove('hidden');
     $('#harta-info').textContent = '';
     return;
@@ -88,6 +95,12 @@ function drawHarta() {
     g.querySelector('text').setAttribute('font-size', (12 * k).toFixed(2));
     if (!hartaEdit) {
       g.onclick = () => openHD(c);
+      // focusabil + nume accesibil + Enter/Space, ca marcajele sa poata fi deschise si de la
+      // tastatura, nu doar cu mouse-ul (audit H3)
+      g.setAttribute('tabindex', '0');
+      g.setAttribute('role', 'button');
+      g.setAttribute('aria-label', t('{nume} — deschide HD', { nume: c.name }));
+      g.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openHD(c); } };
       const ttl = document.createElementNS('http://www.w3.org/2000/svg', 'title');
       ttl.textContent = t('{nume} — click pentru HD', { nume: c.name }); g.appendChild(ttl);
     } else hartaDrag(g, c, pos);
@@ -97,23 +110,36 @@ function drawHarta() {
   hartaStare();
 }
 function hartaDrag(g, c, pos) {
-  const svg = $('#harta-svg');
+  const svg = $('#harta-svg'), img = $('#harta-img');
   const toFrac = (e) => {
     const r = svg.getBoundingClientRect();
     return { x: Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), y: Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)) };
   };
-  let moved = false;
+  let moved = false, ox = pos.x, oy = pos.y;
+  // Cheia (audit H1): in timpul tragerii NU reconstruim SVG-ul — drawHarta() inlocuia <g>-ul care
+  // tinea pointer capture + handlerii, deci tragerea se rupea si pointerup nu mai salva. Mutam
+  // ACELASI element cu un `transform` si redesenam + salvam o SINGURA data, la final.
+  const incheie = async (salveaza) => {
+    g.onpointermove = null; g.classList.remove('drag'); g.removeAttribute('transform');
+    if (!moved) return;
+    if (!salveaza) { pos.x = ox; pos.y = oy; }   // anulat: revenim la pozitia dinainte
+    drawHarta();
+    if (salveaza) await hartaSave({ [c.id]: pos });
+  };
   g.onpointerdown = (e) => {
     e.preventDefault(); g.setPointerCapture?.(e.pointerId); g.classList.add('drag'); moved = false;
+    ox = pos.x; oy = pos.y;
     hartaSel = c.id; renderHartaSide();
     for (const m of Object.values(hartaMk)) m.classList.toggle('sel', m === g);
-    g.onpointermove = (ev) => { const f = toFrac(ev); pos.x = f.x; pos.y = f.y; moved = true; drawHarta(); hartaMk[c.id]?.classList.add('drag'); };
+    g.onpointermove = (ev) => {
+      const f = toFrac(ev); pos.x = f.x; pos.y = f.y; moved = true;
+      const W = img.naturalWidth || 1, H = img.naturalHeight || 1;
+      g.setAttribute('transform', `translate(${((pos.x - ox) * W).toFixed(1)},${((pos.y - oy) * H).toFixed(1)})`);
+    };
   };
-  g.onpointerup = async (e) => {
-    g.onpointermove = null; g.classList.remove('drag');
-    if (moved) await hartaSave({ [c.id]: pos });
-  };
-  g.onpointercancel = () => { g.onpointermove = null; g.classList.remove('drag'); };
+  g.onpointerup = () => incheie(true);
+  g.onlostpointercapture = () => incheie(true);   // pierderea capturii = tot eliberare -> salvam
+  g.onpointercancel = () => incheie(false);
 }
 async function hartaSave(camere) {
   const p = hartaPlan();
@@ -129,7 +155,10 @@ function renderHartaSide() {
   $('#harta-unplaced').innerHTML = lista(libere, (c) => html`<div class="u-row" data-id="${c.id}"><b>${c.id}.</b> ${c.name}</div>`,
     html`<p class="hint">${t('Toate camerele sunt pe un plan.')}</p>`);
   for (const row of document.querySelectorAll('#harta-unplaced .u-row')) {
-    row.onclick = () => { const id = +row.dataset.id; hartaSel = id; hartaSave({ [id]: { x: 0.5, y: 0.5, dir: 0, fov: 70 } }); };
+    const pune = () => { const id = +row.dataset.id; hartaSel = id; hartaSave({ [id]: { x: 0.5, y: 0.5, dir: 0, fov: 70 } }); };
+    row.tabIndex = 0;
+    row.onclick = pune;
+    row.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pune(); } };   // audit H3
   }
   const selBox = $('#harta-sel');
   const pos = hartaSel !== null ? (p.camere || {})[hartaSel] : null;

@@ -6,7 +6,7 @@
 import { S } from './state.js';
 import { $, ADMIN, CAN_ACT, DET_RO, HD_MODE, gridFrame, html, icon, streamEl, t, talkStop, toast } from './00-core.js';
 import { show } from './05-navigare.js';
-import { ZOOM_MAX_MS, buildCtrls, post } from './10-live.js';
+import { ZOOM_MAX_MS, buildCtrls, post, ptzGata, ptzTine } from './10-live.js';
 import { addMark, attachDigitalZoom, compact, hms, loadMarks, localDay, pad, playFrom, searchRecordings, secOfDay } from './30-redare.js';
 import { AL_RO } from './40-evenimente.js';
 import { hdBufferTarget, hdHeightParam } from './60-setari.js';
@@ -36,6 +36,7 @@ function ptzOverlay(c) {
     const stop = () => {
       if (t === null) return;
       clearTimeout(t); t = null;
+      ptzGata(stop);
       el.classList.remove('activ');
       trimite({ pan: 0, tilt: 0, zoom: 0 });
     };
@@ -43,11 +44,11 @@ function ptzOverlay(c) {
       e.preventDefault(); e.stopPropagation();
       el.setPointerCapture?.(e.pointerId);
       el.classList.add('activ');
+      ptzTine(stop);                       // oprire la pierderea focusului, prin managerul comun
       t = setTimeout(stop, ZOOM_MAX_MS);   // acelasi opritor de siguranta ca la zoom
       trimite(date);
     };
     el.onpointerup = stop; el.onpointercancel = stop; el.onlostpointercapture = stop;
-    window.addEventListener('blur', stop);
   };
 
   if (f.ptz) {
