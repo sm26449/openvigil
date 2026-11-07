@@ -369,10 +369,12 @@ def _journal(tip, cam_id, date):
     return True
 
 
-def journal(limit=200, tip=None, cam=None, day=None, min_sev=None, text=None, since=None):
+def journal(limit=200, tip=None, cam=None, day=None, min_sev=None, text=None, since=None, cams=None):
     """Cele mai noi evenimente, filtrabile dupa tip / camera / zi / severitate
-    minima / fragment de text (fara diacritice). Cele mai noi primele; citire indexata din SQLite (jurnal.py)."""
-    return jurnal.query(limit=limit, tip=tip, cam=cam, day=day, min_sev=min_sev, text=text, since=since)
+    minima / fragment de text (fara diacritice). `cams` = restrictie de vizibilitate aplicata in
+    query, inainte de LIMIT (audit #9). Cele mai noi primele; citire indexata (jurnal.py)."""
+    return jurnal.query(limit=limit, tip=tip, cam=cam, day=day, min_sev=min_sev, text=text,
+                        since=since, cams=cams)
 
 
 # ---- episoade: evenimentele grupate, cu inceput/sfarsit/durata ----
@@ -386,7 +388,7 @@ def _epoch(t):
     return time.mktime(time.strptime(t, "%Y-%m-%d %H:%M:%S"))
 
 
-def episodes(limit=100, tip=None, cam=None, day=None, gap=None, min_sev=None):
+def episodes(limit=100, tip=None, cam=None, day=None, gap=None, min_sev=None, cams=None):
     """Jurnalul grupat in episoade. Cheia de grupare: (camera, tip, detaliul principal)
     — "caine pe cam5" si "om pe cam5" raman episoade separate chiar daca se suprapun."""
     if gap is None:
@@ -394,7 +396,7 @@ def episodes(limit=100, tip=None, cam=None, day=None, gap=None, min_sev=None):
             gap = int(settings.get("incident_gap_sec") or EPISODE_GAP)
         except Exception:
             gap = EPISODE_GAP
-    evs = journal(limit=5000, tip=tip, cam=cam, day=day, min_sev=min_sev)
+    evs = journal(limit=5000, tip=tip, cam=cam, day=day, min_sev=min_sev, cams=cams)
     evs.reverse()                       # cronologic, ca sa se lege corect
     deschise, out = {}, []
     for e in evs:

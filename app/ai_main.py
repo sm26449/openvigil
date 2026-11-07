@@ -128,11 +128,22 @@ def _spool_flush():
                 break
             trimise += 1
         with _spool_lock:
-            rest = lines[trimise:][-SPOOL_MAX:]
+            # Re-citim fisierul (NU snapshot-ul vechi `lines`): cat am trimis fara lock, _spool_add
+            # a putut adauga evenimente noi la coada. Consumam din FATA primele `trimise` randuri
+            # (cele livrate) si pastram restul + tot ce s-a adaugat intre timp — altfel rescrierea
+            # din snapshot-ul vechi le pierdea (cursa spool). Inlocuire ATOMICA prin os.replace.
+            try:
+                with open(SPOOL_FILE) as f:
+                    curent = f.readlines()
+            except FileNotFoundError:
+                curent = []
+            rest = curent[trimise:][-SPOOL_MAX:]
             try:
                 if rest:
-                    with open(SPOOL_FILE, "w") as f:
+                    tmp = SPOOL_FILE + ".tmp"
+                    with open(tmp, "w") as f:
                         f.writelines(rest)
+                    os.replace(tmp, SPOOL_FILE)
                 else:
                     os.remove(SPOOL_FILE)
             except OSError:

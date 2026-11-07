@@ -846,6 +846,8 @@
  "imaginea nu poate fi citita": "the image cannot be read",
  "Imagini reîmprospătate la 5s în loc de video — mult mai ușor la multe camere": "Images refreshed every 5 s instead of video — much lighter with many cameras",
  "impachetez": "packaging",
+ "niciun clip nu a putut fi redat ({n} probe) — export oprit": "no clip could be rendered ({n} evidence items) — export aborted",
+ "export parțial — {r} din {n} probe": "partial export — {r} of {n} evidence items",
  "implicit": "default",
  "In total {n} aparitii {fereastra}.": "{n} appearances in total {fereastra}.",
  "in ultimele {n} zile": "in the last {n} days",

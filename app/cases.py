@@ -19,7 +19,10 @@ from i18n import t
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CASES_FILE = os.path.join(ROOT, "data", "cases.json")
-_lock = threading.Lock()
+# RLock (reentrant): fiecare mutatie tine lock-ul pe TOT read-modify-write, iar _save() il
+# reia in interior. Altfel doua adaugari concomitente citeau acelasi fisier, fiecare isi punea
+# proba si ultima scriere o stergea pe cealalta — se pierdea o proba fara eroare (audit #5).
+_lock = threading.RLock()
 
 
 def _load():
@@ -48,12 +51,13 @@ def create(titlu, who=None, descriere=""):
     titlu = (titlu or "").strip()
     if not titlu:
         raise ValueError(t("titlul cazului e obligatoriu"))
-    data = _load()
-    cid = uuid.uuid4().hex[:12]
-    data[cid] = {"id": cid, "titlu": titlu, "descriere": (descriere or "").strip(),
-                 "creat_de": who, "creat": _now(), "probe": []}
-    _save(data)
-    return data[cid]
+    with _lock:
+        data = _load()
+        cid = uuid.uuid4().hex[:12]
+        data[cid] = {"id": cid, "titlu": titlu, "descriere": (descriere or "").strip(),
+                     "creat_de": who, "creat": _now(), "probe": []}
+        _save(data)
+        return data[cid]
 
 
 def lista():
@@ -72,35 +76,38 @@ def get(cid):
 
 
 def delete(cid):
-    data = _load()
-    existed = data.pop(cid, None) is not None
-    if existed:
-        _save(data)
-    return existed
+    with _lock:
+        data = _load()
+        existed = data.pop(cid, None) is not None
+        if existed:
+            _save(data)
+        return existed
 
 
 def add_proba(cid, cam, start, end, nota="", event_id=None, who=None):
     """Adauga o proba (interval pe o camera) la caz. start/end = timestamp Hik (…Z)."""
-    data = _load()
-    c = data.get(cid)
-    if not c:
-        raise KeyError("caz inexistent")
-    pid = uuid.uuid4().hex[:8]
-    c["probe"].append({"id": pid, "cam": int(cam), "start": start, "end": end,
-                       "nota": (nota or "").strip(), "event_id": event_id,
-                       "adaugat_de": who, "adaugat": _now()})
-    _save(data)
-    return c
+    with _lock:
+        data = _load()
+        c = data.get(cid)
+        if not c:
+            raise KeyError("caz inexistent")
+        pid = uuid.uuid4().hex[:8]
+        c["probe"].append({"id": pid, "cam": int(cam), "start": start, "end": end,
+                           "nota": (nota or "").strip(), "event_id": event_id,
+                           "adaugat_de": who, "adaugat": _now()})
+        _save(data)
+        return c
 
 
 def del_proba(cid, pid):
-    data = _load()
-    c = data.get(cid)
-    if not c:
-        raise KeyError("caz inexistent")
-    n = len(c["probe"])
-    c["probe"] = [p for p in c["probe"] if p.get("id") != pid]
-    changed = len(c["probe"]) != n
-    if changed:
-        _save(data)
-    return changed
+    with _lock:
+        data = _load()
+        c = data.get(cid)
+        if not c:
+            raise KeyError("caz inexistent")
+        n = len(c["probe"])
+        c["probe"] = [p for p in c["probe"] if p.get("id") != pid]
+        changed = len(c["probe"]) != n
+        if changed:
+            _save(data)
+        return changed

@@ -1225,9 +1225,13 @@ document.addEventListener('change', (e) => {
   if (e.target.closest('#set')) checkDirty();
 });
 $('#s-save').onclick = async () => {
-  const d = await post('/api/settings', settingsBody());
+  const payload = settingsBody();
+  const trimis = JSON.stringify(payload);   // ce TRIMITEM acum, nu ce e in formular dupa await
+  const d = await post('/api/settings', payload);
   if (d && !d.error) {
-    savedSnapshot = snapshotSettings();
+    // Reper = payloadul confirmat, nu formularul curent: o editare facuta in timpul salvarii
+    // (neplecata la server) ramane „nesalvat", nu dispare bara de modificari (audit #3).
+    savedSnapshot = trimis;
     checkDirty();
     flash('#s-msg-save', t('Salvat'));
   } else flash('#s-msg-save', t('Eroare la salvare'), true);

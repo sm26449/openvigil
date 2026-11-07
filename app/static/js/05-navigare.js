@@ -196,6 +196,10 @@ for (const sel of MODALE) {
 // capcana de Tab: cat e un modal propriu deschis, focusul nu iese din el
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Tab') return;
+  // Un <dialog> nativ deschis deasupra (ex. „Contul meu" peste foaia „Mai mult") isi face
+  // singur focus trap-ul prin top-layer; capcana noastra ar fura Tab-ul inapoi in foaia de
+  // dedesubt (audit #4). Cat exista un dialog nativ deschis, ne dam la o parte.
+  if (document.querySelector('dialog[open]')) return;
   const modal = MODALE.map((s) => $(s)).find((el) => el && !el.classList.contains('hidden'));
   if (!modal) return;
   const f = focusabile(modal);

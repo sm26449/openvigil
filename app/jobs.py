@@ -168,8 +168,12 @@ def submit(tip, parametri=None, who=None, cam=None, secret=None):
     pj = json.dumps(parametri, sort_keys=True, ensure_ascii=False)
     with _lock:
         with db.conn() as c:
+            # Dedup DOAR fata de joburile aceluiasi solicitant: altfel Bob cerand acelasi export
+            # ca Alice primea jobul Alicei, pe care verificarile de acces i-l refuzau apoi (audit
+            # #6). IS NOT DISTINCT FROM trateaza si NULL=NULL (joburile de sistem, creat_de NULL).
             row = c.execute(f"SELECT {','.join(COLS)} FROM jobs WHERE tip = %s AND parametri = %s "
-                            "AND stare IN ('asteapta', 'ruleaza') LIMIT 1", (tip, pj)).fetchone()
+                            "AND creat_de IS NOT DISTINCT FROM %s AND stare IN ('asteapta', 'ruleaza') "
+                            "LIMIT 1", (tip, pj, who)).fetchone()
             if row:
                 return _dict(row)
             if who and tip in GRELE:

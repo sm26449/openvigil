@@ -208,7 +208,16 @@ def _job_dosar(job):
                 "start": p["start"], "end": p["end"], "nota": p.get("nota"),
                 "sha256": sha, "octeti": os.path.getsize(out)})
             fisiere.append((out, fn))
-        job.progres(92, t("impachetez"))
+        # Integritatea dosarului: nu livram un ZIP „gata" fara niciun clip. Daca omul avea
+        # probe de redat (nu doar sarite din lipsa de acces) dar niciuna n-a iesit, esuam explicit
+        # in loc sa dam un ZIP numai cu manifestul (audit #7). Daca unele au iesit si altele nu,
+        # starea spune „parțial — X din Y", vizibila inainte de descarcare.
+        reusite = len(fisiere)
+        incercate = sum(1 for p in c["probe"] if vis is None or int(p["cam"]) in vis)
+        if incercate and not reusite:
+            raise jobs.JobError(t("niciun clip nu a putut fi redat ({n} probe) — export oprit", n=incercate))
+        job.progres(92, t("export parțial — {r} din {n} probe", r=reusite, n=incercate)
+                    if reusite < incercate else t("impachetez"))
         man_path = os.path.join(tmpdir, "manifest.json")
         with open(man_path, "w") as fh:
             json.dump(manifest, fh, ensure_ascii=False, indent=1)
@@ -222,7 +231,8 @@ def _job_dosar(job):
     audit.log("caz exportat", c["titlu"], who=job.creat_de)
     slug = re.sub(r"[^\w-]", "_", c["titlu"])[:40]
     job.fisier(zpath, f"caz_{slug}.zip", "application/zip")
-    return {"probe": len(fisiere), "octeti": os.path.getsize(zpath)}
+    return {"probe": reusite, "din": incercate, "partial": reusite < incercate,
+            "octeti": os.path.getsize(zpath)}
 
 
 jobs.register("dosar", _job_dosar)

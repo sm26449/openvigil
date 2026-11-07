@@ -141,10 +141,26 @@ def test_vlm_confirm_parsing(monkeypatch):
     import describe
     frame = np.zeros((20, 20, 3), np.uint8)
     cazuri = [("Da", True), ("da, pare căzută", True), ("Nu.", False), ("nu", False),
-              ("o persoană în picioare", False), ("lying on the ground", True)]
+              ("o persoană în picioare", False), ("lying on the ground", True),
+              # negatii explicite: NU trebuie sa iasa pozitiv doar fiindca apare „cazut"/„fallen" (audit #8)
+              ("nu, persoana nu este căzută", False),
+              ("no, the person has not fallen", False),
+              ("stă în picioare, nu a căzut", False),
+              ("", False),                                  # raspuns gol -> nu escaladam
+              ("persoana este căzută pe jos", True)]
     for ans, exp in cazuri:
         monkeypatch.setattr(describe, "describe_crop", lambda pil, prompt, a=ans: a)
         assert C._vlm_confirm(frame, (0, 0, 20, 20)) is exp, ans
+
+
+def test_raspuns_cadere_direct():
+    # parserul pur, fara decupaj/VLM
+    assert C._raspuns_cadere("da") is True
+    assert C._raspuns_cadere("nu, nu este căzută") is False
+    assert C._raspuns_cadere("no, has not fallen") is False
+    assert C._raspuns_cadere("") is False
+    assert C._raspuns_cadere("pare prăbușită pe jos") is True
+    assert C._raspuns_cadere("persoana e așezată pe scaun") is False
 
 
 def test_pas_pe_cadru_emite_dupa_dwell(monkeypatch):

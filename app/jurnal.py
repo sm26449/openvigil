@@ -166,13 +166,24 @@ def _tipar_text(text):
     return "%" + "".join(out) + "%"
 
 
-def query(limit=200, tip=None, cam=None, day=None, min_sev=None, since=None, until=None, text=None):
+def query(limit=200, tip=None, cam=None, day=None, min_sev=None, since=None, until=None, text=None, cams=None):
     """Cele mai noi evenimente, cele mai noi primele, cu filtre optionale:
     tip, cam (id), day ('YYYY-MM-DD' local), min_sev ('atentie' = atentie+critic),
     since/until (epoch, [since, until)), text (fragment cautat in campurile evenimentului).
+    `cams` = lista de camere permise (restrictie de vizibilitate): aplicata IN query, inainte de
+    ORDER/LIMIT, ca un viewer sa nu primeasca o lista goala doar fiindca ultimele N evenimente sunt
+    de la camere nepermise (audit #9). None = fara restrictie; evenimentele fara camera trec mereu.
     Intoarce dictionare plate ca in JSONL-ul vechi, plus `ts` (epoch)."""
     _init()
     cond, args = [], []
+    if cams is not None:
+        ids = [int(x) for x in cams]
+        if ids:
+            ph = ",".join(["%s"] * len(ids))
+            cond.append(f"(cam IS NULL OR cam IN ({ph}))")
+            args.extend(ids)
+        else:
+            cond.append("cam IS NULL")
     if tip:
         cond.append("tip = %s")
         args.append(tip)
