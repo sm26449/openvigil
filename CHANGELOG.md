@@ -3,7 +3,7 @@
 Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 [Conventional Commits](https://www.conventionalcommits.org/).
 
-## [Nepublicat]
+## [2.0.13] — 2026-11-07
 
 ### Adăugat
 - **Reguli de analiză + prima regulă: alertă la căderea unei persoane.** Strat subțire peste
@@ -16,6 +16,28 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   către serviciul extern de alerte (fan-out Telegram + SMS + email), decuplat și oprit fără cheie —
   alerta primară pleacă oricum. Praguri reglabile (`cadere_*`), pose doar când o persoană e prezentă
   (cost per eveniment). Logica pură e testată fără model (keypoints/VLM injectate).
+
+### Reparat
+- **Audit de frontend — 20 de corecții de corectitudine și UX** (raport independent), pe șase loturi:
+  - **Player/HD:** fără cursă la deschiderea HD (două click-uri rapide nu mai amestecă fluxurile sub
+    titlul altei camere); zoomul digital și captura lucrează pe videoul vizibil, nu pe substream-ul de
+    sub HD; tastele-săgeți rotesc camera doar în HD **live**, nu cât te uiți la o înregistrare; cursorul
+    de redare nu mai alunecă după ceas peste o imagine înghețată/căzută; playerele scoase din DOM se
+    opresc imediat (nu mai țin fluxul și transcodarea HD ~90 s degeaba).
+  - **Roluri și export:** operatorul își păstrează acțiunile (I/O, mod, triaj de incidente) și pierde
+    doar configurarea; exportul de probă din fișă gravează filigranul (parametrul `wm` era ignorat de
+    server) și durează 30 s, cât spune eticheta.
+  - **Stare care nu se mai pierde:** polling-ul din Setări nu mai suprascrie câmpurile editate
+    nesalvate; joburile în lucru revin în tavă după un refresh și se descarcă la final; triajul de
+    incidente nu se mai reconstruiește (și nu mai pierde scroll-ul/paginarea) când nimic nu s-a schimbat.
+  - **Navigare și căutare:** deep-link-urile (`#set`, `#pb`, `#ai`, `#cams`) inițializează ecranul, nu
+    doar îl afișează gol; o căutare picată spune „nu a mers", nu „nimic găsit".
+  - **Accesibilitate și vizual:** overlay-urile proprii + HD + foaia „Mai mult" au capcană de focus,
+    fundal inert și revenirea focusului; câmpul de căutare nu mai dispare la 761–800 px; imaginea scenei
+    nu mai e redimensionată de două ori pe telefon; textul verde de stare are contrast suficient (AA).
+  - **Semantica acțiunilor:** butonul care doar șterge un snapshot spune „Șterge poza" (nu „Fals", care
+    amesteca triaj/feedback/ștergere); comenzile optimiste (sirenă, strobo, releu, detecție, I/O) revin
+    la starea corectă dacă cererea pică; listenerii video nu se mai adună la reconstruirea grilei.
 
 ## [2.0.12] — 2026-11-06
 
