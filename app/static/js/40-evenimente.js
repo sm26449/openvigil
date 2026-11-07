@@ -726,7 +726,10 @@ function buildFixBar() {
   }
   const del = document.createElement('button');
   del.className = 'fix-del';
-  del.innerHTML = icon('trash', 14) + ' ' + esc(t('Fals / sterge'));
+  // Onest despre ce face: sterge DOAR acest snapshot. „Fals" amesteca trei lucruri (triaj,
+  // feedback AI, stergere); corectia AI sta pe butoanele de recatalogare de mai sus (audit #9).
+  del.innerHTML = icon('trash', 14) + ' ' + esc(t('Șterge poza'));
+  del.title = t('Scoate doar acest snapshot (nu schimbă triajul incidentelor). Ca să corectezi AI-ul, folosește recatalogarea de mai sus.');
   del.onclick = deleteAlarm;
   bar.appendChild(del);
 }

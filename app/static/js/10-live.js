@@ -313,9 +313,11 @@ function buildCtrls(c, container, full) {
     b.classList.toggle('on', !!c.auto_siren);
     b.onclick = async (e) => {
       e.stopPropagation();
-      c.auto_siren = !c.auto_siren;
-      b.classList.toggle('on', c.auto_siren);
-      await post(`/api/cam/${c.id}/detect`, { auto_siren: c.auto_siren });
+      const nou = !c.auto_siren;
+      c.auto_siren = nou;
+      b.classList.toggle('on', nou);
+      const r = await post(`/api/cam/${c.id}/detect`, { auto_siren: nou });
+      if (!r || r.error) { c.auto_siren = !nou; b.classList.toggle('on', !nou); }   // esuat -> revenim
     };
     bar.appendChild(b);
   }
@@ -325,10 +327,12 @@ function buildCtrls(c, container, full) {
     b.classList.toggle('on', !!strobeState[c.id]);
     b.onclick = async (e) => {
       e.stopPropagation();
-      strobeState[c.id] = !strobeState[c.id];
-      b.classList.toggle('on', strobeState[c.id]);
-      await post(`/api/cam/${c.id}/strobe`, { on: strobeState[c.id] });
-      if (strobeState[c.id]) setTimeout(() => {
+      const nou = !strobeState[c.id];
+      strobeState[c.id] = nou;
+      b.classList.toggle('on', nou);
+      const r = await post(`/api/cam/${c.id}/strobe`, { on: nou });
+      if (!r || r.error) { strobeState[c.id] = !nou; b.classList.toggle('on', !nou); return; }   // esuat -> revenim
+      if (nou) setTimeout(() => {
         strobeState[c.id] = false;
         b.classList.remove('on');
       }, 60000);
@@ -340,9 +344,11 @@ function buildCtrls(c, container, full) {
     b.classList.toggle('on', !!outState[c.id]);
     b.onclick = async (e) => {
       e.stopPropagation();
-      outState[c.id] = !outState[c.id];
-      b.classList.toggle('on', outState[c.id]);
-      await post(`/api/cam/${c.id}/output`, { on: outState[c.id] });
+      const nou = !outState[c.id];
+      outState[c.id] = nou;
+      b.classList.toggle('on', nou);
+      const r = await post(`/api/cam/${c.id}/output`, { on: nou });
+      if (!r || r.error) { outState[c.id] = !nou; b.classList.toggle('on', !nou); }   // esuat -> revenim
     };
     bar.appendChild(b);
   }
@@ -385,10 +391,12 @@ function buildCtrls(c, container, full) {
     bd.classList.toggle('on', !!c.detect);
     bd.onclick = async (e) => {
       e.stopPropagation();
-      c.detect = !c.detect;
-      bd.classList.toggle('on', c.detect);
-      await post(`/api/cam/${c.id}/detect`, { on: c.detect });
-      if (!c.detect && detectEls[c.id]) detectEls[c.id].classList.add('hidden');
+      const nou = !c.detect;
+      c.detect = nou;
+      bd.classList.toggle('on', nou);
+      const r = await post(`/api/cam/${c.id}/detect`, { on: nou });
+      if (!r || r.error) { c.detect = !nou; bd.classList.toggle('on', !nou); return; }   // esuat -> revenim
+      if (!nou && detectEls[c.id]) detectEls[c.id].classList.add('hidden');
     };
     bar.appendChild(bd);
   }
@@ -504,8 +512,8 @@ $('#io-list').onclick = async (e) => {
   b.disabled = true;
   try {
     if (act === 'siren') await post(`/api/cam/${id}/siren`, {});
-    else if (act === 'strobe') { strobeState[id] = !strobeState[id]; b.classList.toggle('on', strobeState[id]); await post(`/api/cam/${id}/strobe`, { on: strobeState[id] }); }
-    else if (act === 'output') { outState[id] = !outState[id]; b.classList.toggle('on', outState[id]); await post(`/api/cam/${id}/output`, { on: outState[id] }); }
+    else if (act === 'strobe') { const nou = !strobeState[id]; strobeState[id] = nou; b.classList.toggle('on', nou); const r = await post(`/api/cam/${id}/strobe`, { on: nou }); if (!r || r.error) { strobeState[id] = !nou; b.classList.toggle('on', !nou); } }
+    else if (act === 'output') { const nou = !outState[id]; outState[id] = nou; b.classList.toggle('on', nou); const r = await post(`/api/cam/${id}/output`, { on: nou }); if (!r || r.error) { outState[id] = !nou; b.classList.toggle('on', !nou); } }
     else if (act === 'say') {
       const text = $('#io-text').value.trim();
       if (!text) { toast(t('Scrie întâi textul anunțului'), true); }
