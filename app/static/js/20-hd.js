@@ -13,6 +13,12 @@ import { hdBufferTarget, hdHeightParam } from './60-setari.js';
 /* ---------- HD on-demand (click pe o camera) ---------- */
 let hdCam = null;
 let hdPos = null;      // secunda din zi redata in HD (null = live)
+// Jeton de generatie: fiecare pornire (live / time-shift / alta camera) il incrementeaza.
+// Dupa fiecare `await`, daca jetonul s-a schimbat intre timp, raspunsul venit tarziu nu mai
+// scrie in player — altfel doua click-uri rapide pe doua camere amestecau fluxurile sub
+// titlul ultimei (cursa semnalata de audit). `hdIsLive()` spune daca redam live sau o inregistrare.
+let hdGen = 0;
+const hdIsLive = () => hdPos === null;
 /* Meniul suprapus peste imaginea camerei. Arata doar ce stie camera aceea sa faca:
    rotire numai daca s-a dovedit ca se roteste (proba din panoul camerei), zoom numai la
    lentila motorizata, pozitii memorate numai unde camera chiar le pastreaza. Asa nu apar
@@ -149,7 +155,9 @@ async function openHD(c, fromRoute = false) {
   ctrls.appendChild(buildCtrls(c, wrap, true));
   ov.classList.remove('hidden');
   gridPause(true);          // sub overlay nu se vede grila: 17 fluxuri degeaba
-  await hdGoLive();
+  const gen = ++hdGen;
+  await hdGoLive(gen);
+  if (gen !== hdGen) return;   // alta camera deschisa intre timp: nu-i mai incarcam bara
   loadHdTimeline();
 }
 // Fluxurile din grila se opresc cat timp HD-ul le acopera si repornesc la inchidere
@@ -166,8 +174,9 @@ function gridPause(pauza) {
 // live HD (mainstream transcodat). Substream-first: aratam instant substream-ul (deja
 // ruleaza in grila, fara ecran verde) si urcam la HD cand acesta are primul cadru —
 // mainstream-ul HEVC asteapta un keyframe (~2.5s+, GOP mare), pana atunci ar fi verde.
-async function hdGoLive() {
+async function hdGoLive(gen) {
   const wrap = $('#hd-player');
+  if (gen === undefined) gen = ++hdGen;   // apelat direct (butonul „live"): jeton propriu
   if (wrap._hdMon) { clearInterval(wrap._hdMon); wrap._hdMon = null; }
   wrap.innerHTML = '';
   wrap.style.position = 'relative';
@@ -182,6 +191,7 @@ async function hdGoLive() {
   $('#hd-live').classList.add('on');
   hdPos = null;
   const d = await (await fetch(`/api/play?channel=${hdCam.id}${hdHeightParam()}`)).json();
+  if (gen !== hdGen || !hdCam) return;   // depasit (alta camera / inchis) cat am asteptat
   if (d.error) { wrap.innerHTML = html`${t('Eroare: {err}', { err: d.error })}`; return; }
   const sub = streamEl(`cam${hdCam.id}`, 'mse,webrtc');   // substream live: plasa de siguranta
   sub.style.position = 'absolute'; sub.style.inset = '0';
@@ -223,6 +233,7 @@ async function hdGoLive() {
 // time-shift: redare din inregistrari de la un moment (Date) al zilei de azi
 async function hdPlayAt(when) {
   const wrap = $('#hd-player');
+  const gen = ++hdGen;
   if (wrap._hdMon) { clearInterval(wrap._hdMon); wrap._hdMon = null; }   // opresc monitorul HD-live
   stopHdBoxes();   // chenarele sunt LIVE (din bucla curenta) — pe inregistrare ar minti
   const date = localDay();
@@ -232,6 +243,7 @@ async function hdPlayAt(when) {
   $('#hd-live').classList.remove('on');
   $('#hd-when').textContent = t('⏱ {ora} (înregistrare)', { ora: hms(sec) });
   const d = await (await fetch(`/api/play?channel=${hdCam.id}&start=${start}${hdHeightParam()}`)).json();
+  if (gen !== hdGen || !hdCam) return;   // depasit (alta camera / live / inchis) cat am asteptat
   if (d.error) { wrap.innerHTML = html`<span class="hd-err">${d.error}</span>`; return; }
   wrap.innerHTML = '';
   setTimeout(() => wrap.appendChild(streamEl(d.stream, HD_MODE, false, hdBufferTarget())), 400);
@@ -332,7 +344,7 @@ $('#hd-boxes').onclick = () => {
 };
 try { $('#hd-boxes').classList.toggle('on', !!localStorage.getItem('hd_boxes')); } catch {}
 
-$('#hd-live').onclick = hdGoLive;
+$('#hd-live').onclick = () => hdGoLive();   // fara event ca argument (ar fi luat drept jeton)
 for (const b of document.querySelectorAll('#hd-shift button[data-back]')) {
   b.onclick = () => hdPlayAt(new Date(Date.now() - b.dataset.back * 1000));
 }
@@ -415,6 +427,7 @@ function hdMark(sec) {
 function closeHD(fromPop = false) {
   talkStop();
   stopHdBoxes();
+  ++hdGen;   // orice fetch /api/play inca in zbor nu mai scrie intr-un overlay inchis
   const wrap = $('#hd-player');
   if (wrap._hdMon) { clearInterval(wrap._hdMon); wrap._hdMon = null; }
   if (wrap._dzoomReset) wrap._dzoomReset();
@@ -450,4 +463,4 @@ $('#hd-mark').onclick = () => {
   addMark(hdCam.id, localDay(n), sec, drawHdMarks);
 };
 
-export { closeHD, hdCam, hdGoLive, openHD };
+export { closeHD, hdCam, hdGoLive, hdIsLive, openHD };

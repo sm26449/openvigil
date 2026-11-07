@@ -225,6 +225,13 @@ export class VideoRTC extends HTMLElement {
         if (this.background || this.disconnectTID) return;
         if (this.wsState === WebSocket.CLOSED && this.pcState === WebSocket.CLOSED) return;
 
+        // Scos DE TOT din DOM (inchidere HD, schimbare de sursa in redare, reconstruirea grilei)
+        // => oprim acum, ca serverul sa nu mai tina fluxul si transcodarea HD zeci de secunde
+        // degeaba (audit #15). Intarzierea lunga (DISCONNECT_TIMEOUT) ramane DOAR cand elementul
+        // e inca in DOM dar ascuns (tab schimbat prin visibilitychange, tile derulat in afara
+        // ecranului): atunci vrem revenire instantanee sub acea fereastra.
+        const timeout = this.isConnected ? this.DISCONNECT_TIMEOUT : 0;
+
         this.disconnectTID = setTimeout(() => {
             if (this.reconnectTID) {
                 clearTimeout(this.reconnectTID);
@@ -234,7 +241,7 @@ export class VideoRTC extends HTMLElement {
             this.disconnectTID = 0;
 
             this.ondisconnect();
-        }, this.DISCONNECT_TIMEOUT);
+        }, timeout);
     }
 
     /**

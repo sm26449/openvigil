@@ -265,6 +265,17 @@ $('#pb-mark').onclick = () => {
   addMark(ch, date, Math.floor(pbPos), () => drawPbMarks(ch, date));
 };
 
+// „Playerul activ" dintr-un container cu mai multe <video>: in HD stau doua suprapuse
+// (substream-ul dedesubt + mainstream-ul HD deasupra), deci `querySelector('video')` ar lua
+// mereu primul = cel ascuns. Luam pe cel de DEASUPRA care chiar da cadre, ca zoomul sa
+// transforme imaginea vizibila si captura sa salveze HD-ul, nu stratul de sub el (audit #2).
+function activeVideo(container) {
+  if (!container) return null;
+  const vs = [...container.querySelectorAll('video')];
+  for (let i = vs.length - 1; i >= 0; i--) if (vs[i].videoWidth > 0) return vs[i];
+  return vs[vs.length - 1] || null;
+}
+
 /* ---------- zoom digital (scroll / pinch / drag) pe orice player ---------- */
 // Aplicat pe containerul playerului: transform pe elementul video, cu limitare la margini
 // ca imaginea sa nu poata fi trasa in afara cadrului. Merge si pe live, si pe playback.
@@ -273,7 +284,7 @@ function attachDigitalZoom(container) {
   container._dzoom = true;
   const st = { z: 1, x: 0, y: 0, drag: null, pinch: null };
 
-  const target = () => container.querySelector('video');
+  const target = () => activeVideo(container);
   const apply = () => {
     const v = target();
     if (!v) return;
@@ -380,7 +391,7 @@ function shotFromVideo(v, name) {
 const stamp = () => new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
 $('#pb-shot').onclick = () => {
   const cam = $('#pb-cam').selectedOptions[0]?.textContent.split('.')[0] || 'cam';
-  shotFromVideo($('#player').querySelector('video'), `cam${cam}_${stamp()}.jpg`);
+  shotFromVideo(activeVideo($('#player')), `cam${cam}_${stamp()}.jpg`);
 };
 
 /* ---------- timeline cu zoom: fereastra vizibila din zi ----------
@@ -681,12 +692,14 @@ function startCursor(date, sec0) {
   pbStart = sec0;
   setHash(pbHash());
   clearInterval(curTimer);
-  const t0 = Date.now();
   let tic = 0;
   curTimer = setInterval(() => {
-    const v = $('#player').querySelector('video');
-    // timpul redat: preferam currentTime al playerului (sta pe loc in pauza); altfel ceasul
-    const played = v && v.currentTime > 0 ? v.currentTime : (Date.now() - t0) / 1000;
+    // playerul care chiar reda acum: proaspat (nu cel vechi, tinut cateva secunde sub noul
+    // flux) si cu cadre. Timpul redat = currentTime-ul lui (sta pe loc in pauza).
+    const v = [...$('#player').querySelectorAll('video')].find((x) => !x.closest('.vechi') && x.videoWidth > 0);
+    // Fara video valid (flux cazut / inca se incarca) cursorul STA pe sec0 — nu mai aluneca
+    // dupa ceasul de perete peste o imagine inghetata sau lipsa (audit #4).
+    const played = v ? v.currentTime : 0;
     // la viteza marita, o secunda redata inseamna pbSpeed secunde de material
     pbPos = sec0 + played * pbSpeed;
     placeCursor(pbPos);
@@ -879,4 +892,4 @@ $('#mask-clear').onclick = async () => {
 $('#mask-close').onclick = () => $('#mask-overlay').classList.add('hidden');
 window.addEventListener('resize', () => { drawRegiune(); drawHeat(); drawMask(); });
 
-export { addMark, attachDigitalZoom, buildPbCams, compact, curSegments, hms, loadMarks, localDay, openMaskEditor, pad, pbDate, pbPos, pbSetSpeed, playFrom, renderMultiList, searchRecordings, secOfDay, shotFromVideo, stamp };
+export { activeVideo, addMark, attachDigitalZoom, buildPbCams, compact, curSegments, hms, loadMarks, localDay, openMaskEditor, pad, pbDate, pbPos, pbSetSpeed, playFrom, renderMultiList, searchRecordings, secOfDay, shotFromVideo, stamp };
