@@ -3,6 +3,14 @@
 Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [2.0.21] — 2026-11-08
+
+### Adăugat
+- **Pagina „Exporturile mele"** (din Înregistrări) — istoricul persistent al exporturilor (MP4, clip,
+  dosar ZIP, fișă, time-lapse): tip, oră, interval, cameră, stare (în lucru / gata / eroare /
+  „parțial X/Y"), cu **descărcare din nou** cât timp fișierul e pe server (~1 oră). Nu mai depinzi de
+  tava tranzitorie din colț sau de un refresh pentru a regăsi un export (audit R4).
+
 ## [2.0.20] — 2026-11-08
 
 ### Reparat / Îmbunătățit

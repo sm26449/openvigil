@@ -270,6 +270,51 @@ async function recoverJobs() {
 }
 recoverJobs();
 
+/* ---------- pagina „Exporturi": istoricul joburilor care produc fisiere ----------
+   Tava din colt e tranzitorie (dispare la refresh / dupa 12s); aici e lista persistenta a
+   exporturilor recente (MP4, clip, dosar ZIP, raport, time-lapse) cu stare, interval, rezultat
+   partial/eroare si descarcare din nou. Serverul tine fisierele ~1 ora (vezi /api/jobs). */
+const JOB_CU_FISIER = new Set(['export', 'clip', 'dosar', 'raport', 'timelapse', 'chenare']);
+function _ivJob(p) {
+  if (!p) return '';
+  const hms = (s) => { const m = String(s).match(/T(\d{2})(\d{2})(\d{2})/); return m ? `${m[1]}:${m[2]}:${m[3]}` : ''; };
+  return p.start && p.end ? `${hms(p.start)}–${hms(p.end)}` : '';
+}
+async function renderExports() {
+  const box = $('#exports-list');
+  if (!box) return;
+  box.innerHTML = html`<p class="hint">${t('Se încarcă…')}</p>`;
+  let joburi;
+  try { joburi = (await (await fetch('/api/jobs?limit=50')).json()).joburi || []; }
+  catch { box.innerHTML = html`<p class="hint">${t('Nu s-au putut încărca exporturile.')}</p>`; return; }
+  joburi = joburi.filter((j) => JOB_CU_FISIER.has(j.tip));
+  box.innerHTML = lista(joburi, (j) => {
+    const iv = _ivJob(j.parametri);
+    const camId = j.cam || (j.parametri && j.parametri.channel);
+    const cam = camId ? t('cam {id}', { id: camId }) : '';
+    const r = j.rezultat || {};
+    const partial = r.partial ? ' · ' + t('parțial {r}/{n}', { r: r.probe, n: r.din }) : '';
+    const detaliu = j.stare === 'eroare' ? (j.mesaj || t('eroare'))
+      : j.stare === 'gata' ? (t('gata') + partial)
+      : t(JOB_STARE_RO[j.stare] || j.stare) + (j.progres ? ` ${j.progres}%` : '');
+    return html`<div class="exp-row" data-id="${j.id}">
+      <div class="exp-main">
+        <div><b>${t(JOB_RO[j.tip] || j.tip)}</b> <span class="hint">${[j.creat_t || '', cam, iv].filter(Boolean).join(' · ')}</span></div>
+        <span class="exp-st exp-st-${j.stare}">${detaliu}</span>
+      </div>
+      ${j.are_fisier ? html`<button class="exp-dl link-btn" title="${t('Descarcă din nou')}">⬇</button>` : ''}
+    </div>`;
+  }, html`<p class="hint">${t('Niciun export recent.')}</p>`);
+  for (const row of box.querySelectorAll('.exp-row')) {
+    const j = joburi.find((x) => x.id === row.dataset.id);
+    const dl = row.querySelector('.exp-dl');
+    if (dl && j) dl.onclick = () => descarcaJob(j);
+  }
+}
+$('#pb-exports') && ($('#pb-exports').onclick = () => { $('#exports-modal').classList.remove('hidden'); renderExports(); });
+$('#exports-close') && ($('#exports-close').onclick = () => $('#exports-modal').classList.add('hidden'));
+$('#exports-refresh') && ($('#exports-refresh').onclick = renderExports);
+
 // push-to-talk: element ascuns doar-microfon pe acelasi stream (go2rtc face backchannel ISAPI)
 function talkStart(c, btn) {
   if (ptt) talkStop();
