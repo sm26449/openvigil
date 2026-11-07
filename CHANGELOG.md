@@ -3,6 +3,14 @@
 Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [2.0.16] — 2026-11-07
+
+### Reparat
+- **Cădere — negațiile contractate în confirmarea VLM.** Un răspuns ca „the person hasn't fallen"
+  (sau „isn't on the ground") mai ieșea pozitiv, fiindcă se potrivea cuvântul „fallen" iar negația
+  contractată „n't" nu era recunoscută. Acum negațiile prind și contracțiile engleze și formele
+  scrise, deci asemenea răspunsuri nu mai declanșează o escaladare falsă.
+
 ## [2.0.15] — 2026-11-07
 
 ### Reparat
