@@ -10,7 +10,7 @@ import { closeHD, hdCam, hdIsLive, openHD } from './20-hd.js';
 import { loadHarta } from './25-harta.js';
 import { localDay, pbDate, pbPos, playFrom, searchRecordings } from './30-redare.js';
 import { initView, loadAlarms, loadIncidents, loadJournal, refreshIncBadge } from './40-evenimente.js';
-import { closeCamPanel, pulseData } from './50-camere.js';
+import { closeCamPanel, openSanatate, pulseData } from './50-camere.js';
 import { meDlg } from './60-setari.js';
 /* ---------- taburi ---------- */
 const VIEWS = ['live', 'harta', 'ev', 'pb', 'ai', 'cams', 'set'];
@@ -144,7 +144,7 @@ window.addEventListener('popstate', (e) => {
 const OVERLAY_CLOSE = [['#mask-overlay', '#mask-close'], ['#heat-overlay', '#heat-close'], ['#reg-overlay', '#reg-close'],
   ['#zone-overlay', '#zone-close'], ['#count-overlay', '#count-close'], ['#addcam-overlay', '#addcam-cancel'],
   ['#cases-modal', '#cases-close'], ['#digest-modal', '#digest-close'], ['#clip-modal', '#clip-close'], ['#ph-overlay', '#ph-close'],
-  ['#exports-modal', '#exports-close']];
+  ['#exports-modal', '#exports-close'], ['#health-overlay', '#health-close']];
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;           // si din campurile formularului (focusul e in overlay)
   if (meDlg && meDlg.open) return;                      // dialogul nativ se inchide singur
@@ -365,7 +365,6 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').cat
 
 export { MOD_ICO, camLinks, evPane, pbHash, routeHash, setHash, show, showEv };
 
-// „Stare” in antet: scurtatura catre Setari -> Stare (serverul, inregistrarea, AI-ul), de oriunde
-// Trece prin tab-ul Setari (nu direct prin show), ca sa ruleze si incarcarea lui: altfel
-// panoul ramanea pe „Se încarcă...” pana cand omul apasa el pe Setari (patit 2026-10-25).
-$('#tab-stare') && ($('#tab-stare').onclick = () => { ($('#tab-set') || { click() { show('set'); } }).click(); document.querySelector('.snav-item[data-pane="stare"]')?.click(); });
+// „Stare” in antet: deschide Centrul de sanatate (serverul, canalele, AI-ul, fiecare camera)
+// intr-un overlay propriu, de oriunde — un singur loc pentru „merge totul?".
+$('#tab-stare') && ($('#tab-stare').onclick = openSanatate);

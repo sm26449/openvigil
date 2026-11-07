@@ -1539,6 +1539,29 @@ body.viewer .act-only { display: none !important; }
 .evdot.reg { background: #e3b341; height: 10px; }
 @media (max-width: 800px) { .ov-body.split { flex-direction: column; } .ov-body.split .ov-canvas { max-width: 100%; } .ov-side { width: auto; } }
 
+/* ---------- Centru de sanatate (tab Stare): server + canale + AI + fiecare camera ---------- */
+#health-body { align-items: stretch; justify-content: flex-start; overflow: auto; padding: var(--s4); }
+.hc-wrap { width: 100%; max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--s4); align-content: start; }
+.hc-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r2); padding: var(--s4); }
+.hc-card h3 { margin: 0 0 var(--s3); font-size: var(--fs-md); color: #fff; }
+.hc-card.hc-wide { grid-column: 1 / -1; }
+.hc-rand { display: flex; justify-content: space-between; gap: var(--s3); padding: var(--s2) 0; border-bottom: 1px dashed var(--line); font-size: var(--fs-sm); }
+.hc-rand:last-child { border-bottom: 0; }
+.hc-rand span { color: var(--text-3); }
+.hc-rand b { color: var(--text); font-variant-numeric: tabular-nums; text-align: right; overflow-wrap: anywhere; }
+.hc-rand.hc-rau b { color: var(--alarm-hi); }
+.hc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: var(--s3); }
+.hc-cam { display: flex; gap: var(--s3); background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r1); padding: var(--s2); }
+.hc-cam.hc-rau { border-color: var(--alarm); }
+.hc-cam img { width: 84px; height: 56px; object-fit: cover; border-radius: var(--r1); background: #000; flex: none; }
+.hc-cam-txt { min-width: 0; flex: 1; }
+.hc-cam-top { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
+.hc-cam-top b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hc-cam-txt small { display: block; color: var(--text-3); font-size: var(--fs-xs); margin-top: var(--s1); }
+.hc-b { font-size: var(--fs-xs); padding: 1px 6px; border-radius: var(--r-pill); background: var(--line); color: var(--text-2); }
+.hc-b.hc-rec { background: var(--alarm); color: #fff; }
+.hc-b.hc-alarm { background: var(--warn); color: #000; }
+
 /* ---------- telefon: tinte de atingere de 44 px (pointer: coarse) ---------- */
 @media (pointer: coarse) {
   header > nav button, .seg button, .live-bar button, .pb-controls button, #pb-nav button, .ov-bar button,
