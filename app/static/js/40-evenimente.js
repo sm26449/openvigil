@@ -12,7 +12,7 @@ import { hartaCritic } from './25-harta.js';
 import { curSegments, localDay, pad, pbSetSpeed, playFrom, renderMultiList, searchRecordings } from './30-redare.js';
 import { buildCamsTable } from './50-camere.js';
 import { loadSettings } from './60-setari.js';
-import { loadAiStare, loadFaces, loadPlates, loadRules, loadTrack } from './70-ai.js';
+import { aiPaneActiv, incarcaAiPane, loadAiStare } from './70-ai.js';
 /* ---------- panou de incidente: triaj in timp real ---------- */
 let incFilter = 'noi';
 /* lista se incarca progresiv: 30 de randuri, apoi inca 30 cand ajungi la capat (120 odata
@@ -358,7 +358,7 @@ async function refreshIncBadge() {
 async function initView(view) {
   if (view === 'pb') { if (!curSegments.length && $('#pb-cam').value) searchRecordings(); }
   else if (view === 'set') loadSettings();
-  else if (view === 'ai') { loadAiStare(); loadFaces(); loadPlates(); loadRules(); loadTrack(); }
+  else if (view === 'ai') { loadAiStare(); incarcaAiPane(aiPaneActiv()); }   // doar subpagina activa (audit T5)
   else if (view === 'cams') {
     buildCamsTable();
     try {   // spatiul ocupat per camera, o singura cerere

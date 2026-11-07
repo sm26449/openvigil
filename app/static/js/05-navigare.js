@@ -106,7 +106,14 @@ async function routeHash() {
     }
     if (view === 'ev' || EV_ALIAS[view]) { showEv(EV_ALIAS[view] || a || evPane, false); return; }
     if (!VIEWS.includes(view)) return;
-    if (view !== 'pb') { show(view, false); initView(view); return; }   // deep-link: arata SI initializeaza ecranul
+    if (view !== 'pb') {
+      show(view, false); initView(view);   // deep-link: arata SI initializeaza ecranul
+      // subpagina din adresa (audit T3): #ai/<pane>, #set/<pane> — activam tab-ul respectiv
+      if (a && (view === 'ai' || view === 'set')) {
+        document.querySelector(`.${view === 'ai' ? 'ainav' : 'snav'}-item[data-pane="${a}"]`)?.click();
+      }
+      return;
+    }
     if (view === 'pb' && a) {
       show('pb', false);
       if (!$('#pb-cam').querySelector(`option[value="${+a}"]`)) return;

@@ -5,7 +5,7 @@
    ==================================================================== */
 import { S } from './state.js';
 import { $, DET_RO, EV_RO, html, lista, raw, t } from './00-core.js';
-import { MOD_ICO } from './05-navigare.js';
+import { MOD_ICO, setHash } from './05-navigare.js';
 import { post } from './10-live.js';
 import { wireClips } from './40-evenimente.js';
 import { SET_LABELS, flash } from './60-setari.js';
@@ -379,13 +379,33 @@ async function loadAiStare() {
 if (!$('#ai').classList.contains('hidden')) setTimeout(loadAiStare, 500);
 
 /* ---------- tabul AI: navigarea pe sectiuni ---------- */
+// Incarcare LAZY: doar datele subpaginii alese, nu toate deodata la intrarea in AI (audit T5).
+function incarcaAiPane(pane) {
+  if (pane === 'pers') loadFaces();
+  else if (pane === 'auto') { loadPlates(); loadTrack(); }
+  else if (pane === 'reguli') loadRules();
+  // 'adnot' isi incarca cadrele din controalele proprii (ad-split/ad-nev/ad-cam)
+}
+function aiPaneActiv() {
+  return (document.querySelector('.ainav-item.on') || {}).dataset?.pane || 'pers';
+}
+$('#ai-nav')?.setAttribute('role', 'tablist');   // model de taburi ARIA (audit T2)
+for (const p of document.querySelectorAll('.ai-pane')) p.setAttribute('role', 'tabpanel');
 for (const b of document.querySelectorAll('.ainav-item')) {
+  b.setAttribute('role', 'tab');
+  b.setAttribute('aria-controls', 'aipane-' + b.dataset.pane);
+  b.setAttribute('aria-selected', b.classList.contains('on') ? 'true' : 'false');
   b.onclick = () => {
     loadAiStare();
-    for (const x of document.querySelectorAll('.ainav-item')) x.classList.toggle('on', x === b);
+    for (const x of document.querySelectorAll('.ainav-item')) {
+      x.classList.toggle('on', x === b);
+      x.setAttribute('aria-selected', x === b ? 'true' : 'false');   // stare de tab (audit T2)
+    }
     for (const p of document.querySelectorAll('.ai-pane'))
       p.classList.toggle('hidden', p.id !== 'aipane-' + b.dataset.pane);
     localStorage.setItem('aiPane', b.dataset.pane);
+    incarcaAiPane(b.dataset.pane);
+    setHash('#ai/' + b.dataset.pane);   // adresa proprie pentru subpagina (audit T3)
     window.scrollTo({ top: 0 });
   };
 }
@@ -592,4 +612,4 @@ $('#ru-save') && ($('#ru-save').onclick = async () => {
   if (r && !r.error) { clearRuleForm(); flash('#ru-msg', t('Regula salvată ✓')); loadRules(); }
 });
 
-export { loadAiStare, loadFaces, loadPlates, loadRules, loadTrack, regulaDin };
+export { aiPaneActiv, incarcaAiPane, loadAiStare, loadFaces, loadPlates, loadRules, loadTrack, regulaDin };
