@@ -3,6 +3,23 @@
 Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [2.0.14] — 2026-11-07
+
+### Reparat
+- **Cazuri-limită din auditul de frontend (al doilea tur).** Auditul de urmărire a confirmat că
+  remediile din 2.0.13 țin; acest lot închide cinci cazuri-limită rămase:
+  - **HD, redare istorică:** dacă închizi HD-ul în prima jumătate de secundă după ce ai cerut o
+    înregistrare, playerul nu mai reapare într-un overlay ascuns (timer-ul verifică „generația" și
+    se anulează la închidere/schimbare).
+  - **„Contul meu" din meniul „Mai mult" (mobil):** dialogul nu mai rămâne inert — inertizarea
+    fundalului sare peste `<dialog>`-urile native, care își fac singure modalitatea.
+  - **Taste-săgeți în HD live:** rotesc camera doar când focusul e „neutru" (pe overlay), nu când
+    ești pe un buton/slider/timeline — nu mai fură tastatura controlului focusat.
+  - **Setări:** draftul nu se mai pierde la ieșirea și reintrarea în tab; formularul se reîncarcă
+    doar la „Renunță" sau după salvare.
+  - **Oprirea fluxului:** un player scos din DOM care avea deja pornit timer-ul lung (90 s, de la un
+    tab ascuns) se oprește imediat, nu după expirarea lui.
+
 ## [2.0.13] — 2026-11-07
 
 ### Adăugat
