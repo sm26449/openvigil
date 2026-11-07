@@ -148,14 +148,20 @@ _NEG_PREFIX = re.compile(r"^\s*(nu|no|nope|negativ|incert|neclar|nesigur)\b")
 _POZ_PREFIX = re.compile(r"^\s*(da|yes|yep|afirmativ)\b")
 _POZ_CUV = ("căzut", "cazut", "întins", "intins", "prăbuș", "prabus",
             "fallen", "lying", "collapsed", "pe jos", "on the ground", "la sol")
-_NEG_CUV = ("nu ", "n-", " not ", "no ", "niciun", "nicio",
-            "în picioare", "in picioare", "standing", "sitting", "așezat", "asezat")
+# Negatii: contractii engleze (`n't`: hasn't/isn't/doesn't/can't/won't…), forme scrise
+# (`not `, `has not`, `have not` contin toate „not "), plus negatii romanesti si posturi care
+# nu-s cadere. „n't" prinde orice contractie fara o lista exhaustiva.
+_NEG_CUV = ("nu ", "n-", "n't", "not ", " not", "no ", "never", "cannot", "fără",
+            "niciun", "nicio", "în picioare", "in picioare", "standing", "sitting",
+            "seated", "așezat", "asezat", "ghemuit", "aplecat")
 
 
 def _raspuns_cadere(ans):
-    """Verdict strict pe raspunsul VLM (da / nu / neconcludent). Negatia explicita castiga, ca
-    «nu, persoana nu este cazuta» sa NU iasa pozitiv doar fiindca apare cuvantul «cazut» (audit
-    #8). Raspuns gol sau neconcludent -> False (nu escaladam pe nesiguranta)."""
+    """Verdict pe raspunsul VLM (VLM-ul e instruit sa raspunda da/nu). Prefixul da/nu decide
+    cazul comun; pentru raspunsuri verbose, un cuvant pozitiv conteaza DOAR daca nu apare nicio
+    negatie — ca «the person hasn't fallen» sau «nu, persoana nu este cazuta» sa NU iasa pozitiv
+    doar fiindca apare «fallen»/«cazut» (audit #8). Negatia explicita castiga mereu; raspuns gol
+    sau neconcludent -> False (nu escaladam pe nesiguranta)."""
     if not ans:
         return False
     if _NEG_PREFIX.search(ans):
