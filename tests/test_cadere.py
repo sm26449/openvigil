@@ -146,6 +146,10 @@ def test_vlm_confirm_parsing(monkeypatch):
               ("nu, persoana nu este căzută", False),
               ("no, the person has not fallen", False),
               ("stă în picioare, nu a căzut", False),
+              # negatii contractate engleze — „n't" trebuie recunoscut desi apare „fallen" (audit 4)
+              ("the person hasn't fallen", False),
+              ("she has not fallen", False),
+              ("isn't lying on the ground", False),
               ("", False),                                  # raspuns gol -> nu escaladam
               ("persoana este căzută pe jos", True)]
     for ans, exp in cazuri:
@@ -158,6 +162,8 @@ def test_raspuns_cadere_direct():
     assert C._raspuns_cadere("da") is True
     assert C._raspuns_cadere("nu, nu este căzută") is False
     assert C._raspuns_cadere("no, has not fallen") is False
+    assert C._raspuns_cadere("the person hasn't fallen") is False
+    assert C._raspuns_cadere("hasn't collapsed") is False
     assert C._raspuns_cadere("") is False
     assert C._raspuns_cadere("pare prăbușită pe jos") is True
     assert C._raspuns_cadere("persoana e așezată pe scaun") is False
