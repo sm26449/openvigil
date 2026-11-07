@@ -226,6 +226,10 @@ export class VideoRTC extends HTMLElement {
             // scos de tot din DOM: scoatem listenerii globali si observerul legati de el (audit #14)
             if (this._onVisibility) { document.removeEventListener('visibilitychange', this._onVisibility); this._onVisibility = null; }
             if (this._io) { this._io.disconnect(); this._io = null; }
+            // Daca era deja programata o oprire lunga (90s, de la un tab ascuns), o devansam: altfel
+            // un player scos din DOM care avea timer in curs ramanea viu pana la capatul celor 90s,
+            // iar return-ul de mai jos sarea peste reprogramarea imediata (audit #15, edge).
+            if (this.disconnectTID) { clearTimeout(this.disconnectTID); this.disconnectTID = 0; }
         }
         if (this.background || this.disconnectTID) return;
         if (this.wsState === WebSocket.CLOSED && this.pcState === WebSocket.CLOSED) return;
