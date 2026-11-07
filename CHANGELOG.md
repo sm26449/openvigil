@@ -3,6 +3,30 @@
 Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [2.0.15] — 2026-11-07
+
+### Reparat
+- **Integritate și concurență (al treilea tur de audit).** Bug-uri de consistență și de integritate
+  a probelor, cu teste de regresie:
+  - **Spool AI:** la livrarea întârziată a evenimentelor către nvr-web, rescrierea cozii pornea
+    dintr-un instantaneu vechi și putea pierde evenimentele apărute cât se trimitea. Acum coada se
+    reciteşte sub lock și se înlocuiește atomic — niciun eveniment pierdut.
+  - **Dosare de caz:** două adăugări de probă în același timp puteau lăsa o singură probă (fără
+    eroare). Operația citire-modificare-scriere e acum indivizibilă.
+  - **Export dosar:** un dosar al cărui clip(uri) nu s-au putut reda nu mai produce un ZIP „gata" gol
+    — eșuează explicit, iar când doar o parte reușesc starea spune „parțial — X din Y probe".
+  - **Cădere:** confirmarea VLM nu mai interpretează o negație („nu, persoana nu este căzută") drept
+    confirmare — parser strict da/nu, ca să nu escaladeze fals.
+  - **Jurnal filtrat pe camere:** restricția de vizibilitate se aplică în interogare (înainte de
+    limită), ca un utilizator cu acces parțial să nu primească o listă goală când evenimentele
+    recente sunt de la camere fără acces.
+  - **Joburi:** același export cerut de doi utilizatori nu mai întoarce jobul altuia (pe care accesul
+    i l-ar refuza apoi) — deduplicare per solicitant.
+  - **Interfață — curse „ultima acțiune câștigă":** redarea (schimbare rapidă de cameră/moment) și
+    căutarea globală nu mai amestecă rezultate din cereri vechi; salvarea din Setări nu mai declară
+    salvată o editare făcută în timpul salvării; iar `Tab` funcționează corect când „Contul meu" e
+    deschis peste meniul „Mai mult".
+
 ## [2.0.14] — 2026-11-07
 
 ### Reparat
