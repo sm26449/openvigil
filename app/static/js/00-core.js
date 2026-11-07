@@ -104,7 +104,12 @@ try {
 const ADMIN = ME.role === 'admin';
 // operatorul (paznicul) vede + actioneaza (sirena, vorbit, PTZ), dar nu configureaza
 const CAN_ACT = ADMIN || ME.role === 'operator';
-if (!ADMIN) document.body.classList.add('viewer');
+// Doua niveluri de restrictie (audit #8): operatorul (paznicul) NU configureaza — pierde doar
+// administrarea (`no-admin`: Setari, Camere, AI, adaugare camera, legaturi). Dar pastreaza
+// actiunile: sirena/strobo/releu/difuzor (panoul I/O), comutarea modului si triajul de
+// incidente. Doar vizualizarea pura (`viewer`, pe langa `no-admin`) pierde si actiunile.
+if (!ADMIN) document.body.classList.add('no-admin');
+if (!CAN_ACT) document.body.classList.add('viewer');
 if (ME.user) {
   const rol = ADMIN ? '' : ` (${ME.role === 'operator' ? t('operator') : t('vizualizare')})`;
   $('#user-chip').innerHTML = html`<span class="me-open" title="${t('Contul meu: 2FA, notificari push, dispozitive')}">${ME.user}${rol}${ME.totp ? ' 🔐' : ''}</span> · <a href="/logout">${t('ieși')}</a>`;

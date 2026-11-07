@@ -1057,11 +1057,13 @@ body.panel-open #cams { margin-right: 420px; }
 .ptz-pre button:focus-visible, .ptz-pre select:focus-visible,
 .ptz-focus select:focus-visible { box-shadow: var(--focus); outline: none; }
 
-/* ---------- roluri: ce nu vede utilizatorul "doar vizualizare" ---------- */
-/* Ascunderea e doar UX — serverul refuza oricum orice modificare de la viewer. */
-body.viewer #add-cam, body.viewer #tab-cams, body.viewer #tab-set,
-body.viewer #view-save, body.viewer .view-del,
-body.viewer #ph-fix, body.viewer #quick-links { display: none !important; }
+/* ---------- roluri ---------- */
+/* Ascunderea e doar UX — serverul refuza oricum ce nu e permis. Doua niveluri (audit #8):
+   `no-admin` (operator + viewer) ascunde CONFIGURAREA; `viewer` (doar vizualizarea pura)
+   ascunde in plus ACTIUNILE. Asa operatorul pastreaza I/O, modul si triajul de incidente. */
+body.no-admin #add-cam, body.no-admin #tab-cams, body.no-admin #tab-set,
+body.no-admin #view-save, body.no-admin .view-del,
+body.no-admin #ph-fix, body.no-admin #quick-links { display: none !important; }
 
 #user-chip { color: var(--text-2); font-size: var(--fs-sm); white-space: nowrap; }
 #user-chip a { color: var(--accent-hi); }
@@ -1140,7 +1142,7 @@ body.viewer #ph-fix, body.viewer #quick-links { display: none !important; }
   .ainav-item { border-left: 0; border-bottom: 2px solid transparent; white-space: nowrap; }
   .ainav-item.on { border-left: 0; border-bottom-color: var(--accent); }
 }
-body.viewer #tab-ai { display: none !important; }
+body.no-admin #tab-ai { display: none !important; }   /* AI = configurare, doar admin */
 
 /* reguli */
 .ru-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; }

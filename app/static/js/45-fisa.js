@@ -39,8 +39,11 @@ function openFisa(ev) {
   $('#fisa-tratare').classList.toggle('hidden', !(ev.id && CAN_ACT));
   $('#fisa-regula').classList.toggle('hidden', !ADMIN);
   $('#fisa-reid').classList.toggle('hidden', !(ev.poza && /\/snapshots\/|\/api\/flux\/thumb\//.test(ev.poza)));
-  const iv = `channel=${ev.cam}&start=${evCompact(ev.t, -30)}&end=${evCompact(ev.t, 30)}`;
-  $('#fisa-export').href = `/api/export?${iv}&wm=1`;
+  // 30 s in jurul momentului (±15 s), cat spune eticheta butonului — nu 60 s. Si parametrul
+  // de filigran e `watermark`, cel citit de server; `wm=1` era ignorat, deci clipul de proba
+  // iesea FARA filigran (audit #5).
+  const iv = `channel=${ev.cam}&start=${evCompact(ev.t, -15)}&end=${evCompact(ev.t, 15)}`;
+  $('#fisa-export').href = `/api/export?${iv}&watermark=1`;
   $('#fisa-sec').value = fisaSec(ev.t);
   dlg.showModal();
 }
