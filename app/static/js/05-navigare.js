@@ -277,9 +277,10 @@ pollPulse();
 if (CAN_ACT) {
   refreshIncBadge();
   setInterval(() => { if (!document.hidden) refreshIncBadge(); }, 6000);
-  // reincarca lista cat timp esti in tabul Incidente
+  // reincarca lista cat timp esti in tabul Incidente — nedistructiv (nu reconstruieste daca
+  // nimic nu s-a schimbat, pastreaza scroll + paginarea)
   setInterval(() => {
-    if (!document.hidden && evPaneVisible('inc')) loadIncidents();
+    if (!document.hidden && evPaneVisible('inc')) loadIncidents(true);
   }, 6000);
 } else {
   // viewerul nu face triaj: sub-panoul "De tratat" dispare, Evenimente se deschide pe Jurnal
