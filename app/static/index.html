@@ -21,7 +21,7 @@
     <button id="tab-ai"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg><span>AI</span></button>
     <button id="tab-cams"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h12v10H3z"/><path d="M15 10l6-3v10l-6-3z"/></svg><span>Camere</span></button>
     <button id="tab-set"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Setări</span></button>
-    <button id="tab-stare" title="Starea serverului, înregistrării și AI-ului (Setări → Stare)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg><span>Stare</span></button>
+    <button id="tab-stare" title="Centru de sănătate: serverul, canalele, AI-ul și fiecare cameră"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg><span>Stare</span></button>
     <button id="nav-more" class="doar-mobil" aria-haspopup="dialog" aria-controls="sheet" aria-expanded="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg><span>Mai mult</span></button>
   </nav>
   <div id="mod-chip" class="seg mod-seg" role="group" aria-label="Modul sistemului" title="Modul: regulile pot fi valabile doar acasă, doar plecat sau doar noaptea">
@@ -1201,6 +1201,19 @@
     <button id="zone-close">Închide</button>
   </div>
   <div id="zone-body"><canvas id="zone-canvas"></canvas></div>
+</div>
+
+<!-- Centru de sănătate operațională: o privire asupra stării reale (camere, înregistrare, AI,
+     notificări, resurse), deschis din tab-ul „Stare". Agregat client-side din /api/system,
+     /api/continuity, /api/sabotaj, /api/pulse — fără endpoint nou. -->
+<div id="health-overlay" class="ov-full hidden" role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="health-title">
+  <div class="ov-bar">
+    <span class="ov-title" id="health-title">Centru de sănătate</span>
+    <span class="hint" id="health-fresh"></span>
+    <button id="health-refresh" class="link-btn" title="Reîmprospătează">↻</button>
+    <button id="health-close" class="ov-close">Închide</button>
+  </div>
+  <div class="ov-body" id="health-body"></div>
 </div>
 
 <!-- Etapa 5: cautare pe regiune (un dreptunghi pe cadru -> detecțiile zilei care l-au atins) -->

@@ -4,7 +4,7 @@
    pe toate; importurile/exporturile sunt verificate de scripts/module_check.py (si in pytest).
    ==================================================================== */
 import { S } from './state.js';
-import { $, DET_RO, GO2RTC, JOB_STARE_RO, html, icon, lista, raw, runJob, t, toast } from './00-core.js';
+import { $, DET_RO, GO2RTC, JOB_STARE_RO, LIMBA, html, icon, lista, raw, runJob, t, toast } from './00-core.js';
 import { show } from './05-navigare.js';
 import { buildLive, deleteCamera, filt, loadCameras, matches, post, renderGroupChips, renderViews, zoomBtns } from './10-live.js';
 import { openHD } from './20-hd.js';
@@ -1121,3 +1121,129 @@ async function camSanatate() {
     if (parti.length) { const sm = document.createElement('small'); sm.textContent = parti.join(' · '); st.appendChild(sm); }
   }
 }
+
+/* ---------- Centru de sanatate (tab Stare) ----------
+   Un singur loc pentru „merge totul?": serverul (procesor/memorie/disc/retea), canalele de
+   alerta, subsistemele AI si fiecare camera (scrie? goluri? sabotaj? ultima imagine). Patru
+   apeluri in paralel, redesenate la cerere; nimic nu se salveaza, e doar o oglinda. */
+const _gb = (n) => (n == null ? '—' : (+n).toLocaleString(LIMBA, { maximumFractionDigits: 1 }) + ' GB');
+const _varsta = (s) => (s == null ? '—' : s < 90 ? s + ' s' : s < 5400 ? Math.round(s / 60) + ' min' : Math.round(s / 3600) + ' h');
+
+function hcRand(eticheta, valoare, rau) {
+  return html`<div class="hc-rand${rau ? ' hc-rau' : ''}"><span>${eticheta}</span><b>${valoare}</b></div>`;
+}
+
+function hcSistem(s) {
+  const bits = [
+    hcRand(t('Procesor'), (s.cpu != null ? Math.round(s.cpu) + '%' : '—') + (s.cores ? ' · ' + t('{n} nuclee', { n: s.cores }) : ''), s.cpu >= 90),
+    hcRand(t('Memorie'), _gb(s.ram_used_gb) + ' / ' + _gb(s.ram_total_gb), s.ram_total_gb && s.ram_used_gb / s.ram_total_gb >= 0.92),
+    hcRand(t('Disc liber'), _gb(s.disk_free_gb) + ' / ' + _gb(s.disk_total_gb), s.disk_total_gb && s.disk_free_gb / s.disk_total_gb <= 0.08),
+    hcRand(t('Înregistrări'), _gb(s.rec_gb)),
+    hcRand(t('Rețea'), '↓ ' + (s.net?.in_mbps ?? 0) + ' · ↑ ' + (s.net?.out_mbps ?? 0) + ' Mbps'),
+    hcRand(t('Pornit de'), s.uptime_h != null ? (s.uptime_h < 48 ? s.uptime_h + ' h' : Math.round(s.uptime_h / 24) + ' zile') : '—'),
+  ];
+  if (s.inregistrari_blocate) bits.unshift(hcRand(t('Înregistrare'), t('BLOCATĂ') + ' · ' + s.inregistrari_blocate, true));
+  return html`<section class="hc-card"><h3>${t('Server')}</h3>${bits}</section>`;
+}
+
+function hcCanale(n) {
+  const canale = [];
+  if (n.telegram) canale.push('Telegram');
+  if (n.email) canale.push('e-mail');
+  if (n.push) canale.push(t('{n} notificări push', { n: n.push }));
+  return html`<section class="hc-card"><h3>${t('Canale de alertă')}</h3>
+    ${n.canal
+      ? hcRand(t('Active'), canale.join(' · '))
+      : hcRand(t('Niciun canal'), t('alertele rămân doar în jurnal'), true)}</section>`;
+}
+
+function hcSubsistem(nume, x) {
+  if (!x) return '';
+  const stare = !x.pornit ? t('oprit') : x.model ? t('activ') : t('pornit, model neîncărcat');
+  return hcRand(nume, stare, x.pornit && !x.model);
+}
+
+function hcAi(ai) {
+  if (!ai) return '';
+  const bits = [
+    hcRand(t('Serviciu'), ai.serviciu === 'nvr-ai' ? 'nvr-ai (GPU)' : t('local')),
+    ai.gpu ? hcRand('GPU', ai.gpu) : '',
+    hcSubsistem(t('Fețe'), ai.face),
+    hcSubsistem(t('Numere (LPR)'), ai.lpr),
+    hcSubsistem(t('Descriere'), ai.descriere),
+    hcSubsistem(t('Semantic'), ai.semantic),
+    hcRand('MQTT', ai.mqtt?.pornit ? (ai.mqtt.connected ? t('conectat') : t('deconectat')) : t('oprit'), ai.mqtt?.pornit && !ai.mqtt.connected),
+    hcRand(t('Reguli active'), ai.reguli ?? 0),
+  ];
+  return html`<section class="hc-card"><h3>${t('Inteligență')}</h3>${bits}</section>`;
+}
+
+function hcNvr(nvr) {
+  if (!nvr) return '';
+  const val = nvr.retras ? t('scos din funcțiune') : nvr.online == null ? t('necunoscut') : nvr.online ? t('online') : t('offline');
+  return html`<section class="hc-card"><h3>NVR Hikvision</h3>${hcRand(nvr.ip || '—', val, !nvr.retras && nvr.online === false)}</section>`;
+}
+
+function hcCamere(cont, sab, pulse) {
+  const acum = Object.fromEntries((cont.acum || []).map((x) => [x.id, x]));
+  const goluri = cont.goluri_azi || {};
+  const puls = Object.fromEntries((pulse || []).map((p) => [p.id, p]));
+  const ids = [...new Set([...Object.keys(acum).map(Number), ...(pulse || []).map((p) => p.id)])];
+  if (!ids.length) return html`<section class="hc-card"><h3>${t('Camere')}</h3><p class="hint">${t('nicio cameră')}</p></section>`;
+  const carduri = ids.map((id) => {
+    const a = acum[id], g = goluri[id] || [], p = puls[id] || {};
+    const parti = [];
+    let rau = false;
+    if (a && a.mod === 'continuous') {
+      if (a.scrie) parti.push(t('scrie, ultimul segment acum {varsta}', { varsta: _varsta(a.varsta) }));
+      else { parti.push(t('nu scrie de {min} min', { min: Math.round((a.varsta || 0) / 60) })); rau = true; }
+      if (a.reporniri) parti.push(t('{n} reporniri', { n: a.reporniri }));
+    } else if (a) parti.push(a.mod === 'motion' ? t('la mișcare') : t('înregistrare oprită'));
+    if (g.length) { const min = g.reduce((s, x) => s + (x.minute || 0), 0); parti.push(t('{n} goluri azi ({min} min)', { n: g.length, min })); rau = true; }
+    if (sab[id]) { parti.push(t('sabotaj raportat de {n} ori azi', { n: sab[id] })); if (sab[id] >= 10) rau = true; }
+    const insigne = [
+      p.rec ? html`<span class="hc-b hc-rec">● REC</span>` : '',
+      p.alarm ? html`<span class="hc-b hc-alarm">${t('alarmă')}</span>` : '',
+      p.detect ? html`<span class="hc-b">${t('mișcare')}</span>` : '',
+    ];
+    return html`<div class="hc-cam${rau ? ' hc-rau' : ''}">
+      <img loading="lazy" alt="" src="/api/thumb/${id}" onerror="this.style.visibility='hidden'">
+      <div class="hc-cam-txt">
+        <div class="hc-cam-top"><b>${p.name || ('#' + id)}</b>${insigne}</div>
+        <small>${parti.length ? parti.join(' · ') : t('în regulă')}</small>
+      </div></div>`;
+  });
+  return html`<section class="hc-card hc-wide"><h3>${t('Camere')}</h3><div class="hc-grid">${carduri}</div></section>`;
+}
+
+async function renderSanatate() {
+  const body = $('#health-body');
+  if (!body) return;
+  const [sis, cont, sab, pulse] = await Promise.all([
+    fetch('/api/system').then((r) => r.json()).catch(() => ({})),
+    fetch('/api/continuity?days=1').then((r) => r.json()).catch(() => ({})),
+    fetch('/api/sabotaj').then((r) => r.json()).then((d) => d.sabotaj || {}).catch(() => ({})),
+    fetch('/api/pulse').then((r) => r.json()).catch(() => []),
+  ]);
+  body.replaceChildren();
+  const wrap = document.createElement('div');
+  wrap.className = 'hc-wrap';
+  wrap.innerHTML = html`${hcSistem(sis)}${hcCanale(sis.notificari || {})}${hcAi(sis.ai)}${hcNvr(sis.nvr)}${hcCamere(cont, sab, Array.isArray(pulse) ? pulse : [])}`;
+  body.appendChild(wrap);
+  const fr = $('#health-fresh');
+  if (fr) fr.textContent = t('actualizat {ora}', { ora: new Date().toLocaleTimeString(LIMBA) });
+}
+
+function openSanatate() {
+  const ov = $('#health-overlay');
+  if (!ov) return;
+  ov.classList.remove('hidden');
+  const body = $('#health-body');
+  if (body) body.innerHTML = html`<p class="hint">${t('se încarcă…')}</p>`;
+  renderSanatate();
+}
+
+$('#health-close') && ($('#health-close').onclick = () => $('#health-overlay').classList.add('hidden'));
+$('#health-refresh') && ($('#health-refresh').onclick = renderSanatate);
+
+export { openSanatate };
