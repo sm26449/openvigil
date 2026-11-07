@@ -10,7 +10,7 @@ import { closeHD, hdCam, hdIsLive, openHD } from './20-hd.js';
 import { loadHarta } from './25-harta.js';
 import { localDay, pbDate, pbPos, playFrom, searchRecordings } from './30-redare.js';
 import { initView, loadAlarms, loadIncidents, loadJournal, refreshIncBadge } from './40-evenimente.js';
-import { pulseData } from './50-camere.js';
+import { closeCamPanel, pulseData } from './50-camere.js';
 import { meDlg } from './60-setari.js';
 /* ---------- taburi ---------- */
 const VIEWS = ['live', 'harta', 'ev', 'pb', 'ai', 'cams', 'set'];
@@ -26,6 +26,7 @@ function show(view, updateHash = true) {
     $('#' + v).classList.toggle('hidden', view !== v);
     $('#tab-' + v).classList.toggle('active', view === v);
   }
+  if (view !== 'cams') closeCamPanel();   // panoul de administrare a camerei nu ramane peste alt ecran (audit C3)
   if (view === 'harta') loadHarta();
   if (updateHash) setHash(view === 'pb' && pbDate !== null ? pbHash() : view === 'ev' ? '#ev/' + evPane : '#' + view);
 }

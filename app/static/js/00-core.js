@@ -114,6 +114,15 @@ if (ME.user) {
   const rol = ADMIN ? '' : ` (${ME.role === 'operator' ? t('operator') : t('vizualizare')})`;
   $('#user-chip').innerHTML = html`<button type="button" class="me-open" title="${t('Contul meu: 2FA, notificari push, dispozitive')}">${ME.user}${rol}${ME.totp ? ' 🔐' : ''}</button> · <a href="/logout">${t('ieși')}</a>`;
 }
+// Versiunea care ruleaza, mereu vizibila langa titlu — ca sa stii pe ce build esti (mai ales in
+// dev, cu build-uri locale ne-publicate). Vine din /api/me (ME.versiune); „dev" daca lipseste.
+if ($('#nume-sistem') && !$('#ver-badge')) {
+  const v = document.createElement('sup');
+  v.id = 'ver-badge';
+  v.textContent = ME.versiune || 'dev';
+  v.title = t('Versiunea care rulează');
+  $('#nume-sistem').appendChild(v);
+}
 
 // mode 'mse,webrtc' pt. grila (substream Main, WebRTC merge); 'mse' pt. HD/playback
 // (rezolutie nativa 6MP -> WebRTC o refuza, MSE suporta orice rezolutie/profil).
