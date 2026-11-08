@@ -22,6 +22,7 @@
     <button id="tab-cams"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h12v10H3z"/><path d="M15 10l6-3v10l-6-3z"/></svg><span>Camere</span></button>
     <button id="tab-set"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Setări</span></button>
     <button id="tab-stare" title="Centru de sănătate: serverul, canalele, AI-ul și fiecare cameră"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg><span>Stare</span></button>
+    <button id="tab-program" class="admin-only" title="Program & automatizare: orarul săptămânal de moduri și starea regulilor"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M8 14l2.5 2.5L15 12"/></svg><span>Program</span></button>
     <button id="nav-more" class="doar-mobil" aria-haspopup="dialog" aria-controls="sheet" aria-expanded="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg><span>Mai mult</span></button>
   </nav>
   <div id="mod-chip" class="seg mod-seg" role="group" aria-label="Modul sistemului" title="Modul: regulile pot fi valabile doar acasă, doar plecat sau doar noaptea">
@@ -1216,6 +1217,21 @@
     <button id="health-close" class="ov-close">Închide</button>
   </div>
   <div class="ov-body" id="health-body"></div>
+</div>
+
+<!-- Program & automatizare (tab „Program", doar admin): orarul săptămânal de moduri (timeline) +
+     starea regulilor. Date din /api/mod/program și /api/rules; nimic nu se salvează singur. -->
+<div id="program-overlay" class="ov-full hidden" role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="program-title">
+  <div class="ov-bar">
+    <span class="ov-title" id="program-title">Program &amp; automatizare</span>
+    <button id="program-close" class="ov-close">Închide</button>
+  </div>
+  <div class="ov-body">
+    <div class="pg-wrap">
+      <section class="pg-card"><h3>Program moduri</h3><div id="pg-moduri"></div></section>
+      <section class="pg-card"><h3>Reguli</h3><div id="pg-reguli"></div></section>
+    </div>
+  </div>
 </div>
 
 <!-- Etapa 5: cautare pe regiune (un dreptunghi pe cadru -> detecțiile zilei care l-au atins) -->

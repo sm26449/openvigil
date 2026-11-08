@@ -30,6 +30,26 @@ def api_mod():
     return jsonify({"ok": True, **st})
 
 
+@bp.route("/api/mod/program", methods=["GET", "POST"])
+def api_mod_program():
+    """Programul saptamanal de moduri (timeline). GET: programul + numele/iconitele modurilor
+    si zilele saptamanii. POST (admin): {activ, zile:{"0".."6":[{h,mod}]}} — valideaza si salveaza."""
+    if request.method == "GET":
+        return jsonify({**mod.program(), "moduri": list(mod.MODURI),
+                        "nume": {k: t(v) for k, v in mod.MOD_RO.items()},
+                        "ico": dict(mod.MOD_ICO),
+                        "zile_nume": [t(z) for z in ("Luni", "Marți", "Miercuri", "Joi",
+                                                     "Vineri", "Sâmbătă", "Duminică")]})
+    b = request.get_json(silent=True) or {}
+    u = current_user() or {}
+    try:
+        prg = mod.set_program(b)
+    except (ValueError, TypeError) as e:
+        return jsonify({"error": str(e)}), 400
+    audit.log("program moduri salvat", "activ" if prg["activ"] else "oprit", who=u.get("user"))
+    return jsonify({"ok": True, **prg})
+
+
 @bp.route("/api/harta")
 def api_harta():
     return jsonify({"planuri": harta.lista(_visible_ids())})

@@ -1566,6 +1566,30 @@ body.viewer .act-only { display: none !important; }
 .hc-b.hc-rec { background: var(--alarm); color: #fff; }
 .hc-b.hc-alarm { background: var(--warn); color: #000; }
 
+/* ---------- Program & automatizare (#program-overlay) ---------- */
+.pg-wrap { width: 100%; max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: var(--s4); padding: var(--s4); }
+.pg-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r2); padding: var(--s4); }
+.pg-card h3 { margin: 0 0 var(--s3); font-size: var(--fs-md); color: #fff; }
+.pg-activ { display: flex; align-items: center; gap: var(--s2); font-size: var(--fs-sm); }
+.pg-saptamana { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--s3); margin-top: var(--s3); }
+.pg-zi { background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r1); padding: var(--s2) var(--s3); }
+.pg-zi-cap { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); margin-bottom: var(--s2); }
+.pg-gol { margin: var(--s1) 0 0; font-size: var(--fs-xs); }
+.pg-seg { display: flex; align-items: center; gap: var(--s2); padding: var(--s1) 0; }
+.pg-seg .pg-h { width: 7.5em; }
+.pg-seg .pg-mod { flex: 1; min-width: 0; }
+.pg-seg .pg-del { color: var(--text-3); }
+.pg-seg .pg-del:hover { color: var(--alarm-hi); }
+.pg-actiuni { display: flex; align-items: center; gap: var(--s3); margin-top: var(--s3); }
+.pg-reg-list { display: flex; flex-direction: column; gap: var(--s2); }
+.pg-regula { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); padding: var(--s2) 0; border-bottom: 1px dashed var(--line); }
+.pg-regula:last-child { border-bottom: 0; }
+.pg-regula.pg-off { opacity: 0.55; }
+.pg-reg-main { min-width: 0; }
+.pg-reg-top { display: flex; align-items: baseline; gap: var(--s2); flex-wrap: wrap; }
+.pg-reg-sub { margin-top: 2px; font-size: var(--fs-xs); }
+.pg-reg-act { display: flex; gap: var(--s2); flex: none; }
+
 /* ---------- telefon: tinte de atingere de 44 px (pointer: coarse) ---------- */
 @media (pointer: coarse) {
   header > nav button, .seg button, .live-bar button, .pb-controls button, #pb-nav button, .ov-bar button,

@@ -3,6 +3,19 @@
 Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [2.0.25] — 2026-11-08
+
+### Adăugat
+- **Pagina „Program & automatizare"** (tab nou, doar admin) — două lucruri într-un loc:
+  - **Program moduri** — un orar săptămânal de moduri (timeline): pe fiecare zi pui schimbări
+    „la ora X → modul Y" (acasă / plecat / noapte). La ora fiecărei schimbări, sistemul comută
+    automat; între schimbări, o comutare manuală rămâne până la următoarea (edge-triggered, cu
+    recuperare după o repornire). Înlocuiește, când e activ, vechea „fereastră de noapte" unică
+    (`mod_auto_noapte`), care rămâne ca rezervă. „Plecat" nu se mai setează singur din fereastra
+    de noapte, dar îl poți pune explicit în orar.
+  - **Reguli** — lista regulilor cu pornit/oprit pe loc și **„ultima declanșare"** (până acum
+    nicăieri în interfață); „editează" duce la formularul din AI → Reguli.
+
 ## [2.0.24] — 2026-11-08
 
 ### Schimbat

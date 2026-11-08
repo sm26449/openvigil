@@ -11,6 +11,7 @@ import { loadHarta } from './25-harta.js';
 import { localDay, pbDate, pbPos, playFrom, searchRecordings } from './30-redare.js';
 import { initView, loadAlarms, loadIncidents, loadJournal, refreshIncBadge } from './40-evenimente.js';
 import { closeCamPanel, openSanatate, pulseData } from './50-camere.js';
+import { openProgram } from './65-program.js';
 import { meDlg } from './60-setari.js';
 /* ---------- taburi ---------- */
 const VIEWS = ['live', 'harta', 'ev', 'pb', 'ai', 'cams', 'set'];
@@ -43,7 +44,7 @@ $('#ev-nav').onclick = (e) => { const b = e.target.closest('button[data-evpane]'
 /* ---------- telefon: bara de jos cu 4 taburi + „Mai mult”; restul antetului intra in foaie ----------
    Elementele sunt ACELEASI (handlerele raman), doar se muta in DOM dupa latime. */
 const navMobil = window.matchMedia('(max-width: 760px)');
-const IN_FOAIE = ['tab-harta', 'tab-ai', 'tab-set', 'tab-stare', 'add-cam', 'q-global', 'quick-links', 'user-chip', 'status'];
+const IN_FOAIE = ['tab-harta', 'tab-ai', 'tab-set', 'tab-stare', 'tab-program', 'add-cam', 'q-global', 'quick-links', 'user-chip', 'status'];
 const navAcasa = {};   // id -> [parinte, urmatorul frate] ca sa le punem inapoi
 function asazaNav() {
   const foaie = $('#sheet-cont');
@@ -144,7 +145,8 @@ window.addEventListener('popstate', (e) => {
 const OVERLAY_CLOSE = [['#mask-overlay', '#mask-close'], ['#heat-overlay', '#heat-close'], ['#reg-overlay', '#reg-close'],
   ['#zone-overlay', '#zone-close'], ['#count-overlay', '#count-close'], ['#addcam-overlay', '#addcam-cancel'],
   ['#cases-modal', '#cases-close'], ['#digest-modal', '#digest-close'], ['#clip-modal', '#clip-close'], ['#ph-overlay', '#ph-close'],
-  ['#exports-modal', '#exports-close'], ['#health-overlay', '#health-close']];
+  ['#exports-modal', '#exports-close'], ['#health-overlay', '#health-close'],
+  ['#program-overlay', '#program-close']];
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;           // si din campurile formularului (focusul e in overlay)
   if (meDlg && meDlg.open) return;                      // dialogul nativ se inchide singur
@@ -368,3 +370,4 @@ export { MOD_ICO, camLinks, evPane, pbHash, routeHash, setHash, show, showEv };
 // „Stare” in antet: deschide Centrul de sanatate (serverul, canalele, AI-ul, fiecare camera)
 // intr-un overlay propriu, de oriunde — un singur loc pentru „merge totul?".
 $('#tab-stare') && ($('#tab-stare').onclick = openSanatate);
+$('#tab-program') && ($('#tab-program').onclick = openProgram);

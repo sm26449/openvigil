@@ -97,6 +97,14 @@ _lock = threading.Lock()
 _last_fire = {k: float(v) for k, v in (store.load_json(LAST_FIRE_FILE, {}) or {}).items()}
 
 
+def last_fire(rule_id=None):
+    """Ultima declansare (epoch) a unei reguli, sau None. Fara argument: dict {id: epoch}
+    (copie). Folosit de interfata ca sa arate «ultima: …» per regula."""
+    if rule_id is None:
+        return dict(_last_fire)
+    return _last_fire.get(rule_id)
+
+
 # ---- persistenta regulilor ----
 _cache = {"mtime": None, "data": []}
 
