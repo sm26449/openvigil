@@ -12,15 +12,12 @@ ARG GO2RTC_VERSION=1.9.14
 ARG GO2RTC_SHA256=32d616af226bd731678ffde328b94cfb94e30339bfefc469cfb76323144615a6
 ARG PUID=1000
 ARG PGID=1000
-# versiunea (tag-ul release-ului sau `git describe`), vizibila in interfata si in /healthz
-ARG OPENVIGIL_VERSION=dev
 ENV DEBIAN_FRONTEND=noninteractive PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1 \
     TZ=UTC HF_HOME=/home/openvigil/.cache/huggingface \
     NVIDIA_DRIVER_CAPABILITIES=compute,utility,video \
     TORCH_DISABLE_NATIVE_JIT=1 \
-    PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
-    OPENVIGIL_VERSION=${OPENVIGIL_VERSION}
+    PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 # PYTORCH_CUDA_ALLOC_CONF=expandable_segments: fara ea, dupa descarcarea lui Qwen (~7 GB) torch
 # ramanea cu ~8 GB rezervati dar nefolositi (segmente fragmentate pe care empty_cache nu le
 # poate da inapoi), iar urmatoarea incarcare pica cu „VRAM insuficient” (masurat 2026-10-31:
@@ -32,8 +29,7 @@ ENV DEBIAN_FRONTEND=noninteractive PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 
 LABEL org.opencontainers.image.title="OpenVigil" \
       org.opencontainers.image.source="https://github.com/sm26449/openvigil" \
       org.opencontainers.image.url="https://openvigil.dev" \
-      org.opencontainers.image.licenses="AGPL-3.0-only" \
-      org.opencontainers.image.version="${OPENVIGIL_VERSION}"
+      org.opencontainers.image.licenses="AGPL-3.0-only"
 WORKDIR /opt/openvigil
 
 # ffmpeg din Ubuntu are h264_nvenc/hevc_nvenc si -hwaccel cuda: bibliotecile driverului vin
@@ -62,6 +58,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends python3-dev bui
     && apt-get purge -y --auto-remove python3-dev build-essential git \
     && rm -rf /var/lib/apt/lists/* /root/.cache
 
+# versiunea (tag-ul release-ului sau `git describe`), vizibila in interfata si in /healthz.
+# Intentionat JOS, dupa straturile grele (apt/go2rtc/pip): un bump de OPENVIGIL_VERSION invalideaza
+# cache-ul doar de aici in jos (COPY app …), iar apt/go2rtc/pip fac cache-hit — fara re-descarcarea
+# binarului go2rtc (blocata de egress uneori) si fara re-rularea pip (~10 min). Vezi build-ul 2.0.24.
+ARG OPENVIGIL_VERSION=dev
+ENV OPENVIGIL_VERSION=${OPENVIGIL_VERSION}
+LABEL org.opencontainers.image.version="${OPENVIGIL_VERSION}"
 COPY --chown=${PUID}:${PGID} app app
 COPY --chown=${PUID}:${PGID} scripts scripts
 COPY --chown=${PUID}:${PGID} docs docs
