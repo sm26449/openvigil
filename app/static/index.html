@@ -288,6 +288,7 @@
     <button class="ainav-item" data-pane="auto">Mașini <small>ce mașini vin?</small></button>
     <button class="ainav-item" data-pane="reguli">Reguli <small>ce se întâmplă și ce facem</small></button>
     <button class="ainav-item" data-pane="adnot">Adnotare <small>învață modelul</small></button>
+    <button class="ainav-item" data-pane="config">Configurare <small>ce pornim, cât de strict</small></button>
   </nav>
   <div class="set-body">
   <div class="ai-pane" id="aipane-pers">
@@ -299,21 +300,7 @@
     <div class="set-cols">
     <div class="set-card wide">
       <h2 data-ic="brain">Recunoaștere persoane (Face ID)</h2>
-      <label class="inline"><input id="fc-on" type="checkbox"> Activata</label>
-      <label class="inline"><input id="fc-notify" type="checkbox"> Notificare cu numele
-        persoanei recunoscute</label>
-      <label class="inline"><input id="fc-unknown" type="checkbox"> Păstrează fețele
-        nerecunoscute pentru etichetare</label>
-      <label class="inline"><input id="fc-spoof" type="checkbox"> Anti-spoofing —
-        respinge pozele și ecranele arătate camerei (MiniFASNet)</label>
-      <label class="inline"><input id="fc-desc" type="checkbox"> Semnalmente —
-        descrie persoana detectată (gen, vârstă, îmbrăcăminte; VLM local, în jurnal)</label>
-      <label>Prag de similaritate <input id="fc-thr" type="number" min="0.25" max="0.8"
-             step="0.05" style="width:80px"></label>
-      <p class="hint">Când detecția vede un om, se cere camerei un cadru la rezoluție
-        mare și se caută fețe. Aceeași persoana da de regula 0,5-0,8; persoane diferite
-        sub 0,3 — pragul implicit 0,45 e un echilibru bun. Prag mai mic = recunoaște mai
-        ușor, dar poate confunda; mai mare = mai strict.</p>
+      <p class="hint">Pornirea, pragul și semnalmentele sunt în fila Configurare. Aici gestionezi biblioteca și etichetezi fețele.</p>
 
       <h3 class="wh-h3">Persoane cunoscute</h3>
       <div id="fc-persons" class="fc-persons"></div>
@@ -351,23 +338,8 @@
     <div class="set-cols">
     <div class="set-card wide">
       <h2 data-ic="camera">Numere de înmatriculare (LPR)</h2>
-      <label class="inline"><input id="lp-on" type="checkbox"> Activata</label>
-      <label class="inline"><input id="lp-nk" type="checkbox"> Notificare la mașinile
-        cunoscute</label>
-      <label class="inline"><input id="lp-na" type="checkbox"> Notificare la ORICE număr
-        citit (gălăgie la strada)</label>
-      <label class="inline"><input id="lp-nu" type="checkbox"> Alertă la mașinile
-        necunoscute (număr fără nume)</label>
-      <label>...doar pe camerele <select id="lp-cams" multiple size="3" aria-label="Camerele pe care alerta la mașini necunoscute e activă (niciuna = toate)"></select>
-        <span class="hint">niciuna aleasă = toate</span></label>
-      <label>Incredere minimă OCR <input id="lp-conf" type="number" min="0.5" max="0.99"
-             step="0.05" style="width:80px"></label>
-      <label>Sigură dintr-o citire peste <input id="lp-sure" type="number" min="0.5" max="0.99"
-             step="0.05" style="width:80px" aria-label="Încrederea peste care o singură citire ajunge"></label>
+      <p class="hint">Pornirea, pragurile și camerele de alertă sunt în fila Configurare. Aici vezi statisticile, mașinile cunoscute și jurnalul citirilor.</p>
       <p class="hint" id="lp-stats"></p>
-      <p class="hint">Când detecția vede un vehicul, se cere camerei un cadru la rezoluție
-        mare și se citesc plăcuțele. Fiecare citire intră în jurnalul de mai jos; ca să
-        prindă ceva, camerele de la strada trebuie să aibă detecția AI pornită (🐾).</p>
 
       <h3 class="wh-h3">Mașini cunoscute</h3>
       <div id="lp-known"></div>
@@ -521,6 +493,64 @@
         pe camerele care o au — regula le sare pe celelalte și notează în jurnal.
         Exemplu: „persoana necunoscută, orice camera, 23–06, sirena + notificare”.</p>
     </div>
+    </div>
+  </div>
+  <div class="ai-pane hidden" id="aipane-config">
+    <header class="pane-head">
+      <h2>Configurare</h2>
+      <p>Ce pornim și cât de strict — fețe, numere, semnalmente, căutare semantică.
+        Modificările se adună; salvezi o dată, din bara de jos.</p>
+    </header>
+    <div class="set-cols">
+    <div class="set-card">
+      <h2 data-ic="brain">Recunoaștere persoane (Face ID)</h2>
+      <label class="inline"><input id="fc-on" type="checkbox"> Activata</label>
+      <label class="inline"><input id="fc-notify" type="checkbox"> Notificare cu numele
+        persoanei recunoscute</label>
+      <label class="inline"><input id="fc-unknown" type="checkbox"> Păstrează fețele
+        nerecunoscute pentru etichetare</label>
+      <label class="inline"><input id="fc-spoof" type="checkbox"> Anti-spoofing —
+        respinge pozele și ecranele arătate camerei (MiniFASNet)</label>
+      <label class="inline"><input id="fc-desc" type="checkbox"> Semnalmente —
+        descrie persoana detectată (gen, vârstă, îmbrăcăminte; VLM local, în jurnal)</label>
+      <label>Prag de similaritate <input id="fc-thr" type="number" min="0.25" max="0.8"
+             step="0.05" style="width:80px"></label>
+      <p class="hint">Aceeași persoana da de regula 0,5-0,8; persoane diferite sub 0,3 —
+        pragul implicit 0,45 e un echilibru bun. Prag mai mic = recunoaște mai ușor, dar
+        poate confunda; mai mare = mai strict.</p>
+    </div>
+    <div class="set-card">
+      <h2 data-ic="camera">Numere de înmatriculare (LPR)</h2>
+      <label class="inline"><input id="lp-on" type="checkbox"> Activata</label>
+      <label class="inline"><input id="lp-nk" type="checkbox"> Notificare la mașinile
+        cunoscute</label>
+      <label class="inline"><input id="lp-na" type="checkbox"> Notificare la ORICE număr
+        citit (gălăgie la strada)</label>
+      <label class="inline"><input id="lp-nu" type="checkbox"> Alertă la mașinile
+        necunoscute (număr fără nume)</label>
+      <label>...doar pe camerele <select id="lp-cams" multiple size="3" aria-label="Camerele pe care alerta la mașini necunoscute e activă (niciuna = toate)"></select>
+        <span class="hint">niciuna aleasă = toate</span></label>
+      <label>Incredere minimă OCR <input id="lp-conf" type="number" min="0.5" max="0.99"
+             step="0.05" style="width:80px"></label>
+      <label>Sigură dintr-o citire peste <input id="lp-sure" type="number" min="0.5" max="0.99"
+             step="0.05" style="width:80px" aria-label="Încrederea peste care o singură citire ajunge"></label>
+    </div>
+    <div class="set-card">
+      <h2 data-ic="image">Căutare semantică în alarme</h2>
+      <label class="inline"><input id="sem-on" type="checkbox"> Activata</label>
+      <div id="sem-status" class="hint"></div>
+      <div class="s-btns"><button id="sem-backfill" class="btn sm">Indexeaza istoricul acum</button></div>
+      <span class="s-msg" id="sem-msg"></span>
+      <p class="hint">Fiecare poza din Alarme primeste o „amprenta" de sens (SigLIP, local),
+        iar câmpul de căutare din tabul Alarme găsește poze după descriere liberă: „mașină
+        albă", „om cu rucsac". Pozele noi se indexeaza singure; istoricul la buton.</p>
+    </div>
+    </div>
+    <div class="set-savebar hidden" id="ai-savebar">
+      <span id="ai-dirty"></span>
+      <button id="ai-revert">Renunță la modificări</button>
+      <button id="ai-save">Salvează</button>
+      <span class="s-msg" id="ai-msg-save"></span>
     </div>
   </div>
   </div>
@@ -738,19 +768,6 @@
         0 e maximul, iar o curte liniștită stă pe la −45. Prima regula prinde zgomotele
         care țin (utilaj, lătrat, alarma), a două prinde loviturile scurte (geam spart),
         comparând cu fondul obișnuit al locului — deci se adaptează singură.</p>
-    </div>
-
-    <div class="set-card">
-      <h2 data-ic="image">Căutare semantică în alarme</h2>
-      <label class="inline"><input id="sem-on" type="checkbox"> Activata</label>
-      <div id="sem-status" class="hint"><span class="schelet o-linie"><i></i><i></i><i></i></span></div>
-      <button id="sem-backfill" class="btn sm">Indexeaza istoricul acum</button>
-      <span class="s-msg" id="sem-msg"></span>
-      <p class="hint">Fiecare poza din Alarme primeste o "amprenta" de sens (SigLIP,
-        local), iar câmpul de căutare din tabul Alarme găsește poze după descriere
-        liberă, în română: "mașină albă", "om cu rucsac", "câine lângă poarta".
-        Pozele noi se indexeaza singure; istoricul se indexeaza în fundal, în ritm
-        lent, când apeși butonul (sau automat la activare).</p>
     </div>
 
     <div class="set-card" data-avansat>

@@ -11,6 +11,12 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   înregistrarea/golurile/sabotajul. Starea vine din watchdog-ul care deja monitoriza camerele
   (ISAPI/ONVIF) și alerta pe Telegram; acum se vede și pe ecran, per cameră (`/api/pulse` →
   câmp `online`).
+- **Panoul „Configurare" în tabul AI** — toată configurarea AI (Face ID, LPR, semnalmente,
+  căutare semantică: pornit/oprit, praguri, camere de alertă) stă acum într-un singur loc, cu
+  **bara de salvare** de jos (modificările se adună; salvezi o dată, ca în Setări — se trimit
+  doar grupurile schimbate). Panourile *Persoane* și *Mașini* rămân curate, doar cu conținutul
+  (biblioteca, fețele/numerele necunoscute, jurnalul). Căutarea semantică s-a mutat aici din
+  Setări → Detecție. (Înainte fiecare comutator se salva imediat, separat.)
 
 ## [2.0.25] — 2026-11-08
 

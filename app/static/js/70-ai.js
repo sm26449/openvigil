@@ -13,12 +13,7 @@ import { SET_LABELS, flash } from './60-setari.js';
 async function loadFaces() {
   try {
     const d = await (await fetch('/api/faces')).json();
-    $('#fc-on').checked = d.enabled;
-    $('#fc-notify').checked = d.notify;
-    $('#fc-unknown').checked = d.unknown_save;
-    $('#fc-spoof').checked = d.antispoof;
-    $('#fc-desc').checked = d.describe;
-    $('#fc-thr').value = d.threshold;
+    // config (Activat, prag, notificare…) e in panoul „Configurare" (loadAiConfig); aici doar continut
     $('#fc-persons').innerHTML = lista(d.persons, (p) => html`
       <div class="fc-person" data-name="${p.name}">
         ${p.cover ? html`<img src="${p.cover}" alt="">` : ''}
@@ -134,23 +129,8 @@ async function loadFaces() {
     }
   } catch {}
 }
-for (const [id, key] of [['fc-on', 'enabled'], ['fc-notify', 'notify'],
-                         ['fc-unknown', 'unknown_save'], ['fc-spoof', 'antispoof'],
-                         ['fc-desc', 'describe']]) {
-  const el = $('#' + id);
-  if (el) el.onchange = async () => {
-    el.disabled = true;   // blocat cat e cererea in curs
-    const r = await post('/api/faces/config', { [key]: el.checked });
-    el.disabled = false;
-    // confirmam DOAR pe raspuns valid; la esec revenim bifa (audit A1)
-    if (r && !r.error) flash('#fc-msg', t('Salvat ✓'));
-    else { el.checked = !el.checked; flash('#fc-msg', t('Eroare la salvare'), true); }
-  };
-}
-$('#fc-thr') && ($('#fc-thr').onchange = async () => {
-  await post('/api/faces/config', { threshold: +$('#fc-thr').value });
-  flash('#fc-msg', t('Prag salvat ✓'));
-});
+// Config-ul fetelor (Activat, prag, anti-spoofing…) se salveaza acum din panoul „Configurare"
+// prin bara de jos (loadAiConfig / salveazaAiConfig), nu inline per control.
 $('#fc-file') && ($('#fc-file').onchange = () => {
   const name = $('#fc-name').value.trim();
   const f = $('#fc-file').files[0];
@@ -234,17 +214,7 @@ async function loadPlates() {
   try {
     const q = ($('#lp-q') && $('#lp-q').value.trim()) || '';
     const d = await (await fetch('/api/plates' + (q ? `?q=${encodeURIComponent(q)}` : ''))).json();
-    $('#lp-on').checked = d.enabled;
-    $('#lp-nk').checked = d.notify_known;
-    $('#lp-na').checked = d.notify_all;
-    $('#lp-nu').checked = d.notify_unknown;
-    $('#lp-conf').value = d.min_conf;
-    $('#lp-sure').value = d.sure_conf;
-    const sel = $('#lp-cams');
-    if (sel.options.length !== S.cameras.length) {
-      sel.innerHTML = html`${S.cameras.map((c) => html`<option value="${c.id}">${c.name}</option>`)}`;
-    }
-    for (const o of sel.options) o.selected = (d.alert_cams || []).includes(+o.value);
+    // config (Activat, praguri, camere…) e in panoul „Configurare" (loadAiConfig); aici doar continut
     const st = d.stats || {};
     $('#lp-stats').textContent = t('Citiri: {azi} azi, {total} în ultimele 7 zile ({nec} fără nume)',
       { azi: st.azi || 0, total: st.total7 || 0, nec: st.necunoscute7 || 0 });
@@ -281,31 +251,8 @@ async function loadPlates() {
     }
   } catch {}
 }
-$('#lp-cams') && ($('#lp-cams').onchange = async () => {
-  const ids = [...$('#lp-cams').selectedOptions].map((o) => +o.value);
-  const r = await post('/api/plates/config', { alert_cams: ids });
-  if (r && !r.error) flash('#lp-msg', ids.length ? t('Alertă doar pe {n} camere ✓', { n: ids.length }) : t('Alertă pe toate camerele ✓'));
-  else flash('#lp-msg', t('Eroare la salvare'), true);
-});
-$('#lp-sure') && ($('#lp-sure').onchange = async () => {
-  const r = await post('/api/plates/config', { sure_conf: +$('#lp-sure').value });
-  flash('#lp-msg', r && !r.error ? t('Prag salvat ✓') : t('Eroare la salvare'), !(r && !r.error));
-});
-for (const [id, key] of [['lp-on', 'enabled'], ['lp-nk', 'notify_known'],
-                         ['lp-na', 'notify_all'], ['lp-nu', 'notify_unknown']]) {
-  const el = $('#' + id);
-  if (el) el.onchange = async () => {
-    el.disabled = true;
-    const r = await post('/api/plates/config', { [key]: el.checked });
-    el.disabled = false;
-    if (r && !r.error) flash('#lp-msg', t('Salvat ✓'));
-    else { el.checked = !el.checked; flash('#lp-msg', t('Eroare la salvare'), true); }   // audit A1
-  };
-}
-$('#lp-conf') && ($('#lp-conf').onchange = async () => {
-  const r = await post('/api/plates/config', { min_conf: +$('#lp-conf').value });
-  flash('#lp-msg', r && !r.error ? t('Prag salvat ✓') : t('Eroare la salvare'), !(r && !r.error));
-});
+// Config-ul LPR (Activat, praguri, camere de alerta) se salveaza acum din panoul „Configurare"
+// prin bara de jos (loadAiConfig / salveazaAiConfig), nu inline per control.
 $('#lp-add') && ($('#lp-add').onclick = async () => {
   const r = await post('/api/plates/known',
                        { plate: $('#lp-plate').value, name: $('#lp-name').value });
@@ -380,10 +327,126 @@ if (!$('#ai').classList.contains('hidden')) setTimeout(loadAiStare, 500);
 
 /* ---------- tabul AI: navigarea pe sectiuni ---------- */
 // Incarcare LAZY: doar datele subpaginii alese, nu toate deodata la intrarea in AI (audit T5).
+/* ---------- Configurare AI (Face / LPR / Descriere / Semantic) cu bara de salvare ----------
+   Un singur model de salvare, ca in Setari: modificarile se aduna, bara de jos apare doar cand
+   exista ceva nesalvat; „Salveaza" trimite DOAR grupurile schimbate (fete/numere/semantic) la
+   endpoint-urile lor. Actiunile (reindexare) raman imediate, separat de bara. */
+let aiCfgSnapshot = null;
+let semTimer = null;
+
+function aiConfigBody() {
+  return {
+    faces: {
+      enabled: $('#fc-on').checked, notify: $('#fc-notify').checked,
+      unknown_save: $('#fc-unknown').checked, antispoof: $('#fc-spoof').checked,
+      describe: $('#fc-desc').checked, threshold: +$('#fc-thr').value,
+    },
+    plates: {
+      enabled: $('#lp-on').checked, notify_known: $('#lp-nk').checked,
+      notify_all: $('#lp-na').checked, notify_unknown: $('#lp-nu').checked,
+      min_conf: +$('#lp-conf').value, sure_conf: +$('#lp-sure').value,
+      alert_cams: [...$('#lp-cams').selectedOptions].map((o) => +o.value),
+    },
+    semantic: { enabled: $('#sem-on').checked },
+  };
+}
+const aiCfgSnap = () => JSON.stringify(aiConfigBody());
+
+function semText(s) {
+  const b = s.backfill || {};
+  const txt = t('{n} poze indexate din {zile} zile', { n: s.indexed || 0, zile: s.days || 0 });
+  return b.running ? `${txt} — ${t('indexez istoricul: {done}/{total}', { done: b.done, total: b.total })}` : txt;
+}
+
+async function refreshSemStatus() {
+  // doar textul de stare (nu reincarca inputurile — ar calca peste modificari nesalvate)
+  try {
+    const s = await (await fetch('/api/semantic/status')).json();
+    if ($('#sem-status')) $('#sem-status').textContent = semText(s);
+    clearInterval(semTimer);
+    const viz = aiPaneActiv() === 'config' && !document.hidden && !$('#ai').classList.contains('hidden');
+    if (s.backfill && s.backfill.running && viz) semTimer = setInterval(refreshSemStatus, 3000);
+  } catch {}
+}
+
+async function loadAiConfig() {
+  try {
+    const [f, p, s] = await Promise.all([
+      fetch('/api/faces').then((r) => r.json()).catch(() => ({})),
+      fetch('/api/plates').then((r) => r.json()).catch(() => ({})),
+      fetch('/api/semantic/status').then((r) => r.json()).catch(() => ({})),
+    ]);
+    $('#fc-on').checked = !!f.enabled; $('#fc-notify').checked = !!f.notify;
+    $('#fc-unknown').checked = !!f.unknown_save; $('#fc-spoof').checked = !!f.antispoof;
+    $('#fc-desc').checked = !!f.describe; $('#fc-thr').value = f.threshold ?? 0.45;
+    $('#lp-on').checked = !!p.enabled; $('#lp-nk').checked = !!p.notify_known;
+    $('#lp-na').checked = !!p.notify_all; $('#lp-nu').checked = !!p.notify_unknown;
+    $('#lp-conf').value = p.min_conf ?? 0.85; $('#lp-sure').value = p.sure_conf ?? 0.9;
+    const sel = $('#lp-cams');
+    if (sel.options.length !== S.cameras.length) {
+      sel.innerHTML = html`${S.cameras.map((c) => html`<option value="${c.id}">${c.name}</option>`)}`;
+    }
+    for (const o of sel.options) o.selected = (p.alert_cams || []).includes(+o.value);
+    $('#sem-on').checked = !!s.enabled;
+    $('#sem-status').textContent = semText(s);
+    aiCfgSnapshot = aiCfgSnap();
+    checkAiDirty();
+    refreshSemStatus();
+  } catch {}
+}
+
+function checkAiDirty() {
+  if (aiCfgSnapshot === null) return;
+  const bar = $('#ai-savebar');
+  if (!bar) return;
+  const now = aiCfgSnap();
+  const dirty = now !== aiCfgSnapshot;
+  bar.classList.toggle('hidden', !dirty);
+  if (dirty) {
+    const a = JSON.parse(aiCfgSnapshot), b = JSON.parse(now);
+    let n = 0;
+    for (const grp of ['faces', 'plates', 'semantic']) {
+      for (const k of Object.keys(b[grp])) if (JSON.stringify(a[grp][k]) !== JSON.stringify(b[grp][k])) n++;
+    }
+    $('#ai-dirty').textContent = n === 1 ? t('O modificare nesalvată') : t('{n} modificări nesalvate', { n });
+  }
+}
+
+async function salveazaAiConfig() {
+  const prev = aiCfgSnapshot ? JSON.parse(aiCfgSnapshot) : {};
+  const body = aiConfigBody();
+  let okAll = true;
+  for (const [grp, url] of [['faces', '/api/faces/config'], ['plates', '/api/plates/config'],
+    ['semantic', '/api/semantic/config']]) {
+    if (JSON.stringify(prev[grp] || {}) === JSON.stringify(body[grp])) continue;   // grup neschimbat
+    const r = await post(url, body[grp]);
+    if (!r || r.error) { okAll = false; flash('#ai-msg-save', (r && r.error) || t('Eroare la salvare'), true); break; }
+  }
+  if (okAll) {
+    aiCfgSnapshot = JSON.stringify(body);
+    checkAiDirty();
+    flash('#ai-msg-save', t('Salvat ✓'));
+  }
+}
+
+$('#ai-save') && ($('#ai-save').onclick = salveazaAiConfig);
+$('#ai-revert') && ($('#ai-revert').onclick = () => loadAiConfig());
+$('#sem-backfill') && ($('#sem-backfill').onclick = async () => {
+  const r = await post('/api/semantic/backfill', {});
+  flash('#sem-msg', r && r.started ? t('Indexarea a pornit ✓') : t('Indexarea rulează deja'));
+  refreshSemStatus();
+});
+for (const ev of ['input', 'change']) {
+  document.addEventListener(ev, (e) => {
+    if (e.target && e.target.closest && e.target.closest('#aipane-config')) checkAiDirty();
+  });
+}
+
 function incarcaAiPane(pane) {
   if (pane === 'pers') loadFaces();
   else if (pane === 'auto') { loadPlates(); loadTrack(); }
   else if (pane === 'reguli') loadRules();
+  else if (pane === 'config') loadAiConfig();
   // 'adnot' isi incarca cadrele din controalele proprii (ad-split/ad-nev/ad-cam)
 }
 function aiPaneActiv() {

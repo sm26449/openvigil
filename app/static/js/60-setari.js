@@ -68,7 +68,6 @@ async function loadSettings(force = false) {
   loadKeyframes();
   loadUsers();
   loadPushAdmin();
-  loadSemantic();
   loadTile();
   loadMqtt(s);
   loadTrainStatus();
@@ -98,28 +97,7 @@ async function loadSettings(force = false) {
   clearInterval(sysTimer);
   sysTimer = setInterval(() => { if (!document.hidden && !$('#set').classList.contains('hidden')) loadSystem(); }, 5000);
 }
-/* ---------- cautare semantica: stare si activare (Setari -> Detectie) ---------- */
-let semTimer = null;
-async function loadSemantic() {
-  try {
-    const s = await (await fetch('/api/semantic/status')).json();
-    $('#sem-on').checked = s.enabled;
-    const b = s.backfill;
-    const txt = t('{n} poze indexate din {zile} zile', { n: s.indexed, zile: s.days });
-    $('#sem-status').textContent = b.running
-      ? `${txt} — ${t('indexez istoricul: {done}/{total}', { done: b.done, total: b.total })}` : txt;
-    clearInterval(semTimer);
-    if (b.running && !document.hidden && !$('#set').classList.contains('hidden')) {
-      semTimer = setInterval(loadSemantic, 3000);
-    }
-  } catch {}
-}
-$('#sem-on') && ($('#sem-on').onchange = async () => {
-  await post('/api/semantic/config', { enabled: $('#sem-on').checked });
-  flash('#sem-msg', $('#sem-on').checked
-    ? t('Pornită — istoricul se indexeaza în fundal ✓') : t('Oprită ✓'));
-  loadSemantic();
-});
+/* Căutarea semantică (activare + indexare) s-a mutat în AI → Configurare (70-ai.js). */
 /* detectie pe regiuni: camerele alese (obiecte la distanta) */
 async function loadTile() {
   try {
@@ -132,11 +110,6 @@ $('#tl-save') && ($('#tl-save').onclick = async () => {
   const cams = [...$('#tl-cams').selectedOptions].map((o) => +o.value);
   const r = await post('/api/tile', { cams });
   if (r && !r.error) flash('#tl-msg', t('Salvat ✓'));
-});
-$('#sem-backfill') && ($('#sem-backfill').onclick = async () => {
-  const r = await post('/api/semantic/backfill', {});
-  flash('#sem-msg', r && r.started ? t('Indexarea a pornit ✓') : t('Indexarea rulează deja'));
-  loadSemantic();
 });
 
 /* ---------- tab-uri interne per sectiune: un card vizibil o data ----------
