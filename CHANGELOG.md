@@ -3,6 +3,16 @@
 Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [2.0.24] — 2026-11-08
+
+### Schimbat
+- **Dosarele de caz trec în PostgreSQL** (`dosare` + `dosar_probe`), din fișierul
+  `data/cases.json`. La fel ca jurnalul, marcajele și probele, dosarele intră acum în **copia
+  nocturnă criptată** (dump-ul logic al bazei) și beneficiază de scrieri atomice reale — gata cu
+  citește-modifică-scrie peste un fișier JSON. Cazurile vechi din `cases.json` se **importă o
+  singură dată** la pornire (fișierul e redenumit `.migrat`), fără pași manuali. Comportamentul
+  vizibil e neschimbat: aceleași dosare, aceleași probe, același export ZIP verificabil.
+
 ## [2.0.23] — 2026-11-08
 
 ### Adăugat
