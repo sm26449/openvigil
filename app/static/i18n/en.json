@@ -2472,5 +2472,6 @@
   "+ schimbare": "+ change",
   "Șterge": "Delete",
   "ultima declanșare": "last fired",
-  "zilnic": "daily"
+  "zilnic": "daily",
+  "canal deconectat (watchdog)": "channel disconnected (watchdog)"
 }

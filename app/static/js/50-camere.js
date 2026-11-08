@@ -1201,7 +1201,9 @@ function hcCamere(cont, sab, pulse) {
     } else if (a) parti.push(a.mod === 'motion' ? t('la mișcare') : t('înregistrare oprită'));
     if (g.length) { const min = g.reduce((s, x) => s + (x.minute || 0), 0); parti.push(t('{n} goluri azi ({min} min)', { n: g.length, min })); rau = true; }
     if (sab[id]) { parti.push(t('sabotaj raportat de {n} ori azi', { n: sab[id] })); if (sab[id] >= 10) rau = true; }
+    if (p.online === false) { parti.unshift(t('canal deconectat (watchdog)')); rau = true; }
     const insigne = [
+      p.online === false ? html`<span class="hc-b hc-off">${t('deconectat')}</span>` : '',
       p.rec ? html`<span class="hc-b hc-rec">● REC</span>` : '',
       p.alarm ? html`<span class="hc-b hc-alarm">${t('alarmă')}</span>` : '',
       p.detect ? html`<span class="hc-b">${t('mișcare')}</span>` : '',

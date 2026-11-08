@@ -11,6 +11,16 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app"))
 import notify  # noqa: E402
 
 
+def test_stare_cam_citeste_states(monkeypatch):
+    # starea per-camera folosita de Centrul de sanatate (badge „deconectat")
+    monkeypatch.setattr(notify, "_states", {5: True, 6: False})
+    assert notify.stare_cam(5) is True
+    assert notify.stare_cam(6) is False
+    assert notify.stare_cam("6") is False         # accepta si string (id din URL/JSON)
+    assert notify.stare_cam(99) is None           # necunoscut inca
+    assert notify.stare_cam("abc") is None         # id invalid -> None, nu arunca
+
+
 def test_un_esec_singular_nu_declara_offline():
     # online cunoscut + primul esec -> ramane online (fara alarma)
     assert notify._stare_noua(True, ok=False, esecuri=1) is True

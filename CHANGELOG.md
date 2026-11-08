@@ -3,6 +3,15 @@
 Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [2.0.26] — 2026-11-08
+
+### Adăugat
+- **Starea canalului pe camere, în Centrul de sănătate** — fiecare cameră arată acum și dacă
+  watchdog-ul o vede **deconectată** (insignă roșie „deconectat" + rând evidențiat), nu doar
+  înregistrarea/golurile/sabotajul. Starea vine din watchdog-ul care deja monitoriza camerele
+  (ISAPI/ONVIF) și alerta pe Telegram; acum se vede și pe ecran, per cameră (`/api/pulse` →
+  câmp `online`).
+
 ## [2.0.25] — 2026-11-08
 
 ### Adăugat

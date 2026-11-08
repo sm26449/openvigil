@@ -260,6 +260,15 @@ def stare_nvr():
     return _states.get("nvr")
 
 
+def stare_cam(cid):
+    """Starea unei camere dupa watchdog: True (online) / False (offline) / None (inca necunoscut).
+    `_states` e tinut de watchdog-ul care ruleaza in procesul web (vezi start_watchdog)."""
+    try:
+        return _states.get(int(cid))
+    except (ValueError, TypeError):
+        return None
+
+
 _stream_alerted = 0
 
 
