@@ -153,7 +153,7 @@ VIEWER_GET = ("/api/me", "/api/cameras", "/api/events", "/api/pulse", "/api/reco
               "/api/play", "/api/clip", "/api/export", "/api/alarms", "/api/thumb/",
               "/api/noise", "/api/views", "/api/storage", "/api/search", "/api/ask",
               "/api/incidents", "/api/cases", "/api/digest", "/api/speedtest", "/snapshots/",
-              "/api/marcaje", "/api/jobs", "/api/push", "/api/mod", "/api/harta",
+              "/api/marcaje", "/api/probe", "/api/jobs", "/api/push", "/api/mod", "/api/harta",
               "/api/regiune", "/api/heatmap", "/api/timelapse", "/api/segmente",
               "/api/flux", "/api/journal", "/api/plates", "/api/faces/history", "/api/reid/")
 # Actiunile live permise OPERATORULUI (paznicului): POST pe camera lui, fara nimic
@@ -227,6 +227,9 @@ def guard():
             return None
         # marcajele pe inregistrari: la fel (ruta verifica singura camera)
         if u["role"] == "operator" and re.match(r"^/api/marcaje(/[a-z0-9]+)?$", p):
+            return None
+        # probele („pastreaza ca proba"): la fel (ruta verifica singura camera)
+        if u["role"] == "operator" and re.match(r"^/api/probe(/[a-z0-9]+)?$", p):
             return None
         # isi poate opri joburile lui (ruta verifica proprietarul)
         if u["role"] == "operator" and request.method == "DELETE" \
@@ -1163,11 +1166,13 @@ def _register_blueprints():
     import routes_marcaje
     import routes_media
     import routes_operare
+    import routes_probe
     import routes_push
     import routes_system
     app.register_blueprint(routes_auth.bp)
     app.register_blueprint(routes_incidents.bp)
     app.register_blueprint(routes_marcaje.bp)
+    app.register_blueprint(routes_probe.bp)
     app.register_blueprint(routes_jobs.bp)
     app.register_blueprint(routes_push.bp)
     app.register_blueprint(routes_operare.bp)

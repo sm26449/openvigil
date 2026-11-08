@@ -4,7 +4,7 @@
    pe toate; importurile/exporturile sunt verificate de scripts/module_check.py (si in pytest).
    ==================================================================== */
 import { S } from './state.js';
-import { $, DET_RO, GO2RTC, HD_MODE, JOB_STARE_RO, html, icon, lista, runJob, streamEl, t, toast } from './00-core.js';
+import { $, DET_RO, GO2RTC, HD_MODE, JOB_STARE_RO, LIMBA, html, icon, lista, runJob, streamEl, t, toast } from './00-core.js';
 import { pbHash, setHash } from './05-navigare.js';
 import { loadCameras, post } from './10-live.js';
 import { hdCam } from './20-hd.js';
@@ -60,6 +60,7 @@ async function searchRecordings() {
   renderTimeline(date);
   drawEventDots(ch, date, gen);
   drawPbMarks(ch, date, gen);
+  drawPbProbe(ch, date, gen);
 }
 
 // marcaje pe timeline + lista laterala de evenimente (navigabila cu ⏮ ⏭)
@@ -272,6 +273,65 @@ $('#pb-mark').onclick = () => {
   const ch = +$('#pb-cam').value, date = pbDate;
   addMark(ch, date, Math.floor(pbPos), () => drawPbMarks(ch, date));
 };
+
+/* ---------- probe („păstrează ca probă”): intervale scutite de retenție, pe timeline ---------- */
+// O probă nu se șterge niciodată automat (nici de vârstă, nici de garda de spațiu). Se vede
+// ca o bandă 🔒 pe timeline și în panoul din dreapta; footage-ul dintr-un dosar apare și el aici.
+async function loadProbe(cam, date, valid) {
+  let probe = [];
+  try {
+    probe = (await (await fetch(`/api/probe?cam=${cam}&day=${date}`)).json()).probe || [];
+  } catch {}
+  if (valid && !valid()) return;   // contextul camera/zi s-a schimbat cât am așteptat
+  const tl = $('#timeline');
+  for (const el of tl.querySelectorAll('.proba')) el.remove();
+  for (const p of probe) {
+    const a = tSec(p.t, date), b = tSec(p.t_end, date);
+    const el = document.createElement('div');
+    el.className = 'proba';
+    el.dataset.sec = a;
+    el.dataset.end = b;
+    el.style.left = (a / 86400 * 100) + '%';
+    el.style.width = Math.max(0.3, (b - a) / 86400 * 100) + '%';
+    el.title = `🔒 ${p.t.slice(11, 19)} – ${p.t_end.slice(11, 19)}`
+      + (p.motiv ? ' — ' + p.motiv : '') + (p.expira ? '\n' + t('până la {data}', { data: new Date(p.pana_la * 1000).toLocaleString(LIMBA) }) : '')
+      + ' ' + t('(click = redă)');
+    el.onclick = (e) => { e.stopPropagation(); playFrom(date, a); };
+    el.onpointerdown = (e) => e.stopPropagation();
+    tl.appendChild(el);
+  }
+  const list = $('#pb-probe');
+  if (!list) return;
+  list.innerHTML = lista(probe, (p) => html`
+    <div class="mk-row proba-row" data-id="${p.id}" title="${p.nota || ''}">
+      <span>🔒 ${p.t.slice(11, 16)}–${p.t_end.slice(11, 16)}</span>
+      <b>${p.motiv || t('(fără motiv)')}</b>
+      <span class="mk-acts">
+        ${p.sursa && p.sursa.startsWith('dosar:') ? html`<span class="hint">${t('dosar')}</span>` : ''}
+        <button class="pr-del link-btn" title="${t('Ridică protecția')}">✕</button>
+      </span>
+    </div>`, html`<p class="hint">${t('Nicio probă. Selectează un interval pe timeline și apasă „🔒 probă”.')}</p>`);
+  for (const row of list.querySelectorAll('.proba-row')) {
+    const p = probe.find((x) => x.id === row.dataset.id);
+    row.onclick = () => playFrom(date, tSec(p.t, date));
+    row.querySelector('.pr-del').onclick = async (e) => {
+      e.stopPropagation();
+      if (!confirm(t('Ridici protecția acestui interval? Va putea fi șters la curățare.'))) return;
+      await fetch(`/api/probe/${p.id}`, { method: 'DELETE' });
+      drawPbProbe(cam, date);
+    };
+  }
+}
+function drawPbProbe(ch, date, gen) {
+  loadProbe(ch, date, () => gen === undefined || gen === pbCtxGen).then(relayoutTimeline);
+}
+async function addProbaInterval(cam, date, a, b) {
+  const motiv = prompt(t('Păstrează {a} – {b} ca probă — motivul (ex. „efracție poartă”):', { a: hms(a), b: hms(b) }));
+  if (motiv === null) return;
+  const r = await post('/api/probe', { cam, start: `${date} ${hms(a)}`, end: `${date} ${hms(b)}`, motiv });
+  if (r && r.id) { toast(t('Interval păstrat ca probă — scutit de curățare.')); drawPbProbe(cam, date); }
+  else if (r && r.error) toast(r.error, true);
+}
 
 // „Playerul activ" dintr-un container cu mai multe <video>: in HD stau doua suprapuse
 // (substream-ul dedesubt + mainstream-ul HD deasupra), deci `querySelector('video')` ar lua
@@ -558,9 +618,11 @@ function renderTimeline(date) {
     $('#exp-b').value = hms(b2);
     $('#pb-info').innerHTML = html`${t('Selectat {a} – {b} ({min} min)', { a: hms(a), b: hms(b2), min: Math.round((b2 - a) / 60) })}`
       + (b - a > 1800 ? html` <span class="hint">${t('(tăiat la 30 min, cât permite exportul)')}</span>` : '')
-      + html`: <button class="link-btn" id="sel-mp4">⬇ MP4</button> <button class="link-btn" id="sel-mark">${t('🔖 marcaj')}</button>`;
+      + html`: <button class="link-btn" id="sel-mp4">⬇ MP4</button> <button class="link-btn" id="sel-mark">${t('🔖 marcaj')}</button> <button class="link-btn" id="sel-proba">${t('🔒 probă')}</button>`;
     $('#sel-mp4').onclick = () => $('#exp-btn').click();
     $('#sel-mark').onclick = () => addMarkInterval(+$('#pb-cam').value, date, Math.floor(a), Math.floor(b2));
+    // proba foloseste selectia INTREAGA (a..b), nu b2 — protectia nu e plafonata ca exportul
+    $('#sel-proba').onclick = () => addProbaInterval(+$('#pb-cam').value, date, Math.floor(a), Math.floor(b));
   };
   // rotita: zoom in jurul pointerului; cu Shift deruleaza fereastra
   tl.onwheel = (e) => {

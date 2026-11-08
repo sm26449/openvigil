@@ -119,6 +119,17 @@ timeline (both bars), have their own list on the right (click = play, *case file
 piece of evidence into a case file, ✕ = delete) and live in PostgreSQL (the `marcaje` table,
 `app/marcaje.py`, API `/api/marcaje`). The operator only places them on their own cameras.
 
+**Evidence ("keep as evidence"):** select a range on the timeline (drag) and press
+*🔒 evidence* — the range is exempt from cleanup: retention no longer deletes it (neither by
+age nor by the free-space guard when the disk fills), and if the disk really fills up it
+alarms instead of cutting it. Evidence shows as a green padlock band on the timeline and has
+its own list on the right (click = play, ✕ = remove protection). It may have a deadline
+(`pana_la`, otherwise indefinite). Footage added to a case file auto-protects (source
+`dosar:<id>`). Stored in PostgreSQL (the `probe` table, `app/probe.py`, API `/api/probe`);
+the operator only on their own cameras. Retention (`app/record.py`) reads the active
+protections once per pass; if the database is unavailable it defers cleanup for an hour
+rather than risk an evidence range.
+
 ### The "Alarms" tab (snapshots + clips)
 On every YOLO detection (with the boxes drawn) and every camera alarm (motion,
 intrusion, etc.) a photo is saved in `data/snapshots/YYYY-MM-DD/` (60 s cooldown per

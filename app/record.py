@@ -440,14 +440,17 @@ def harvest_frames(out_dir, interval=60):
     return made
 
 
-def _prune_arhiva(now=None):
+def _prune_arhiva(now=None, prot=None):
     """Retentia nivelului de arhiva: `arhiva_zile` dupa inregistrare, plus garda de spatiu
-    `arhiva_min_free_gb` (cele mai vechi primele). Intoarce cate a sters."""
+    `arhiva_min_free_gb` (cele mai vechi primele). Intoarce cate a sters. `prot` = protectiile
+    active ({cam: [(ts, ts_end)]}): o proba mutata in arhiva ramane si aici, scutita."""
+    import probe
     import settings
     ad = archive_dir()
     if not ad or not os.path.isdir(ad):
         return 0
     now = now or time.time()
+    prot = prot or {}
     v_zile = settings.get("arhiva_zile")
     zile = 180 if v_zile is None else int(v_zile)
     toate = []
@@ -457,7 +460,10 @@ def _prune_arhiva(now=None):
         return 0
     sterse = 0
     for cid in cams:
+        pr = prot.get(cid)
         for t, p, fn in _listeaza(ad, cid):
+            if probe.acopera(pr, t, t + SEGMENT):
+                continue  # proba: nu se sterge nici din arhiva, nici de garda de spatiu
             if now - t > zile * 86400:
                 try:
                     os.remove(p)
@@ -508,11 +514,13 @@ def event_times(cam_id, days=3):
     return out
 
 
-def prune_motion(cam_id, event_times):
+def prune_motion(cam_id, event_times, protejat=None):
     """Modul 'la miscare': pastreaza doar segmentele care ating un eveniment (+/- padding).
     Inregistram continuu si stergem dupa — asa nu pierdem nimic dintr-un eveniment
     (pre-roll gratuit) si evitam pornirea/oprirea repetata a ffmpeg-ului.
-    event_times = epoch-uri ale evenimentelor camerei. Segmentul in curs nu se atinge."""
+    event_times = epoch-uri ale evenimentelor camerei. Segmentul in curs nu se atinge.
+    `protejat` = intervale (ts, ts_end) marcate ca proba: segmentele care le ating raman."""
+    import probe
     files = _files(cam_id, arhiva=False)
     if not files or not event_times:
         return 0
@@ -531,6 +539,8 @@ def prune_motion(cam_id, event_times):
     for t, p, _ in files[:-1]:  # ultimul = segmentul care se scrie acum
         if now - t < SEGMENT * 2:
             continue  # prea proaspat: evenimentele pot inca sa apara
+        if probe.acopera(protejat, t, t + SEGMENT):
+            continue  # proba -> se pastreaza, indiferent de miscare
         a, b = t - MOTION_PAD, t + SEGMENT + MOTION_PAD
         i = bisect.bisect_left(ev, a)
         if i < len(ev) and ev[i] <= b:
@@ -620,7 +630,16 @@ def _arhiveaza(cid, t, p, fn):
 def _prune_body():
     import bisect
     import settings
+    import probe
     now = time.time()
+    # Probele („pastreaza ca proba") nu se sterg niciodata automat. Daca baza nu raspunde,
+    # NU curatam in tura asta: mai bine pastram mai mult o ora decat sa taiem o proba din
+    # greseala. Reincearca la urmatorul Timer (finally din prune()).
+    try:
+        prot = probe.active_ranges(now)
+    except Exception as e:
+        logare.error(f"[record] nu pot citi probele — amân curățarea o oră: {e}")
+        return
     keep_ev, keep_plain = [], []
     arhivate = 0
     try:
@@ -630,7 +649,16 @@ def _prune_body():
     for cid in cams:
         days, ev_days = _cam_retention(cid)
         ev = sorted(event_times(cid, days=ev_days + 1))
+        pr = prot.get(cid)
         for ts, p, fn in _files(cid, arhiva=False):
+            # proba: niciodata stearsa, niciodata data garzii de spatiu. Daca exista arhiva
+            # si a depasit retentia primara, o mutam acolo (ramane accesibila + verificata la
+            # hash, elibereaza primarul); altfel ramane pe primar, in afara buchetelor keep_*.
+            if probe.acopera(pr, ts, ts + SEGMENT):
+                if archive_dir() and now - ts > days * 86400:
+                    if _arhiveaza(cid, ts, p, fn):
+                        arhivate += 1
+                continue
             a, b = ts - MOTION_PAD, ts + SEGMENT + MOTION_PAD
             i = bisect.bisect_left(ev, a)
             has_event = i < len(ev) and ev[i] <= b
@@ -651,7 +679,7 @@ def _prune_body():
                 (keep_ev if has_event else keep_plain).append((ts, p))
     if arhivate:
         logare.info(f"[record] {arhivate} segmente mutate in arhiva")
-    _prune_arhiva(now)
+    _prune_arhiva(now, prot)
     # garda de spatiu: intai cele fara evenimente, cele mai vechi
     keep_plain.sort()
     keep_ev.sort()

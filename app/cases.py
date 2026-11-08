@@ -84,8 +84,31 @@ def delete(cid):
         return existed
 
 
+def _compact_local(compact):
+    """'20260803T102030Z' -> 'YYYY-MM-DD HH:MM:SS' (ora locala, ca in restul interfetei).
+    None daca formatul nu se potriveste."""
+    try:
+        return time.strftime("%Y-%m-%d %H:%M:%S", time.strptime(str(compact), "%Y%m%dT%H%M%SZ"))
+    except (ValueError, TypeError):
+        return None
+
+
+def _protejeaza_footage(cid, cam, start, end, who):
+    """Footage-ul pus intr-un dosar se auto-protejeaza de retentie (sursa='dosar:<cid>').
+    Best-effort: o problema la baza nu trebuie sa impiedice construirea dosarului."""
+    a, b = _compact_local(start), _compact_local(end)
+    if not a or not b:
+        return
+    try:
+        import probe
+        probe.create(cam, a, b, motiv=t("probă în dosar"), sursa=f"dosar:{cid}", who=who)
+    except Exception:
+        pass
+
+
 def add_proba(cid, cam, start, end, nota="", event_id=None, who=None):
-    """Adauga o proba (interval pe o camera) la caz. start/end = timestamp Hik (…Z)."""
+    """Adauga o proba (interval pe o camera) la caz. start/end = timestamp Hik (…Z).
+    Footage-ul se auto-protejeaza de retentie (vezi _protejeaza_footage)."""
     with _lock:
         data = _load()
         c = data.get(cid)
@@ -96,7 +119,8 @@ def add_proba(cid, cam, start, end, nota="", event_id=None, who=None):
                            "nota": (nota or "").strip(), "event_id": event_id,
                            "adaugat_de": who, "adaugat": _now()})
         _save(data)
-        return c
+    _protejeaza_footage(cid, cam, start, end, who)
+    return c
 
 
 def del_proba(cid, pid):

@@ -48,11 +48,25 @@ def all_cams():
 def motion_cleanup():
     """Pentru camerele pe modul 'la miscare': sterge segmentele fara evenimente.
     Ruleaza la 10 minute (segmentele sunt de 5 min, deci e destul de des)."""
+    # Probele („pastreaza ca proba") nu se sterg: le citim o data pentru toate camerele.
+    # Daca baza nu raspunde, saram cleanup-ul (ca la retentie) — nu riscam o proba.
+    try:
+        import probe
+        prot = probe.active_ranges()
+    except Exception as e:
+        logare.info(f"[record] motion cleanup amânat — nu pot citi probele: {e}")
+        prot = None
+    if prot is None:
+        t = threading.Timer(600, motion_cleanup)
+        t.daemon = True
+        t.start()
+        return
     for cam in all_cams():
         if cam.get("record") != "motion":
             continue
         try:
-            n = record.prune_motion(cam["id"], record.event_times(cam["id"]))
+            n = record.prune_motion(cam["id"], record.event_times(cam["id"]),
+                                    protejat=prot.get(cam["id"]))
             if n:
                 logare.info(f"[record] cam{cam['id']}: sterse {n} segmente fara miscare")
         except Exception as e:
