@@ -14,6 +14,7 @@ import './js/46-reid.js';
 import './js/48-cauta.js';
 import './js/50-camere.js';
 import './js/60-setari.js';
+import './js/65-program.js';
 import './js/70-ai.js';
 import './js/75-adnotare.js';
 import { loadCameras } from './js/10-live.js';

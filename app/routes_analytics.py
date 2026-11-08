@@ -74,7 +74,8 @@ def api_rules():
                       "talk": bool((c.get("features") or {}).get("talk")),
                       "io_out": bool((c.get("features") or {}).get("io_out"))}
             for c in load_ext()}
-    return jsonify({"rules": sorted(rules.load(), key=lambda r: r.get("nume", "")),
+    return jsonify({"rules": [{**r, "ultima": rules.last_fire(r.get("id"))}
+                              for r in sorted(rules.load(), key=lambda r: r.get("nume", ""))],
                     "triggers": {k: t(v) for k, v in rules.TRIGGER_TYPES.items()},
                     "actions": {k: t(v) for k, v in rules.ACTION_TYPES.items()},
                     "capabilities": caps, "zile": [t(z) for z in rules.ZILE],

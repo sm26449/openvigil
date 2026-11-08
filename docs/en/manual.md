@@ -625,7 +625,14 @@ Telegram remains the fallback channel, it does not depend on any phone.
   a rule. "Night automatically" (Settings) switches home → night at `night_start` and back at
   `night_end`; "away" is never touched automatically. Every change goes into the log (event
   `mod`) and into the audit, with who and from where.
-- **Map** ("Map" tab, `app/harta.py`, `data/harta.json` + `data/harta/<plan>.png`):
+- **Schedule & automation** ("Schedule" tab, admin only; `app/mod.py`, `data/mod_program.json`):
+  a weekly mode timeline. For each day you add changes "at time X → mode Y"; at each change time
+  the system switches on its own (including "away", if you place it explicitly), and between
+  changes a manual switch stays until the next one. The per-minute thread applies each transition
+  once and catches up after a restart (it never re-asserts over a manual change). While the
+  schedule is active it replaces the single "Night automatically" window; when off, that remains
+  as a fallback. Also here: the rules list with inline on/off and "last fired" (API:
+  `GET/POST /api/mod/program`, and `/api/rules` now also returns `ultima` per rule).
   the property plan (sketch, satellite screenshot; PNG/JPEG/WebP ≤ 8 MB) with the cameras
   placed on it and their view cones. Markers show the state (green = recording, grey =
   not writing, blue = detection, pulsing red = alarm; a critical incident makes the marker

@@ -626,6 +626,14 @@ Telegram ramane canalul de rezerva, nu depinde de niciun telefon.
   o regula. „Noaptea automat" (Setari) trece acasa → noapte la `night_start` si inapoi la
   `night_end`; „plecat" nu se atinge automat. Orice schimbare intra in jurnal (eveniment
   `mod`) si in audit, cu cine si de unde.
+- **Program & automatizare** (tab „Program", doar admin; `app/mod.py`, `data/mod_program.json`):
+  un orar saptamanal de moduri (timeline). Pe fiecare zi pui schimbari „la ora X → modul Y";
+  la ora fiecareia, sistemul comuta singur (inclusiv „plecat", daca il pui explicit), iar intre
+  schimbari o comutare manuala ramane pana la urmatoarea. Firul de la fiecare minut aplica
+  tranzitia doar o data si recupereaza dupa o repornire (nu reasserta peste o schimbare manuala).
+  Cat timp programul e activ, inlocuieste fereastra unica „Noaptea automat"; cand e oprit, aceasta
+  ramane ca rezerva. Tot aici: lista regulilor cu pornit/oprit pe loc si „ultima declansare"
+  (API: `GET/POST /api/mod/program`, iar `/api/rules` arata acum si `ultima` per regula).
 - **Harta** (tab „Harta", `app/harta.py`, `data/harta.json` + `data/harta/<plan>.png`):
   planul proprietatii (schita, captura din satelit; PNG/JPEG/WebP ≤ 8 MB) cu camerele
   asezate si conurile lor de vedere. Marcajele arata starea (verde = inregistreaza, gri =
