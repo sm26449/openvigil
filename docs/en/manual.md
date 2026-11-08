@@ -325,8 +325,12 @@ the button in Settings → Detection. It also works for viewers (results are fil
 their cameras). Since 2026-10-27 the "Learn the scene" crops also go into the index (marked 🧩),
 with the SigLIP vector already computed at classification — see the "Learn the scene" section.
 
-## The AI tab: people, vehicles, rules, events
-A dedicated tab with four sections (sidebar, like Settings):
+## The AI tab: people, vehicles, rules, configuration, events
+A dedicated tab with several sections (sidebar, like Settings). The **Configuration** pane gathers all
+AI configuration in one place — Face ID, LPR, descriptions (VLM) and semantic search: on/off, thresholds,
+alert cameras. Saving works like Settings: changes accumulate, the bottom bar appears when something is
+unsaved, you press "Save" once (only the changed groups are sent). The other panes keep only their content
+— library, unknowns, logs. (Semantic search used to live under Settings → Detection.)
 - **People** — the Face ID library, labelling of unknown faces, and a per-person
   "history": all of their recognised appearances (`data/faces/log.jsonl`) — the answer to
   "when did X last come by?".
