@@ -477,6 +477,7 @@ def api_pulse():
             "alarm": bool(a.get("active")),
             "detect": bool(d.get("labels")),
             "age": int(now - last_write) if last_write else None,
+            "online": notify.stare_cam(cid),   # watchdog: True/False/None (necunoscut)
         })
     _pulse_cache.update(t=now, data=out)
     vis = _visible_ids()

@@ -2472,5 +2472,13 @@
   "+ schimbare": "+ change",
   "Șterge": "Delete",
   "ultima declanșare": "last fired",
-  "zilnic": "daily"
+  "zilnic": "daily",
+  "canal deconectat (watchdog)": "channel disconnected (watchdog)",
+  "Configurare": "Configuration",
+  "ce pornim, cât de strict": "what's on, how strict",
+  "Ce pornim și cât de strict — fețe, numere, semnalmente, căutare semantică. Modificările se adună; salvezi o dată, din bara de jos.": "What's on and how strict — faces, plates, descriptions, semantic search. Changes accumulate; you save once, from the bottom bar.",
+  "Pornirea, pragul și semnalmentele sunt în fila Configurare. Aici gestionezi biblioteca și etichetezi fețele.": "Enabling, threshold and descriptions are in the Configuration tab. Here you manage the library and label faces.",
+  "Pornirea, pragurile și camerele de alertă sunt în fila Configurare. Aici vezi statisticile, mașinile cunoscute și jurnalul citirilor.": "Enabling, thresholds and alert cameras are in the Configuration tab. Here you see the stats, known cars and the reads log.",
+  "Aceeași persoana da de regula 0,5-0,8; persoane diferite sub 0,3 — pragul implicit 0,45 e un echilibru bun. Prag mai mic = recunoaște mai ușor, dar poate confunda; mai mare = mai strict.": "The same person usually scores 0.5-0.8; different people below 0.3 — the default 0.45 is a good balance. Lower = recognizes more easily but may confuse; higher = stricter.",
+  "Fiecare poza din Alarme primeste o „amprenta\" de sens (SigLIP, local), iar câmpul de căutare din tabul Alarme găsește poze după descriere liberă: „mașină albă\", „om cu rucsac\". Pozele noi se indexeaza singure; istoricul la buton.": "Each Alarms photo gets a meaning “fingerprint” (SigLIP, local), and the search box in the Alarms tab finds photos by free description: “white car”, “person with backpack”. New photos index themselves; history on the button."
 }

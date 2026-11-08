@@ -1565,6 +1565,7 @@ body.viewer .act-only { display: none !important; }
 .hc-b { font-size: var(--fs-xs); padding: 1px 6px; border-radius: var(--r-pill); background: var(--line); color: var(--text-2); }
 .hc-b.hc-rec { background: var(--alarm); color: #fff; }
 .hc-b.hc-alarm { background: var(--warn); color: #000; }
+.hc-b.hc-off { background: var(--alarm-hi); color: #fff; }
 
 /* ---------- Program & automatizare (#program-overlay) ---------- */
 .pg-wrap { width: 100%; max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: var(--s4); padding: var(--s4); }
