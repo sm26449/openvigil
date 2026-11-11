@@ -1,4 +1,8 @@
 {
+  "scripts": {
+    "test:ui": "node ui-regresie.js",
+    "test:ui-live": "node ui-test.js"
+  },
   "dependencies": {
     "playwright": "^1.44.1"
   },
