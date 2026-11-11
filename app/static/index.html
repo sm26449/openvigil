@@ -2,12 +2,20 @@
 <html lang="ro">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>OpenVigil</title>
 <link rel="stylesheet" href="style.css">
-<link rel="manifest" href="manifest.json">
+<!-- use-credentials: altfel browserul cere manifestul fara cookie si ia 302 la /login (tot
+     /static e in spatele autentificarii), iar instalarea PWA esueaza -->
+<link rel="manifest" href="manifest.json" crossorigin="use-credentials">
 <link rel="icon" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
+<!-- iOS: Web Push merge DOAR pentru PWA adaugat pe ecranul de start (iOS 16.4+). Aceste
+     meta-taguri fac aplicatia sa porneasca pe tot ecranul, fara bara Safari. -->
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="OpenVigil">
 <meta name="theme-color" content="#1c2128">
 </head>
 <body>
@@ -1510,6 +1518,10 @@
     </section>
     <section>
       <h3>Notificari push pe acest dispozitiv</h3>
+      <div id="instalare-app" class="hidden instalare-card">
+        <p class="hint" id="instalare-text"></p>
+        <button type="button" id="instalare-btn" class="hidden">Instalează aplicația</button>
+      </div>
       <p class="hint" id="push-stare">…</p>
       <label>Ce primesc
         <select id="push-nivel">

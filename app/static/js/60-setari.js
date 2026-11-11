@@ -403,6 +403,45 @@ $('#sess-all').onclick = async () => {
   if (d && !d.error) flash('#sess-msg', t('Toate celelalte sesiuni au fost tăiate ✓'));
 };
 
+// --- instalare PWA (Adauga pe ecranul de start) ---
+// Pe Android/desktop Chrome prindem evenimentul `beforeinstallprompt` (nu-l lasam sa apara
+// automat) si il oferim printr-un buton. iOS nu are asa ceva: Web Push merge doar daca
+// aplicatia e adaugata manual pe ecranul de start, deci acolo aratam instructiunile.
+let promptInstalare = null;
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); promptInstalare = e; randInstalare(); });
+window.addEventListener('appinstalled', () => { promptInstalare = null; randInstalare(); });
+function eInstalat() {
+  return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+}
+function eIOS() {
+  // iPadOS 13+ se da drept Mac; il prindem dupa ecranul tactil
+  return /iP(hone|ad|od)/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+function randInstalare() {
+  const box = $('#instalare-app'), txt = $('#instalare-text'), btn = $('#instalare-btn');
+  if (!box) return;
+  if (eInstalat()) { box.classList.add('hidden'); return; }   // deja aplicatie: nimic de aratat
+  box.classList.remove('hidden');
+  if (promptInstalare) {
+    txt.textContent = t('Instaleaz-o pe ecranul de start ca sa primesti notificari si sa o deschizi ca pe o aplicatie.');
+    btn.classList.remove('hidden');
+  } else if (eIOS()) {
+    txt.textContent = t('Pe iPhone/iPad: apasa Partajează, apoi „Adaugă la ecranul de start" — de acolo primesti notificari push.');
+    btn.classList.add('hidden');
+  } else {
+    txt.textContent = t('Din meniul browserului alege „Instalează aplicația" / „Adaugă la ecranul de start".');
+    btn.classList.add('hidden');
+  }
+}
+$('#instalare-btn') && ($('#instalare-btn').onclick = async () => {
+  if (!promptInstalare) return;
+  promptInstalare.prompt();
+  try { await promptInstalare.userChoice; } catch {}
+  promptInstalare = null;
+  randInstalare();
+});
+
 // --- push pe acest dispozitiv ---
 function b64url(s) {
   const pad = '='.repeat((4 - (s.length % 4)) % 4);
@@ -415,6 +454,7 @@ async function pushReg() {
   return Promise.race([navigator.serviceWorker.ready, new Promise((r) => setTimeout(() => r(null), 3000))]);
 }
 async function loadPushState() {
+  randInstalare();
   const st = $('#push-stare');
   const btnOn = $('#push-on'), btnOff = $('#push-off'), btnTest = $('#push-test');
   btnOn.classList.add('hidden'); btnOff.classList.add('hidden'); btnTest.classList.add('hidden');

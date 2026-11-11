@@ -3,6 +3,18 @@
 Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [Nepublicat]
+
+### Adăugat
+- **Aplicație instalabilă pe mobil, cu notificări push** — interfața se poate adăuga acum pe
+  ecranul de start (telefon sau desktop) și pornește ca o aplicație de sine stătătoare, pe tot
+  ecranul. Pe Android/Chrome apare un buton **„Instalează aplicația"**; pe iPhone/iPad
+  (iOS 16.4+) notificările push merg **după** ce o adaugi pe ecranul de start din Safari
+  (Partajează → „Adaugă la ecranul de start") — cardul de notificări explică pașii. Notificările
+  push arată acum **miniatura camerei**, un buton **„Vezi"** care sare direct la moment, și un
+  **contor pe iconița aplicației**. (Manifest cu scurtături Live / Evenimente / Înregistrări și
+  iconiță „maskable" pentru Android.)
+
 ## [2.0.26] — 2026-11-08
 
 ### Adăugat
