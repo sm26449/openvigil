@@ -4,7 +4,7 @@
    pe toate; importurile/exporturile sunt verificate de scripts/module_check.py (si in pytest).
    ==================================================================== */
 import { S } from './state.js';
-import { $, DET_RO, GO2RTC, HD_MODE, JOB_STARE_RO, LIMBA, html, icon, lista, runJob, streamEl, t, toast } from './00-core.js';
+import { $, DET_RO, GO2RTC, HD_MODE, JOB_STARE_RO, LIMBA, bindMore, html, icon, lista, runJob, streamEl, t, toast } from './00-core.js';
 import { pbHash, setHash } from './05-navigare.js';
 import { loadCameras, post } from './10-live.js';
 import { hdCam } from './20-hd.js';
@@ -667,16 +667,9 @@ $('#pb-multi').onclick = () => {
   $('#pb-multi').classList.toggle('active', !box.classList.contains('hidden'));
   if (!box.classList.contains('hidden')) renderMultiList();
 };
-// „Unelte" (export + analiza): pliate pe mobil ca timeline-ul sa fie deasupra fold-ului
-$('#pb-unelte-tgl') && ($('#pb-unelte-tgl').onclick = () => {
-  const open = $('#pb .pb-controls').classList.toggle('unelte-open');
-  $('#pb-unelte-tgl').setAttribute('aria-expanded', open ? 'true' : 'false');
-});
-// „⋯": desface controalele secundare de transport pe mobil (cadru, Eveniment, Captura, Marcaj…)
-$('#pb-nav-more') && ($('#pb-nav-more').onclick = () => {
-  const open = $('#pb-nav').classList.toggle('more-open');
-  $('#pb-nav-more').setAttribute('aria-expanded', open ? 'true' : 'false');
-});
+// bare colapsabile pe mobil: „Unelte" (export/analiza) deasupra timeline-ului, „⋯" controalele secundare de transport
+bindMore('#pb-unelte-tgl', '#pb .pb-controls', 'unelte-open');
+bindMore('#pb-nav-more', '#pb-nav', 'more-open');
 
 async function playFrom(date, sec) {
   const gen = ++pbGen;   // ultima cerere castiga: un raspuns vechi nu mai scrie in player (audit #1)

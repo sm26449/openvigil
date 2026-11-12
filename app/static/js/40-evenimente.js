@@ -4,7 +4,7 @@
    pe toate; importurile/exporturile sunt verificate de scripts/module_check.py (si in pytest).
    ==================================================================== */
 import { S } from './state.js';
-import { $, CAN_ACT, DET_RO, EV_RO, clipReady, esc, html, icon, lista, raw, runJob, t, toast } from './00-core.js';
+import { $, CAN_ACT, DET_RO, EV_RO, bindMore, clipReady, esc, html, icon, lista, raw, runJob, t, toast } from './00-core.js';
 import { evPane, show, showEv } from './05-navigare.js';
 import { popupTile, post } from './10-live.js';
 import { closeHD } from './20-hd.js';
@@ -306,10 +306,7 @@ const SEC_RO = { persoana_necunoscuta: 'persoane necunoscute',
   fata_falsa: 'fețe falsificate', numar: 'numere de mașină' };
 $('#inc-digest') && ($('#inc-digest').onclick = openDigest);
 // „⋯": desface Rezumat + Dosare (secundare) pe mobil, ca filtrul + lista sa fie in fata
-$('#inc-more') && ($('#inc-more').onclick = () => {
-  const open = $('.inc-bar').classList.toggle('inc-more-open');
-  $('#inc-more').setAttribute('aria-expanded', open ? 'true' : 'false');
-});
+bindMore('#inc-more', '.inc-bar', 'inc-more-open');
 $('#digest-close') && ($('#digest-close').onclick = closeDigest);
 $('#digest-day') && ($('#digest-day').onchange = loadDigest);
 $('#digest-modal') && ($('#digest-modal').onclick = (e) => { if (e.target.id === 'digest-modal') closeDigest(); });

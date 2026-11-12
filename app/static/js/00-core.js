@@ -16,6 +16,14 @@ const GO2RTC = location.protocol === 'https:' ? location.origin
   : `${location.protocol}//${location.hostname}:${STREAM_PORT}`;
 const $ = (s) => document.querySelector(s);
 
+// Comutator „mai multe" (butoanele „⋯"/„Unelte" de pe mobil): leaga btnSel sa comute clasa `cls`
+// pe targetSel si sa reflecte starea in aria-expanded. Un singur loc pentru cele 5 bare colapsabile.
+function bindMore(btnSel, targetSel, cls) {
+  const btn = $(btnSel), target = $(targetSel);
+  if (!btn || !target) return;
+  btn.onclick = () => { btn.setAttribute('aria-expanded', target.classList.toggle(cls) ? 'true' : 'false'); };
+}
+
 /* ---------- scaparea HTML: tot ce intra in innerHTML trece prin html`` ----------
    html`<b>${x}</b>` scapa automat orice valoare interpolata (nume de camere, texte de
    evenimente, raspunsuri AI...) — un sir obisnuit e TEXT, niciodata markup. Ce e deja
@@ -358,4 +366,4 @@ const EV_RO = {
 // text fara diacritice si cu litere mici, pentru cautari („Masina” gaseste „mașină”)
 const fdia = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
-export { $, ADMIN, CAN_ACT, DET_RO, EV_RO, GO2RTC, HD_MODE, HLS_SUFFIX, JOB_STARE_RO, LIMBA, ME, clipReady, esc, fdia, gridFrame, html, icon, lista, raw, runJob, streamEl, t, talkStart, talkStop, toast };
+export { $, ADMIN, CAN_ACT, DET_RO, EV_RO, GO2RTC, HD_MODE, HLS_SUFFIX, JOB_STARE_RO, LIMBA, ME, bindMore, clipReady, esc, fdia, gridFrame, html, icon, lista, raw, runJob, streamEl, t, talkStart, talkStop, toast };

@@ -4,7 +4,7 @@
    pe toate; importurile/exporturile sunt verificate de scripts/module_check.py (si in pytest).
    ==================================================================== */
 import { S } from './state.js';
-import { $, DET_RO, GO2RTC, JOB_STARE_RO, LIMBA, html, icon, lista, raw, runJob, t, toast } from './00-core.js';
+import { $, DET_RO, GO2RTC, JOB_STARE_RO, LIMBA, bindMore, html, icon, lista, raw, runJob, t, toast } from './00-core.js';
 import { show } from './05-navigare.js';
 import { buildLive, deleteCamera, filt, loadCameras, matches, post, renderGroupChips, renderViews, zoomBtns } from './10-live.js';
 import { openHD } from './20-hd.js';
@@ -924,10 +924,7 @@ $('#scan-open').onclick = () => {
   }
 };
 // „⋯": desface actiunile de admin din Camere pe mobil (scanare, selectare in masa)
-$('#cams-more') && ($('#cams-more').onclick = () => {
-  const open = $('#cams').classList.toggle('cams-more-open');
-  $('#cams-more').setAttribute('aria-expanded', open ? 'true' : 'false');
-});
+bindMore('#cams-more', '#cams', 'cams-more-open');
 let scanTimer = null;
 $('#scan-go').onclick = async () => {
   const d = await post('/api/discover', {

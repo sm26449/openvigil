@@ -389,8 +389,9 @@ header > nav button.active { background: var(--accent); color: #fff; }
 #pb-nav button { background: var(--line); color: var(--text-2); border: 0; padding: var(--s2) var(--s3); border-radius: var(--r1); cursor: pointer; font-size: var(--fs-sm); }
 #pb-nav button:hover { background: var(--accent); color: #fff; }
 #pb-pos { font-size: var(--fs-sm); color: var(--text-3); min-width: 62px; text-align: center; font-variant-numeric: tabular-nums; }
-/* butoanele „⋯" apar doar pe mobil (vezi blocul @media 720px); pe desktop secundarele sunt la vedere */
-.pb-nav-more, #live-more, #cams-more, #inc-more { display: none; }
+/* butoanele „⋯"/„Unelte" apar doar pe mobil (vezi blocul @media de mai jos); pe desktop secundarele
+   sunt la vedere. Un singur stil pentru toate cele patru „⋯" (.more-btn); „Unelte" are text, e separat. */
+.more-btn { display: none; }
 @media (max-width: 900px) { .pb-main { flex-direction: column; } .pb-right { width: 100%; max-height: 240px; } }
 
 /* timeline */
@@ -823,9 +824,13 @@ body.panel-open #cams { margin-right: 420px; }
    Legaturile ies 170px in afara ecranului. Le ascundem (exista si in Setari -> Unelte),
    iar antetul are voie sa se rupa pe doua randuri. */
 
-/* Barele cu filtre (cautare + grupuri + densitate) nu incap pe un rand la 390px.
-   Le lasam sa se rupa, iar campul de cautare ocupa toata latimea disponibila. */
-@media (max-width: 720px) {
+/* Praguri „mobil" (unificate, ca sa nu existe stari pe jumatate):
+   760px = chrome-ul de telefon — bara de jos + barele de filtre se rup + „⋯"/„Unelte" se pliaza
+           (acelasi prag ca bara de navigatie de jos, vezi @media 760px);
+   800px = sub-navul din Setari/AI trece pe mai multe randuri (are nevoie de mai multa latime);
+   pointer:coarse = dimensionare tactila (tinte 44px + campuri 16px contra zoom-ului iOS).
+   Barele cu filtre nu incap pe un rand la 390px: le lasam sa se rupa, cautarea ocupa tot randul. */
+@media (max-width: 760px) {
   .live-bar, .cams-bar, .al-controls, .pb-controls, .views-bar {
     flex-wrap: wrap; gap: var(--s2); }
   .search { min-width: 0; flex: 1 1 100%; }
@@ -833,33 +838,21 @@ body.panel-open #cams { margin-right: 420px; }
   #cams-pager { flex-wrap: wrap; gap: var(--s2); }
   .pager-size { margin-left: 0; }
   .pb-controls .exp { margin-left: 0; flex-wrap: wrap; }
-  /* mobil: timeline-ul primul — uneltele stau pliate sub butonul „Unelte" pana le ceri */
+  /* „Unelte" (buton cu text) si „⋯" (butoane-icon .more-btn) — stiluri o singura data */
   .pb-unelte-tgl { display: inline-flex; align-items: center; gap: 4px; background: var(--surface-2);
     color: var(--text); border: 1px solid var(--line); border-radius: var(--r1); padding: var(--s2) var(--s3); cursor: pointer; }
+  .more-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 44px;
+    background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: var(--r1); cursor: pointer; }
+  /* starea „deschis", aceeasi pentru toate (aria-expanded e pus de bindMore) */
+  .pb-unelte-tgl[aria-expanded="true"], .more-btn[aria-expanded="true"] { background: var(--accent); color: #fff; }
+  /* ce se pliaza in fiecare bara cand butonul ei nu e deschis */
   .pb-unelte { display: none; flex: 1 1 100%; flex-direction: column; gap: var(--s2); }
   .pb-controls.unelte-open .pb-unelte { display: flex; }
-  .pb-controls.unelte-open .pb-unelte-tgl { background: var(--accent); color: #fff; }
-  /* bara de transport: doar esentialele vizibile; restul (.pb-sec) sub butonul „⋯" */
-  .pb-nav-more { display: inline-flex; align-items: center; justify-content: center; min-width: 44px;
-    background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: var(--r1); cursor: pointer; }
   #pb-nav:not(.more-open) .pb-sec { display: none; }
-  #pb-nav.more-open .pb-nav-more { background: var(--accent); color: #fff; }
-  /* Live: camerele primele — actiunile secundare pliate sub „⋯", eticheta „Vizualizari" ascunsa */
-  #live-more { display: inline-flex; align-items: center; justify-content: center; min-width: 44px;
-    background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: var(--r1); cursor: pointer; }
   #live:not(.live-more-open) .live-sec { display: none; }
-  #live.live-more-open #live-more { background: var(--accent); color: #fff; }
-  /* bara de vizualizari salvate (si indiciul ei) e un feature de desktop — pe mobil o scoatem
-     ca sa nu stea chrome deasupra camerelor; salvarea de vizualizari ramane pe desktop */
-  #live .views-bar { display: none; }
-  /* Camere: actiunile de admin (scanare, selectare in masa) sub „⋯" */
-  #cams-more, #inc-more { display: inline-flex; align-items: center; justify-content: center; min-width: 44px;
-    background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: var(--r1); cursor: pointer; }
+  #live .views-bar { display: none; }   /* bara de vizualizari salvate = feature de desktop */
   #cams:not(.cams-more-open) .cams-sec { display: none; }
-  #cams.cams-more-open #cams-more { background: var(--accent); color: #fff; }
-  /* Evenimente: Rezumat + Dosare (secundare) sub „⋯" */
   .inc-bar:not(.inc-more-open) .inc-sec { display: none; }
-  .inc-bar.inc-more-open #inc-more { background: var(--accent); color: #fff; }
 }
 
 /* ---- alarma de zgomot: nivel live + istoric ---- */
