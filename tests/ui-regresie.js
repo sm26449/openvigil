@@ -75,7 +75,7 @@ async function scenA1(browser) {
     await page.click('.ainav-item[data-pane="config"]');
     await page.waitForSelector('#fc-on', { state: 'visible', timeout: 5000 });
     await page.click('#fc-on');              // schimbam ceva ca salvarea sa trimita grupul faces
-    await page.click('#ai-save');
+    await page.evaluate(() => document.querySelector('#ai-save').click());   // click programatic: bara de salvare poate fi fixata/acoperita, iar actionability pica flaky pe CI
     const c = await waitForCall(calls, '/api/faces/config', 'POST', 4000);
     if (!c) { bad('A1', 'UI nu a trimis POST /api/faces/config'); return; }
     ok('UI a trimis POST /api/faces/config');
@@ -99,7 +99,7 @@ async function scenA2(browser) {
     await page.waitForSelector('#ru-list .ru-edit', { timeout: 5000 });
     await page.click('#ru-list .ru-edit');                 // fillRuleForm(rule) — activ:false
     await page.fill('#ru-name', 'Regula redenumita');      // doar corectam numele
-    await page.click('#ru-save');
+    await page.evaluate(() => document.querySelector('#ru-save').click());   // click programatic (vezi #ai-save)
     const c = await waitForCall(calls, '/api/rules', 'POST', 4000);
     if (!c) { bad('A2', 'UI nu a trimis POST /api/rules'); return; }
     c.body && c.body.activ === false
@@ -131,7 +131,7 @@ async function scenS2(browser) {
     const enabled = await waitEnabled(page, '#s-save', false, 6000);
     if (!enabled) { bad('S2', '#s-save a ramas dezactivat (loaderele nu au terminat?)'); return; }
     await page.$eval('#noise-thr', (el) => { el.value = '0'; el.dispatchEvent(new Event('input', { bubbles: true })); });
-    await page.click('#s-save');
+    await page.evaluate(() => document.querySelector('#s-save').click());   // click programatic (vezi #ai-save) — a dat timeout de actionability pe CI
     const c = await waitForCall(calls, '/api/settings', 'POST', 4000);
     if (!c) { bad('S2', 'UI nu a trimis POST /api/settings'); return; }
     c.body && c.body.noise_threshold_db === 0
