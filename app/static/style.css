@@ -1570,7 +1570,9 @@ body.viewer .act-only { display: none !important; }
 .ov-bar button:hover { background: var(--accent); color: #fff; }
 .ov-bar .ov-ok { background: var(--ok); color: #fff; }
 .ov-bar .ov-close { margin-left: auto; }
-.ov-body { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; padding: var(--s3); gap: var(--s3); overflow: auto; }
+/* aliniat sus (nu centrat): la continut mai inalt decat fereastra, centrarea + overflow taie varful
+   si nu-l mai poti derula — se intampla si pe desktop scund, nu doar pe mobil */
+.ov-body { flex: 1; display: flex; align-items: flex-start; justify-content: flex-start; min-height: 0; padding: var(--s3); gap: var(--s3); overflow: auto; }
 .ov-canvas { cursor: crosshair; border-radius: var(--r1); max-width: 100%; max-height: 100%; }
 .ov-body.split .ov-canvas { max-width: calc(100% - 300px); }
 .ov-side { width: 280px; flex: none; align-self: stretch; overflow: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r1); padding: var(--s3); font-size: var(--fs-sm); }
@@ -1580,9 +1582,8 @@ body.viewer .act-only { display: none !important; }
 .exp.an { margin-left: var(--s3); }
 .evdot.reg { background: #e3b341; height: 10px; }
 @media (max-width: 800px) { .ov-body.split { flex-direction: column; } .ov-body.split .ov-canvas { max-width: 100%; } .ov-side { width: auto; }
-  /* modalele full-screen (program, sanatate, zone…): continutul inalt se deruleaza de sus, nu se
-     mai taie; bara de sus (cu „Inchide") sta sub notch via safe-area */
-  .ov-body { align-items: flex-start; justify-content: flex-start; }
+  /* modalele full-screen (program, sanatate, zone…): continutul derulabil de sus e acum in regula
+     de baza .ov-body; aici doar bara de sus (cu „Inchide") sub notch via safe-area */
   .ov-full .ov-bar { padding-top: max(var(--s3), env(safe-area-inset-top, 0px)); flex-wrap: wrap; }
   .ov-full .ov-close { min-height: 44px; min-width: 44px; } }
 
@@ -1717,8 +1718,10 @@ dialog#reid::backdrop { background: rgba(0, 0, 0, .6); }
 @media (max-width: 760px) {
   :root { --bara-jos: calc(60px + env(safe-area-inset-bottom, 0px)); }
   /* padding-top: antetul (titlu + butoane de mod) sa nu stea sub bara de stare / notch pe iPhone */
-  body { padding-bottom: var(--bara-jos); padding-top: env(safe-area-inset-top, 0px); }
-  header { gap: var(--s2); padding: var(--s2) var(--s3); flex-wrap: nowrap; }
+  body { padding-bottom: var(--bara-jos); }
+  /* antetul e position:sticky;top:0 — safe-area pe padding-ul LUI (nu pe body), altfel la derulare
+     se re-ancoreaza la y=0 si intra sub bara de stare / notch pe iPhone (fundalul umple notch-ul) */
+  header { gap: var(--s2); padding: calc(var(--s2) + env(safe-area-inset-top, 0px)) var(--s3) var(--s2); flex-wrap: nowrap; }
   header h1 { font-size: var(--fs-sm); white-space: nowrap; }
   #mod-chip { margin-left: auto; }
   #mod-chip button { padding: var(--s1) var(--s2); font-size: var(--fs-xs); min-height: 36px; }

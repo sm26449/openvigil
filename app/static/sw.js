@@ -28,12 +28,16 @@ self.addEventListener('push', (e) => {
 });
 
 // Click pe notificare (sau pe butonul „Vezi"): fereastra deschisa a aplicatiei sare direct
-// la moment (#pb/cam/zi/sec), altfel deschidem una noua. Golim si badge-ul de pe icon.
+// la moment (#pb/cam/zi/sec), altfel deschidem una noua. Badge-ul se recalculeaza din cele ramase.
 self.addEventListener('notificationclick', (e) => {
   e.notification.close();
   const url = (e.notification.data && e.notification.data.url) || '/';
   e.waitUntil((async () => {
-    if (self.navigator && 'clearAppBadge' in self.navigator) { try { await self.navigator.clearAppBadge(); } catch (_) {} }
+    // nu golim orbeste: daca mai sunt notificari in tava, pastram numarul lor pe icon
+    if (self.navigator && 'setAppBadge' in self.navigator) {
+      try { const n = await self.registration.getNotifications();
+        n.length ? await self.navigator.setAppBadge(n.length) : await self.navigator.clearAppBadge(); } catch (_) {}
+    }
     const wins = await clients.matchAll({ type: 'window', includeUncontrolled: true });
     for (const w of wins) {
       if ('focus' in w) { await w.focus(); if ('navigate' in w) return w.navigate(url); return; }
