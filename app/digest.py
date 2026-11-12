@@ -88,14 +88,17 @@ def _nume_camere():
         return {}
 
 
-def text(day=None):
+def text(day=None, visible=None):
     """Mesajul de rezumat pentru Telegram (text simplu): evenimente si incidente, cine a fost
     vazut, masini necunoscute, camere cu goluri sau sabotaj, starea inregistrarii, titlurile
-    zilei (criticele). Fiecare sursa e optionala — o eroare intr-una nu taie mesajul."""
+    zilei (criticele). Fiecare sursa e optionala — o eroare intr-una nu taie mesajul.
+    visible = None (tot) sau multimea camerelor permise — scopeaza TOATE sursele, altfel un
+    cont restrans ar vedea numele/activitatea camerelor interzise in rezumat (SEC-02)."""
     day = day or _azi()
     nume = _nume_camere()
     cn = lambda c: nume.get(c, f"cam {c}")
-    d = build(day=day)
+    vede = lambda c: visible is None or c in visible   # c vizibil pe contul curent?
+    d = build(day=day, visible=visible)
     linii = [t("📋 Rezumatul zilei {zi}", zi=day),
              t("{n} evenimente · {c} critice, {a} de atenție", n=d['total'],
                c=d['severitate']['critic'], a=d['severitate']['atentie'])]
@@ -108,7 +111,8 @@ def text(day=None):
     # cine a fost vazut (Face ID)
     try:
         import faces
-        vazuti = Counter(h["nume"] for h in faces.history(limit=2000) if (h.get("t") or "").startswith(day))
+        vazuti = Counter(h["nume"] for h in faces.history(limit=2000)
+                         if (h.get("t") or "").startswith(day) and (h.get("cam") is None or vede(h.get("cam"))))
         if vazuti:
             linii.append(t("👤 văzuți: {lista}", lista=", ".join(f"{n}×{k}" for n, k in vazuti.most_common(6))))
     except Exception:
@@ -118,7 +122,7 @@ def text(day=None):
         import plates
         kn = plates.known()
         nec = [r for r in plates.reads(limit=2000) if (r.get("t") or "").startswith(day)
-               and not r.get("nume") and r.get("numar") not in kn]
+               and not r.get("nume") and r.get("numar") not in kn and (r.get("cam") is None or vede(r.get("cam")))]
         if nec:
             numere = Counter(r["numar"] for r in nec)
             linii.append(t("🚗 mașini necunoscute: {lista}", lista=", ".join(f"{p}×{k}" for p, k in numere.most_common(5))))
@@ -130,7 +134,7 @@ def text(day=None):
         from server import load_ext
         goluri = []
         for cam in load_ext():
-            if cam.get("record", "continuous") != "continuous":
+            if cam.get("record", "continuous") != "continuous" or not vede(cam["id"]):
                 continue
             g = continuity.gaps(cam["id"], day)
             if g:
@@ -138,7 +142,7 @@ def text(day=None):
                                 minute=round(sum(x['sec'] for x in g) / 60)))
         if goluri:
             linii.append(t("⏸ goluri de înregistrare: {lista}", lista=", ".join(goluri[:6])))
-        nu_scriu = [cn(x["id"]) for x in continuity.live() if x.get("mod") == "continuous" and not x.get("scrie")]
+        nu_scriu = [cn(x["id"]) for x in continuity.live() if x.get("mod") == "continuous" and not x.get("scrie") and vede(x["id"])]
         if nu_scriu:
             linii.append(t("🔴 nu înregistrează acum: {lista}", lista=", ".join(nu_scriu)))
     except Exception:
@@ -147,7 +151,7 @@ def text(day=None):
     try:
         import snaps
         sab = Counter(it["cam"] for it in snaps.list_day(day)
-                      if it["label"] in ("shelteralarm", "tamperdetection", "scenechangedetection", "defocusdetection"))
+                      if it["label"] in ("shelteralarm", "tamperdetection", "scenechangedetection", "defocusdetection") and vede(it["cam"]))
         if sab:
             linii.append(t("🛡 sabotaj raportat: {lista}", lista=", ".join(f"{cn(c)}×{k}" for c, k in sab.most_common(5))))
     except Exception:

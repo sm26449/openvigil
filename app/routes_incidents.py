@@ -55,7 +55,7 @@ def api_incident_state(eid):
 @bp.route("/api/digest/text")
 def api_digest_text():
     """Textul rezumatului zilei (?day=), asa cum ar pleca pe Telegram — fara sa-l trimita."""
-    return jsonify({"text": digest_mod.text(request.args.get("day") or None)})
+    return jsonify({"text": digest_mod.text(request.args.get("day") or None, visible=_visible_ids())})
 
 
 @bp.route("/api/digest/trimite", methods=["POST"])
