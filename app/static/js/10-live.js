@@ -135,6 +135,9 @@ function buildLive() {
   const shown = S.cameras.filter((c) => matches(c, filt.live));
   $('#status').textContent = shown.length === S.cameras.length
     ? t('{n} camere', { n: S.cameras.length }) : t('{n} din {total} camere', { n: shown.length, total: S.cameras.length });
+  // putine camere: pe telefon, in mod „auto", le aratam pe o coloana (dale mari) in loc de
+  // doua dale mici cu gol mare dedesubt. La multe camere, grila umple oricum ecranul.
+  grid.classList.toggle('g-few', shown.length <= 2);
   for (const c of shown) {
     const tile = document.createElement('div');
     tile.className = 'tile';

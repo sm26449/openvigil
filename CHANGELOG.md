@@ -3,6 +3,31 @@
 Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [2.1.1] — 2026-11-12
+
+**Highlights (English)** — Mobile polish on top of 2.1.0.
+- **Cleaner Live on phones.** With one or two cameras (Auto mode) the grid now uses a single column
+  with large tiles instead of two tiny ones over empty space. Each tile shows just the live image
+  (name + status) — all actions and PTZ moved to the camera's HD view (tap a tile).
+- **Camera actions within thumb reach.** In a camera's HD view the action panel (siren, strobe,
+  talk, zoom, snapshot, AI…) moved from the top bar down next to the timeline, easier to reach
+  one-handed. Desktop unchanged.
+
+### Schimbat
+- **Live cu puține camere arată mai bine pe telefon** — când ai una sau două camere (în modul
+  „Auto"), grila le afișează acum pe **o singură coloană, cu dale mari**, în loc de două dale mici
+  cu un gol negru dedesubt. La mai multe camere, grila umple oricum ecranul (nimic schimbat). Poți
+  oricând alege explicit 2 coloane din selectorul de densitate.
+- **Dale de Live curate pe telefon** — pe ecrane mici, fiecare cameră din grilă arată acum **doar
+  imaginea live** (plus numele și punctul de stare), fără butoanele de acțiune (sirenă, strobo,
+  vorbit, zoom, captură, AI) și fără controalele native de video. Toate acțiunile și mișcarea
+  camerei (PTZ) sunt pe camera deschisă în HD — atingi dala și le ai acolo. Pe desktop nimic nu se
+  schimbă.
+- **Acțiunile camerei, la îndemână pe telefon** — în vizualizarea HD a unei camere, panoul de
+  acțiuni (sirenă, strobo, vorbit, zoom, captură, AI…) a coborât din bara de sus lângă linia
+  timpului, **în zona degetului**, mai ușor de atins cu o mână. Bara de sus rămâne doar cu numele
+  camerei și „Închide". Pe desktop acțiunile rămân sus, lângă titlu.
+
 ## [2.1.0] — 2026-11-12
 
 **Highlights (English)** — OpenVigil is now an installable mobile app with push notifications, and
