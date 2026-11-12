@@ -15,6 +15,10 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   vorbit, zoom, captură, AI) și fără controalele native de video. Toate acțiunile și mișcarea
   camerei (PTZ) sunt pe camera deschisă în HD — atingi dala și le ai acolo. Pe desktop nimic nu se
   schimbă.
+- **Acțiunile camerei, la îndemână pe telefon** — în vizualizarea HD a unei camere, panoul de
+  acțiuni (sirenă, strobo, vorbit, zoom, captură, AI…) a coborât din bara de sus lângă linia
+  timpului, **în zona degetului**, mai ușor de atins cu o mână. Bara de sus rămâne doar cu numele
+  camerei și „Închide". Pe desktop acțiunile rămân sus, lângă titlu.
 
 ## [2.1.0] — 2026-11-12
 

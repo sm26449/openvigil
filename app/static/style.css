@@ -1795,6 +1795,10 @@ dialog#reid::backdrop { background: rgba(0, 0, 0, .6); }
   #hd-bar { flex-wrap: wrap; gap: var(--s2);
     padding: max(var(--s2), env(safe-area-inset-top, 0px)) var(--s3) var(--s2); }
   #hd-ctrls { order: 3; flex-basis: 100%; overflow-x: auto; scrollbar-width: none; }
+  /* panoul de actiuni mutat jos (strip langa timeline, in zona degetului) — vezi hdCtrlsPlasare */
+  #hd-ctrls.hd-ctrls-jos { order: initial; flex-basis: auto; margin-left: 0; width: 100%; justify-content: center;
+    padding: var(--s2) var(--s3); background: var(--surface); border-top: 1px solid var(--line); }
+  #hd-ctrls.hd-ctrls-jos::-webkit-scrollbar { display: none; }
   #hd-close { min-width: 44px; min-height: 44px; }
   #hd-close .hd-close-txt { display: none; }
   #hd-overlay { background: #000; }   /* pe telefon nu lasam grila sa se vada prin overlay */

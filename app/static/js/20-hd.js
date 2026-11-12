@@ -201,6 +201,18 @@ initHdSwipe();
 $('#hd-prev') && ($('#hd-prev').onclick = () => hdVecin(-1));
 $('#hd-next') && ($('#hd-next').onclick = () => hdVecin(1));
 
+// Pe telefon, panoul de actiuni (#hd-ctrls) coboara ca strip langa timeline (zona degetului),
+// nu sus sub titlu. Pe desktop ramane in bara, langa titlu. Mutare in DOM dupa latime.
+const hdMq = window.matchMedia('(max-width: 760px)');
+function hdCtrlsPlasare() {
+  const ctrls = $('#hd-ctrls'), bar = $('#hd-bar'), tl = $('#hd-tl-wrap');
+  if (!ctrls || !bar || !tl) return;
+  if (hdMq.matches) { tl.parentElement.insertBefore(ctrls, tl); ctrls.classList.add('hd-ctrls-jos'); }
+  else { bar.insertBefore(ctrls, $('#hd-close')); ctrls.classList.remove('hd-ctrls-jos'); }
+}
+hdCtrlsPlasare();
+hdMq.addEventListener('change', hdCtrlsPlasare);
+
 // Fluxurile din grila se opresc cat timp HD-ul le acopera si repornesc la inchidere
 // (elementele raman in DOM, doar conexiunea se taie: video-rtc.js stie sa se reconecteze).
 function gridPause(pauza) {
