@@ -357,6 +357,14 @@ async function scenHD(browser) {
     const t2 = await page.evaluate(() => document.querySelector('#hd-title').textContent);
     (t2 && t2 !== t1) ? ok(`swipe stanga trece la alta camera (${t2})`) : bad('HD', `swipe nu a schimbat camera (inca ${t2})`);
 
+    // sageata „›" vizibila (indiciu de swipe) si tap-abila ca alternativa
+    const edgeVis = await page.evaluate(() => getComputedStyle(document.querySelector('#hd-next')).display !== 'none');
+    edgeVis ? ok('sageti de margine („‹ ›") vizibile pe telefon') : bad('HD', 'sagetile de margine ascunse pe mobil');
+    await page.evaluate(() => document.querySelector('#hd-next').click());
+    await page.waitForTimeout(200);
+    const t3 = await page.evaluate(() => document.querySelector('#hd-title').textContent);
+    (t3 && t3 !== t2) ? ok(`tap pe „›" trece la alta camera (${t3})`) : bad('HD', `tap „›" nu a schimbat camera (inca ${t3})`);
+
     await swipe(200, 200, 200, 520);  // swipe jos -> inchide
     await page.waitForTimeout(300);
     const inchis = await page.evaluate(() => document.querySelector('#hd-overlay').classList.contains('hidden'));

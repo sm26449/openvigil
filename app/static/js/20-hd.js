@@ -197,6 +197,9 @@ function initHdSwipe() {
   }, { passive: true });
 }
 initHdSwipe();
+// sagetile de margine (telefon): acelasi lucru ca swipe-ul, dar vizibil si tap-abil
+$('#hd-prev') && ($('#hd-prev').onclick = () => hdVecin(-1));
+$('#hd-next') && ($('#hd-next').onclick = () => hdVecin(1));
 
 // Fluxurile din grila se opresc cat timp HD-ul le acopera si repornesc la inchidere
 // (elementele raman in DOM, doar conexiunea se taie: video-rtc.js stie sa se reconecteze).

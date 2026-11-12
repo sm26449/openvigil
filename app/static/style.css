@@ -206,6 +206,9 @@ header > nav button.active { background: var(--accent); color: #fff; }
 .zoomed video:active { cursor: grabbing; }
 #hd-player video-stream, #hd-player video { width: 100%; height: 100%; object-fit: contain; }
 .hd-err { color: var(--alarm-hi); font-size: var(--fs-md); }
+/* sagetile de margine ale HD-ului: implicit ascunse (desktopul are click pe grila), vizibile
+   pe telefon ca indiciu de swipe intre camere (vezi blocul pointer:coarse) */
+.hd-edge { display: none; }
 
 /* bara de time-shift + mini-timeline sub player-ul HD */
 #hd-tl-wrap { padding: var(--s2) var(--s4) var(--s4); background: var(--surface); border-top: 1px solid var(--line); }
@@ -1638,6 +1641,12 @@ body.viewer .act-only { display: none !important; }
      !important ca sa invinga regulile per-componenta (ex. .pb-controls select = 14px) */
   input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),
   select, textarea { font-size: 16px !important; }
+  /* sageti de margine la HD: indiciu de swipe intre camere + tap-abile ca alternativa */
+  .hd-edge { display: flex; align-items: center; justify-content: center; position: absolute; top: 50%;
+    transform: translateY(-50%); z-index: 3; width: 38px; height: 72px; border: 0; cursor: pointer;
+    font-size: 34px; line-height: 1; background: rgba(0, 0, 0, .35); color: #fff; padding: 0; }
+  #hd-prev { left: 0; border-radius: 0 var(--r2) var(--r2) 0; }
+  #hd-next { right: 0; border-radius: var(--r2) 0 0 var(--r2); }
 }
 
 /* ---------- accesibilitate: punctele de pe timeline mai vizibile (contrast >= 3:1) ---------- */

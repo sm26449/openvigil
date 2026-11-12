@@ -41,8 +41,9 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   mai ajungea sub bara de stare / notch pe iPhone (când aplicația e instalată pe ecranul de start),
   așa că părea că nu mai poți reveni la grilă; acum respectă marginea sigură și e la îndemână. În
   plus, pe cameră poți da **swipe stânga/dreapta ca să treci la camera următoare/anterioară** și
-  **swipe în jos ca să închizi** și să revii la grilă. (Antetul aplicației respectă și el marginea
-  de sus pe iPhone.)
+  **swipe în jos ca să închizi** și să revii la grilă. Pe margini apar **săgeți „‹ ›"** care arată
+  că poți schimba camera (și sunt și ele tap-abile). (Antetul aplicației respectă marginea de sus
+  pe iPhone.)
 
 ## [2.0.26] — 2026-11-08
 
