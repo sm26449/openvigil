@@ -161,6 +161,46 @@ async function openHD(c, fromRoute = false) {
   if (gen !== hdGen) return;   // alta camera deschisa intre timp: nu-i mai incarcam bara
   loadHdTimeline();
 }
+
+// Camera vecina din lista (pentru swipe stanga/dreapta pe telefon). Circular: dupa ultima vine prima.
+function hdVecin(dir) {
+  if (!hdCam || !Array.isArray(S.cameras) || !S.cameras.length) return;
+  const i = S.cameras.findIndex((c) => c.id === hdCam.id);
+  if (i < 0) return;
+  const n = S.cameras.length;
+  const urm = S.cameras[(i + dir + n) % n];
+  if (urm && urm.id !== hdCam.id) openHD(urm);
+}
+
+// Gesturi pe telefon: swipe stanga/dreapta = camera urmatoare/anterioara, swipe jos = inchide.
+// Nu intervine cand imaginea e marita (pan cu un deget), la pinch (2 degete) sau peste controale.
+function initHdSwipe() {
+  const ov = $('#hd-overlay');
+  if (!ov || ov._swipe) return;
+  ov._swipe = true;
+  let x0 = 0, y0 = 0, t0 = 0, activ = false;
+  ov.addEventListener('touchstart', (e) => {
+    activ = false;
+    if (e.touches.length !== 1) return;                                   // pinch = zoom
+    if ($('#hd-player').classList.contains('zoomed')) return;             // imagine marita = pan
+    if (e.target.closest('#hd-bar, #hd-tl-wrap, button, select, input, a')) return;  // nu peste controale
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now(); activ = true;
+  }, { passive: true });
+  ov.addEventListener('touchend', (e) => {
+    if (!activ) return;
+    activ = false;
+    const tt = e.changedTouches[0];
+    const dx = tt.clientX - x0, dy = tt.clientY - y0, ax = Math.abs(dx), ay = Math.abs(dy);
+    if (Date.now() - t0 > 700) return;                                    // prea lent = nu e swipe
+    if (ax > 55 && ax > ay * 1.5) hdVecin(dx < 0 ? 1 : -1);               // stanga -> urmatoarea
+    else if (dy > 90 && ay > ax * 1.5) closeHD();                         // jos -> inchide
+  }, { passive: true });
+}
+initHdSwipe();
+// sagetile de margine (telefon): acelasi lucru ca swipe-ul, dar vizibil si tap-abil
+$('#hd-prev') && ($('#hd-prev').onclick = () => hdVecin(-1));
+$('#hd-next') && ($('#hd-next').onclick = () => hdVecin(1));
+
 // Fluxurile din grila se opresc cat timp HD-ul le acopera si repornesc la inchidere
 // (elementele raman in DOM, doar conexiunea se taie: video-rtc.js stie sa se reconecteze).
 function gridPause(pauza) {

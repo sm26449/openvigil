@@ -578,6 +578,11 @@ $('#preview').onclick = () => {
 $('#preview').classList.toggle('on', previewMode);
 $('#wall').onclick = () => setWall(true);
 $('#wall-exit').onclick = () => setWall(false);
+// „⋯": desface actiunile secundare din Live pe mobil (camerele raman primele)
+$('#live-more') && ($('#live-more').onclick = () => {
+  const open = $('#live').classList.toggle('live-more-open');
+  $('#live-more').setAttribute('aria-expanded', open ? 'true' : 'false');
+});
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && document.body.classList.contains('wall')) setWall(false);
 });

@@ -206,6 +206,9 @@ header > nav button.active { background: var(--accent); color: #fff; }
 .zoomed video:active { cursor: grabbing; }
 #hd-player video-stream, #hd-player video { width: 100%; height: 100%; object-fit: contain; }
 .hd-err { color: var(--alarm-hi); font-size: var(--fs-md); }
+/* sagetile de margine ale HD-ului: implicit ascunse (desktopul are click pe grila), vizibile
+   pe telefon ca indiciu de swipe intre camere (vezi blocul pointer:coarse) */
+.hd-edge { display: none; }
 
 /* bara de time-shift + mini-timeline sub player-ul HD */
 #hd-tl-wrap { padding: var(--s2) var(--s4) var(--s4); background: var(--surface); border-top: 1px solid var(--line); }
@@ -386,6 +389,8 @@ header > nav button.active { background: var(--accent); color: #fff; }
 #pb-nav button { background: var(--line); color: var(--text-2); border: 0; padding: var(--s2) var(--s3); border-radius: var(--r1); cursor: pointer; font-size: var(--fs-sm); }
 #pb-nav button:hover { background: var(--accent); color: #fff; }
 #pb-pos { font-size: var(--fs-sm); color: var(--text-3); min-width: 62px; text-align: center; font-variant-numeric: tabular-nums; }
+/* butoanele „⋯" apar doar pe mobil (vezi blocul @media 720px); pe desktop secundarele sunt la vedere */
+.pb-nav-more, #live-more, #cams-more, #inc-more { display: none; }
 @media (max-width: 900px) { .pb-main { flex-direction: column; } .pb-right { width: 100%; max-height: 240px; } }
 
 /* timeline */
@@ -417,6 +422,9 @@ header > nav button.active { background: var(--accent); color: #fff; }
 .mk-row .link-btn { padding: 0 var(--s1); }
 .pb-controls .exp { display: flex; gap: var(--s2); align-items: center; font-size: var(--fs-sm); color: var(--text-2); margin-left: auto; }
 .pb-controls .exp button { background: var(--ok); padding: var(--s2) var(--s3); }
+/* uneltele de export/analiza: pe desktop wrapper-ul dispare (contents), butonul e ascuns */
+.pb-unelte { display: contents; }
+.pb-unelte-tgl { display: none; }
 #ticks { position: relative; height: 16px; margin-top: 2px; }
 #ticks span { position: absolute; font-size: var(--fs-xs); color: var(--text-3); transform: translateX(-50%); }
 
@@ -797,7 +805,8 @@ body.panel-open #cams { margin-right: 420px; }
 @media (max-width: 820px) {
   /* aceeasi specificitate ca regula de baza (#set:not(.hidden)), altfel nu se aplica */
   #set:not(.hidden) { grid-template-columns: 1fr; }
-  .set-nav { position: static; flex-direction: row; overflow-x: auto; gap: var(--s1);
+  /* taburile se rup pe mai multe randuri — toate vizibile, niciunul taiat fara indiciu */
+  .set-nav { position: static; flex-direction: row; flex-wrap: wrap; overflow: visible; gap: var(--s1);
     padding-bottom: var(--s2); border-bottom: 1px solid var(--line);
     min-width: 0; max-width: 100%; }
   .set-body, .set-pane, .set-cols { min-width: 0; max-width: 100%; }
@@ -805,6 +814,8 @@ body.panel-open #cams { margin-right: 420px; }
   .snav-item { border-left: 0; border-bottom: 2px solid transparent; white-space: nowrap;
     border-radius: var(--r1) var(--r1) 0 0; }
   .snav-item.on { border-left: 0; border-bottom-color: var(--accent); }
+  /* cautarea pe propriul rand, latime completa (nu lipita la dreapta ca pe desktop) */
+  #set-nav #set-q { flex: 1 1 100%; max-width: 100%; margin-left: 0; margin-top: var(--s2); }
   .set-savebar { padding: var(--s3); }
 }
 
@@ -822,6 +833,33 @@ body.panel-open #cams { margin-right: 420px; }
   #cams-pager { flex-wrap: wrap; gap: var(--s2); }
   .pager-size { margin-left: 0; }
   .pb-controls .exp { margin-left: 0; flex-wrap: wrap; }
+  /* mobil: timeline-ul primul — uneltele stau pliate sub butonul „Unelte" pana le ceri */
+  .pb-unelte-tgl { display: inline-flex; align-items: center; gap: 4px; background: var(--surface-2);
+    color: var(--text); border: 1px solid var(--line); border-radius: var(--r1); padding: var(--s2) var(--s3); cursor: pointer; }
+  .pb-unelte { display: none; flex: 1 1 100%; flex-direction: column; gap: var(--s2); }
+  .pb-controls.unelte-open .pb-unelte { display: flex; }
+  .pb-controls.unelte-open .pb-unelte-tgl { background: var(--accent); color: #fff; }
+  /* bara de transport: doar esentialele vizibile; restul (.pb-sec) sub butonul „⋯" */
+  .pb-nav-more { display: inline-flex; align-items: center; justify-content: center; min-width: 44px;
+    background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: var(--r1); cursor: pointer; }
+  #pb-nav:not(.more-open) .pb-sec { display: none; }
+  #pb-nav.more-open .pb-nav-more { background: var(--accent); color: #fff; }
+  /* Live: camerele primele — actiunile secundare pliate sub „⋯", eticheta „Vizualizari" ascunsa */
+  #live-more { display: inline-flex; align-items: center; justify-content: center; min-width: 44px;
+    background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: var(--r1); cursor: pointer; }
+  #live:not(.live-more-open) .live-sec { display: none; }
+  #live.live-more-open #live-more { background: var(--accent); color: #fff; }
+  /* bara de vizualizari salvate (si indiciul ei) e un feature de desktop — pe mobil o scoatem
+     ca sa nu stea chrome deasupra camerelor; salvarea de vizualizari ramane pe desktop */
+  #live .views-bar { display: none; }
+  /* Camere: actiunile de admin (scanare, selectare in masa) sub „⋯" */
+  #cams-more, #inc-more { display: inline-flex; align-items: center; justify-content: center; min-width: 44px;
+    background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: var(--r1); cursor: pointer; }
+  #cams:not(.cams-more-open) .cams-sec { display: none; }
+  #cams.cams-more-open #cams-more { background: var(--accent); color: #fff; }
+  /* Evenimente: Rezumat + Dosare (secundare) sub „⋯" */
+  .inc-bar:not(.inc-more-open) .inc-sec { display: none; }
+  .inc-bar.inc-more-open #inc-more { background: var(--accent); color: #fff; }
 }
 
 /* ---- alarma de zgomot: nivel live + istoric ---- */
@@ -1532,7 +1570,9 @@ body.viewer .act-only { display: none !important; }
 .ov-bar button:hover { background: var(--accent); color: #fff; }
 .ov-bar .ov-ok { background: var(--ok); color: #fff; }
 .ov-bar .ov-close { margin-left: auto; }
-.ov-body { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; padding: var(--s3); gap: var(--s3); }
+/* aliniat sus (nu centrat): la continut mai inalt decat fereastra, centrarea + overflow taie varful
+   si nu-l mai poti derula — se intampla si pe desktop scund, nu doar pe mobil */
+.ov-body { flex: 1; display: flex; align-items: flex-start; justify-content: flex-start; min-height: 0; padding: var(--s3); gap: var(--s3); overflow: auto; }
 .ov-canvas { cursor: crosshair; border-radius: var(--r1); max-width: 100%; max-height: 100%; }
 .ov-body.split .ov-canvas { max-width: calc(100% - 300px); }
 .ov-side { width: 280px; flex: none; align-self: stretch; overflow: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r1); padding: var(--s3); font-size: var(--fs-sm); }
@@ -1541,7 +1581,11 @@ body.viewer .act-only { display: none !important; }
 .ov-side .ev-row b { font-variant-numeric: tabular-nums; margin-right: var(--s2); }
 .exp.an { margin-left: var(--s3); }
 .evdot.reg { background: #e3b341; height: 10px; }
-@media (max-width: 800px) { .ov-body.split { flex-direction: column; } .ov-body.split .ov-canvas { max-width: 100%; } .ov-side { width: auto; } }
+@media (max-width: 800px) { .ov-body.split { flex-direction: column; } .ov-body.split .ov-canvas { max-width: 100%; } .ov-side { width: auto; }
+  /* modalele full-screen (program, sanatate, zone…): continutul derulabil de sus e acum in regula
+     de baza .ov-body; aici doar bara de sus (cu „Inchide") sub notch via safe-area */
+  .ov-full .ov-bar { padding-top: max(var(--s3), env(safe-area-inset-top, 0px)); flex-wrap: wrap; }
+  .ov-full .ov-close { min-height: 44px; min-width: 44px; } }
 
 /* ---------- Centru de sanatate (tab Stare): server + canale + AI + fiecare camera ---------- */
 #health-body { align-items: stretch; justify-content: flex-start; overflow: auto; padding: var(--s4); }
@@ -1599,6 +1643,16 @@ body.viewer .act-only { display: none !important; }
   .ctrl button { padding: var(--s2) var(--s3); }
   .evdot, .marcaj { height: 14px; min-width: 6px; }
   #timeline, #hd-timeline { min-height: 44px; }
+  /* iOS da zoom automat cand atingi un camp cu font < 16px — urca toate campurile text la 16px.
+     !important ca sa invinga regulile per-componenta (ex. .pb-controls select = 14px) */
+  input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),
+  select, textarea { font-size: 16px !important; }
+  /* sageti de margine la HD: indiciu de swipe intre camere + tap-abile ca alternativa */
+  .hd-edge { display: flex; align-items: center; justify-content: center; position: absolute; top: 50%;
+    transform: translateY(-50%); z-index: 3; width: 38px; height: 72px; border: 0; cursor: pointer;
+    font-size: 34px; line-height: 1; background: rgba(0, 0, 0, .35); color: #fff; padding: 0; }
+  #hd-prev { left: 0; border-radius: 0 var(--r2) var(--r2) 0; }
+  #hd-next { right: 0; border-radius: var(--r2) 0 0 var(--r2); }
 }
 
 /* ---------- accesibilitate: punctele de pe timeline mai vizibile (contrast >= 3:1) ---------- */
@@ -1663,8 +1717,11 @@ dialog#reid::backdrop { background: rgba(0, 0, 0, .6); }
 /* ---------- telefon (<= 760 px): navigarea in bara de jos, restul antetului in foaia „Mai mult” ---------- */
 @media (max-width: 760px) {
   :root { --bara-jos: calc(60px + env(safe-area-inset-bottom, 0px)); }
+  /* padding-top: antetul (titlu + butoane de mod) sa nu stea sub bara de stare / notch pe iPhone */
   body { padding-bottom: var(--bara-jos); }
-  header { gap: var(--s2); padding: var(--s2) var(--s3); flex-wrap: nowrap; }
+  /* antetul e position:sticky;top:0 — safe-area pe padding-ul LUI (nu pe body), altfel la derulare
+     se re-ancoreaza la y=0 si intra sub bara de stare / notch pe iPhone (fundalul umple notch-ul) */
+  header { gap: var(--s2); padding: calc(var(--s2) + env(safe-area-inset-top, 0px)) var(--s3) var(--s2); flex-wrap: nowrap; }
   header h1 { font-size: var(--fs-sm); white-space: nowrap; }
   #mod-chip { margin-left: auto; }
   #mod-chip button { padding: var(--s1) var(--s2); font-size: var(--fs-xs); min-height: 36px; }
@@ -1729,8 +1786,11 @@ dialog#reid::backdrop { background: rgba(0, 0, 0, .6); }
   .live-bar .search { flex: 0 0 160px; min-width: 160px; }
   .live-bar .bar-label { display: none; }
   .views-bar #view-save { font-size: var(--fs-xs); }
-  /* HD: bara de sus compacta; controalele intra sub titlu, derulabile */
-  #hd-bar { flex-wrap: wrap; gap: var(--s2); padding: var(--s2) var(--s3); }
+  /* HD: bara de sus compacta; controalele intra sub titlu, derulabile.
+     padding-top cu safe-area: altfel „✕ Inchide" intra sub bara de stare / notch pe iPhone
+     (overlay-ul e full-bleed cu viewport-fit=cover) si nu mai poti iesi */
+  #hd-bar { flex-wrap: wrap; gap: var(--s2);
+    padding: max(var(--s2), env(safe-area-inset-top, 0px)) var(--s3) var(--s2); }
   #hd-ctrls { order: 3; flex-basis: 100%; overflow-x: auto; scrollbar-width: none; }
   #hd-close { min-width: 44px; min-height: 44px; }
   #hd-close .hd-close-txt { display: none; }

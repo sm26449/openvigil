@@ -2,12 +2,20 @@
 <html lang="ro">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>OpenVigil</title>
 <link rel="stylesheet" href="style.css">
-<link rel="manifest" href="manifest.json">
+<!-- use-credentials: altfel browserul cere manifestul fara cookie si ia 302 la /login (tot
+     /static e in spatele autentificarii), iar instalarea PWA esueaza -->
+<link rel="manifest" href="manifest.json" crossorigin="use-credentials">
 <link rel="icon" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
+<!-- iOS: Web Push merge DOAR pentru PWA adaugat pe ecranul de start (iOS 16.4+). Aceste
+     meta-taguri fac aplicatia sa porneasca pe tot ecranul, fara bara Safari. -->
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="OpenVigil">
 <meta name="theme-color" content="#1c2128">
 </head>
 <body>
@@ -76,7 +84,7 @@
   <div class="live-bar views-bar">
     <span class="bar-label">Vizualizari</span>
     <div id="views" class="chips"></div>
-    <button id="view-save" title="Salvează filtrele și aranjarea curentă ca vizualizare">Salvează vizualizarea</button>
+    <button id="view-save" class="live-sec" title="Salvează filtrele și aranjarea curentă ca vizualizare">Salvează vizualizarea</button>
   </div>
   <div class="live-bar">
     <div class="seg" id="density" role="group" aria-label="Camere pe rând">
@@ -84,11 +92,13 @@
       <button data-cols="4">4</button><button data-cols="6">6</button>
       <button data-cols="auto" class="on">Auto</button>
     </div>
-    <button id="preview" title="Imagini reîmprospătate la 5s în loc de video — mult mai ușor la multe camere">Previzualizare</button>
-    <button id="wall" title="Ecran complet, fără meniuri — pentru un monitor dedicat">Mod perete</button>
-    <button id="io-toggle" class="act-only" title="Panou cu sirena, stroboscop, releu și anunț vocal pentru toate camerele">I/O</button>
-    <button id="popup-toggle" title="La un incident critic, dala camerei se mărește câteva secunde">Pop-up la critic</button>
-    <button id="flux-toggle" title="Fluxul de evenimente de azi lângă grilă: cadre cu detecții, fețe, numere, alarme; click pe unul = redarea momentului">Flux</button>
+    <button id="preview" class="live-sec" title="Imagini reîmprospătate la 5s în loc de video — mult mai ușor la multe camere">Previzualizare</button>
+    <button id="wall" class="live-sec" title="Ecran complet, fără meniuri — pentru un monitor dedicat">Mod perete</button>
+    <button id="io-toggle" class="act-only live-sec" title="Panou cu sirena, stroboscop, releu și anunț vocal pentru toate camerele">I/O</button>
+    <button id="popup-toggle" class="live-sec" title="La un incident critic, dala camerei se mărește câteva secunde">Pop-up la critic</button>
+    <button id="flux-toggle" class="live-sec" title="Fluxul de evenimente de azi lângă grilă: cadre cu detecții, fețe, numere, alarme; click pe unul = redarea momentului">Flux</button>
+    <!-- pe mobil, actiunile secundare (.live-sec) se pliaza sub „⋯" ca sa ramana vizibile camerele -->
+    <button type="button" id="live-more" class="live-more" aria-expanded="false" title="Mai multe controale">⋯</button>
     <input id="live-search" class="search" placeholder="Caută camera..." aria-label="Caută camera">
     <div id="live-groups" class="chips"></div>
   </div>
@@ -154,17 +164,23 @@
     <input type="date" id="pb-date" aria-label="Ziua">
     <button id="pb-search">Caută</button>
     <span id="pb-info"></span>
-    <span class="exp">
-      Export: <input type="time" id="exp-a" step="1" aria-label="Export de la ora"> – <input type="time" id="exp-b" step="1" aria-label="Export până la ora">
-      <button id="exp-btn" title="Descarcă intervalul ca fișier MP4 (max 30 min)">Descarcă MP4</button>
-      <label class="inline" title="Gravează camera și ora în imagine (pentru probe)"><input type="checkbox" id="exp-wm"> filigran</label>
-      <button id="pb-exports" class="link-btn" title="Toate exporturile recente: stare, interval, rezultat, descărcare din nou">📁 Exporturile mele</button>
-    </span>
-    <span class="exp an">
-      <button id="pb-regiune" title="Desenezi un dreptunghi pe cadru și vezi toate detecțiile zilei care l-au atins">Caută pe regiune</button>
-      <button id="pb-heat" title="Pe unde s-a umblat: traseele oamenilor adunate pe cadru">Harta de căldură</button>
-      <button id="pb-timelapse" title="Ziua întreagă într-un minut: un cadru pe minut, MP4 de descărcat">Time-lapse</button>
-    </span>
+    <!-- pe mobil, uneltele de export/analiza se pliaza sub acest buton ca timeline-ul sa fie
+         vizibil fara derulare; pe desktop butonul e ascuns si .pb-unelte e `display:contents`
+         (dispare din layout), deci cele doua .exp raman copii directi ca inainte -->
+    <button type="button" id="pb-unelte-tgl" class="pb-unelte-tgl" aria-expanded="false" aria-controls="pb-unelte">Unelte ▾</button>
+    <div id="pb-unelte" class="pb-unelte">
+      <span class="exp">
+        Export: <input type="time" id="exp-a" step="1" aria-label="Export de la ora"> – <input type="time" id="exp-b" step="1" aria-label="Export până la ora">
+        <button id="exp-btn" title="Descarcă intervalul ca fișier MP4 (max 30 min)">Descarcă MP4</button>
+        <label class="inline" title="Gravează camera și ora în imagine (pentru probe)"><input type="checkbox" id="exp-wm"> filigran</label>
+        <button id="pb-exports" class="link-btn" title="Toate exporturile recente: stare, interval, rezultat, descărcare din nou">📁 Exporturile mele</button>
+      </span>
+      <span class="exp an">
+        <button id="pb-regiune" title="Desenezi un dreptunghi pe cadru și vezi toate detecțiile zilei care l-au atins">Caută pe regiune</button>
+        <button id="pb-heat" title="Pe unde s-a umblat: traseele oamenilor adunate pe cadru">Harta de căldură</button>
+        <button id="pb-timelapse" title="Ziua întreagă într-un minut: un cadru pe minut, MP4 de descărcat">Time-lapse</button>
+      </span>
+    </div>
   </div>
   <div id="pb-multi-list" class="hidden"></div>
   <div class="pb-main">
@@ -172,24 +188,28 @@
       <div id="player-wrap">
         <div id="player" data-gol="Alege camera + data, apoi un moment pe timeline."></div>
       </div>
+      <!-- bara de transport: pe mobil raman vizibile esentialele (Pauza, ±10s, pozitie, viteza),
+           iar secundarele (.pb-sec: cadru, ±1min, Eveniment prev/next, Captura, Marcaj, Link,
+           calitate) se pliaza sub butonul „⋯". Pe desktop .pb-sec sunt mereu vizibile. -->
       <div id="pb-nav">
         <button id="pb-play" title="Pauză / redă (Space sau K)">⏸ Pauză</button>
-        <button id="pb-ev-prev" title="Evenimentul anterior">Eveniment anterior</button>
-        <button data-seek="-60" title="Un minut înapoi (Shift+←)">-1min</button>
+        <button id="pb-ev-prev" class="pb-sec" title="Evenimentul anterior">Eveniment anterior</button>
+        <button data-seek="-60" class="pb-sec" title="Un minut înapoi (Shift+←)">-1min</button>
         <button data-seek="-10" title="10 secunde înapoi (J sau ←)">-10s</button>
-        <button id="pb-f-prev" title="Un cadru înapoi (virgula)">◂ cadru</button>
+        <button id="pb-f-prev" class="pb-sec" title="Un cadru înapoi (virgula)">◂ cadru</button>
         <span id="pb-pos"></span>
-        <button id="pb-f-next" title="Un cadru înainte (punct)">cadru ▸</button>
+        <button id="pb-f-next" class="pb-sec" title="Un cadru înainte (punct)">cadru ▸</button>
         <button data-seek="10" title="10 secunde înainte (L sau →)">+10s</button>
-        <button data-seek="60" title="Un minut înainte (Shift+→)">+1min</button>
-        <button id="pb-ev-next" title="Evenimentul următor">Eveniment următor</button>
-        <button id="pb-shot" title="Salvează cadrul curent ca imagine">Captura</button>
-        <button id="pb-mark" title="Pune un marcaj la momentul redat — rămâne pe timeline, cu eticheta ta (M)">Marcaj</button>
-        <button id="pb-link" title="Copiază legătura către acest moment (de trimis pe Telegram)">Link</button>
+        <button data-seek="60" class="pb-sec" title="Un minut înainte (Shift+→)">+1min</button>
+        <button id="pb-ev-next" class="pb-sec" title="Evenimentul următor">Eveniment următor</button>
+        <button id="pb-shot" class="pb-sec" title="Salvează cadrul curent ca imagine">Captura</button>
+        <button id="pb-mark" class="pb-sec" title="Pune un marcaj la momentul redat — rămâne pe timeline, cu eticheta ta (M)">Marcaj</button>
+        <button id="pb-link" class="pb-sec" title="Copiază legătura către acest moment (de trimis pe Telegram)">Link</button>
         <span id="pb-speed" title="Viteza de redare ([ și ])">
           <button data-sp="0.5">½x</button><button data-sp="1" class="active">1x</button><button data-sp="2">2x</button><button data-sp="4">4x</button><button data-sp="8">8x</button>
         </span>
-        <select id="pb-quality" title="Rezoluția redarii: Auto alege după viteza măsurată a rețelei tale" aria-label="Rezoluția redării">
+        <button type="button" id="pb-nav-more" class="pb-nav-more" aria-expanded="false" title="Mai multe controale">⋯</button>
+        <select id="pb-quality" class="pb-sec" title="Rezoluția redarii: Auto alege după viteza măsurată a rețelei tale" aria-label="Rezoluția redării">
           <option value="auto">Auto</option>
           <option value="eco">Economic (720p)</option>
           <option value="max">Calitate (nativ)</option>
@@ -233,8 +253,10 @@
       <button data-f="critic">Critice</button>
     </div>
     <label class="inline"><input id="inc-sound" type="checkbox" checked> Alarma sonora</label>
-    <button id="inc-digest" class="link-btn" title="Rezumatul zilei: ce s-a întâmplat, dintr-o privire">📋 Rezumat</button>
-    <button id="inc-cases" class="link-btn" title="Dosare de caz — probe adunate pentru un incident">🗂 Dosare</button>
+    <!-- pe mobil, Rezumat + Dosare (secundare) se pliaza sub „⋯" ca filtrul + lista sa fie in fata -->
+    <button type="button" id="inc-more" class="inc-more" aria-expanded="false" title="Mai multe controale">⋯</button>
+    <button id="inc-digest" class="link-btn inc-sec" title="Rezumatul zilei: ce s-a întâmplat, dintr-o privire">📋 Rezumat</button>
+    <button id="inc-cases" class="link-btn inc-sec" title="Dosare de caz — probe adunate pentru un incident">🗂 Dosare</button>
     <span id="inc-info" class="hint"></span>
   </div>
   <div id="inc-list" class="inc-list"></div>
@@ -559,11 +581,14 @@
 <!-- CAMERE (administrare) -->
 <section id="cams" class="view hidden">
   <div class="cams-bar">
-    <button id="scan-open">Scanează rețeaua</button>
+    <!-- pe mobil, actiunile de admin (.cams-sec: scanare retea, selectare in masa) se pliaza
+         sub „⋯" ca sa ramana in fata cautarea + filtrul pe grupuri -->
+    <button id="scan-open" class="cams-sec">Scanează rețeaua</button>
     <input id="cams-search" class="search" placeholder="Caută după nume, IP sau model..."
            aria-label="Caută camera">
+    <button type="button" id="cams-more" class="cams-more" aria-expanded="false" title="Mai multe controale">⋯</button>
     <div id="cams-groups" class="chips"></div>
-    <button id="sel-all" class="link-btn">Selectează tot ce se vede</button>
+    <button id="sel-all" class="link-btn cams-sec">Selectează tot ce se vede</button>
     <span id="cams-info"></span>
   </div>
   <div id="scan-panel" class="hidden">
@@ -1364,6 +1389,10 @@
     <div id="hd-timeline" role="slider" aria-label="Momentul din zi" aria-valuemin="0" aria-valuemax="86399" aria-valuenow="0" tabindex="0"></div>
     <div id="hd-ticks"></div>
   </div>
+  <!-- sageti pe marginile imaginii (doar pe telefon): arata ca poti trece intre camere prin
+       swipe si, in acelasi timp, sunt tap-abile ca alternativa -->
+  <button type="button" id="hd-prev" class="hd-edge" aria-label="Camera anterioară">‹</button>
+  <button type="button" id="hd-next" class="hd-edge" aria-label="Camera următoare">›</button>
 </div>
 
 <!-- player de clip (video in jurul unui eveniment AI) -->
@@ -1510,6 +1539,10 @@
     </section>
     <section>
       <h3>Notificari push pe acest dispozitiv</h3>
+      <div id="instalare-app" class="hidden instalare-card">
+        <p class="hint" id="instalare-text"></p>
+        <button type="button" id="instalare-btn" class="hidden">Instalează aplicația</button>
+      </div>
       <p class="hint" id="push-stare">…</p>
       <label>Ce primesc
         <select id="push-nivel">

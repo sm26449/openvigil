@@ -3,6 +3,66 @@
 Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [2.1.0] — 2026-11-12
+
+**Highlights (English)** — OpenVigil is now an installable mobile app with push notifications, and
+the whole interface has been reworked for phones.
+- **Install it like an app, with push.** Add OpenVigil to your home screen (Android or iPhone) and
+  it opens full-screen like a native app. Event notifications now show a camera thumbnail, a
+  “View” button that jumps straight to the moment, and an app-icon badge. (On iPhone, push works
+  once the app is added to the Home Screen — iOS 16.4+.)
+- **Rebuilt for phones.** Every screen puts the content first and tucks power tools behind a “⋯”:
+  Recordings (player and timeline above the fold), Live (cameras first), Settings and the AI tab
+  (sub-tabs wrap instead of being cut off), Cameras and Events. Text fields no longer make iOS
+  zoom when you tap them.
+- **Single-camera view.** Swipe left/right to move between cameras, swipe down to go back; edge
+  arrows “‹ ›” show you can. The close button no longer hides under the iPhone notch.
+- **Large dialogs scroll correctly** on phones (Schedule & automation, Health center, etc.).
+
+### Adăugat
+- **Aplicație instalabilă pe mobil, cu notificări push** — interfața se poate adăuga acum pe
+  ecranul de start (telefon sau desktop) și pornește ca o aplicație de sine stătătoare, pe tot
+  ecranul. Pe Android/Chrome apare un buton **„Instalează aplicația"**; pe iPhone/iPad
+  (iOS 16.4+) notificările push merg **după** ce o adaugi pe ecranul de start din Safari
+  (Partajează → „Adaugă la ecranul de start") — cardul de notificări explică pașii. Notificările
+  push arată acum **miniatura camerei**, un buton **„Vezi"** care sare direct la moment, și un
+  **contor pe iconița aplicației**. (Manifest cu scurtături Live / Evenimente / Înregistrări și
+  iconiță „maskable" pentru Android.)
+
+### Schimbat
+- **Înregistrări, mult mai ușor de folosit pe telefon** — pe ecrane mici, uneltele de
+  export/analiză (Descarcă MP4, Exporturile mele, Caută pe regiune, Harta de căldură, Time-lapse)
+  se pliază sub un buton **„Unelte"**, iar controalele secundare de redare (cadru cu cadru,
+  eveniment anterior/următor, Captură, Marcaj, Link, calitate) sub **„⋯"**. Rămân la vedere
+  esențialele — Pauză, ±10s, viteza — așa că **player-ul și linia timpului se văd fără derulare**.
+  Pe desktop nimic nu se schimbă. (Suită de audit mobil Playwright + regresie în CI.)
+- **Live, camerele primele pe telefon** — pe ecrane mici, acțiunile secundare (Previzualizare,
+  Mod perete, I/O, Pop-up la critic, Flux) se pliază sub **„⋯"**, iar bara de vizualizări salvate
+  (feature de desktop) se ascunde. Rămâne vizibil doar selectorul de câte camere pe rând +
+  căutarea, așa că **grila de camere urcă sus**. Pe desktop nimic nu se schimbă.
+- **Setări, toate secțiunile vizibile pe telefon** — pe ecrane mici, sub-taburile (Stare,
+  Înregistrare, Detecție, Notificari, Utilizatori, Audio, Sistem, Unelte, Jurnal) se **așază pe
+  mai multe rânduri** în loc să se taie la dreapta fără niciun indiciu; căutarea stă pe propriul
+  rând, lățime completă. (Același lucru și pentru filele din tabul AI.)
+- **Fără zoom enervant pe iPhone** — când atingeai un câmp (dată, căutare, setări), Safari mărea
+  automat pagina (fiindcă fontul era sub 16px). Pe telefon câmpurile de text au acum 16px, așa că
+  pagina **nu mai sare la zoom** când scrii.
+- **Camere și Evenimente, mai curate pe telefon** — la Camere, acțiunile de administrare (Scanează
+  rețeaua, Selectează tot ce se vede) trec sub **„⋯"**, așa că rămân în față căutarea și filtrul pe
+  grupuri, iar lista de camere urcă. La Evenimente, Rezumat și Dosare trec sub **„⋯"**, ca filtrul
+  (Netratate / Toate / Critice) și lista de incidente să fie primele. Pe desktop nimic nu se schimbă.
+- **Vizualizarea unei camere pe telefon: ieși ușor și treci între camere** — butonul „✕ Închide" nu
+  mai ajungea sub bara de stare / notch pe iPhone (când aplicația e instalată pe ecranul de start),
+  așa că părea că nu mai poți reveni la grilă; acum respectă marginea sigură și e la îndemână. În
+  plus, pe cameră poți da **swipe stânga/dreapta ca să treci la camera următoare/anterioară** și
+  **swipe în jos ca să închizi** și să revii la grilă. Pe margini apar **săgeți „‹ ›"** care arată
+  că poți schimba camera (și sunt și ele tap-abile). (Antetul aplicației respectă marginea de sus
+  pe iPhone.)
+- **Ferestrele mari se derulează corect pe telefon** — la „Program & automatizare" și „Centru de
+  sănătate" (și celelalte ferestre pe tot ecranul), conținutul mai înalt decât ecranul nu se mai
+  taie: acum se derulează de sus în jos, butonul „Închide" rămâne la îndemână sus, iar bara lor
+  respectă marginea de sus pe iPhone.
+
 ## [2.0.26] — 2026-11-08
 
 ### Adăugat

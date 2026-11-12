@@ -267,8 +267,11 @@ def eveniment(e, sync=False):
         url = f"/#pb/{cam}/{ts[:10]}/{max(0, h * 3600 + m * 60 + s - 10)}"
     else:
         url = "/#ev/inc"
-    return trimite({"titlu": titlu, "corp": corp, "url": url, "tag": e.get("id") or "nvr",
-                    "sev": sev, "t": ts}, sev=sev, cam_id=cam, sync=sync)
+    payload = {"titlu": titlu, "corp": corp, "url": url, "tag": e.get("id") or "nvr",
+               "sev": sev, "t": ts, "act": t("Vezi")}
+    if cam is not None:
+        payload["img"] = f"/api/thumb/{cam}"   # miniatura recenta a camerei (go2rtc)
+    return trimite(payload, sev=sev, cam_id=cam, sync=sync)
 
 
 def test(user):

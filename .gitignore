@@ -11,8 +11,8 @@ nohup.out
 
 # teste in browser
 tests/node_modules/
-tests/package-lock.json
 tests/*.png
+tests/_audit/
 
 # instalare clasica (fara Docker)
 go2rtc/
