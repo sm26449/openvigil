@@ -1,5 +1,9 @@
 # configurarea instalatiei si tot ce e generat la rulare — NU intra in git
 .env
+# copiile de siguranta ale .env (.env.pre-*, .env.bak*) contin secrete — nu scapa in git (PUB-01).
+# .env.example ramane urmarit (sablonul public, folosit si de CI).
+.env.*
+!.env.example
 .compose-files
 data/
 models/
