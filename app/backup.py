@@ -8,6 +8,7 @@ de fete (sunt date, nu configuratie).
 """
 import json
 import os
+import re
 import time
 from i18n import t
 
@@ -20,11 +21,18 @@ FILES = {
     "rules": os.path.join(ROOT, "data", "rules.json"),
     "plates_known": os.path.join(ROOT, "data", "plates", "known.json"),
 }
-# Tot ce e secret in settings — lista se completeaza ODATA cu fiecare functie noua,
-# altfel varianta "fara parole" scurge jetoane (s-a intamplat: api_token si
-# webhook_secret au stat expuse pana la auditul din 2026-08-14).
-SETTINGS_SECRETS = ("web_password", "telegram_token", "email_pass",
-                    "api_token", "webhook_secret", "mqtt_pass")
+# Tot ce e secret in settings. Lista explicita + o EURISTICA (orice cheie cu pass/token/secret/key),
+# ca sa nu mai scape un jeton adaugat ulterior fara ca cineva sa actualizeze lista (s-a intamplat de
+# doua ori: api_token/webhook_secret pana la 2026-08-14, apoi llm_key/alert_service_key pana la
+# auditul din 2026-11-12 — SEC-08). Pentru exportul nesensibil, a scoate prea mult e sigur.
+SETTINGS_SECRETS = ("web_password", "telegram_token", "email_pass", "api_token",
+                    "webhook_secret", "mqtt_pass", "llm_key", "alert_service_key")
+_SECRET_RE = re.compile(r"pass|token|secret|key", re.I)
+
+
+def _e_secret(key):
+    """O cheie de setare e secreta daca e in lista sau numele ei sugereaza un secret."""
+    return key in SETTINGS_SECRETS or _SECRET_RE.search(key) is not None
 
 
 def export_config(include_secrets=True):
@@ -39,9 +47,10 @@ def export_config(include_secrets=True):
             if name == "cameras":
                 data = [{k: v for k, v in c.items() if k != "pass"} for c in data]
             elif name == "settings":
-                data = {k: v for k, v in data.items() if k not in SETTINGS_SECRETS}
+                data = {k: v for k, v in data.items() if not _e_secret(k)}
             elif name == "users":
-                data = [{k: v for k, v in u.items() if k != "hash"} for u in data]
+                # scoatem hash-ul SI structura TOTP (secret + coduri de recuperare) — SEC-08
+                data = [{k: v for k, v in u.items() if k not in ("hash", "totp")} for u in data]
         out["date"][name] = data
     out["fara_parole"] = not include_secrets
     return out

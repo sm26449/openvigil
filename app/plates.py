@@ -141,6 +141,23 @@ def reads(limit=100):
     return out
 
 
+def cam_pentru_crop(crop_rel):
+    """Camera careia ii apartine un crop (cautat in log.jsonl dupa campul `crop`), sau None daca
+    nu e gasit. Folosit pentru a scopa servirea imaginilor LPR pe camerele permise (SEC-03)."""
+    try:
+        with open(LOG_FILE) as f:
+            for ln in f:
+                try:
+                    r = json.loads(ln)
+                except ValueError:
+                    continue
+                if r.get("crop") == crop_rel:
+                    return int(r.get("cam", -1))
+    except FileNotFoundError:
+        return None
+    return None
+
+
 def clear_log():
     import shutil
     for p in (LOG_FILE, FB_FILE):

@@ -21,6 +21,22 @@ jobs:
     name: imagine + release
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    # Postgres de unica folosinta pentru testele cu DB (altfel release-ul rula doar subsetul
+    # fara DB si putea publica o versiune cu teste backend nerulate — REL-01).
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: openvigil
+          POSTGRES_USER: openvigil
+          POSTGRES_PASSWORD: openvigil
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U openvigil"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v7
 
@@ -41,10 +57,15 @@ jobs:
             --build-arg PUID=1000 --build-arg PGID=1000 \
             --build-arg OPENVIGIL_VERSION=${{ steps.v.outputs.versiune }} .
 
-      - name: Teste in imagine
+      - name: Teste in imagine (cu DB)
         run: |
           docker run --rm "$IMAGINE:${{ steps.v.outputs.versiune }}" venv/bin/python -c "import config; assert config.VERSIUNE == '${{ steps.v.outputs.versiune }}', config.VERSIUNE"
-          docker run --rm -e TZ=Europe/Bucharest "$IMAGINE:${{ steps.v.outputs.versiune }}" test
+          # Suita completa, inclusiv testele cu Postgres — altfel release-ul ar putea publica o
+          # versiune cu testele de DB nerulate (REL-01). --network host ca sa ajunga la serviciul PG.
+          docker run --rm --network host -e TZ=Europe/Bucharest \
+            -e PG_HOST=127.0.0.1 -e PG_PORT=5433 -e PG_DB=openvigil -e PG_USER=openvigil -e PG_PASS=openvigil \
+            -e OPENVIGIL_TEST_DB=1 \
+            "$IMAGINE:${{ steps.v.outputs.versiune }}" test
 
       - name: Publicare in GHCR
         run: |

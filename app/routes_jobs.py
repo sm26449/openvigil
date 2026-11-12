@@ -9,7 +9,7 @@ from flask import Blueprint, jsonify, request, send_file
 
 import jobs
 from i18n import t
-from server import current_user
+from server import current_user, _visible_ids
 
 bp = Blueprint("jobs", __name__)
 
@@ -43,6 +43,11 @@ def api_job_fisier(jid):
     j = jobs.get(jid)
     if not j or not _al_meu(j):
         return jsonify({"error": t("job inexistent")}), 404
+    # Re-validam camera la DESCARCARE, nu doar proprietarul: un export de pe o camera scoasa
+    # ulterior din accesul contului nu mai trebuie servit (SEC-07).
+    vis = _visible_ids()
+    if vis is not None and j.get("cam") is not None and int(j["cam"]) not in vis:
+        return jsonify({"error": t("nu există")}), 404
     f = jobs.cale_fisier(jid)
     if not f:
         return jsonify({"error": t("fișierul nu (mai) există — joburile se păstrează o ora")}), 404

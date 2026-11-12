@@ -57,6 +57,16 @@ def set_state(event_id, stare, who=None):
     return data.get(event_id, {"stare": "nou"})
 
 
+def cam_incident(event_id):
+    """Camera unui incident (din jurnal, dupa id), sau None daca nu se gaseste in cele recente.
+    Pentru autorizarea per-cont: un operator restrans nu trateaza incidente de pe camere interzise."""
+    import rules
+    for e in rules.journal(limit=400):
+        if e.get("id") == event_id:
+            return e.get("cam")
+    return None
+
+
 def resolve_recent(cam_id, tip, who="auto"):
     """Marcheaza rezolvate incidentele NETRATATE de un tip pentru o camera — pentru
     auto-rezolvare (ex. camera_offline cand camera revine online, ca un blip de retea

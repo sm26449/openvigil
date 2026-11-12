@@ -43,6 +43,13 @@ def api_incidents():
 @bp.route("/api/incidents/<eid>/stare", methods=["POST"])
 def api_incident_state(eid):
     """Body: {stare: confirmat|fals|nou}. Operatorul preia/inchide un incident."""
+    # Un cont restrans nu trateaza un incident de pe o camera pe care n-o vede (SEC-06).
+    # Deny-by-default: incident necunoscut sau fara camera -> 404 (ca in feed-ul lui).
+    vis = _visible_ids()
+    if vis is not None:
+        cam = incidents_mod.cam_incident(eid)
+        if cam is None or cam not in vis:
+            return jsonify({"error": t("nu există")}), 404
     stare = (request.get_json(silent=True) or {}).get("stare")
     try:
         st = incidents_mod.set_state(eid, stare, who=(current_user() or {}).get("user"))
@@ -55,7 +62,7 @@ def api_incident_state(eid):
 @bp.route("/api/digest/text")
 def api_digest_text():
     """Textul rezumatului zilei (?day=), asa cum ar pleca pe Telegram — fara sa-l trimita."""
-    return jsonify({"text": digest_mod.text(request.args.get("day") or None)})
+    return jsonify({"text": digest_mod.text(request.args.get("day") or None, visible=_visible_ids())})
 
 
 @bp.route("/api/digest/trimite", methods=["POST"])
@@ -148,6 +155,13 @@ def api_case_add(cid):
 
 @bp.route("/api/cases/<cid>/proba/<pid>", methods=["DELETE"])
 def api_case_del(cid, pid):
+    # Nu modifici un dosar ale carui probe sunt de pe camere pe care nu le vezi (SEC-05) —
+    # aceeasi politica ca GET/DELETE caz si export.
+    c = cases_mod.get(cid)
+    if not c:
+        return jsonify({"error": t("caz inexistent")}), 404
+    if not _case_visible(c, _visible_ids()):
+        return jsonify({"error": t("nu există")}), 404
     try:
         ok = cases_mod.del_proba(cid, pid)
     except KeyError:

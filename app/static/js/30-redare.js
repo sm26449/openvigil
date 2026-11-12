@@ -88,9 +88,14 @@ async function drawEventDots(ch, date, gen) {
       tl.appendChild(dot);
       const row = document.createElement('div');
       row.className = 'ev-row';
+      // buton nativ-echivalent: accesibil de la tastatura (Enter/Space), nume si rol (UX-02)
+      row.setAttribute('role', 'button');
+      row.tabIndex = 0;
+      row.setAttribute('aria-label', t('{ora} — {ev} (redă)', { ora: ev.time, ev: t(alNume(ev.label)) }));
       row.innerHTML = html`<img loading="lazy" src="${ev.url}" alt=""><span>${ev.time}<br>` +
                       html`<b>${AL_ICO[ev.label] || '⚠'} ${t(alNume(ev.label))}</b></span>`;
       row.onclick = () => playFrom(date, ev.sec);
+      row.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); playFrom(date, ev.sec); } };
       ev.row = row;
       list.appendChild(row);
     }
@@ -525,8 +530,14 @@ function grupeazaPuncte(tl) {
     g.className = 'evgrup';
     g.textContent = grup.length;
     g.title = t('{n} evenimente {a}–{b} — clic pentru a apropia', { n: grup.length, a: hms(a).slice(0, 5), b: hms(b).slice(0, 5) });
+    // accesibil de la tastatura: rol, nume si Enter/Space (grupurile sunt putine, nu inunda tab-ul) (UX-02)
+    g.setAttribute('role', 'button');
+    g.tabIndex = 0;
+    g.setAttribute('aria-label', g.title);
     g.style.left = tlX(mid);
-    g.onclick = (e) => { e.stopPropagation(); tlSetView(Math.max(300, Math.min(tlView.span / 4, Math.max(900, (b - a) * 2))), mid); };
+    const apropie = (e) => { e.stopPropagation(); tlSetView(Math.max(300, Math.min(tlView.span / 4, Math.max(900, (b - a) * 2))), mid); };
+    g.onclick = apropie;
+    g.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); apropie(e); } };
     tl.appendChild(g);
     grup = [];
   };
