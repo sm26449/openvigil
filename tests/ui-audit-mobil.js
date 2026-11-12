@@ -22,6 +22,8 @@ const ECRANE = [
   ['live', null, '#grid .tile'], ['harta', '#tab-harta', '#harta-wrap'], ['evenimente', '#tab-ev', '#ev-list, #evjurnal'],
   ['inregistrari', '#tab-pb', '#timeline'], ['ai', '#tab-ai', '#ai .ai-body, #ai section'],
   ['camere', '#tab-cams', '#cams-table, .row-state'], ['setari', '#tab-set', '#set .set-card, #set section'],
+  // ecrane secundare / overlay-uri (deschise la final ca sa nu acopere pe celelalte)
+  ['program', '#tab-program', '#program-overlay'], ['stare', '#tab-stare', '#health-body'],
 ];
 
 const METRICI = (primarSel) => {
@@ -100,6 +102,8 @@ function verdict(nume, m) {
 
   const raport = {};
   for (const [nume, tab, primarSel] of ECRANE) {
+    // inchide orice overlay full-screen deschis (altfel acopera ecranul urmator)
+    await page.evaluate(() => document.querySelectorAll('.ov-full:not(.hidden) .ov-close').forEach((b) => b.click()));
     // pe mobil, ai/setari stau sub „Mai mult" (butonul din antet e ascuns) — apelam handlerul
     // direct, ca .click() programatic ruleaza si pe un element ascuns
     if (tab) { await page.evaluate((s) => document.querySelector(s)?.click(), tab); await page.waitForTimeout(600); }

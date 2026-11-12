@@ -372,12 +372,35 @@ async function scenHD(browser) {
   } finally { await app.close(); }
 }
 
+async function scenOV(browser) {
+  console.log('\n== OV. Modale full-screen pe telefon: continut derulabil + „Inchide" la indemana ==');
+  const app = await openApp(browser, { viewport: { width: 390, height: 844 }, mobile: true });
+  const { page } = app;
+  try {
+    await page.evaluate(() => document.querySelector('#tab-program')?.click());
+    await page.waitForSelector('#program-overlay:not(.hidden)', { timeout: 5000 });
+    const m = await page.evaluate(() => {
+      const ov = document.querySelector('#program-overlay');
+      const body = ov.querySelector('.ov-body'); const close = document.querySelector('#program-close');
+      const rc = close.getBoundingClientRect();
+      return { overflow: getComputedStyle(body).overflowY, canScroll: body.scrollHeight > body.clientHeight,
+        closeOk: getComputedStyle(close).display !== 'none' && rc.right <= innerWidth + 1 && rc.top >= 0 && rc.bottom <= innerHeight + 1 };
+    });
+    (m.overflow === 'auto' || m.overflow === 'scroll') ? ok(`corpul modalului se deruleaza (overflow ${m.overflow})`) : bad('OV', `overflow=${m.overflow} (continutul inalt s-ar taia)`);
+    m.closeOk ? ok('butonul „Inchide" e vizibil si in ecran') : bad('OV', 'Inchide in afara ecranului');
+    // derulat pana jos: ajungi la „Salveaza programul"
+    const jos = await page.evaluate(() => { const b = document.querySelector('#program-overlay .ov-body'); b.scrollTop = b.scrollHeight;
+      const s = document.querySelector('#pg-save'); if (!s) return null; const r = s.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0; });
+    (jos === null || jos === true) ? ok('deruland jos ajungi la actiunile de la finalul modalului') : bad('OV', 'nu ajungi la butoanele de jos');
+  } finally { await app.close(); }
+}
+
 (async () => {
   const srv = await startStatic();
   globalThis.__ORIGIN = srv.origin;
   const browser = await chromium.launch();
   try {
-    for (const scen of [scenBoot, scenA1, scenA2, scenS1, scenS2, scenC2, scenL2, scenT1, scenC4, scenP0, scenM0, scenHD]) {
+    for (const scen of [scenBoot, scenA1, scenA2, scenS1, scenS2, scenC2, scenL2, scenT1, scenC4, scenP0, scenM0, scenHD, scenOV]) {
       try { await scen(browser); }
       catch (e) { bad(scen.name, 'exceptie in scenariu: ' + String(e).slice(0, 160)); }
     }

@@ -44,6 +44,10 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   **swipe în jos ca să închizi** și să revii la grilă. Pe margini apar **săgeți „‹ ›"** care arată
   că poți schimba camera (și sunt și ele tap-abile). (Antetul aplicației respectă marginea de sus
   pe iPhone.)
+- **Ferestrele mari se derulează corect pe telefon** — la „Program & automatizare" și „Centru de
+  sănătate" (și celelalte ferestre pe tot ecranul), conținutul mai înalt decât ecranul nu se mai
+  taie: acum se derulează de sus în jos, butonul „Închide" rămâne la îndemână sus, iar bara lor
+  respectă marginea de sus pe iPhone.
 
 ## [2.0.26] — 2026-11-08
 
