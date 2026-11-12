@@ -3,6 +3,42 @@
 Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [2.1.2] — 2026-11-12
+
+**Highlights (English)** — Security and stability fixes on top of 2.1.1.
+- **Fixed a freeze when editing from a camera.** Opening the detection-zone, counting-line or
+  privacy-mask editor from a camera's HD view left it visible but dead to taps — neither drawing
+  nor the Close button worked, so the whole app looked frozen and needed a page refresh. Fixed.
+- **Per-camera access enforced on every read path.** The CSV journal, daily-digest text, licence-
+  plate images, the status cache, incident/case actions and job downloads now all respect the
+  cameras a restricted operator is allowed to see.
+- **Patched dependencies and a stricter release.** Vulnerable transitive dependencies were raised
+  to fixed versions, and the release pipeline now runs the full test suite — including the database
+  tests — before publishing.
+
+### Reparat
+- **Blocare la deschiderea unui editor din HD** — editoarele de **zonă**, **linie de numărare** și
+  **mască**, deschise din vizualizarea HD a camerei, rămâneau inactive: vizibile, dar nu răspundeau
+  la nicio atingere (nici măcar „Închide"), de parcă s-ar fi blocat totul și ar fi trebuit reîncărcată
+  pagina. Acum se deschid, se desenează și se închid normal.
+- **Timeline accesibil de la tastatură** — rândurile și pastilele de evenimente din redare sunt
+  butoane reale (Tab + Enter/Space), cu text mai lizibil și zonă de atingere mai mare.
+- **Fără tăieri pe telefon în landscape** — barele de controale se derulează în loc să taie opțiuni,
+  iar pagina nu se mai lărgește orizontal.
+- **Formulare publice pe telefon** — autentificarea, pasul 2FA și verificarea publică au ținte de
+  cel puțin 44px, câmpuri de 16px (fără zoom pe iOS) și etichete persistente, în română și engleză.
+
+### Securitate
+- **Autorizare per-cameră** aplicată pe: exportul CSV al jurnalului, textul rezumatului zilnic,
+  imaginile numerelor de înmatriculare, cache-ul de stare (`/api/pulse`), ștergerea unei probe dintr-un
+  dosar, tratarea unui incident și descărcarea fișierului unui job.
+- **Exportul „fără parole"** scoate acum **toate** secretele (inclusiv chei API și secretul 2FA/TOTP),
+  prin listă explicită plus euristică, nu doar câteva câmpuri fixe.
+- **Dependențe** ridicate la versiunile reparate: `certifi`, `urllib3`, `pillow`, `Werkzeug`,
+  `filelock`, `setuptools`.
+- **Release mai strict** — construiește imaginea și rulează suita completă cu Postgres înainte de
+  publicare; copiile de siguranță `.env.pre-*`/`.bak` nu mai pot ajunge din greșeală în git.
+
 ## [2.1.1] — 2026-11-12
 
 **Highlights (English)** — Mobile polish on top of 2.1.0.
