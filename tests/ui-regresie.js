@@ -25,8 +25,9 @@ const eStream = (t) => /:8076|go2rtc|videortc|video-stream|ws(e)?\b|websocket/i.
 
 // deschide aplicatia cu un set de raspunsuri /api si asteapta boot-ul complet (app.js pune
 // data-gata='2' dupa loadCameras().then(routeHash)). Intoarce { page, calls, errors, close }.
-async function openApp(browser, { api = {}, viewport } = {}) {
-  const ctx = await browser.newContext({ locale: 'ro-RO', viewport: viewport || { width: 1280, height: 900 }, bypassCSP: true });
+async function openApp(browser, { api = {}, viewport, mobile = false } = {}) {
+  const dev = mobile ? { isMobile: true, hasTouch: true, deviceScaleFactor: 3 } : {};   // declanseaza pointer:coarse
+  const ctx = await browser.newContext({ locale: 'ro-RO', viewport: viewport || { width: 1280, height: 900 }, bypassCSP: true, ...dev });
   const page = await ctx.newPage();
   const errors = [];
   page.on('console', (m) => { if (m.type() === 'error' && !eStream(m.text())) errors.push(m.text().slice(0, 160)); });
@@ -241,7 +242,7 @@ async function scenP0(browser) {
 
 async function scenM0(browser) {
   console.log('\n== M0. Mobil (390px): fara debordare + Inregistrari cu unelte pliate ==');
-  const app = await openApp(browser, { viewport: { width: 390, height: 844 } });
+  const app = await openApp(browser, { viewport: { width: 390, height: 844 }, mobile: true });
   const { page } = app;
   try {
     // 1) nicio debordare orizontala pe ecranele principale (la latime de telefon)
@@ -295,6 +296,18 @@ async function scenM0(browser) {
       return [...document.querySelectorAll('#set-nav .snav-item')].filter((e) => e.getBoundingClientRect().right > w + 1).length;
     });
     taiate === 0 ? ok('Setari: toate sub-taburile vizibile (niciunul taiat la dreapta)') : bad('M0', `${taiate} sub-taburi taiate la dreapta`);
+
+    // 7) campuri text >= 16px pe mobil (altfel iOS da zoom la focus)
+    const inputMic = await page.evaluate(() => {
+      const vis = (e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && e.offsetParent !== null; };
+      return [...document.querySelectorAll('input, select, textarea')].filter((e) => {
+        if (!vis(e)) return false;
+        const t = (e.getAttribute('type') || '').toLowerCase();
+        if (['checkbox', 'radio', 'range', 'color', 'hidden'].includes(t)) return false;
+        return parseFloat(getComputedStyle(e).fontSize) < 16;
+      }).length;
+    });
+    inputMic === 0 ? ok('campuri text >=16px pe mobil (fara zoom iOS la focus)') : bad('M0', `${inputMic} campuri <16px`);
   } finally { await app.close(); }
 }
 

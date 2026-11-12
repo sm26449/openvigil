@@ -37,10 +37,21 @@ const METRICI = (primarSel) => {
     if (r.height > 60) big.push({ sel: e.id ? '#' + e.id : (e.className || e.tagName).toString().slice(0, 30), w: Math.round(r.width), h: Math.round(r.height), txt });
   }
   // fonturi mici (text vizibil sub 12px)
+  // text de continut sub 12px (exclude micro-chrome-ul legitim: eticheta de versiune, etichetele
+  // barei de jos, insignele, marcajele de pe timeline — conventional mici, nu text de citit)
   let tiny = 0;
   for (const e of document.querySelectorAll('body *')) {
-    if (!e.children.length && e.textContent.trim() && vis(e)) { const fs = parseFloat(getComputedStyle(e).fontSize); if (fs && fs < 12) tiny++; }
+    if (e.children.length || !e.textContent.trim() || !vis(e)) continue;
+    if (e.closest('header, .tab-badge, #ver-badge, #timeline, #ticks')) continue;
+    const fs = parseFloat(getComputedStyle(e).fontSize); if (fs && fs < 12) tiny++;
   }
+  // campuri text sub 16px -> iOS da zoom automat la focus (enervant pe telefon)
+  const inputSub16 = [...document.querySelectorAll('input, select, textarea')].filter((e) => {
+    if (!vis(e)) return false;
+    const t = (e.getAttribute('type') || '').toLowerCase();
+    if (['checkbox', 'radio', 'range', 'color', 'hidden'].includes(t)) return false;
+    return parseFloat(getComputedStyle(e).fontSize) < 16;
+  }).length;
   const header = document.querySelector('header');
   const hr = header ? header.getBoundingClientRect() : { height: 0, bottom: 0 };
   // continutul principal: cel mai de sus element care se potriveste selectorului primar
@@ -59,7 +70,7 @@ const METRICI = (primarSel) => {
     overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     vw: innerWidth, vh: innerHeight, coarse: matchMedia('(pointer: coarse)').matches,
     antet_h: Math.round(hr.height), continut_incepe_la: Math.round(hr.bottom),
-    primar, butoane_above_fold: afBtns, pb_unelte_pliat: pbUneltePliat,
+    primar, butoane_above_fold: afBtns, pb_unelte_pliat: pbUneltePliat, inputuri_sub16: inputSub16,
     tinte_mici: small, tinte_mari: big.slice(0, 12), nr_tinte_mari: big.length,
     fonturi_mici: tiny,
   };
@@ -69,7 +80,8 @@ const METRICI = (primarSel) => {
 function verdict(nume, m) {
   const c = [];
   c.push(['overflow X == 0', m.overflow === 0, true]);
-  c.push(['fonturi <12px == 0', m.fonturi_mici === 0, false]);
+  c.push(['campuri text >=16px (fara zoom iOS)', m.inputuri_sub16 === 0, true]);
+  c.push(['text continut <12px == 0', m.fonturi_mici === 0, false]);
   if (m.primar) c.push(['primar vizibil fara derulare', m.primar.sub_fold, nume === 'inregistrari' || nume === 'live']);
   if (nume === 'inregistrari') c.push(['unelte export/analiza pliate implicit (mobil)', m.pb_unelte_pliat === true, true]);
   return c;
@@ -102,7 +114,7 @@ function verdict(nume, m) {
   let hardFail = 0;
   for (const [nume, m] of Object.entries(raport)) {
     console.log(`\n== ${nume} ==`);
-    console.log(`  debordare X: ${m.overflow}px | antet: ${m.antet_h}px | coarse: ${m.coarse} | butoane above-fold: ${m.butoane_above_fold}` +
+    console.log(`  debordare X: ${m.overflow}px | antet: ${m.antet_h}px | coarse: ${m.coarse} | inputuri <16px: ${m.inputuri_sub16} | butoane above-fold: ${m.butoane_above_fold}` +
       (m.primar ? ` | primar sus la ${m.primar.top}px (${m.primar.sub_fold ? 'VIZIBIL' : 'SUB fold'})` : ''));
     for (const [et, ok2, hard] of verdict(nume, m)) {
       if (!ok2 && hard) hardFail++;

@@ -29,7 +29,10 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 - **Setări, toate secțiunile vizibile pe telefon** — pe ecrane mici, sub-taburile (Stare,
   Înregistrare, Detecție, Notificari, Utilizatori, Audio, Sistem, Unelte, Jurnal) se **așază pe
   mai multe rânduri** în loc să se taie la dreapta fără niciun indiciu; căutarea stă pe propriul
-  rând, lățime completă.
+  rând, lățime completă. (Același lucru și pentru filele din tabul AI.)
+- **Fără zoom enervant pe iPhone** — când atingeai un câmp (dată, căutare, setări), Safari mărea
+  automat pagina (fiindcă fontul era sub 16px). Pe telefon câmpurile de text au acum 16px, așa că
+  pagina **nu mai sare la zoom** când scrii.
 
 ## [2.0.26] — 2026-11-08
 

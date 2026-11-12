@@ -1626,6 +1626,10 @@ body.viewer .act-only { display: none !important; }
   .ctrl button { padding: var(--s2) var(--s3); }
   .evdot, .marcaj { height: 14px; min-width: 6px; }
   #timeline, #hd-timeline { min-height: 44px; }
+  /* iOS da zoom automat cand atingi un camp cu font < 16px — urca toate campurile text la 16px.
+     !important ca sa invinga regulile per-componenta (ex. .pb-controls select = 14px) */
+  input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),
+  select, textarea { font-size: 16px !important; }
 }
 
 /* ---------- accesibilitate: punctele de pe timeline mai vizibile (contrast >= 3:1) ---------- */
