@@ -3,6 +3,14 @@
 Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [Nepublicat]
+
+### Schimbat
+- **Live cu puține camere arată mai bine pe telefon** — când ai una sau două camere (în modul
+  „Auto"), grila le afișează acum pe **o singură coloană, cu dale mari**, în loc de două dale mici
+  cu un gol negru dedesubt. La mai multe camere, grila umple oricum ecranul (nimic schimbat). Poți
+  oricând alege explicit 2 coloane din selectorul de densitate.
+
 ## [2.1.0] — 2026-11-12
 
 **Highlights (English)** — OpenVigil is now an installable mobile app with push notifications, and

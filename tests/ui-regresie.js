@@ -250,6 +250,11 @@ async function scenM0(browser) {
   const app = await openApp(browser, { viewport: { width: 390, height: 844 }, mobile: true });
   const { page } = app;
   try {
+    // 0) putine camere (fixtura are 2): grila „auto" pe o coloana (dale mari), nu doua dale mici
+    const gf = await page.evaluate(() => { const g = document.querySelector('#grid');
+      return { few: g.classList.contains('g-few'), cols: getComputedStyle(g).gridTemplateColumns.split(' ').length }; });
+    (gf.few && gf.cols === 1) ? ok('Live cu putine camere: o coloana (dale mari, fara gol inutil)') : bad('M0', `grila putine camere: g-few=${gf.few}, coloane=${gf.cols}`);
+
     // 1) nicio debordare orizontala pe ecranele principale (la latime de telefon)
     const vinovat = [];
     for (const [nume, tab] of [['live', null], ['harta', '#tab-harta'], ['evenimente', '#tab-ev'], ['inregistrari', '#tab-pb'], ['camere', '#tab-cams'], ['setari', '#tab-set']]) {
