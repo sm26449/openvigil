@@ -3,7 +3,21 @@
 Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 [Conventional Commits](https://www.conventionalcommits.org/).
 
-## [Nepublicat]
+## [2.1.0] — 2026-11-12
+
+**Highlights (English)** — OpenVigil is now an installable mobile app with push notifications, and
+the whole interface has been reworked for phones.
+- **Install it like an app, with push.** Add OpenVigil to your home screen (Android or iPhone) and
+  it opens full-screen like a native app. Event notifications now show a camera thumbnail, a
+  “View” button that jumps straight to the moment, and an app-icon badge. (On iPhone, push works
+  once the app is added to the Home Screen — iOS 16.4+.)
+- **Rebuilt for phones.** Every screen puts the content first and tucks power tools behind a “⋯”:
+  Recordings (player and timeline above the fold), Live (cameras first), Settings and the AI tab
+  (sub-tabs wrap instead of being cut off), Cameras and Events. Text fields no longer make iOS
+  zoom when you tap them.
+- **Single-camera view.** Swipe left/right to move between cameras, swipe down to go back; edge
+  arrows “‹ ›” show you can. The close button no longer hides under the iPhone notch.
+- **Large dialogs scroll correctly** on phones (Schedule & automation, Health center, etc.).
 
 ### Adăugat
 - **Aplicație instalabilă pe mobil, cu notificări push** — interfața se poate adăuga acum pe
