@@ -50,10 +50,16 @@ def api_events_journal():
 @bp.route("/api/journal.csv")
 def api_events_csv():
     """Jurnalul ca CSV, cu aceleasi filtre — de deschis in Excel/LibreOffice."""
+    # restrictia de camere pe cont (ca la /api/journal): IN query + post-filtru de siguranta.
+    # Fara ea, un viewer limitat la o camera primea in CSV si evenimentele camerelor interzise (SEC-01).
+    from server import _visible_ids
+    vis = _visible_ids()
     evs = rules.journal(limit=min(20000, request.args.get("limit", 5000, type=int)),
                         tip=request.args.get("tip") or None,
                         cam=request.args.get("cam", type=int),
-                        day=request.args.get("day") or None)
+                        day=request.args.get("day") or None,
+                        cams=vis)
+    evs = [e for e in evs if vis is None or e.get("cam") is None or e.get("cam") in vis]
     cols = ["t", "tip", "cam", "eticheta", "nume", "numar", "regula", "context", "motiv"]
     linii = [",".join(cols)]
     for e in evs:
