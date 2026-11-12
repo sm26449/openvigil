@@ -26,6 +26,10 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   Mod perete, I/O, Pop-up la critic, Flux) se pliază sub **„⋯"**, iar bara de vizualizări salvate
   (feature de desktop) se ascunde. Rămâne vizibil doar selectorul de câte camere pe rând +
   căutarea, așa că **grila de camere urcă sus**. Pe desktop nimic nu se schimbă.
+- **Setări, toate secțiunile vizibile pe telefon** — pe ecrane mici, sub-taburile (Stare,
+  Înregistrare, Detecție, Notificari, Utilizatori, Audio, Sistem, Unelte, Jurnal) se **așază pe
+  mai multe rânduri** în loc să se taie la dreapta fără niciun indiciu; căutarea stă pe propriul
+  rând, lățime completă.
 
 ## [2.0.26] — 2026-11-08
 

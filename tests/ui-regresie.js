@@ -286,6 +286,15 @@ async function scenM0(browser) {
     await page.waitForTimeout(100);
     const liveSecVizibil = await page.evaluate(() => getComputedStyle(document.querySelector('#preview')).display !== 'none');
     liveSecVizibil ? ok('butonul „⋯" (Live) desface actiunile secundare') : bad('M0', '⋯ Live nu desface .live-sec');
+
+    // 6) Setari: toate sub-taburile se vad (se rup pe randuri, niciunul taiat la dreapta)
+    await page.evaluate(() => document.querySelector('#tab-set')?.click());
+    await page.waitForTimeout(250);
+    const taiate = await page.evaluate(() => {
+      const w = document.documentElement.clientWidth;
+      return [...document.querySelectorAll('#set-nav .snav-item')].filter((e) => e.getBoundingClientRect().right > w + 1).length;
+    });
+    taiate === 0 ? ok('Setari: toate sub-taburile vizibile (niciunul taiat la dreapta)') : bad('M0', `${taiate} sub-taburi taiate la dreapta`);
   } finally { await app.close(); }
 }
 

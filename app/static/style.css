@@ -802,7 +802,8 @@ body.panel-open #cams { margin-right: 420px; }
 @media (max-width: 820px) {
   /* aceeasi specificitate ca regula de baza (#set:not(.hidden)), altfel nu se aplica */
   #set:not(.hidden) { grid-template-columns: 1fr; }
-  .set-nav { position: static; flex-direction: row; overflow-x: auto; gap: var(--s1);
+  /* taburile se rup pe mai multe randuri — toate vizibile, niciunul taiat fara indiciu */
+  .set-nav { position: static; flex-direction: row; flex-wrap: wrap; overflow: visible; gap: var(--s1);
     padding-bottom: var(--s2); border-bottom: 1px solid var(--line);
     min-width: 0; max-width: 100%; }
   .set-body, .set-pane, .set-cols { min-width: 0; max-width: 100%; }
@@ -810,6 +811,8 @@ body.panel-open #cams { margin-right: 420px; }
   .snav-item { border-left: 0; border-bottom: 2px solid transparent; white-space: nowrap;
     border-radius: var(--r1) var(--r1) 0 0; }
   .snav-item.on { border-left: 0; border-bottom-color: var(--accent); }
+  /* cautarea pe propriul rand, latime completa (nu lipita la dreapta ca pe desktop) */
+  #set-nav #set-q { flex: 1 1 100%; max-width: 100%; margin-left: 0; margin-top: var(--s2); }
   .set-savebar { padding: var(--s3); }
 }
 
