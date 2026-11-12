@@ -130,6 +130,11 @@ async function scenS2(browser) {
     await page.click('#tab-set');
     const enabled = await waitEnabled(page, '#s-save', false, 6000);
     if (!enabled) { bad('S2', '#s-save a ramas dezactivat (loaderele nu au terminat?)'); return; }
+    // loadNoise (async) populeaza #noise-thr din fixtura (-25) DUPA ce #s-save e deja activ;
+    // daca punem 0 inainte, ne suprascrie inapoi la -25 si salvarea trimite -25 (cursa vazuta pe CI).
+    // Asteptam intai ca loadNoise sa fi pus valoarea, abia apoi o inlocuim cu 0.
+    const noiseGata = await page.waitForFunction(() => document.querySelector('#noise-thr')?.value === '-25', null, { timeout: 6000 }).then(() => true).catch(() => false);
+    if (!noiseGata) { bad('S2', '#noise-thr nu s-a populat din loadNoise (-25) la timp'); return; }
     await page.$eval('#noise-thr', (el) => { el.value = '0'; el.dispatchEvent(new Event('input', { bubbles: true })); });
     await page.evaluate(() => document.querySelector('#s-save').click());   // click programatic (vezi #ai-save) — a dat timeout de actionability pe CI
     const c = await waitForCall(calls, '/api/settings', 'POST', 4000);
