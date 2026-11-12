@@ -179,6 +179,10 @@ function inerteazaFundal(modal, on) {
 }
 function modalDeschis(el) {
   focusInainte = document.activeElement;
+  // Daca un modal exterior (ex. HD) l-a inertat ca fundal, acum, cand se deschide PESTE el
+  // (editor zona/linie/masca deschis din HD), ii scoatem `inert` — altfel ar fi vizibil dar
+  // complet mort la click si ar parea ca s-a blocat tot (utilizatorul trebuia sa dea refresh).
+  el.removeAttribute('inert');
   inerteazaFundal(el, true);
   if (!el.contains(document.activeElement)) {
     // Preferam containerul (are tabindex=-1): cititorul de ecran ii anunta numele, iar focusul
@@ -190,6 +194,11 @@ function modalDeschis(el) {
 }
 function modalInchis(el) {
   inerteazaFundal(el, false);   // intai scoatem inert, altfel elementul-tinta ar fi needfocusabil
+  // Modale stivuite: daca inchidem un modal deschis PESTE altul (editor peste HD), modalul
+  // exterior ramane deschis — reinertam fundalul in jurul lui, ca pagina de sub el sa nu
+  // redevina accesibila la Tab/click.
+  const extern = MODALE.map((s) => $(s)).find((m) => m && m !== el && !m.classList.contains('hidden'));
+  if (extern) inerteazaFundal(extern, true);
   if (focusInainte && document.contains(focusInainte)) {
     try { focusInainte.focus({ preventScroll: true }); } catch (_) {}
   }
