@@ -39,21 +39,27 @@ TOTP_NOU_SEC = 600
 
 bp = Blueprint("auth", __name__)
 
+# Ţinte tactile de 44px si etichete persistente, nu doar placeholder (UX-02/UX-04); font 16px
+# pe input ca iOS sa nu faca zoom la focus. Formularele raman separate de shell-ul aplicatiei.
 _AUTH_CSS = """<style>body{margin:0;font-family:system-ui;background:#14171c;color:#e6e8eb;
 display:flex;align-items:center;justify-content:center;min-height:100vh}form{background:#1c2128;
 border:1px solid #2d333b;border-radius:10px;padding:28px;width:300px;text-align:center}
-h1{font-size:17px;margin:0 0 16px}input{width:100%;box-sizing:border-box;background:#22272e;
-color:#e6e8eb;border:1px solid #2d333b;border-radius:6px;padding:10px;font-size:15px;
-margin-bottom:12px}button{width:100%;background:#316dca;color:#fff;border:0;padding:10px;
-border-radius:6px;font-size:15px;cursor:pointer}.err{color:#f85149;font-size:13px;
-min-height:18px;margin:0 0 8px}p.hint{color:#8b949e;font-size:12px}</style>"""
+h1{font-size:17px;margin:0 0 16px}label{display:block;text-align:left;font-size:13px;
+color:#adbac7;margin:0 0 4px}input{width:100%;box-sizing:border-box;background:#22272e;
+color:#e6e8eb;border:1px solid #2d333b;border-radius:6px;padding:12px;font-size:16px;
+min-height:44px;margin:0 0 12px}button{width:100%;background:#316dca;color:#fff;border:0;
+padding:12px;min-height:44px;border-radius:6px;font-size:16px;cursor:pointer}.err{color:#f85149;
+font-size:13px;min-height:18px;margin:0 0 8px}p.hint{color:#8b949e;font-size:13px}
+p.hint a{display:inline-block;padding:10px 6px}</style>"""
 
 LOGIN_HTML = ("""<!DOCTYPE html><html lang="ro"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>NVR — login</title>"""
               + _AUTH_CSS + """</head><body>
 <form method="post" action="/login"><h1>🎥 """ + C.NUME + """</h1><p class="err">{err}</p>
-<input name="user" placeholder="Utilizator" autofocus autocomplete="username">
-<input type="password" name="password" placeholder="Parola" autocomplete="current-password">
+<label for="f-user">Utilizator</label>
+<input id="f-user" name="user" placeholder="Utilizator" autofocus autocomplete="username">
+<label for="f-pass">Parola</label>
+<input id="f-pass" type="password" name="password" placeholder="Parola" autocomplete="current-password">
 <button type="submit">Intra</button>
 {limbi}
 <p class="hint"><a href="https://openvigil.dev" rel="noopener" style="color:#8b949e">OpenVigil</a> · openvigil.dev</p></form></body></html>""")
@@ -64,10 +70,13 @@ SETUP_HTML = ("""<!DOCTYPE html><html lang="ro"><head><meta charset="utf-8">
 <form method="post" action="/setup"><h1>🎥 """ + C.NUME + """ — <span>primul cont</span></h1>
 <p class="hint">Nu exista inca niciun utilizator. Creeaza contul de administrator.</p>
 <p class="err">{err}</p>
-<input name="user" placeholder="Utilizator" value="admin" autocomplete="username">
-<input type="password" name="password" placeholder="Parola (minim 6 caractere)"
+<label for="s-user">Utilizator</label>
+<input id="s-user" name="user" placeholder="Utilizator" value="admin" autocomplete="username">
+<label for="s-pass">Parola (minim 6 caractere)</label>
+<input id="s-pass" type="password" name="password" placeholder="Parola (minim 6 caractere)"
  autocomplete="new-password" autofocus>
-<input type="password" name="password2" placeholder="Parola inca o data"
+<label for="s-pass2">Parola inca o data</label>
+<input id="s-pass2" type="password" name="password2" placeholder="Parola inca o data"
  autocomplete="new-password">
 <button type="submit">Creeaza contul</button>
 {limbi}
@@ -79,7 +88,8 @@ TOTP_HTML = ("""<!DOCTYPE html><html lang="ro"><head><meta charset="utf-8">
 <form method="post" action="/login/2fa"><h1>🎥 """ + C.NUME + """ — <span>al doilea pas</span></h1>
 <p class="hint">Scrie codul din aplicatia de autentificare (sau un cod de recuperare).</p>
 <p class="err">{err}</p>
-<input name="cod" placeholder="Cod de 6 cifre" autofocus inputmode="numeric"
+<label for="t-cod">Cod de 6 cifre</label>
+<input id="t-cod" name="cod" placeholder="Cod de 6 cifre" autofocus inputmode="numeric"
  autocomplete="one-time-code" pattern="[0-9a-z ]*">
 <button type="submit">Intra</button>
 <p class="hint"><a href="/login" style="color:#8b949e">Inapoi la login</a></p></form></body></html>""")
@@ -225,8 +235,10 @@ code{font-size:12px;word-break:break-all}</style></head><body>
 <p class="hint">Urcă un fișier MP4 exportat din acest NVR sau lipește amprenta lui SHA-256.
 Primești confirmarea că a fost produs aici, când, de pe ce cameră, și că nu a fost modificat de atunci.</p>
 {rez}
-<input type="file" name="fisier" accept="video/mp4,.mp4">
-<input name="sha256" placeholder="sau SHA-256 (64 de caractere hex)" autocomplete="off" pattern="[0-9a-fA-F]{64}">
+<label for="v-fisier">Fișier MP4 exportat</label>
+<input id="v-fisier" type="file" name="fisier" accept="video/mp4,.mp4">
+<label for="v-sha">sau amprenta SHA-256</label>
+<input id="v-sha" name="sha256" placeholder="64 de caractere hex" autocomplete="off" pattern="[0-9a-fA-F]{64}">
 <button type="submit">Verifică</button>
 <p class="hint">Amprenta se calculează pe server și nu se păstrează fișierul. Pe calculatorul tău: <code>sha256sum fisier.mp4</code>.</p>
 {limbi}
