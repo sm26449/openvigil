@@ -331,12 +331,45 @@ async function scenM0(browser) {
   } finally { await app.close(); }
 }
 
+async function scenHD(browser) {
+  console.log('\n== HD. Vizualizare camera pe telefon: swipe intre camere + iesire ==');
+  const app = await openApp(browser, { viewport: { width: 390, height: 844 }, mobile: true });
+  const { page } = app;
+  const swipe = (x1, y1, x2, y2) => page.evaluate(([x1, y1, x2, y2]) => {
+    const ov = document.querySelector('#hd-overlay');
+    const mk = (type, x, y, keep) => { const tch = new Touch({ identifier: 1, target: ov, clientX: x, clientY: y });
+      ov.dispatchEvent(new TouchEvent(type, { bubbles: true, cancelable: true, touches: keep ? [tch] : [], changedTouches: [tch] })); };
+    mk('touchstart', x1, y1, true); mk('touchend', x2, y2, false);
+  }, [x1, y1, x2, y2]);
+  try {
+    await page.evaluate(() => document.querySelector('#grid .tile')?.click());
+    await page.waitForSelector('#hd-overlay:not(.hidden)', { timeout: 5000 });
+    const t1 = await page.evaluate(() => document.querySelector('#hd-title').textContent);
+    /(^|\s)1\./.test(t1) ? ok(`HD deschis pe camera 1 (${t1})`) : bad('HD', `titlu neasteptat: ${t1}`);
+
+    // „✕ Inchide" vizibil si de 44px (pe iPhone safe-area il scoate de sub notch)
+    const close = await page.evaluate(() => { const e = document.querySelector('#hd-close'); const r = e.getBoundingClientRect();
+      return { w: Math.round(r.width), h: Math.round(r.height), vis: getComputedStyle(e).display !== 'none' }; });
+    (close.vis && close.w >= 44 && close.h >= 44) ? ok(`buton Inchide 44px vizibil (${close.w}x${close.h})`) : bad('HD', `Inchide prea mic/ascuns: ${JSON.stringify(close)}`);
+
+    await swipe(320, 400, 50, 410);   // swipe stanga -> camera urmatoare
+    await page.waitForTimeout(300);
+    const t2 = await page.evaluate(() => document.querySelector('#hd-title').textContent);
+    (t2 && t2 !== t1) ? ok(`swipe stanga trece la alta camera (${t2})`) : bad('HD', `swipe nu a schimbat camera (inca ${t2})`);
+
+    await swipe(200, 200, 200, 520);  // swipe jos -> inchide
+    await page.waitForTimeout(300);
+    const inchis = await page.evaluate(() => document.querySelector('#hd-overlay').classList.contains('hidden'));
+    inchis ? ok('swipe jos inchide HD (revine la grila)') : bad('HD', 'swipe jos nu a inchis HD');
+  } finally { await app.close(); }
+}
+
 (async () => {
   const srv = await startStatic();
   globalThis.__ORIGIN = srv.origin;
   const browser = await chromium.launch();
   try {
-    for (const scen of [scenBoot, scenA1, scenA2, scenS1, scenS2, scenC2, scenL2, scenT1, scenC4, scenP0, scenM0]) {
+    for (const scen of [scenBoot, scenA1, scenA2, scenS1, scenS2, scenC2, scenL2, scenT1, scenC4, scenP0, scenM0, scenHD]) {
       try { await scen(browser); }
       catch (e) { bad(scen.name, 'exceptie in scenariu: ' + String(e).slice(0, 160)); }
     }

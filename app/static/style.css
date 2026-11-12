@@ -1702,7 +1702,8 @@ dialog#reid::backdrop { background: rgba(0, 0, 0, .6); }
 /* ---------- telefon (<= 760 px): navigarea in bara de jos, restul antetului in foaia „Mai mult” ---------- */
 @media (max-width: 760px) {
   :root { --bara-jos: calc(60px + env(safe-area-inset-bottom, 0px)); }
-  body { padding-bottom: var(--bara-jos); }
+  /* padding-top: antetul (titlu + butoane de mod) sa nu stea sub bara de stare / notch pe iPhone */
+  body { padding-bottom: var(--bara-jos); padding-top: env(safe-area-inset-top, 0px); }
   header { gap: var(--s2); padding: var(--s2) var(--s3); flex-wrap: nowrap; }
   header h1 { font-size: var(--fs-sm); white-space: nowrap; }
   #mod-chip { margin-left: auto; }
@@ -1768,8 +1769,11 @@ dialog#reid::backdrop { background: rgba(0, 0, 0, .6); }
   .live-bar .search { flex: 0 0 160px; min-width: 160px; }
   .live-bar .bar-label { display: none; }
   .views-bar #view-save { font-size: var(--fs-xs); }
-  /* HD: bara de sus compacta; controalele intra sub titlu, derulabile */
-  #hd-bar { flex-wrap: wrap; gap: var(--s2); padding: var(--s2) var(--s3); }
+  /* HD: bara de sus compacta; controalele intra sub titlu, derulabile.
+     padding-top cu safe-area: altfel „✕ Inchide" intra sub bara de stare / notch pe iPhone
+     (overlay-ul e full-bleed cu viewport-fit=cover) si nu mai poti iesi */
+  #hd-bar { flex-wrap: wrap; gap: var(--s2);
+    padding: max(var(--s2), env(safe-area-inset-top, 0px)) var(--s3) var(--s2); }
   #hd-ctrls { order: 3; flex-basis: 100%; overflow-x: auto; scrollbar-width: none; }
   #hd-close { min-width: 44px; min-height: 44px; }
   #hd-close .hd-close-txt { display: none; }
