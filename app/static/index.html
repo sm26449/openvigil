@@ -84,7 +84,7 @@
   <div class="live-bar views-bar">
     <span class="bar-label">Vizualizari</span>
     <div id="views" class="chips"></div>
-    <button id="view-save" title="Salvează filtrele și aranjarea curentă ca vizualizare">Salvează vizualizarea</button>
+    <button id="view-save" class="live-sec" title="Salvează filtrele și aranjarea curentă ca vizualizare">Salvează vizualizarea</button>
   </div>
   <div class="live-bar">
     <div class="seg" id="density" role="group" aria-label="Camere pe rând">
@@ -92,11 +92,13 @@
       <button data-cols="4">4</button><button data-cols="6">6</button>
       <button data-cols="auto" class="on">Auto</button>
     </div>
-    <button id="preview" title="Imagini reîmprospătate la 5s în loc de video — mult mai ușor la multe camere">Previzualizare</button>
-    <button id="wall" title="Ecran complet, fără meniuri — pentru un monitor dedicat">Mod perete</button>
-    <button id="io-toggle" class="act-only" title="Panou cu sirena, stroboscop, releu și anunț vocal pentru toate camerele">I/O</button>
-    <button id="popup-toggle" title="La un incident critic, dala camerei se mărește câteva secunde">Pop-up la critic</button>
-    <button id="flux-toggle" title="Fluxul de evenimente de azi lângă grilă: cadre cu detecții, fețe, numere, alarme; click pe unul = redarea momentului">Flux</button>
+    <button id="preview" class="live-sec" title="Imagini reîmprospătate la 5s în loc de video — mult mai ușor la multe camere">Previzualizare</button>
+    <button id="wall" class="live-sec" title="Ecran complet, fără meniuri — pentru un monitor dedicat">Mod perete</button>
+    <button id="io-toggle" class="act-only live-sec" title="Panou cu sirena, stroboscop, releu și anunț vocal pentru toate camerele">I/O</button>
+    <button id="popup-toggle" class="live-sec" title="La un incident critic, dala camerei se mărește câteva secunde">Pop-up la critic</button>
+    <button id="flux-toggle" class="live-sec" title="Fluxul de evenimente de azi lângă grilă: cadre cu detecții, fețe, numere, alarme; click pe unul = redarea momentului">Flux</button>
+    <!-- pe mobil, actiunile secundare (.live-sec) se pliaza sub „⋯" ca sa ramana vizibile camerele -->
+    <button type="button" id="live-more" class="live-more" aria-expanded="false" title="Mai multe controale">⋯</button>
     <input id="live-search" class="search" placeholder="Caută camera..." aria-label="Caută camera">
     <div id="live-groups" class="chips"></div>
   </div>

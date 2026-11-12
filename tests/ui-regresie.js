@@ -274,6 +274,18 @@ async function scenM0(browser) {
     await page.waitForTimeout(100);
     const secVizibil = await page.evaluate(() => getComputedStyle(document.querySelector('#pb-ev-prev')).display !== 'none');
     secVizibil ? ok('butonul „⋯" desface controalele secundare') : bad('M0', '⋯ nu desface .pb-sec');
+
+    // 5) Live: camerele primele — actiuni secundare pliate, bara de vizualizari ascunsa pe mobil
+    await page.evaluate(() => document.querySelector('#tab-live')?.click());
+    await page.waitForTimeout(250);
+    const liveSecAscuns = await page.evaluate(() => getComputedStyle(document.querySelector('#preview')).display === 'none');
+    liveSecAscuns ? ok('Live: actiuni secundare pliate implicit pe mobil') : bad('M0', 'Live .live-sec vizibile la 390px');
+    const viewsAscuns = await page.evaluate(() => getComputedStyle(document.querySelector('#live .views-bar')).display === 'none');
+    viewsAscuns ? ok('Live: bara de vizualizari ascunsa pe mobil') : bad('M0', 'views-bar vizibila la 390px');
+    await page.evaluate(() => document.querySelector('#live-more')?.click());
+    await page.waitForTimeout(100);
+    const liveSecVizibil = await page.evaluate(() => getComputedStyle(document.querySelector('#preview')).display !== 'none');
+    liveSecVizibil ? ok('butonul „⋯" (Live) desface actiunile secundare') : bad('M0', '⋯ Live nu desface .live-sec');
   } finally { await app.close(); }
 }
 

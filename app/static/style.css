@@ -386,8 +386,8 @@ header > nav button.active { background: var(--accent); color: #fff; }
 #pb-nav button { background: var(--line); color: var(--text-2); border: 0; padding: var(--s2) var(--s3); border-radius: var(--r1); cursor: pointer; font-size: var(--fs-sm); }
 #pb-nav button:hover { background: var(--accent); color: #fff; }
 #pb-pos { font-size: var(--fs-sm); color: var(--text-3); min-width: 62px; text-align: center; font-variant-numeric: tabular-nums; }
-/* butonul „⋯" apare doar pe mobil (vezi blocul @media 720px); pe desktop secundarele sunt la vedere */
-.pb-nav-more { display: none; }
+/* butoanele „⋯" apar doar pe mobil (vezi blocul @media 720px); pe desktop secundarele sunt la vedere */
+.pb-nav-more, #live-more { display: none; }
 @media (max-width: 900px) { .pb-main { flex-direction: column; } .pb-right { width: 100%; max-height: 240px; } }
 
 /* timeline */
@@ -838,6 +838,14 @@ body.panel-open #cams { margin-right: 420px; }
     background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: var(--r1); cursor: pointer; }
   #pb-nav:not(.more-open) .pb-sec { display: none; }
   #pb-nav.more-open .pb-nav-more { background: var(--accent); color: #fff; }
+  /* Live: camerele primele — actiunile secundare pliate sub „⋯", eticheta „Vizualizari" ascunsa */
+  #live-more { display: inline-flex; align-items: center; justify-content: center; min-width: 44px;
+    background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: var(--r1); cursor: pointer; }
+  #live:not(.live-more-open) .live-sec { display: none; }
+  #live.live-more-open #live-more { background: var(--accent); color: #fff; }
+  /* bara de vizualizari salvate (si indiciul ei) e un feature de desktop — pe mobil o scoatem
+     ca sa nu stea chrome deasupra camerelor; salvarea de vizualizari ramane pe desktop */
+  #live .views-bar { display: none; }
 }
 
 /* ---- alarma de zgomot: nivel live + istoric ---- */

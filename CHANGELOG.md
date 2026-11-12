@@ -22,6 +22,10 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   eveniment anterior/următor, Captură, Marcaj, Link, calitate) sub **„⋯"**. Rămân la vedere
   esențialele — Pauză, ±10s, viteza — așa că **player-ul și linia timpului se văd fără derulare**.
   Pe desktop nimic nu se schimbă. (Suită de audit mobil Playwright + regresie în CI.)
+- **Live, camerele primele pe telefon** — pe ecrane mici, acțiunile secundare (Previzualizare,
+  Mod perete, I/O, Pop-up la critic, Flux) se pliază sub **„⋯"**, iar bara de vizualizări salvate
+  (feature de desktop) se ascunde. Rămâne vizibil doar selectorul de câte camere pe rând +
+  căutarea, așa că **grila de camere urcă sus**. Pe desktop nimic nu se schimbă.
 
 ## [2.0.26] — 2026-11-08
 
