@@ -387,7 +387,7 @@ header > nav button.active { background: var(--accent); color: #fff; }
 #pb-nav button:hover { background: var(--accent); color: #fff; }
 #pb-pos { font-size: var(--fs-sm); color: var(--text-3); min-width: 62px; text-align: center; font-variant-numeric: tabular-nums; }
 /* butoanele „⋯" apar doar pe mobil (vezi blocul @media 720px); pe desktop secundarele sunt la vedere */
-.pb-nav-more, #live-more { display: none; }
+.pb-nav-more, #live-more, #cams-more, #inc-more { display: none; }
 @media (max-width: 900px) { .pb-main { flex-direction: column; } .pb-right { width: 100%; max-height: 240px; } }
 
 /* timeline */
@@ -849,6 +849,14 @@ body.panel-open #cams { margin-right: 420px; }
   /* bara de vizualizari salvate (si indiciul ei) e un feature de desktop — pe mobil o scoatem
      ca sa nu stea chrome deasupra camerelor; salvarea de vizualizari ramane pe desktop */
   #live .views-bar { display: none; }
+  /* Camere: actiunile de admin (scanare, selectare in masa) sub „⋯" */
+  #cams-more, #inc-more { display: inline-flex; align-items: center; justify-content: center; min-width: 44px;
+    background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: var(--r1); cursor: pointer; }
+  #cams:not(.cams-more-open) .cams-sec { display: none; }
+  #cams.cams-more-open #cams-more { background: var(--accent); color: #fff; }
+  /* Evenimente: Rezumat + Dosare (secundare) sub „⋯" */
+  .inc-bar:not(.inc-more-open) .inc-sec { display: none; }
+  .inc-bar.inc-more-open #inc-more { background: var(--accent); color: #fff; }
 }
 
 /* ---- alarma de zgomot: nivel live + istoric ---- */

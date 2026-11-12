@@ -923,6 +923,11 @@ $('#scan-open').onclick = () => {
     $('#scan-cidr').value = ip.split('.').slice(0, 3).join('.') + '.0/24';
   }
 };
+// „⋯": desface actiunile de admin din Camere pe mobil (scanare, selectare in masa)
+$('#cams-more') && ($('#cams-more').onclick = () => {
+  const open = $('#cams').classList.toggle('cams-more-open');
+  $('#cams-more').setAttribute('aria-expanded', open ? 'true' : 'false');
+});
 let scanTimer = null;
 $('#scan-go').onclick = async () => {
   const d = await post('/api/discover', {

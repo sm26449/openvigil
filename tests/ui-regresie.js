@@ -308,6 +308,26 @@ async function scenM0(browser) {
       }).length;
     });
     inputMic === 0 ? ok('campuri text >=16px pe mobil (fara zoom iOS la focus)') : bad('M0', `${inputMic} campuri <16px`);
+
+    // 8) Camere: actiunile de admin (scanare, selectare in masa) pliate implicit, „⋯" le desface
+    await page.evaluate(() => document.querySelector('#tab-cams')?.click());
+    await page.waitForTimeout(250);
+    const camsAscuns = await page.evaluate(() => getComputedStyle(document.querySelector('#scan-open')).display === 'none');
+    camsAscuns ? ok('Camere: actiuni admin pliate implicit pe mobil') : bad('M0', 'Camere .cams-sec vizibile la 390px');
+    await page.evaluate(() => document.querySelector('#cams-more')?.click());
+    await page.waitForTimeout(100);
+    const camsVizibil = await page.evaluate(() => getComputedStyle(document.querySelector('#scan-open')).display !== 'none');
+    camsVizibil ? ok('butonul „⋯" (Camere) desface actiunile admin') : bad('M0', '⋯ Camere nu desface .cams-sec');
+
+    // 9) Evenimente: Rezumat + Dosare (secundare) pliate implicit, „⋯" le desface
+    await page.evaluate(() => document.querySelector('#tab-ev')?.click());
+    await page.waitForTimeout(250);
+    const incAscuns = await page.evaluate(() => getComputedStyle(document.querySelector('#inc-digest')).display === 'none');
+    incAscuns ? ok('Evenimente: Rezumat/Dosare pliate implicit pe mobil') : bad('M0', 'Evenimente .inc-sec vizibile la 390px');
+    await page.evaluate(() => document.querySelector('#inc-more')?.click());
+    await page.waitForTimeout(100);
+    const incVizibil = await page.evaluate(() => getComputedStyle(document.querySelector('#inc-digest')).display !== 'none');
+    incVizibil ? ok('butonul „⋯" (Evenimente) desface Rezumat/Dosare') : bad('M0', '⋯ Evenimente nu desface .inc-sec');
   } finally { await app.close(); }
 }
 

@@ -305,6 +305,11 @@ async function loadDigest() {
 const SEC_RO = { persoana_necunoscuta: 'persoane necunoscute',
   fata_falsa: 'fețe falsificate', numar: 'numere de mașină' };
 $('#inc-digest') && ($('#inc-digest').onclick = openDigest);
+// „⋯": desface Rezumat + Dosare (secundare) pe mobil, ca filtrul + lista sa fie in fata
+$('#inc-more') && ($('#inc-more').onclick = () => {
+  const open = $('.inc-bar').classList.toggle('inc-more-open');
+  $('#inc-more').setAttribute('aria-expanded', open ? 'true' : 'false');
+});
 $('#digest-close') && ($('#digest-close').onclick = closeDigest);
 $('#digest-day') && ($('#digest-day').onchange = loadDigest);
 $('#digest-modal') && ($('#digest-modal').onclick = (e) => { if (e.target.id === 'digest-modal') closeDigest(); });

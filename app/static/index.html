@@ -253,8 +253,10 @@
       <button data-f="critic">Critice</button>
     </div>
     <label class="inline"><input id="inc-sound" type="checkbox" checked> Alarma sonora</label>
-    <button id="inc-digest" class="link-btn" title="Rezumatul zilei: ce s-a întâmplat, dintr-o privire">📋 Rezumat</button>
-    <button id="inc-cases" class="link-btn" title="Dosare de caz — probe adunate pentru un incident">🗂 Dosare</button>
+    <!-- pe mobil, Rezumat + Dosare (secundare) se pliaza sub „⋯" ca filtrul + lista sa fie in fata -->
+    <button type="button" id="inc-more" class="inc-more" aria-expanded="false" title="Mai multe controale">⋯</button>
+    <button id="inc-digest" class="link-btn inc-sec" title="Rezumatul zilei: ce s-a întâmplat, dintr-o privire">📋 Rezumat</button>
+    <button id="inc-cases" class="link-btn inc-sec" title="Dosare de caz — probe adunate pentru un incident">🗂 Dosare</button>
     <span id="inc-info" class="hint"></span>
   </div>
   <div id="inc-list" class="inc-list"></div>
@@ -579,11 +581,14 @@
 <!-- CAMERE (administrare) -->
 <section id="cams" class="view hidden">
   <div class="cams-bar">
-    <button id="scan-open">Scanează rețeaua</button>
+    <!-- pe mobil, actiunile de admin (.cams-sec: scanare retea, selectare in masa) se pliaza
+         sub „⋯" ca sa ramana in fata cautarea + filtrul pe grupuri -->
+    <button id="scan-open" class="cams-sec">Scanează rețeaua</button>
     <input id="cams-search" class="search" placeholder="Caută după nume, IP sau model..."
            aria-label="Caută camera">
+    <button type="button" id="cams-more" class="cams-more" aria-expanded="false" title="Mai multe controale">⋯</button>
     <div id="cams-groups" class="chips"></div>
-    <button id="sel-all" class="link-btn">Selectează tot ce se vede</button>
+    <button id="sel-all" class="link-btn cams-sec">Selectează tot ce se vede</button>
     <span id="cams-info"></span>
   </div>
   <div id="scan-panel" class="hidden">

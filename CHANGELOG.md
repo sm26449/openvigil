@@ -33,6 +33,10 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 - **Fără zoom enervant pe iPhone** — când atingeai un câmp (dată, căutare, setări), Safari mărea
   automat pagina (fiindcă fontul era sub 16px). Pe telefon câmpurile de text au acum 16px, așa că
   pagina **nu mai sare la zoom** când scrii.
+- **Camere și Evenimente, mai curate pe telefon** — la Camere, acțiunile de administrare (Scanează
+  rețeaua, Selectează tot ce se vede) trec sub **„⋯"**, așa că rămân în față căutarea și filtrul pe
+  grupuri, iar lista de camere urcă. La Evenimente, Rezumat și Dosare trec sub **„⋯"**, ca filtrul
+  (Netratate / Toate / Critice) și lista de incidente să fie primele. Pe desktop nimic nu se schimbă.
 
 ## [2.0.26] — 2026-11-08
 
