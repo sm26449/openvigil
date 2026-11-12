@@ -338,7 +338,15 @@ def api_plates_clear():
 @bp.route("/api/plates/img/<path:rel>")
 def api_plates_img(rel):
     p = plates.safe_path(rel)
-    if not p or not os.path.isfile(p):
+    # Doar crop-uri IMAGINE din crops/ — nu jurnalul brut (log.jsonl) sau alte fisiere din
+    # data/plates (SEC-03). safe_path acopera traversarea; aici restrangem ce tip de fisier.
+    if (not p or not p.startswith(plates.CROPS_DIR + os.sep)
+            or not p.lower().endswith((".jpg", ".jpeg", ".png")) or not os.path.isfile(p)):
+        return jsonify({"error": t("nu există")}), 404
+    # Scop pe camera pentru conturi restranse: servim crop-ul doar daca stim camera lui si e
+    # permisa. Un crop fara intrare in jurnal (camera necunoscuta) nu se serveste — deny-by-default.
+    vis = _visible_ids()
+    if vis is not None and plates.cam_pentru_crop(rel) not in vis:
         return jsonify({"error": t("nu există")}), 404
     return send_file(p, mimetype="image/jpeg", max_age=60)
 
