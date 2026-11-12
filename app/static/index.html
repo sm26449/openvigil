@@ -98,7 +98,7 @@
     <button id="popup-toggle" class="live-sec" title="La un incident critic, dala camerei se mărește câteva secunde">Pop-up la critic</button>
     <button id="flux-toggle" class="live-sec" title="Fluxul de evenimente de azi lângă grilă: cadre cu detecții, fețe, numere, alarme; click pe unul = redarea momentului">Flux</button>
     <!-- pe mobil, actiunile secundare (.live-sec) se pliaza sub „⋯" ca sa ramana vizibile camerele -->
-    <button type="button" id="live-more" class="live-more" aria-expanded="false" title="Mai multe controale">⋯</button>
+    <button type="button" id="live-more" class="more-btn" aria-expanded="false" title="Mai multe controale">⋯</button>
     <input id="live-search" class="search" placeholder="Caută camera..." aria-label="Caută camera">
     <div id="live-groups" class="chips"></div>
   </div>
@@ -208,7 +208,7 @@
         <span id="pb-speed" title="Viteza de redare ([ și ])">
           <button data-sp="0.5">½x</button><button data-sp="1" class="active">1x</button><button data-sp="2">2x</button><button data-sp="4">4x</button><button data-sp="8">8x</button>
         </span>
-        <button type="button" id="pb-nav-more" class="pb-nav-more" aria-expanded="false" title="Mai multe controale">⋯</button>
+        <button type="button" id="pb-nav-more" class="more-btn" aria-expanded="false" title="Mai multe controale">⋯</button>
         <select id="pb-quality" class="pb-sec" title="Rezoluția redarii: Auto alege după viteza măsurată a rețelei tale" aria-label="Rezoluția redării">
           <option value="auto">Auto</option>
           <option value="eco">Economic (720p)</option>
@@ -254,7 +254,7 @@
     </div>
     <label class="inline"><input id="inc-sound" type="checkbox" checked> Alarma sonora</label>
     <!-- pe mobil, Rezumat + Dosare (secundare) se pliaza sub „⋯" ca filtrul + lista sa fie in fata -->
-    <button type="button" id="inc-more" class="inc-more" aria-expanded="false" title="Mai multe controale">⋯</button>
+    <button type="button" id="inc-more" class="more-btn" aria-expanded="false" title="Mai multe controale">⋯</button>
     <button id="inc-digest" class="link-btn inc-sec" title="Rezumatul zilei: ce s-a întâmplat, dintr-o privire">📋 Rezumat</button>
     <button id="inc-cases" class="link-btn inc-sec" title="Dosare de caz — probe adunate pentru un incident">🗂 Dosare</button>
     <span id="inc-info" class="hint"></span>
@@ -586,7 +586,7 @@
     <button id="scan-open" class="cams-sec">Scanează rețeaua</button>
     <input id="cams-search" class="search" placeholder="Caută după nume, IP sau model..."
            aria-label="Caută camera">
-    <button type="button" id="cams-more" class="cams-more" aria-expanded="false" title="Mai multe controale">⋯</button>
+    <button type="button" id="cams-more" class="more-btn" aria-expanded="false" title="Mai multe controale">⋯</button>
     <div id="cams-groups" class="chips"></div>
     <button id="sel-all" class="link-btn cams-sec">Selectează tot ce se vede</button>
     <span id="cams-info"></span>

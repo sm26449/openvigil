@@ -4,7 +4,7 @@
    pe toate; importurile/exporturile sunt verificate de scripts/module_check.py (si in pytest).
    ==================================================================== */
 import { S } from './state.js';
-import { $, ADMIN, CAN_ACT, DET_RO, EV_RO, HLS_SUFFIX, html, icon, lista, streamEl, t, talkStart, talkStop, toast } from './00-core.js';
+import { $, ADMIN, CAN_ACT, DET_RO, EV_RO, HLS_SUFFIX, bindMore, html, icon, lista, streamEl, t, talkStart, talkStop, toast } from './00-core.js';
 import { camLinks } from './05-navigare.js';
 import { hdCam, openHD } from './20-hd.js';
 import { hartaEvents } from './25-harta.js';
@@ -579,10 +579,7 @@ $('#preview').classList.toggle('on', previewMode);
 $('#wall').onclick = () => setWall(true);
 $('#wall-exit').onclick = () => setWall(false);
 // „⋯": desface actiunile secundare din Live pe mobil (camerele raman primele)
-$('#live-more') && ($('#live-more').onclick = () => {
-  const open = $('#live').classList.toggle('live-more-open');
-  $('#live-more').setAttribute('aria-expanded', open ? 'true' : 'false');
-});
+bindMore('#live-more', '#live', 'live-more-open');
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && document.body.classList.contains('wall')) setWall(false);
 });
