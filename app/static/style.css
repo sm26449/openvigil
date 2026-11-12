@@ -386,6 +386,8 @@ header > nav button.active { background: var(--accent); color: #fff; }
 #pb-nav button { background: var(--line); color: var(--text-2); border: 0; padding: var(--s2) var(--s3); border-radius: var(--r1); cursor: pointer; font-size: var(--fs-sm); }
 #pb-nav button:hover { background: var(--accent); color: #fff; }
 #pb-pos { font-size: var(--fs-sm); color: var(--text-3); min-width: 62px; text-align: center; font-variant-numeric: tabular-nums; }
+/* butonul „⋯" apare doar pe mobil (vezi blocul @media 720px); pe desktop secundarele sunt la vedere */
+.pb-nav-more { display: none; }
 @media (max-width: 900px) { .pb-main { flex-direction: column; } .pb-right { width: 100%; max-height: 240px; } }
 
 /* timeline */
@@ -417,6 +419,9 @@ header > nav button.active { background: var(--accent); color: #fff; }
 .mk-row .link-btn { padding: 0 var(--s1); }
 .pb-controls .exp { display: flex; gap: var(--s2); align-items: center; font-size: var(--fs-sm); color: var(--text-2); margin-left: auto; }
 .pb-controls .exp button { background: var(--ok); padding: var(--s2) var(--s3); }
+/* uneltele de export/analiza: pe desktop wrapper-ul dispare (contents), butonul e ascuns */
+.pb-unelte { display: contents; }
+.pb-unelte-tgl { display: none; }
 #ticks { position: relative; height: 16px; margin-top: 2px; }
 #ticks span { position: absolute; font-size: var(--fs-xs); color: var(--text-3); transform: translateX(-50%); }
 
@@ -822,6 +827,17 @@ body.panel-open #cams { margin-right: 420px; }
   #cams-pager { flex-wrap: wrap; gap: var(--s2); }
   .pager-size { margin-left: 0; }
   .pb-controls .exp { margin-left: 0; flex-wrap: wrap; }
+  /* mobil: timeline-ul primul — uneltele stau pliate sub butonul „Unelte" pana le ceri */
+  .pb-unelte-tgl { display: inline-flex; align-items: center; gap: 4px; background: var(--surface-2);
+    color: var(--text); border: 1px solid var(--line); border-radius: var(--r1); padding: var(--s2) var(--s3); cursor: pointer; }
+  .pb-unelte { display: none; flex: 1 1 100%; flex-direction: column; gap: var(--s2); }
+  .pb-controls.unelte-open .pb-unelte { display: flex; }
+  .pb-controls.unelte-open .pb-unelte-tgl { background: var(--accent); color: #fff; }
+  /* bara de transport: doar esentialele vizibile; restul (.pb-sec) sub butonul „⋯" */
+  .pb-nav-more { display: inline-flex; align-items: center; justify-content: center; min-width: 44px;
+    background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: var(--r1); cursor: pointer; }
+  #pb-nav:not(.more-open) .pb-sec { display: none; }
+  #pb-nav.more-open .pb-nav-more { background: var(--accent); color: #fff; }
 }
 
 /* ---- alarma de zgomot: nivel live + istoric ---- */

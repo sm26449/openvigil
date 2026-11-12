@@ -10,6 +10,7 @@
 //   L2  Enter pe un control din dala NU deschide HD (doar dala insasi, cu focus)
 //   T1  „Contul meu" e buton real, focusabil de la tastatura
 //   P0  PWA instalabil cu push: meta iOS, manifest (standalone/maskable/scurtaturi), icon-uri
+//   M0  mobil (390px): fara debordare pe 6 ecrane; Inregistrari cu unelte export/analiza pliate
 // Ruleaza: node tests/ui-regresie.js   (are nevoie de Chromium — npx playwright install chromium)
 const { chromium } = require('playwright');
 const { startStatic, installApi, err500 } = require('./ui-fixtures');
@@ -238,12 +239,50 @@ async function scenP0(browser) {
   } finally { await app.close(); }
 }
 
+async function scenM0(browser) {
+  console.log('\n== M0. Mobil (390px): fara debordare + Inregistrari cu unelte pliate ==');
+  const app = await openApp(browser, { viewport: { width: 390, height: 844 } });
+  const { page } = app;
+  try {
+    // 1) nicio debordare orizontala pe ecranele principale (la latime de telefon)
+    const vinovat = [];
+    for (const [nume, tab] of [['live', null], ['harta', '#tab-harta'], ['evenimente', '#tab-ev'], ['inregistrari', '#tab-pb'], ['camere', '#tab-cams'], ['setari', '#tab-set']]) {
+      if (tab) { await page.evaluate((s) => document.querySelector(s)?.click(), tab); await page.waitForTimeout(250); }
+      const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      if (over > 2) vinovat.push(`${nume}:${over}px`);
+    }
+    vinovat.length === 0 ? ok('fara debordare orizontala pe 6 ecrane la 390px') : bad('M0', 'debordare: ' + vinovat.join(', '));
+
+    // 2) Inregistrari: uneltele de export/analiza pliate implicit, timeline deasupra fold-ului
+    await page.evaluate(() => document.querySelector('#tab-pb')?.click());
+    await page.waitForTimeout(300);
+    const pliat = await page.evaluate(() => getComputedStyle(document.querySelector('#pb-unelte')).display === 'none');
+    pliat ? ok('Inregistrari: unelte export/analiza pliate implicit pe mobil') : bad('M0', '#pb-unelte nu e pliat la 390px');
+    const tlTop = await page.evaluate(() => document.querySelector('#timeline').getBoundingClientRect().top);
+    tlTop < 844 ? ok(`timeline vizibil fara derulare (sus la ${Math.round(tlTop)}px)`) : bad('M0', `timeline sub fold (${Math.round(tlTop)}px)`);
+
+    // 3) butonul „Unelte" chiar desface export/analiza
+    await page.evaluate(() => document.querySelector('#pb-unelte-tgl')?.click());
+    await page.waitForTimeout(100);
+    const desfacut = await page.evaluate(() => getComputedStyle(document.querySelector('#pb-unelte')).display !== 'none');
+    desfacut ? ok('butonul „Unelte" desface export/analiza') : bad('M0', 'Unelte nu deschide #pb-unelte');
+
+    // 4) bara de transport: controalele secundare (.pb-sec) pliate implicit, „⋯" le desface
+    const secAscuns = await page.evaluate(() => getComputedStyle(document.querySelector('#pb-ev-prev')).display === 'none');
+    secAscuns ? ok('transport: controale secundare pliate implicit pe mobil') : bad('M0', '.pb-sec vizibile la 390px');
+    await page.evaluate(() => document.querySelector('#pb-nav-more')?.click());
+    await page.waitForTimeout(100);
+    const secVizibil = await page.evaluate(() => getComputedStyle(document.querySelector('#pb-ev-prev')).display !== 'none');
+    secVizibil ? ok('butonul „⋯" desface controalele secundare') : bad('M0', '⋯ nu desface .pb-sec');
+  } finally { await app.close(); }
+}
+
 (async () => {
   const srv = await startStatic();
   globalThis.__ORIGIN = srv.origin;
   const browser = await chromium.launch();
   try {
-    for (const scen of [scenBoot, scenA1, scenA2, scenS1, scenS2, scenC2, scenL2, scenT1, scenC4, scenP0]) {
+    for (const scen of [scenBoot, scenA1, scenA2, scenS1, scenS2, scenC2, scenL2, scenT1, scenC4, scenP0, scenM0]) {
       try { await scen(browser); }
       catch (e) { bad(scen.name, 'exceptie in scenariu: ' + String(e).slice(0, 160)); }
     }

@@ -667,6 +667,16 @@ $('#pb-multi').onclick = () => {
   $('#pb-multi').classList.toggle('active', !box.classList.contains('hidden'));
   if (!box.classList.contains('hidden')) renderMultiList();
 };
+// „Unelte" (export + analiza): pliate pe mobil ca timeline-ul sa fie deasupra fold-ului
+$('#pb-unelte-tgl') && ($('#pb-unelte-tgl').onclick = () => {
+  const open = $('#pb .pb-controls').classList.toggle('unelte-open');
+  $('#pb-unelte-tgl').setAttribute('aria-expanded', open ? 'true' : 'false');
+});
+// „⋯": desface controalele secundare de transport pe mobil (cadru, Eveniment, Captura, Marcaj…)
+$('#pb-nav-more') && ($('#pb-nav-more').onclick = () => {
+  const open = $('#pb-nav').classList.toggle('more-open');
+  $('#pb-nav-more').setAttribute('aria-expanded', open ? 'true' : 'false');
+});
 
 async function playFrom(date, sec) {
   const gen = ++pbGen;   // ultima cerere castiga: un raspuns vechi nu mai scrie in player (audit #1)

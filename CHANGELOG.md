@@ -15,6 +15,14 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   **contor pe iconița aplicației**. (Manifest cu scurtături Live / Evenimente / Înregistrări și
   iconiță „maskable" pentru Android.)
 
+### Schimbat
+- **Înregistrări, mult mai ușor de folosit pe telefon** — pe ecrane mici, uneltele de
+  export/analiză (Descarcă MP4, Exporturile mele, Caută pe regiune, Harta de căldură, Time-lapse)
+  se pliază sub un buton **„Unelte"**, iar controalele secundare de redare (cadru cu cadru,
+  eveniment anterior/următor, Captură, Marcaj, Link, calitate) sub **„⋯"**. Rămân la vedere
+  esențialele — Pauză, ±10s, viteza — așa că **player-ul și linia timpului se văd fără derulare**.
+  Pe desktop nimic nu se schimbă. (Suită de audit mobil Playwright + regresie în CI.)
+
 ## [2.0.26] — 2026-11-08
 
 ### Adăugat
