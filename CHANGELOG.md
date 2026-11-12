@@ -3,7 +3,15 @@
 Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 [Conventional Commits](https://www.conventionalcommits.org/).
 
-## [Nepublicat]
+## [2.1.1] — 2026-11-12
+
+**Highlights (English)** — Mobile polish on top of 2.1.0.
+- **Cleaner Live on phones.** With one or two cameras (Auto mode) the grid now uses a single column
+  with large tiles instead of two tiny ones over empty space. Each tile shows just the live image
+  (name + status) — all actions and PTZ moved to the camera's HD view (tap a tile).
+- **Camera actions within thumb reach.** In a camera's HD view the action panel (siren, strobe,
+  talk, zoom, snapshot, AI…) moved from the top bar down next to the timeline, easier to reach
+  one-handed. Desktop unchanged.
 
 ### Schimbat
 - **Live cu puține camere arată mai bine pe telefon** — când ai una sau două camere (în modul
