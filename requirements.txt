@@ -38,3 +38,18 @@ psycopg[binary,pool]==3.2.3
 pgvector==0.3.6
 # doar pentru dezvoltare/teste
 pytest==9.1.1
+
+# --- avize de securitate (DEP-01, audit 2026-11-12) ---------------------------------------
+# Ridicam dependentele TRANZITIVE vulnerabile la versiunile reparate. Toate sunt deja aduse
+# de pachetele de mai sus (requests/Flask/torch/torchvision/transformers/ultralytics); le
+# fixam aici doar ca instalarea sa nu mai aleaga versiunea cu avize. Niciuna nu intra in
+# conflict cu plafoanele pachetelor directe (verificat la 2026-11-12).
+certifi==2026.10.18        # CRITICAL: bundle de CA cu chei intermediare compromise (TLS iesire)
+urllib3==2.8.0             # HIGH: config TLS prin proxy ignorat; bucla infinita pe deflate
+pillow==13.0.0             # CRITICAL/HIGH: overflow-uri la decodarea imaginilor
+Werkzeug==3.1.9            # MODERATE: safe_join accepta nume de dispozitiv Windows
+filelock==4.2.1           # HIGH: symlink/cursa pe fisierul de blocare (multi-utilizator)
+setuptools==84.1.0        # LOW: escape de cale pe Windows la instalarea wheel-urilor legacy
+# accelerate 1.14.0 ramane neschimbat: GHSA-4j2p-28q2-5m79 (path traversal prin weight_map la
+# checkpoint-uri sharded) nu are inca versiune reparata. Nu incarcam checkpoint-uri nesigure —
+# doar modele oficiale, deci calea vulnerabila nu e atinsa. De reevaluat la o reparare.
