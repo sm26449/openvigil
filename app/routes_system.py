@@ -460,7 +460,11 @@ def api_pulse():
     are alarma activa? cand a fost ultimul eveniment? — un singur apel, ieftin."""
     now = time.time()
     if _pulse_cache["data"] and now - _pulse_cache["t"] < 4:
-        return jsonify(_pulse_cache["data"])   # scanarea directoarelor e scumpa la multe camere
+        # cache-ul e global (scanarea e scumpa la multe camere), dar raspunsul se filtreaza pe
+        # camerele vizibile ca pe calea proaspata — altfel un cont restrans primea toate (SEC-04)
+        vis = _visible_ids()
+        data = _pulse_cache["data"]
+        return jsonify(data if vis is None else [r for r in data if r["id"] in vis])
     alarms = camctl.events_snapshot()
     det = _detect_snapshot()
     out = []
