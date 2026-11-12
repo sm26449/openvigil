@@ -10,6 +10,11 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   „Auto"), grila le afișează acum pe **o singură coloană, cu dale mari**, în loc de două dale mici
   cu un gol negru dedesubt. La mai multe camere, grila umple oricum ecranul (nimic schimbat). Poți
   oricând alege explicit 2 coloane din selectorul de densitate.
+- **Dale de Live curate pe telefon** — pe ecrane mici, fiecare cameră din grilă arată acum **doar
+  imaginea live** (plus numele și punctul de stare), fără butoanele de acțiune (sirenă, strobo,
+  vorbit, zoom, captură, AI) și fără controalele native de video. Toate acțiunile și mișcarea
+  camerei (PTZ) sunt pe camera deschisă în HD — atingi dala și le ai acolo. Pe desktop nimic nu se
+  schimbă.
 
 ## [2.1.0] — 2026-11-12
 

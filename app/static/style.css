@@ -1771,6 +1771,13 @@ dialog#reid::backdrop { background: rgba(0, 0, 0, .6); }
   /* putine camere in mod „auto": o coloana, ca dalele sa fie mari si sa umple ecranul (vezi g-few
      din buildLive). Densitatea explicita (data-cols) ramane alegerea userului. */
   .grid.g-few:not([data-cols]) { grid-template-columns: 1fr; }
+  /* pe telefon, dala din Live = doar feed-ul (+ stare/nume/alarma). Actiunile (sirena, strobo,
+     vorbit, zoom, AI, captura…) si miscarea PTZ sunt pe camera, in HD (tap pe dala). */
+  #grid .tile .ctrl, #grid .tile .del { display: none; }
+  /* fara controalele native de video pe dala (play/volum/fullscreen): tap-ul deschide HD, unde
+     sunt toate. video-rtc.js le ascunde oricum la redare; asta acopera si conectarea/iOS. */
+  #grid .tile video::-webkit-media-controls { display: none !important; }
+  #grid .tile video::-webkit-media-controls-enclosure { display: none !important; }
   .tile { border-radius: 4px; }
   .tile .label { padding: var(--s4) var(--s2) var(--s1); font-size: var(--fs-xs); }
   .tile .ctrl { bottom: 22px; right: 4px; gap: var(--s1); }
