@@ -900,7 +900,7 @@ def ask_question():
     try:
         return jsonify(ask.answer((b.get("q") or "").strip(),
                                   visible=None if vis is None else {int(c) for c in vis},
-                                  cam_names=nume, cam=b.get("cam")))
+                                  cam_names=nume, cam=b.get("cam"), days=min(90, max(1, int(b.get('days') or 30)))))
     except Exception as e:
         return jsonify({"error": str(e)[:120]}), 500
 

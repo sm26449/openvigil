@@ -16,6 +16,7 @@ si un parser previzibil poate fi TESTAT.
 import re
 import time
 import unicodedata
+import search_time
 
 from i18n import t
 
@@ -25,13 +26,13 @@ ZILE_RO = ["luni", "marti", "miercuri", "joi", "vineri", "sambata", "duminica"]
 _STOP = [
     "cand a venit", "cand au venit", "cand a fost", "cand au fost", "cand a aparut",
     "cand a trecut", "cand am vazut", "cand s-a vazut", "ultima data", "ultima oara",
-    "prima data", "de cate ori", "cate ori", "de cand", "a venit", "au venit",
+    "prima data", "prima oara", "de cate ori", "cate ori", "de cand", "a venit", "au venit",
     "a aparut", "au aparut", "a trecut", "au trecut", "a fost", "au fost",
     "pe la noi", "la noi", "pe aici", "pe acasa", "pe strada", "prin fata",
     "cand", "cine", "cate", "cati", "oare", "vazut", "vazuta",
     # engleza
     "when did", "when was", "when were", "when has", "when have", "what time did",
-    "the last time", "last time", "last seen", "how many times", "how many", "how often",
+    "the last time", "last time", "first time", "last seen", "how many times", "how many", "how often",
     "show up", "showed up", "come by", "came by", "come", "came", "arrive", "arrived",
     "appear", "appeared", "pass by", "passed by", "pass", "passed", "visit", "visited",
     "been here", "at our place", "around here", "here", "did", "does", "was", "were",
@@ -92,20 +93,16 @@ def is_question(q):
         return True
     return bool(re.match(r"^(cand|cine|cate|de cate|cati|when|who|how many|how often|what time|did|has|have|was|were)\b", p)
                 or "ultima data" in p or "ultima oara" in p or "de cate ori" in p
-                or "last time" in p or "last seen" in p)
+                or "last time" in p or "last seen" in p or 'prima data' in p or 'prima oara' in p or 'first time' in p)
 
 
-def parse(q):
+def parse(q, days=30):
     """{"concept", "mod": "cand"|"cate", "days": int} dintr-o intrebare libera."""
     p = _plat(q)
-    mod = "cate" if ("de cate ori" in p or re.match(r"^cate\b", p)
+    mod = "cate" if ("de cate ori" in p or re.match(r"^(cate|cati)\b", p)
                      or "how many" in p or "how often" in p) else "cand"
-    days = 30
-    for expr, d in _FERESTRE:
-        if expr in p:
-            days = d
-            p = p.replace(expr, " ")
-            break
+    first = bool(re.search(r'\b(prima data|prima oara|first time|first)\b', p))
+    p, period = search_time.parse_period(p, days)
     for expr in _STOP:
         p = re.sub(r"\b" + re.escape(expr) + r"\b", " ", p)
     concept = re.sub(r"\s+", " ", p).strip(" .,")
@@ -114,7 +111,7 @@ def parse(q):
             concept = concept[len(art):]
             break
     gol = concept
-    return {"concept": concept, "mod": mod, "days": days,
+    return {"concept": concept, "mod": mod, **period, 'first': first,
             "label": _LABELS.get(gol)}
 
 
@@ -138,7 +135,7 @@ def _epoch(cand):
     return time.mktime(time.strptime(cand, "%Y-%m-%d %H:%M:%S"))
 
 
-def answer(q, visible=None, cam_names=None, cam=None):
+def answer(q, visible=None, cam_names=None, cam=None, days=30):
     """Raspunsul complet la o intrebare: text in romana + aparitiile-dovada.
 
     Trei cai, dupa ce intreaba omul:
@@ -149,62 +146,77 @@ def answer(q, visible=None, cam_names=None, cam=None):
       3. concept liber ("masina de gunoi") -> SigLIP peste tot
     cam = filtrul de camera ales in interfata; se intersecteaza cu drepturile."""
     import semantic
-    p = parse(q)
     nume = cam_names or {}
+    text = _plat(q)
+    # Aliasurile sunt doar numele camerelor deja vizibile, nu locatii ghicite de model.
+    aliases = {}
+    for id_, name in nume.items():
+        if visible is None or id_ in visible:
+            aliases.setdefault(_plat(name), []).append(id_)
+    for name in sorted(aliases, key=len, reverse=True):
+        if not name:
+            continue
+        pattern = r'\b(?:la|pe|camera|at|on)\s+(?:camera\s+)?' + re.escape(name) + r'\b'
+        if re.search(pattern, text):
+            if len(aliases[name]) != 1:
+                return {'error': t('Numele camerei este ambiguu; selectează camera din filtru.'), 'aparitii': []}
+            alias = aliases[name][0]
+            if cam and int(cam) != alias:
+                return {'error': t('Camera din întrebare diferă de camera selectată.'), 'aparitii': []}
+            cam = alias
+            text = re.sub(pattern, ' ', text)
+            break
+    try:
+        p = parse(text, days)
+    except ValueError:
+        return {'error': t('Nu am înțeles perioada sau orele; încearcă „ieri între 8 și 10”.'), 'aparitii': []}
     if cam:
+        cam = int(cam)
         visible = {cam} if visible is None else (visible & {cam})
     if not p["concept"]:
         return {**p, "raspuns": t("Nu am inteles ce cauti — incearca de exemplu: „cand a venit masina de gunoi?”"),
                 "aparitii": []}
-    fereastra = (t("azi") if p["days"] == 1 else
-                 t("in ultimele {n} zile", n=p["days"]) if p["days"] > 2 else t("de ieri incoace"))
+    fereastra = t('între {start} și {end}',
+                  start=time.strftime('%Y-%m-%d %H:%M', time.localtime(p['since'])),
+                  end=time.strftime('%Y-%m-%d %H:%M', time.localtime(p['until'])))
+    if p['hours']:
+        a, b = p['hours']
+        fereastra += ' · ' + t('orele {start}–{end}', start=f'{a//60:02d}:{a%60:02d}', end=f'{b//60:02d}:{b%60:02d}')
     if cam:
         fereastra += ", " + t("pe {cam}", cam=nume.get(cam) or t("camera {id}", id=cam))
 
     def unde(g):
         return ", ".join(str(nume.get(c) or f"cam {c}") for c in g["camere"])
 
+    coverage = semantic.coverage(days=p['days'], visible=visible, since=p['since'], until=p['until'], hours=p['hours'])
+    base = {**p, 'coverage': coverage, 'period': fereastra, 'cam': cam}
+
+    def finish(text, groups, top, **extra):
+        text += ' ' + t('Poze de detecție în perioada căutată: {indexed}/{saved} indexate.',
+                        indexed=coverage['indexed'], saved=coverage['saved'])
+        text += ' ' + t('Caut în imaginile salvate și indexate; nu verific întreaga înregistrare video.')
+        if coverage['missing']:
+            text += ' ' + t('{n} imagini salvate nu sunt încă indexate.', n=coverage['missing'])
+        return {**base, 'raspuns': text, 'aparitii': groups[:20], 'top': top, **extra}
+
     # calea 1: eticheta pura -> intai TRACK-urile (numarare bucata cu bucata),
     # apoi jurnalul de detectii (episoade de prezenta) daca urmarirea nu acopera
     if p["label"]:
-        import rules
-        cutoff = time.time() - p["days"] * 86400
-        urmarite = [e for e in rules.journal(limit=20000, tip="obiect")
-                    if e.get("eticheta") == p["label"] and _epoch(e["t"]) >= cutoff
-                    and (visible is None or e.get("cam") in visible)]
-        if urmarite:
-            ultima = urmarite[0]
-            dirs = {}
-            for e in urmarite:
-                d = e.get("directie") or "?"
-                dirs[d] = dirs.get(d, 0) + 1
-            dir_txt = ", ".join(f"{n} {d}" for d, n in
-                                sorted(dirs.items(), key=lambda x: -x[1]) if d != "?")
-            text = (t("„{concept}”: exact {n} {fereastra}, numarate bucata cu bucata prin urmarire",
-                      concept=p["concept"], n=len(urmarite), fereastra=fereastra)
-                    + (f" ({dir_txt})" if dir_txt else "") + ". "
-                    + t("Ultima: {cand} ({unde}).", cand=_fmt(ultima["t"]),
-                        unde=nume.get(ultima.get("cam")) or "cam " + str(ultima.get("cam"))))
-            grupuri = [{"inceput": e["t"], "sfarsit": e["t"],
-                        "camere": [e.get("cam")], "poze": e.get("cadre", 1),
-                        "scor": 1.0, "coperta": None, "durata": e.get("durata", 0)}
-                       for e in urmarite[:20]]
-            return {**p, "raspuns": text, "aparitii": grupuri, "top": 1.0}
-        eps = [e for e in rules.episodes(limit=1000, tip="detectie")
-               if e["detaliu"] == p["label"] and _epoch(e["inceput"]) >= cutoff
-               and (visible is None or e.get("cam") in visible)]
-        if not eps:
-            return {**p, "raspuns": t("Nicio trecere de „{concept}” {fereastra}.", concept=p["concept"], fereastra=fereastra),
-                    "aparitii": [], "top": 1.0}
-        grupuri = [{"inceput": e["inceput"], "sfarsit": e["sfarsit"],
-                    "camere": [e["cam"]], "poze": e["evenimente"],
-                    "scor": 1.0, "coperta": None, "durata": e["durata"]}
-                   for e in eps]
-        ultima = grupuri[0]
-        text = (t("„{concept}”: {n} treceri {fereastra} (din jurnalul de detectii).", concept=p["concept"], n=len(eps), fereastra=fereastra)
-                + " " + t("Ultima: {cand} ({unde}).", cand=_fmt(ultima["inceput"]), unde=unde(ultima))
-                + " " + t("Nota: masinile care trec una dupa alta la sub cateva minute se vad ca o singura trecere — pentru numaratoarea bucata cu bucata, porneste urmarirea pe camera respectiva (AI → Masini)."))
-        return {**p, "raspuns": text, "aparitii": grupuri[:20], "top": 1.0}
+        import search_journal
+        found = search_journal.find(p['label'], p['since'], p['until'], visible, p['hours'], p['first'])
+        grupuri = found['groups']
+        text = t('Jurnal: {tracked} obiecte urmărite și {episodes} episoade de detecție.',
+                 tracked=found['tracked'], episodes=found['episodes'])
+        if found.get('directions'):
+            text += ' (' + ', '.join(f'{n} {d}' for d,n in sorted(found['directions'].items())) + ')'
+        text += ' ' + t('Sursele se pot suprapune; acestea sunt observații salvate, nu o numărătoare completă a trecerilor.')
+        if grupuri:
+            g = grupuri[0]
+            text += ' ' + (t('Prima apariție găsită: {cand} ({unde}).', cand=_fmt(g['inceput']), unde=unde(g))
+                           if p['first'] else t('Ultima: {cand} ({unde}).', cand=_fmt(g['inceput']), unde=unde(g)))
+        else:
+            text += ' ' + t('Nu am găsit dovezi în perioada căutată; aceasta nu confirmă absența unei treceri.')
+        return finish(text, grupuri, 1., counts={k: v for k, v in found.items() if k != 'groups'})
 
     # calea 2/3: SigLIP — cu filtru de eticheta si grupare fina daca apare un vehicul
     tokens = [t for t in p["concept"].split() if t not in ("de", "cu", "culoare")]
@@ -215,23 +227,28 @@ def answer(q, visible=None, cam_names=None, cam=None):
         labels = VEHICLE_LABELS if lbl_hibrid in VEHICLE_LABELS else {lbl_hibrid}
         gap = 120
     grupuri, top = semantic.appearances(p["concept"], days=p["days"],
-                                        visible=visible, gap=gap, labels=labels)
+                                        visible=visible, gap=gap, labels=labels,
+                                        since=p['since'], until=p['until'], hours=p['hours'])
+    if p['first']:
+        grupuri.reverse()
     if not grupuri:
         text = (t("Nu am gasit „{concept}” {fereastra}.", concept=p["concept"], fereastra=fereastra) + " "
                 + t("Conceptul se cauta in pozele salvate la detectii — daca nu declanseaza detectia, nu are cum sa apara aici."))
-        return {**p, "raspuns": text, "aparitii": [], "top": top}
+        text += ' ' + t('Nu am găsit dovezi în perioada căutată; aceasta nu confirmă absența unei treceri.')
+        return finish(text, [], top)
     ultima = grupuri[0]
     if p["mod"] == "cate":
         text = (t("„{concept}”: aproximativ {n} aparitii distincte {fereastra}.", concept=p["concept"], n=len(grupuri), fereastra=fereastra)
                 + " " + t("Ultima: {cand} ({unde}).", cand=_fmt(ultima["inceput"]), unde=unde(ultima)))
     else:
-        text = t("Ultima data: {cand} ({unde}).", cand=_fmt(ultima["inceput"]), unde=unde(ultima))
-        if len(grupuri) > 1:
+        text = (t('Prima apariție găsită: {cand} ({unde}).', cand=_fmt(ultima['inceput']), unde=unde(ultima))
+                if p['first'] else t("Ultima data: {cand} ({unde}).", cand=_fmt(ultima["inceput"]), unde=unde(ultima)))
+        if len(grupuri) > 1 and not p['first']:
             text += " " + t("Inainte de asta: {cand}.", cand=_fmt(grupuri[1]["inceput"]))
         text += " " + t("In total {n} aparitii {fereastra}.", n=len(grupuri), fereastra=fereastra)
     # Onestitate: sub pragul asta, SigLIP potriveste si "girafa cu elicopterul" pe
     # cate ceva (masurat: nonsensul da ~0.075, potrivirile bune 0.08+). Mai bine
     # spunem ca nu suntem siguri decat sa raspundem cu aplomb la orice.
-    if top < 0.08:
+    if any(g.get('weak', g['scor'] < .08) for g in grupuri[:20]):
         text += " " + t("⚠ Potrivirea e slaba — verifica pozele, s-ar putea sa ma insel.")
-    return {**p, "raspuns": text, "aparitii": grupuri[:20], "top": top}
+    return finish(text, grupuri, top, total=len(grupuri), count_complete=False)

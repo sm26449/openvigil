@@ -64,9 +64,22 @@ indexarea curge invers, web → nvr-ai `/semantic/index`.)
 | `POST /semantic/index` | JSON `{token, day, fn}` | `{ok}` | un snapshot nou (FS comun) intră în index |
 | `POST /semantic/prune` | JSON `{token}` | `{ok}` | curăță shard-urile zilelor șterse de retenție |
 | `POST /semantic/search` | JSON `{token, q, days, limit, visible}` | `{results}` | `visible` = camerele permise sesiunii, calculate de web |
-| `POST /ask` | JSON `{token, q, visible, cam_names, cam}` | răspunsul `ask.answer` | citește și jurnalul de evenimente (FS, read-only) |
+| `POST /ask` | JSON `{token, q, visible, cam_names, cam, days?}` | răspunsul `ask.answer`, inclusiv `period`, `coverage`, `cover_cam`, `cover_t`, `weak` | citește jurnalul PostgreSQL; `days` implicit 30, perioada explicită din întrebare are prioritate |
 | `GET /semantic/status` | – | `{enabled, indexed, days, backfill}` | |
 | `POST /semantic/backfill` | JSON `{token}` | `{ok, started, ...}` | |
+
+Web: `/api/search` interpretează întrebările prin același traseu ca `/api/ask`.
+Răspunsurile păstrează `results` și adaugă `kind: images|question`; pentru întrebări,
+`raspuns` și `aparitii` conțin răspunsul și dovezile. Filtrul opțional `cam` se intersectează
+cu drepturile înainte de top-k. Intervalele sunt calendaristice locale, cu sfârșit exclusiv;
+orele cerute se aplică separat în fiecare zi. `coverage.scope=snapshots` se referă la
+pozele salvate, nu la întreaga înregistrare sau la toate decupajele scenei.
+
+Indexul live folosește acum `<zi>.npz`, cu vectori și metadate în același commit atomic.
+Fișierele vechi NPY/JSON rămân citibile și sunt păstrate pentru revenirea la imaginea
+anterioară. Reconcilierea la 5 minute recuperează snapshot-uri și candidați ai scenei
+din jurnal; `backfill` separă reușitele, erorile de imagine și o eroare de procesare.
+Prototipul `semantic_pg` este disponibil numai pentru baza de test și nu comută indexul live.
 
 ## Degradare & fallback
 

@@ -551,29 +551,17 @@ $('#al-search').onclick = loadAlarms;
 $('#al-cam').onchange = renderAlarms;
 
 /* ---------- cautare semantica: descriere libera peste pozele indexate ---------- */
-// arata textul a intrebare? (oglinda parserului din app/ask.py)
-function esteIntrebare(q) {
-  const p = q.toLowerCase();
-  return q.endsWith('?') || /^(cand|când|cine|cate|câte|de cate|de câte|when|who|how many|how often|what time|did|has|have|was|were)\b/.test(p)
-    || p.includes('ultima data') || p.includes('ultima dată') || p.includes('de câte ori')
-    || p.includes('last time') || p.includes('last seen');
-}
-async function askQuestion(q) {
-  $('#al-info').textContent = t('Mă uit în poze...');
-  const camF = $('#al-cam').value;   // filtrul de camera se respecta si la intrebari
-  const r = await fetch(`/api/ask?q=${encodeURIComponent(q)}`
-                        + (camF ? `&cam=${camF}` : ''));
-  const d = await r.json();
+function renderQuestion(d) {
   if (d.error) { $('#al-info').textContent = d.error; return; }
   const names = Object.fromEntries(S.cameras.map((c) => [c.id, c.name]));
   $('#al-pills').innerHTML = '';
   $('#al-chart').innerHTML = '';
-  $('#al-info').textContent = t('{n} apariții', { n: (d.aparitii || []).length });
+  $('#al-info').textContent = d.period || t('{n} apariții', { n: (d.aparitii || []).length });
   // in lightbox intra doar aparitiile cu poza (cele din jurnal n-au coperta)
   const cuPoza = (d.aparitii || []).filter((g) => g.coperta);
   alList = cuPoza.map((g) => ({
-    url: g.coperta, time: g.inceput.slice(11), date: g.inceput.slice(0, 10),
-    cam: g.camere[0], label: d.concept,
+    url: g.coperta, time: (g.cover_t || g.inceput).slice(11), date: (g.cover_t || g.inceput).slice(0, 10),
+    cam: g.cover_cam || g.camere[0], label: d.concept,
     cap: `${g.inceput} — ${g.camere.map((c) => names[c] || 'cam ' + c).join(', ')}`,
   }));
   const grid = $('#al-grid');
@@ -583,11 +571,12 @@ async function askQuestion(q) {
     card.className = 'al-card';
     const durata = g.inceput === g.sfarsit ? '' : `–${g.sfarsit.slice(11, 16)}`;
     card.innerHTML = html`
-      ${g.coperta ? html`<img loading="lazy" src="${g.coperta}" alt="">`
-                  : html`<button class="ask-clip clip-btn" data-cam="${g.camere[0]}" data-t="${g.inceput}"
-                           data-cap="${g.inceput} — ${g.camere.map((c) => names[c] || 'cam ' + c).join(', ')}">${t('▶ clip')}</button>`}
+      ${g.coperta ? html`<img loading="lazy" src="${g.coperta}" alt="">` : ''}
+      <button class="ask-clip clip-btn" data-cam="${g.cover_cam || g.camere[0]}" data-t="${g.cover_t || g.inceput}"
+              data-cap="${g.inceput} — ${g.camere.map((c) => names[c] || 'cam ' + c).join(', ')}">${t('▶ clip')}</button>
       <div class="al-cap">
         <div class="inc-cand">${g.inceput.slice(0, 16)}${durata}</div>
+        ${g.weak ? html`<div class="hint">${t('Potrivire slabă — verifică imaginile.')}</div>` : ''}
         <div class="inc-cam">${g.camere.map((c) => names[c] || 'cam ' + c).join(', ')}${
           g.poze > 1 ? ` · ${t('{n} cadre', { n: g.poze })}` : ''}</div>
       </div>`;
@@ -599,20 +588,25 @@ async function askQuestion(q) {
     grid.appendChild(card);
   });
 }
+let semGen = 0;
 async function semanticSearch() {
+  const gen = ++semGen;
   const q = $('#sem-q').value.trim();
   if (!q) { loadAlarms(); return; }   // camp gol = inapoi la vederea pe zi
-  if (esteIntrebare(q)) { askQuestion(q); return; }
   $('#al-info').textContent = t('Caut...');
   let d;
   try {
-    const r = await fetch(`/api/search?q=${encodeURIComponent(q)}&days=30&limit=40`);
+    const cam = $('#al-cam').value;
+    const r = await fetch(`/api/search?q=${encodeURIComponent(q)}&days=30&limit=40${cam ? `&cam=${encodeURIComponent(cam)}` : ''}`);
     d = await r.json();
   } catch (e) {
+    if (gen !== semGen) return;
     $('#al-info').textContent = t('Căutarea nu a mers ({motiv}) — reîncearcă', { motiv: e.message || t('rețea') });
     return;
   }
+  if (gen !== semGen) return;
   if (d.error) { $('#al-info').textContent = d.error; return; }
+  if (d.raspuns !== undefined) { renderQuestion(d); return; }
   const names = Object.fromEntries(S.cameras.map((c) => [c.id, c.name]));
   // Cautarea semantica merge pe TOATE camerele vizibile, ultimele 30 de zile — alt domeniu decat
   // ziua/camera din galerie. Aplicam filtrul de camera al galeriei pe rezultate si spunem EXPLICIT
@@ -621,7 +615,7 @@ async function semanticSearch() {
   let rez = d.results;
   if (camF) rez = rez.filter((p) => String(p.cam) === String(camF));
   alList = rez.map((p) => ({
-    url: p.url, time: p.time, label: p.label, cam: p.cam, date: p.day, sursa: p.sursa,
+    url: p.url, time: p.time, label: p.label, cam: p.cam, date: p.day, sursa: p.sursa, weak: p.weak,
     cap: `${p.day} ${p.time} — ${names[p.cam] || 'cam ' + p.cam} — ${p.sursa === 'scena' ? t(p.label) + ' · ' + t('scenă') : alNume(p.label)}`,
   }));
   $('#al-pills').innerHTML = '';
@@ -638,6 +632,7 @@ async function semanticSearch() {
     card.innerHTML = html`
       <img loading="lazy" src="${p.url}" alt="">
       <div class="al-cap">
+        ${p.weak ? html`<div class="hint">${t('Potrivire slabă — verifică imaginile.')}</div>` : ''}
         <div class="inc-cand">${p.date} ${p.time.slice(0, 5)}${p.sursa === 'scena' ? html` <span class="al-scena" title="${t('văzut de „Învață scena”, nu de YOLO')}">🧩 ${t(p.label)}</span>` : ''}</div>
         <div class="inc-cam">${names[p.cam] || 'cam ' + p.cam}</div>
       </div>`;

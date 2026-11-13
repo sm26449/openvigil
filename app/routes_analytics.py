@@ -140,14 +140,16 @@ def api_ask():
     nume = {c["id"]: c["name"] for c in get_cameras()}
     vis = _visible_ids()
     cam = request.args.get("cam", type=int)
+    days = min(90, max(1, request.args.get('days', 30, type=int)))
     # indexul + modelele stau in nvr-ai (#9 pas 3); la esec, local (SigLIP lazy in web)
     if ai_client.remote():
-        d = ai_client.ask(q, vis, nume, cam)
+        d = ai_client.ask(q, vis, nume, cam, days=days)
         if d is not None:
-            return jsonify(d)
+            return jsonify(d), 400 if d.get('error') else 200
     import ask
     try:
-        return jsonify(ask.answer(q, visible=vis, cam_names=nume, cam=cam))
+        d = ask.answer(q, visible=vis, cam_names=nume, cam=cam, days=days)
+        return jsonify(d), 400 if d.get('error') else 200
     except Exception as e:
         return jsonify({"error": t("întrebare eșuată: {e}", e=str(e)[:100])}), 500
 
@@ -161,16 +163,25 @@ def api_search():
         return jsonify({"error": t("scrie ce cauti")}), 400
     if not semantic.enabled():
         return jsonify({"error": t("căutarea semantică nu e pornită (Setări → Detecție)")}), 409
+    import ask
+    if ask.is_question(q):
+        response, status = api_ask()
+        payload = response.get_json()
+        payload.update(kind='question', results=[])
+        return jsonify(payload), status
     days = min(90, max(1, request.args.get("days", 14, type=int)))
     limit = min(100, max(1, request.args.get("limit", 40, type=int)))
     vis = _visible_ids()
+    cam = request.args.get('cam', type=int)
+    if cam is not None:
+        vis = {cam} if vis is None else vis & {cam}
     rez = ai_client.semantic_search(q, days, limit, vis) if ai_client.remote() else None
     if rez is None:
         try:
             rez = semantic.search(q, days=days, limit=limit, visible=vis)
         except Exception as e:
             return jsonify({"error": t("căutare eșuată: {e}", e=str(e)[:100])}), 500
-    return jsonify({"q": q, "results": rez})
+    return jsonify({"q": q, "results": rez, 'kind': 'images'})
 
 
 @bp.route("/api/semantic/status")

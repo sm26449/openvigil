@@ -255,11 +255,11 @@ def semantic_search(q, days, limit, visible):
     return None if d is None or "results" not in d else d["results"]
 
 
-def ask(q, visible, cam_names, cam):
+def ask(q, visible, cam_names, cam, days=30):
     """-> raspunsul lui ask.answer sau None (fallback local)."""
     return _post_json("/ask", timeout=90, q=q,
                       visible=None if visible is None else sorted(visible),
-                      cam_names=cam_names, cam=cam)
+                      cam_names=cam_names, cam=cam, days=days)
 
 
 def semantic_status():

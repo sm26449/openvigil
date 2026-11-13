@@ -12,6 +12,8 @@ import { openFisa } from './45-fisa.js';
 
 const PLACUTA = /^[A-Z]{1,2}\s?\d{2,3}\s?[A-Z]{3}$/i;
 let qRez = [], qCat = '', qUltim = '';
+let qAnswer = '', qPeriod = '';
+let qQuestion = false;
 let qEroare = false, qGen = 0, qEsecuri = [];   // qEroare: toate sursele au esuat (#11); qGen:
 // ultima cautare castiga (#2); qEsecuri: sursele picate, pentru avertisment de rezultate partiale (E2).
 
@@ -24,6 +26,7 @@ async function cauta(q) {
   $('#cauta-q').textContent = q;
   $('#cauta-info').textContent = t('caut…');
   $('#cauta-grid').innerHTML = '';
+  qAnswer = ''; qPeriod = ''; qQuestion = false;
   if (!dlg.open) dlg.showModal();
   const zile = +($('#cauta-zile').value || 30);
   const names = Object.fromEntries(S.cameras.map((c) => [c.id, c.name]));
@@ -31,10 +34,10 @@ async function cauta(q) {
   // numaratoarea. null = sursa a esuat (retea sau raspuns non-ok); un rezultat gol vine ca
   // {..:[]} (truthy) — asa distingem o cautare picata de una care chiar n-a gasit nimic.
   let ok = 0;
-  qEsecuri = [];   // numele surselor care au esuat, ca sa anuntam rezultate PARTIALE (audit E2)
+  const esecuri = [];
   const j = async (u, nume) => {
-    try { const r = await fetch(u); if (!r.ok) { qEsecuri.push(nume); return null; } ok++; return await r.json(); }
-    catch { qEsecuri.push(nume); return null; }
+    try { const r = await fetch(u); const d = await r.json(); if (!r.ok || d.error) { esecuri.push(nume); return d; } ok++; return d; }
+    catch { esecuri.push(nume); return null; }
   };
   const qd = fdia(q);
   const [sem, pl, jur, hist] = await Promise.all([
@@ -44,6 +47,10 @@ async function cauta(q) {
     j(`/api/faces/history?name=${encodeURIComponent(q)}&limit=60`, t('Persoane')),
   ]);
   if (gen !== qGen) return;   // o cautare mai noua a pornit intre timp — nu publicam rezultate vechi
+  qEsecuri = esecuri;
+  qAnswer = sem?.raspuns || sem?.error || '';
+  qPeriod = sem?.period || '';
+  qQuestion = sem?.kind === 'question' || sem?.raspuns !== undefined;
   qEroare = ok === 0 && qEsecuri.length > 0;
   // Perioada uniforma pe TOATE sursele (audit E3): numerele si persoanele nu au filtru de perioada
   // pe server, deci le taiem client-side la aceeasi fereastra ca semantic/jurnal (`zile`).
@@ -51,9 +58,15 @@ async function cauta(q) {
   const cutoffZi = `${taiat.getFullYear()}-${String(taiat.getMonth() + 1).padStart(2, '0')}-${String(taiat.getDate()).padStart(2, '0')}`;
   const inFereastra = (ts) => (ts || '').slice(0, 10) >= cutoffZi;
   const rez = [];
+  for (const g of sem?.aparitii || []) {
+    const stamp = g.cover_t || g.inceput;
+    rez.push({ cat: 'poze', cam: g.cover_cam || g.camere[0], t: stamp, rel: rez.length,
+      titlu: sem.concept, poza: g.coperta, tip: g.source || 'detectie', det: sem.concept,
+      id: g.event_id, weak: g.weak });
+  }
   // pozele semantice vin ordonate dupa POTRIVIRE; pastram rangul ca sa putem sorta dupa relevanta (audit E4)
   ((sem && sem.results) || []).forEach((p, i) => {
-    rez.push({ cat: 'poze', cam: p.cam, t: `${p.day} ${p.time}`, rel: i, titlu: t(DET_RO[p.label] || AL_RO[p.label] || p.label) + (p.sursa === 'scena' ? ' 🧩' : ''), poza: p.url, tip: 'detectie', det: p.label });
+    rez.push({ cat: 'poze', cam: p.cam, t: `${p.day} ${p.time}`, rel: i, titlu: t(DET_RO[p.label] || AL_RO[p.label] || p.label) + (p.sursa === 'scena' ? ' 🧩' : ''), poza: p.url, tip: 'detectie', det: p.label, weak: p.weak });
   });
   for (const r of ((pl && pl.reads) || [])) {
     if (!inFereastra(r.t)) continue;
@@ -75,7 +88,7 @@ async function cauta(q) {
   }
   // dedup (jurnal vs poze la aceeasi secunda pe aceeasi camera) si ordine: cele mai noi primele
   const vazut = new Set();
-  qRez = rez.filter((r) => { const k = `${r.cat}|${r.cam}|${r.t}`; if (vazut.has(k)) return false; vazut.add(k); return true; })
+  qRez = rez.filter((r) => { const k = `${r.cat}|${r.cam}|${r.t}|${r.poza || r.id || r.det || ''}`; if (vazut.has(k)) return false; vazut.add(k); return true; })
     .sort((a, b) => (b.t || '').localeCompare(a.t || ''));
   // pozele semantice sunt ordonate dupa potrivire, nu timp: le tinem primele cand filtrul e „Poze”
   qRender();
@@ -86,7 +99,8 @@ function qRender() {
   let items = qCat ? qRez.filter((r) => r.cat === qCat) : qRez;
   // la filtrul „Poze" pastram ordinea dupa POTRIVIRE (rangul semantic), nu cronologica — altfel
   // relevanta cautarii se pierdea (audit E4). Celelalte categorii / „Toate" raman dupa timp.
-  if (qCat === 'poze') items = [...items].sort((a, b) => (a.rel ?? 1e9) - (b.rel ?? 1e9));
+  if (qCat === 'poze' || qQuestion) items = [...items].sort((a, b) =>
+    (a.cat === 'poze' ? a.rel ?? 1e9 : 1e9) - (b.cat === 'poze' ? b.rel ?? 1e9 : 1e9));
   items = items.slice(0, 120);
   const nr = {}; for (const r of qRez) nr[r.cat] = (nr[r.cat] || 0) + 1;
   for (const b of document.querySelectorAll('#cauta-chips button')) {
@@ -101,11 +115,11 @@ function qRender() {
       : t('{n} rezultate din toate sursele pentru „{q}”', { n: items.length, q: qUltim }))
     // fara rezultate: daca TOATE sursele interogate au esuat, e o eroare, nu „gol"
     : qEroare ? t('Căutarea nu a mers — reîncearcă')
-    : t('nimic pentru „{q}”', { q: qUltim })) + partial;
-  $('#cauta-grid').innerHTML = lista(items, (r, i) => html`
+    : t('nimic pentru „{q}”', { q: qUltim })) + (qPeriod ? ` · ${qPeriod}` : '') + partial;
+  $('#cauta-grid').innerHTML = html`${qAnswer ? html`<div class="ask-answer">${qAnswer}</div>` : ''}` + lista(items, (r, i) => html`
     <button class="q-item" data-i="${i}" data-cat="${r.cat}">
       ${r.poza ? html`<img src="${r.poza}" alt="" loading="lazy">` : html`<span class="q-noimg">${r.cat === 'persoane' ? '👤' : '•'}</span>`}
-      <span class="q-main"><span class="q-titlu">${r.titlu}</span><span class="hint">${names[r.cam] || 'cam ' + r.cam} · ${r.t}</span></span>
+      <span class="q-main"><span class="q-titlu">${r.titlu}</span><span class="hint">${names[r.cam] || 'cam ' + r.cam} · ${r.t}</span>${r.weak ? html`<span class="hint">${t('Potrivire slabă — verifică imaginile.')}</span>` : ''}</span>
     </button>`, '');
   for (const b of $('#cauta-grid').querySelectorAll('.q-item')) {
     b.onclick = () => { const r = items[+b.dataset.i]; $('#cauta').close(); openFisa({ cam: r.cam, t: r.t, tip: r.tip, sev: r.sev, id: r.id, det: r.det, poza: r.poza, cine: r.cine }); };

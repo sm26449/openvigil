@@ -355,7 +355,10 @@ const aiCfgSnap = () => JSON.stringify(aiConfigBody());
 function semText(s) {
   const b = s.backfill || {};
   const txt = t('{n} poze indexate din {zile} zile', { n: s.indexed || 0, zile: s.days || 0 });
-  return b.running ? `${txt} — ${t('indexez istoricul: {done}/{total}', { done: b.done, total: b.total })}` : txt;
+  let message = b.running ? `${txt} — ${t('indexez istoricul: {done}/{total}', { done: b.done, total: b.total })}` : txt;
+  if (b.failed) message += ' · ' + t('{n} imagini nu au putut fi indexate.', { n: b.failed });
+  if (b.error) message += ' · ' + t('Indexarea s-a oprit; reîncearcă completarea istoricului.');
+  return message;
 }
 
 async function refreshSemStatus() {

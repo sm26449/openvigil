@@ -75,6 +75,7 @@ jobs:
           npm ci
           npx playwright install --with-deps chromium
           node ui-regresie.js
+          node ui-semantic.js
 
       - name: Scripturi shell
         run: |

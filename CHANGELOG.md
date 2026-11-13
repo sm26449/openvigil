@@ -3,6 +3,21 @@
 Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [Unreleased]
+
+### Reparat
+- Căutarea semantică aplică intervalele calendaristice și camerele înainte de limitarea
+  rezultatelor; întrebările funcționează și din bara globală, inclusiv prima apariție,
+  ore exacte și numele camerei. Etichetele românești și alarmele generice rămân eligibile.
+- Indexarea păstrează toate zilele unui lot, evită duplicatele și publică vectorii împreună
+  cu metadatele într-un fișier atomic. Reconcilierea periodică recuperează imaginile omise.
+- Răspunsurile arată acoperirea pozelor și perioada; gruparea nu unește camere diferite,
+  iar observațiile din jurnal nu sunt prezentate ca numărătoare completă a trecerilor.
+
+### Adăugat
+- Prototip pgvector pentru comparații exacte pe vectorii existenți, izolat în baza de test,
+  fără recalcularea embeddings-urilor și fără comutarea backendului instalației.
+
 ## [2.1.2] — 2026-11-12
 
 **Highlights (English)** — Security and stability fixes on top of 2.1.1.

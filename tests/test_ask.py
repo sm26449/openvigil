@@ -5,6 +5,7 @@ semantic.appearances se inlocuieste cu date sintetice; nu se atinge niciun model
 import os
 import sys
 import time
+from datetime import datetime
 
 import pytest
 
@@ -43,27 +44,20 @@ def test_parse_eticheta_pura_si_pluralul():
 
 
 def test_answer_eticheta_pura_numara_din_jurnal(monkeypatch):
-    import rules
-    # izolare: fara track-uri reale din jurnalul viu (calea preferata de ask)
-    monkeypatch.setattr(rules, "journal", lambda **kw: [])
-    monkeypatch.setattr(rules, "episodes", lambda **kw: [
-        {"inceput": time.strftime("%Y-%m-%d %H:%M:%S"), "sfarsit": "x",
-         "cam": 14, "tip": "detectie", "detaliu": "car", "evenimente": 3, "durata": 60},
-        {"inceput": time.strftime("%Y-%m-%d %H:%M:%S"), "sfarsit": "x",
-         "cam": 5, "tip": "detectie", "detaliu": "car", "evenimente": 1, "durata": 0},
-        {"inceput": time.strftime("%Y-%m-%d %H:%M:%S"), "sfarsit": "x",
-         "cam": 14, "tip": "detectie", "detaliu": "dog", "evenimente": 1, "durata": 0},
-    ])
+    import search_journal
+    monkeypatch.setattr(search_journal, 'find', lambda label, since, until, visible, hours, first:
+                        {'groups': [_grup(time.strftime('%Y-%m-%d %H:%M:%S'), camere=(14,))],
+                         'tracked': 0, 'episodes': 1 if visible == {14} else 2, 'complete': False})
     r = ask.answer("cate masini au trecut azi?", cam_names={14: "Strada"})
-    assert "2 treceri" in r["raspuns"] and "jurnalul de detectii" in r["raspuns"]
+    assert r['counts']['episodes'] == 2 and r['counts']['complete'] is False
     # filtrul de camera restrange la camera aleasa
     r = ask.answer("cate masini au trecut azi?", cam=14, cam_names={14: "Strada"})
-    assert "1 treceri" in r["raspuns"] and "pe Strada" in r["raspuns"]
+    assert r['counts']['episodes'] == 1 and "pe Strada" in r['period']
 
 
 def test_answer_hibrid_filtreaza_pe_etichete_vehicul(monkeypatch):
     prins = {}
-    def fake_app(concept, days=30, visible=None, gap=None, labels=None):
+    def fake_app(concept, days=30, visible=None, gap=None, labels=None, **kw):
         prins.update(gap=gap, labels=labels)
         return [_grup("2026-08-15 09:12:33", scor=0.12)], 0.12
     monkeypatch.setattr(semantic, "appearances", fake_app)
@@ -78,7 +72,7 @@ def _grup(inceput, camere=(4,), poze=3, scor=0.12):
 
 
 def test_answer_cand(monkeypatch):
-    monkeypatch.setattr(semantic, "appearances", lambda c, days=30, visible=None, gap=None, labels=None: (
+    monkeypatch.setattr(semantic, "appearances", lambda c, days=30, visible=None, gap=None, labels=None, **kw: (
         [_grup("2026-08-15 09:12:33"), _grup("2026-08-12 09:05:00")], 0.15))
     r = ask.answer("cand a venit masina de gunoi?", cam_names={4: "Poarta"})
     assert "Ultima data:" in r["raspuns"] and "Poarta" in r["raspuns"]
@@ -87,18 +81,18 @@ def test_answer_cand(monkeypatch):
 
 
 def test_answer_numarare(monkeypatch):
-    monkeypatch.setattr(semantic, "appearances", lambda c, days=30, visible=None, gap=None, labels=None: (
+    monkeypatch.setattr(semantic, "appearances", lambda c, days=30, visible=None, gap=None, labels=None, **kw: (
         [_grup("2026-08-15 09:12:33")] * 4, 0.15))
     r = ask.answer("de cate ori a venit masina de gunoi luna asta?")
     assert "4 aparitii" in r["raspuns"]
 
 
 def test_answer_potrivire_slaba_avertizeaza(monkeypatch):
-    monkeypatch.setattr(semantic, "appearances", lambda c, days=30, visible=None, gap=None, labels=None: (
+    monkeypatch.setattr(semantic, "appearances", lambda c, days=30, visible=None, gap=None, labels=None, **kw: (
         [_grup("2026-08-15 09:12:33", scor=0.07)], 0.07))
     r = ask.answer("cand a venit girafa?")
     assert "s-ar putea sa ma insel" in r["raspuns"]
-    monkeypatch.setattr(semantic, "appearances", lambda c, days=30, visible=None, gap=None, labels=None: (
+    monkeypatch.setattr(semantic, "appearances", lambda c, days=30, visible=None, gap=None, labels=None, **kw: (
         [_grup("2026-08-15 09:12:33", scor=0.12)], 0.12))
     r = ask.answer("cand a venit masina de gunoi?")
     assert "insel" not in r["raspuns"]
@@ -106,7 +100,7 @@ def test_answer_potrivire_slaba_avertizeaza(monkeypatch):
 
 def test_answer_negasit(monkeypatch):
     monkeypatch.setattr(semantic, "appearances",
-                        lambda c, days=30, visible=None, gap=None, labels=None: ([], 0.02))
+                        lambda c, days=30, visible=None, gap=None, labels=None, **kw: ([], 0.02))
     r = ask.answer("cand a venit girafa?")
     assert "Nu am gasit" in r["raspuns"] and r["aparitii"] == []
 
@@ -136,10 +130,10 @@ def test_appearances_grupare_si_prag(monkeypatch, tmp_path):
     semantic.shard_add("2026-08-15", np.stack([unit([1, 0.05])]),
                        [{"fn": "c.jpg", "cam": 4, "label": "car", "time": "09:10:00"}])
     monkeypatch.setattr(semantic, "embed_text", lambda q: unit([1]))
-    grupuri, top = semantic.appearances("orice", days=7)
-    assert len(grupuri) == 2                       # z.jpg (ortogonal) nu intra
+    grupuri, top = semantic.appearances("orice", days=7, since=datetime(2026,8,14).timestamp(), until=datetime(2026,8,16).timestamp())
+    assert len(grupuri) == 3                       # camerele nu se unesc fara dovada de identitate
     assert grupuri[0]["inceput"].startswith("2026-08-15")   # cele mai noi primele
-    assert grupuri[1]["camere"] == [4, 5] and grupuri[1]["poze"] == 2
+    assert all(len(g['camere']) == 1 for g in grupuri)
     assert top > 0.99
 
 
