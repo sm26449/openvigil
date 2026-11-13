@@ -264,7 +264,7 @@ def stare_scurta():
 
 
 def text(d=None):
-    """Pentru om: „ploaie, 7°C, rafale 45 km/h (Lipia)”."""
+    """Pentru om: „ploaie, 7°C, rafale 45 km/h (Sinaia)”."""
     d = d or acum()
     if not d:
         return t("vreme necunoscută")

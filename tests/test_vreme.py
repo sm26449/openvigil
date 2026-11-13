@@ -86,18 +86,18 @@ def test_geocodare_si_exterior(monkeypatch):
     def get(url, params=None, timeout=0):
         apel[url] = params
         if "geocoding" in url:
-            return R({"results": [{"name": "Lipia", "country": "România", "admin1": "Buzău", "latitude": 45.26, "longitude": 26.84}]})
+            return R({"results": [{"name": "Sinaia", "country": "România", "admin1": "Prahova", "latitude": 45.35, "longitude": 25.55}]})
         return R({"current": {"time": "2026-10-31T23:00", "temperature_2m": 7.2, "is_day": 0, "precipitation": 0.4,
                               "weather_code": 61, "cloud_cover": 90, "wind_speed_10m": 12, "wind_gusts_10m": 44},
                   "hourly": {"time": ["2026-10-31T22:00", "2026-10-31T23:00"], "visibility": [8000, 600]}})
     monkeypatch.setattr(requests, "get", get)
-    loc = vreme.cauta_localitate("Lipia")
-    assert loc[0]["nume"] == "Lipia" and loc[0]["judet"] == "Buzău" and loc[0]["lat"] == 45.26
+    loc = vreme.cauta_localitate("Sinaia")
+    assert loc[0]["nume"] == "Sinaia" and loc[0]["judet"] == "Prahova" and loc[0]["lat"] == 45.35
     assert vreme.cauta_localitate("L") == []
-    e = vreme.exterior({"lat": 45.26, "lon": 26.84})
+    e = vreme.exterior({"lat": 45.35, "lon": 25.55})
     assert e["stare"] == "ploaie" and e["vant"] is True and e["vizibilitate_m"] == 600 and e["e_zi"] is False
-    assert apel[vreme.URL_VREME]["latitude"] == 45.26
-    assert vreme.text({"stare": "ploaie", "vant": True, "exterior": e, "camere": {"ploaie_pct": 40}, "locatie": "Lipia"}).startswith("ploaie, 7°C, rafale 44 km/h, 40%")
+    assert apel[vreme.URL_VREME]["latitude"] == 45.35
+    assert vreme.text({"stare": "ploaie", "vant": True, "exterior": e, "camere": {"ploaie_pct": 40}, "locatie": "Sinaia"}).startswith("ploaie, 7°C, rafale 44 km/h, 40%")
 
 
 def test_noaptea_din_soare(monkeypatch):
