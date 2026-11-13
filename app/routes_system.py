@@ -590,7 +590,7 @@ def api_vreme():
 
 @bp.route("/api/vreme/cauta")
 def api_vreme_cauta():
-    """?q=Lipia -> localitatile care se potrivesc (nume, judet, tara, lat, lon)."""
+    """?q=Sinaia -> localitatile care se potrivesc (nume, judet, tara, lat, lon)."""
     import vreme
     from i18n import limba_curenta
     try:

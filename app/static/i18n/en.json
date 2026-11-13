@@ -2372,7 +2372,7 @@
   "Locație și vreme": "Location and weather",
   "Vremea de afară (Open-Meteo, gratuit, fără cheie) plus ce estimează camerele (ploaie din cadrele sărite, vânt din zonele instabile, ceață din contrast) intră în fiecare eveniment din jurnal și pot ridica pragul detecției pe vreme rea.": "The outside weather (Open-Meteo, free, no key) plus what the cameras estimate (rain from skipped frames, wind from unstable areas, fog from contrast) goes into every journal event and can raise the detection threshold in bad weather.",
   "Localitatea": "Locality",
-  "ex. Lipia": "e.g. Lipia",
+  "ex. Sinaia": "e.g. Sinaia",
   "Prag de încredere pe vreme rea": "Confidence threshold in bad weather",
   "Prag pe vreme rea": "Threshold in bad weather",
   "0 = neschimbat; ex. 0,6 când plouă, ninge sau e ceață": "0 = unchanged; e.g. 0.6 when it rains, snows or is foggy",
