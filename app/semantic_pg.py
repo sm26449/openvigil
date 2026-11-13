@@ -76,7 +76,7 @@ def _where(model, since, until, visible, labels, hours):
     if visible is not None:
         cond.append('cam=ANY(%s)');args.append(sorted(visible))
     if labels is not None:
-        cond.append('label=ANY(%s)');args.append(sorted(set(labels)|semantic.GENERIC_LABELS))
+        cond.append("(source <> 'scena' OR label=ANY(%s))");args.append(sorted(set(labels)|semantic.GENERIC_LABELS))
     if hours is not None:
         # Ora locala originala; nu folosim timezone-ul configurat pe serverul PostgreSQL.
         minute="(substring(metadata->>'time',1,2)::int*60+substring(metadata->>'time',4,2)::int)"

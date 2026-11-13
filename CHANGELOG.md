@@ -11,6 +11,8 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   ore exacte și numele camerei. Etichetele românești și alarmele generice rămân eligibile.
 - Indexarea păstrează toate zilele unui lot, evită duplicatele și publică vectorii împreună
   cu metadatele într-un fișier atomic. Reconcilierea periodică recuperează imaginile omise.
+- Eticheta declanșatoare a unui cadru întreg nu ascunde alte obiecte din imagine; filtrarea
+  pe clasă se aplică decupajelor. Backfill-ul grupează scrierile pe disc, cu loturi GPU mici.
 - Răspunsurile arată acoperirea pozelor și perioada; gruparea nu unește camere diferite,
   iar observațiile din jurnal nu sunt prezentate ca numărătoare completă a trecerilor.
 

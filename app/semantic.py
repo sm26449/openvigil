@@ -558,6 +558,13 @@ def _backfill():
                 todo.append((day, meta, path))
                 seen[day].add(asset_key(meta))
         backfill_state["total"] = len(todo)
+        pending = {}
+
+        def flush(day):
+            vectors, metas = pending.pop(day)
+            shard_add(day, np.vstack(vectors), metas)
+            backfill_state['done'] += len(metas)
+
         for i in range(0, len(todo), 16):
             lot = todo[i:i + 16]
             by_day = {}
@@ -572,9 +579,14 @@ def _backfill():
                 imgs.append(img)
                 metas.append(meta)
             for day, (imgs, metas) in by_day.items():
-                shard_add(day, _embed_masurat(imgs), metas)
-                backfill_state["done"] += len(metas)
+                vectors, rows = pending.setdefault(day, ([], []))
+                vectors.append(_embed_masurat(imgs))
+                rows.extend(metas)
+                if len(rows) >= 256:
+                    flush(day)
             time.sleep(0.3)   # ritm lent: serverul are treaba mai importanta decat istoricul
+        for day in list(pending):
+            flush(day)
     except Exception as e:
         backfill_state['error'] = str(e)[:100]
         logare.error(f"[semantic] backfill esuat: {str(e)[:100]}")
@@ -628,7 +640,9 @@ def _hits(text, days=30, visible=None, labels=None, since=None, until=None, hour
                    if (visible is None or m['cam'] in visible)
                    and lo <= f"{day} {m['time']}" < hi
                    and search_time.in_hours(m['time'], hours)
-                   and (labels is None or (label := normalize_label(m['label'])) in labels
+                   # Un snapshot poate contine si alte obiecte decat eticheta declansatoare.
+                   and (labels is None or m.get('sursa') != 'scena'
+                        or (label := normalize_label(m['label'])) in labels
                         or label in GENERIC_LABELS)]
         if not indices:
             continue

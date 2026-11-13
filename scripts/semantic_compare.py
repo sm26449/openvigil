@@ -30,6 +30,7 @@ def main():
     p.add_argument('--source',type=Path,required=True,help='Director de shard-uri COPIATE/inghetate')
     p.add_argument('--model-id',required=True,help='Identitate declarata; foloseste legacy/ pentru shard-uri fara provenienta')
     p.add_argument('--output',type=Path,required=True)
+    p.add_argument('--skip-import',action='store_true',help='Repeta masurarea pe modelul deja importat in baza de test')
     args=p.parse_args()
     semantic_pg.init()   # refuza productia inainte de orice scriere
     semantic.SEM_DIR=str(args.source)
@@ -43,10 +44,16 @@ def main():
     until=time.mktime(time.strptime(days[-1],'%Y-%m-%d'))+86400
     started=time.perf_counter()
     imported=0
-    for day in days:
-        n=semantic_pg.import_shard(day,args.model_id)
-        imported+=n
-        print(json.dumps({'import_day':day,'rows':n}),flush=True)
+    if args.skip_import:
+        expected=sum(len({semantic.asset_key(m) for m in semantic.shard_meta(d)}) for d in days)
+        with db.conn() as c:
+            imported=c.execute('SELECT count(*) FROM semantic_probe_vectors WHERE model=%s',(args.model_id,)).fetchone()[0]
+        if imported!=expected:raise ValueError('corpusul importat nu are numarul asteptat de imagini')
+    else:
+        for day in days:
+            n=semantic_pg.import_shard(day,args.model_id)
+            imported+=n
+            print(json.dumps({'import_day':day,'rows':n}),flush=True)
     import_ms=round((time.perf_counter()-started)*1000,1)
     with db.conn() as c:
         c.execute('ANALYZE semantic_probe_vectors')
@@ -84,7 +91,7 @@ def main():
                            'postgres_matches':count,'top40_overlap':len(common),'equivalent':same})
             print(json.dumps(checks[-1]),flush=True)
     after={x.name:hashlib.sha256(x.read_bytes()).hexdigest() for x in args.source.iterdir() if x.suffix in {'.npy','.npz','.json'}}
-    report={'model_id':args.model_id,'pgvector_version':version,'days':days,'imported':imported,
+    report={'model_id':args.model_id,'pgvector_version':version,'days':days,'imported':imported,'import_skipped':args.skip_import,
             'import_ms':import_ms,'relation_bytes':size,'frozen_corpus_unchanged':before==after,
             'checks':checks,'visual_accuracy_measured':False,'backend_switched':False}
     args.output.write_text(json.dumps(report,ensure_ascii=False,indent=2))

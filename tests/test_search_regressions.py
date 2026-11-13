@@ -50,9 +50,15 @@ def test_old_shard_not_returned_for_today(index):
 def test_vehicle_filter_accepts_translated_and_generic_labels(index):
     semantic.shard_add('2026-11-13', [[1.,0.]]*4,
                        [meta('a.jpg',label='mașină'), meta('b.jpg',label='VMD'),
-                        meta('c.jpg',label='truck'),meta('d.jpg',label='chicken')])
+                        meta('c.jpg',label='truck'),{**meta('d.jpg',label='chicken'),'sursa':'scena'}])
     groups, _ = semantic.appearances('x', labels=ask.VEHICLE_LABELS, **window())
     assert sum(g['poze'] for g in groups) == 3
+
+
+def test_whole_frame_label_does_not_hide_other_objects(index):
+    semantic.shard_add('2026-11-13', [[1.,0.]], [meta(label='person')])
+    groups,_=semantic.appearances('masina de gunoi',labels=ask.VEHICLE_LABELS,**window())
+    assert len(groups)==1 and groups[0]['poze']==1
 
 
 def test_upsert_deduplicates_and_updates(index):
@@ -240,3 +246,19 @@ def test_compact_legacy_duplicates_preserves_rollback_files(index):
     mat,rows=semantic.shard_load('2026-11-13')
     assert rows[0]['label']=='truck' and mat.shape==(1,2)
     assert (d/'2026-11-13.npy').exists() and semantic.compact()['duplicates_removed']==0
+
+
+def test_backfill_batches_disk_writes_without_large_gpu_batches(index,monkeypatch):
+    d=index/'snapshots'/'2026-11-13';d.mkdir(parents=True)
+    buf=io.BytesIO();Image.new('RGB',(2,2)).save(buf,format='JPEG')
+    for i in range(257):(d/f'10{i//60:02d}{i%60:02d}_cam1_car.jpg').write_bytes(buf.getvalue())
+    writes=[];batches=[]
+    original=semantic._shard_write
+    def write(day,mat,rows):writes.append(len(rows));return original(day,mat,rows)
+    def embed(imgs):batches.append(len(imgs));return np.array([[1.,0.]]*len(imgs),np.float32)
+    monkeypatch.setattr(semantic,'_shard_write',write)
+    monkeypatch.setattr(semantic,'_embed_masurat',embed)
+    monkeypatch.setattr(semantic.time,'sleep',lambda _:None)
+    semantic._backfill()
+    assert writes==[256,257] and max(batches)==16
+    assert semantic.backfill_state['done']==257

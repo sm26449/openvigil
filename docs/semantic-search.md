@@ -13,7 +13,9 @@ zile din interfață; răspunsul afișează limitele efective. Formele de bază 
 
 Rezultatul este o observație în imaginile salvate și indexate. Nu este o analiză exhaustivă
 a înregistrării video. Acoperirea afișată numără snapshot-urile de detecție; decupajele scenei
-sunt o sursă suplimentară. Grupările sunt per cameră, cu durată maximă de 30 minute, și nu
+sunt o sursă suplimentară. Eticheta unui snapshot nu exclude alte obiecte din imagine:
+un camion cu un operator poate avea eticheta „person”. Filtrarea pe clasă se aplică
+decupajelor scenei. Grupările sunt per cameră, cu durată maximă de 30 minute, și nu
 reprezintă identificarea certă a aceluiași obiect. Potrivirile slabe sunt marcate și pot fi
 verificate prin poze și clip. Obiectele urmărite și episoadele din jurnal sunt raportate separat:
 sursele se pot suprapune, iar lipsa observațiilor nu dovedește absența unei treceri.
@@ -48,7 +50,8 @@ Yesterday, the day before yesterday, calendar weeks and months follow the instal
 time zone. ISO dates and daily hour ranges are supported, including overnight ranges.
 The upper boundary is exclusive. The effective period is displayed in the response.
 
-Search covers saved, indexed images. Snapshot coverage does not describe the entire video
+Whole-frame labels do not exclude other objects in the image; class filtering applies to
+object crops. Search covers saved, indexed images. Snapshot coverage does not describe the entire video
 recording or all scene crops. Groups stay within one camera and at most 30 minutes; they
 do not establish object identity. Weak matches are marked, with images and clip access for
 review. Tracked objects and detection episodes are reported separately because they can
