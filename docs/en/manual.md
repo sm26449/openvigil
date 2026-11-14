@@ -139,8 +139,8 @@ with a camera filter and **pill filters by type** (with a counter); click a phot
 (lightbox) with left/right navigation (arrows/swipe/Escape). The **▶ Clip** button in the viewer
 plays 20 s of video around the event (`/api/clip`, -5s..+15s): instant from the local
 recordings (H.264 copied / HEVC transcoded), slower for the NVR cameras (RTSP pull + transcoding).
-Clips are cached in `data/tmp/`. Times are Romanian time
-(`Environment=TZ=Europe/Bucharest` in nvr-web.service).
+Clips are cached in `data/tmp/`. Times are in the installation's time zone
+(`TZ` in `.env`, for example `TZ=Europe/Bucharest`; UTC by default).
 
 ## Identification that is useful in practice: LPR with an alert for unfamiliar cars, faces grouped by person
 (2026-10-23 evening; started from the finding that Face ID had 29 recognitions in two months,
@@ -533,20 +533,33 @@ Browser  ──:8079── backend Flask (cautare ISAPI + inregistrare streamuri
 - go2rtc is the very streaming engine of **Frigate** — if you ever want AI detection,
   the central piece is already here (zero work thrown away).
 
-## Services (systemd, start at boot)
+## Services (Docker Compose, start at boot)
+OpenVigil runs as five containers from a single image, started from the installation directory
+(where `docker-compose.yml` is; on a GPU host add `-f docker-compose.gpu.yml`):
 ```
-systemctl status nvr-go2rtc      # motor streaming  (127.0.0.1:1984, 127.0.0.1:8554, :8555)
-systemctl status nvr-web         # interfata web    (:8079) + releul spre go2rtc (:8076)
-systemctl status nvr-record      # inregistrare continua camere standalone (separat,
-                                 #   ca restarturile interfetei sa nu taie inregistrarea)
-journalctl -u nvr-web -f         # log live backend
+docker compose ps                # the five services and their state (healthy / starting)
+docker compose logs -f web       # live log of the interface; same for record, ai, go2rtc, db
+docker compose restart ai        # restart only inference (models reload, ~1 min)
+curl -s http://127.0.0.1:8079/healthz   # {"ok": true, ...} when everything is fine
 ```
-All of them have `ExecStopPost=scripts/notify-fail.sh` -> a Telegram alert on any failure
-(crash, OOM, signal; not on a manual stop/restart), at most one per 10 min per service.
-The units in `deploy/systemd/` are copies of the ones in `/etc/systemd/system/`.
-The watchdog in nvr-web also reports: standalone camera down/back, NVR down/back,
-disk almost full. The project is in **git** (without passwords: config.py, cameras.json,
-settings.json, go2rtc.yaml are in .gitignore; see config.example.py).
+| Service | What it does | Health check |
+|---|---|---|
+| `go2rtc` | streaming engine (127.0.0.1 only: 1984, 8554) | go2rtc API responds |
+| `web` | interface + API (:8079) and the authenticated relay to go2rtc (:8076) | `/healthz` |
+| `record` | continuous recording, separate so interface restarts never interrupt it | wrote in the last 2 min |
+| `ai` | detection and GPU models (:8077, local only) | `/health` |
+| `db` | PostgreSQL with pgvector (journal, hashes, vectors; 127.0.0.1 only) | `pg_isready` |
+
+All are `restart: unless-stopped`, so they come back by themselves after a reboot; `web` and
+`record` wait for `go2rtc` and `db` to be healthy. Each container's logs are rotated (5 files x
+10 MB). Docker does not restart a container just because it stays "unhealthy", nor does it report
+a crash: if you want that, add a watcher on the host (for example `autoheal`, or a systemd timer
+that checks `docker compose ps`). Inside the application, the watchdog in `web` sends a
+Telegram/email alert when a camera goes down or comes back, when the NVR is down (if one is used)
+and when the disk is nearly full.
+The installation's configuration lives in `.env` (created from `.env.example`, never in git);
+cameras, settings and accounts live in `data/`. Day-to-day operation (updates, backups, moving,
+ports): `docs/operare.md`.
 
 ## Navigation (live <-> recordings transition)
 **In the HD overlay** (click any camera): under the player is the **time-shift** bar —

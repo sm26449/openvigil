@@ -138,8 +138,8 @@ cu filtru pe camera si **filtre pill pe tip** (cu contor); click pe poza = viewe
 (lightbox) cu navigare stanga/dreapta (sageti/swipe/Escape). Butonul **▶ Clip** din viewer
 reda 20s de video in jurul evenimentului (`/api/clip`, -5s..+15s): instant din inregistrarile
 locale (H.264 copiat / HEVC transcodat), mai lent la camerele NVR (pull RTSP + transcodare).
-Clipurile se tin in cache in `data/tmp/`. Orele sunt ora Romaniei
-(`Environment=TZ=Europe/Bucharest` in nvr-web.service).
+Clipurile se tin in cache in `data/tmp/`. Orele sunt in fusul orar al instalarii
+(`TZ` din `.env`, de exemplu `TZ=Europe/Bucharest`; implicit UTC).
 
 ## Identificare utila in practica: LPR cu alerta la masini straine, fete grupate pe persoana
 (2026-10-23 seara; pornit de la constatarea ca Face ID avea 29 de recunoasteri in doua luni,
@@ -533,20 +533,32 @@ Browser  ──:8079── backend Flask (cautare ISAPI + inregistrare streamuri
 - go2rtc e chiar motorul de streaming din **Frigate** — daca vrei vreodata detectie AI,
   piesa centrala e deja aici (zero munca aruncata).
 
-## Servicii (systemd, pornesc la boot)
+## Servicii (Docker Compose, pornesc la boot)
+OpenVigil ruleaza ca cinci containere dintr-o singura imagine, pornite din directorul instalarii
+(unde e `docker-compose.yml`; pe GPU adauga `-f docker-compose.gpu.yml`):
 ```
-systemctl status nvr-go2rtc      # motor streaming  (127.0.0.1:1984, 127.0.0.1:8554, :8555)
-systemctl status nvr-web         # interfata web    (:8079) + releul spre go2rtc (:8076)
-systemctl status nvr-record      # inregistrare continua camere standalone (separat,
-                                 #   ca restarturile interfetei sa nu taie inregistrarea)
-journalctl -u nvr-web -f         # log live backend
+docker compose ps                # cele cinci servicii si starea lor (healthy / starting)
+docker compose logs -f web       # jurnalul live al interfetei; la fel: record, ai, go2rtc, db
+docker compose restart ai        # reporneste doar inferenta (modelele se reincarca, ~1 min)
+curl -s http://127.0.0.1:8079/healthz   # {"ok": true, ...} cand totul e in ordine
 ```
-Toate au `ExecStopPost=scripts/notify-fail.sh` -> alerta Telegram la orice cadere
-(crash, OOM, semnal; nu la stop/restart manual), cel mult una la 10 min per serviciu.
-Unitatile din `deploy/systemd/` sunt copiile celor din `/etc/systemd/system/`.
-Watchdog-ul din nvr-web anunta si: camera standalone cazuta/revenita, NVR cazut/revenit,
-disc aproape plin. Proiectul e in **git** (fara parole: config.py, cameras.json,
-settings.json, go2rtc.yaml sunt in .gitignore; vezi config.example.py).
+| Serviciu | Ce face | Verificarea de sanatate |
+|---|---|---|
+| `go2rtc` | motorul de streaming (doar pe 127.0.0.1: 1984, 8554) | API-ul go2rtc raspunde |
+| `web` | interfata + API (:8079) si releul autentificat spre go2rtc (:8076) | `/healthz` |
+| `record` | inregistrarea continua, separata ca restarturile interfetei sa n-o taie | a scris in ultimele 2 min |
+| `ai` | detectia si modelele pe GPU (:8077, doar local) | `/health` |
+| `db` | PostgreSQL cu pgvector (jurnal, amprente, vectori; doar pe 127.0.0.1) | `pg_isready` |
+
+Toate sunt `restart: unless-stopped`, deci pornesc singure dupa un reboot; `web` si `record`
+asteapta ca `go2rtc` si `db` sa fie sanatoase. Jurnalele fiecarui container se rotesc singure
+(5 fisiere x 10 MB). Docker nu reporneste un container doar pentru ca a ramas „unhealthy” si nu
+anunta caderea lui: daca vrei asta, pune pe gazda un supraveghetor (de exemplu `autoheal` sau un
+timer systemd care urmareste `docker compose ps`). Din aplicatie, watchdog-ul din `web` anunta pe
+Telegram/email camera cazuta sau revenita, NVR-ul cazut (daca e folosit) si discul aproape plin.
+Configurarea instalarii sta in `.env` (pornit din `.env.example`, nu intra in git), iar camerele,
+setarile si conturile in `data/`. Operarea de zi cu zi (actualizare, copii, mutare, porturi):
+`docs/operare.md`.
 
 ## Navigare (tranzitie live <-> inregistrari)
 **In overlay-ul HD** (click pe orice camera): sub player e bara de **time-shift** —
