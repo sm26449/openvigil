@@ -549,7 +549,8 @@ function grupeazaPuncte(tl) {
   inchide();
 }
 function placeCursor(sec) {
-  const tlA11y = $('#timeline'); if (tlA11y) { tlA11y.setAttribute('aria-valuenow', Math.round(sec)); tlA11y.setAttribute('aria-valuetext', hms(Math.round(sec))); }
+  // bara e un grup (contine butoane: grupurile de evenimente), nu un slider cu valoare;
+  // momentul curent il anunta #pb-pos (audit UX A4, nested-interactive)
   const tl = $('#timeline'), c = tl._cursor;
   if (!c) return;
   tl._cursorSec = sec;

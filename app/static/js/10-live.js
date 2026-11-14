@@ -176,6 +176,8 @@ function buildLive() {
     // punct de stare in coltul de sus (verde = live, rosu pulsand = alarma)
     const dot = document.createElement('div');
     dot.className = 'dot';
+    dot.setAttribute('role', 'img');   // are aria-label (Live / Se conectează): fara rol, eticheta nu are voie (audit UX A4)
+    dot.setAttribute('aria-label', t('Se conectează'));   // numele exista de la inceput, nu doar dupa primul cadru
     tile.appendChild(dot);
     tile.title = t('Click pentru HD');
     tile.tabIndex = 0;

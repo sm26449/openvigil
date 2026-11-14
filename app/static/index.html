@@ -17,8 +17,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="OpenVigil">
 <meta name="theme-color" content="#1c2128">
+<meta name="color-scheme" content="dark">
 </head>
 <body>
+<a class="sari-continut" href="#continut">Sari la conținut</a>
 <header>
   <h1 id="nume-sistem">OpenVigil</h1>
   <nav>
@@ -79,6 +81,7 @@
   </form>
 </div>
 
+<main id="continut" tabindex="-1">
 <!-- LIVE -->
 <section id="live" class="view">
   <div class="live-bar views-bar">
@@ -223,16 +226,16 @@
           <span id="tl-range" class="hint"></span>
           <span class="hint tl-keys">Space pauză · J/L ±10s · , . cadru · [ ] viteza · M marcaj</span>
         </div>
-        <div id="timeline" role="slider" aria-label="Momentul din zi" aria-valuemin="0" aria-valuemax="86399" aria-valuenow="0" tabindex="0"></div>
+        <div id="timeline" role="group" aria-label="Linia de timp a zilei: săgețile derulează ±10 s, Shift ±1 min" tabindex="0"></div>
         <div id="ticks"></div>
       </div>
     </div>
     <div class="pb-right">
-      <h3>Marcaje</h3>
+      <h2>Marcaje</h2>
       <div id="pb-marks"></div>
-      <h3>Probe</h3>
+      <h2>Probe</h2>
       <div id="pb-probe"></div>
-      <h3>Evenimente</h3>
+      <h2>Evenimente</h2>
       <div id="pb-evlist"></div>
     </div>
   </div>
@@ -291,7 +294,7 @@
     <input type="date" id="al-date" aria-label="Ziua">
     <select id="al-cam" aria-label="Camera"><option value="">Toate camerele</option></select>
     <button id="al-search">Arată</button>
-    <input id="sem-q" class="search"
+    <input id="sem-q" class="search" type="search" aria-label="Caută în poze sau pune o întrebare"
            placeholder="Caută sau întreabă: mașină albă · când a venit mașină de gunoi?"
            title="Căutare semantică sau întrebare liberă, în română. Întrebările (când.../de câte ori...) primesc răspuns direct, cu pozele-dovada.">
     <button id="sem-go">Caută</button>
@@ -413,7 +416,7 @@
       <span class="hint ad-keys">← → cadrul · trage pe gol = chenar nou · trage chenar/colț = mută/redimensionează · Delete șterge · 1–9 clasa · Ctrl+Z anulează · Enter salvează</span>
     </div>
     <div class="ad-body">
-      <aside id="ad-list" class="ad-list" aria-label="Cadrele datasetului"></aside>
+      <aside id="ad-list" class="ad-list" aria-label="Cadrele datasetului" tabindex="0"></aside>
       <div class="ad-main">
         <canvas id="ad-canvas" aria-label="Cadrul cu chenarele etichetelor"></canvas>
         <div class="ad-foot">
@@ -645,18 +648,11 @@
   </div>
 </section>
 
-<!-- panou de detaliu pentru o camera -->
-<div id="cam-panel" class="hidden">
-  <div id="cam-panel-head">
-    <h2 id="cam-panel-title"></h2>
-    <button id="cam-panel-close" aria-label="Închide">✕</button>
-  </div>
-  <div id="cam-panel-body"></div>
-</div>
 
 <!-- SETARI -->
 <section id="set" class="view hidden">
-  <nav class="set-nav" id="set-nav">
+  <nav class="set-nav" id="set-nav" aria-label="Setări">
+    <div class="snav-tabs" role="tablist" aria-label="Secțiunile setărilor">
     <button class="snav-item on" data-pane="stare">Stare</button>
     <button class="snav-item" data-pane="inreg">Înregistrare</button>
     <button class="snav-item" data-pane="detectie">Detecție</button>
@@ -666,6 +662,7 @@
     <button class="snav-item" data-pane="sistem">Sistem</button>
     <button class="snav-item" data-pane="unelte">Unelte</button>
     <button class="snav-item" data-pane="jurnal">Jurnal</button>
+    </div>
     <input id="set-q" class="search" placeholder="Caută în setări…" aria-label="Caută în toate setările">
     <label class="inline set-adv" title="Setările rar atinse: MQTT, ora camerelor, fluiditate, automatizări, jeton, regiuni, legături"><input id="set-adv" type="checkbox"> avansate</label>
   </nav>
@@ -686,7 +683,7 @@
 
     <div class="set-card wide">
       <h2 data-ic="image">Acoperirea ultimelor zile</h2>
-      <div id="cont-cov" class="cont-cov"></div>
+      <div id="cont-cov" class="cont-cov" role="region" aria-label="Acoperirea înregistrărilor pe zile" tabindex="0"></div>
       <p class="hint">Cât din fiecare zi avem efectiv pe disc. Rămâne în jurnal și după ce
         retenția șterge fișierele, ca să știm mereu dacă ziua aceea a fost întreagă.
         La camerele pe „la mișcare" acoperirea parțială e normală.</p>
@@ -964,7 +961,7 @@
         pas (telefon pierdut).</p>
       <div class="s-btns row">
         <button type="button" class="me-open">Contul meu: 2FA, notificari push, dispozitive</button>
-        <a href="/logout"><button type="button">Ieși din cont</button></a>
+        <a href="/logout" class="buton-legatura">Ieși din cont</a>
       </div>
     </div>
 
@@ -1223,7 +1220,7 @@
     <div class="set-card wide">
       <h2 data-ic="image">Jurnal de modificări</h2>
       <input id="log-q" class="search" placeholder="Caută în jurnal..." aria-label="Caută în jurnalul de modificări">
-      <div id="log-list"></div>
+      <div id="log-list" role="region" aria-label="Jurnalul de modificări" tabindex="0"></div>
     </div>
     </div>
   </div>
@@ -1235,6 +1232,17 @@
     <span class="s-msg" id="s-msg-save"></span>
   </div>
 </section>
+</main>
+
+<!-- panou de detaliu pentru o camera -->
+<aside id="cam-panel" class="hidden" aria-labelledby="cam-panel-title">
+  <div id="cam-panel-head">
+    <h2 id="cam-panel-title" tabindex="-1"></h2>
+    <button id="cam-panel-close" aria-label="Închide">✕</button>
+  </div>
+  <div id="cam-panel-body"></div>
+</aside>
+
 
 <!-- editor zona de detectie -->
 <div id="zone-overlay" class="hidden" role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="zone-title">
@@ -1259,7 +1267,7 @@
     <button id="health-refresh" class="link-btn" title="Reîmprospătează">↻</button>
     <button id="health-close" class="ov-close">Închide</button>
   </div>
-  <div class="ov-body" id="health-body"></div>
+  <div class="ov-body" id="health-body" tabindex="0"></div>
 </div>
 
 <!-- Program & automatizare (tab „Program", doar admin): orarul săptămânal de moduri (timeline) +
@@ -1387,7 +1395,7 @@
       <span id="hd-when"></span>
       <button id="hd-topb">Deschide în Înregistrări</button>
     </div>
-    <div id="hd-timeline" role="slider" aria-label="Momentul din zi" aria-valuemin="0" aria-valuemax="86399" aria-valuenow="0" tabindex="0"></div>
+    <div id="hd-timeline" role="group" aria-label="Linia de timp a zilei: săgețile derulează ±10 s, Shift ±1 min" tabindex="0"></div>
     <div id="hd-ticks"></div>
   </div>
   <!-- sageti pe marginile imaginii (doar pe telefon): arata ca poti trece intre camere prin
@@ -1450,7 +1458,7 @@
       <button id="exports-refresh" class="link-btn" title="Reîmprospătează">↻</button>
       <button id="exports-close" aria-label="Închide">✕</button>
     </div>
-    <div id="exports-list"></div>
+    <div id="exports-list" role="region" aria-label="Lista exporturilor" tabindex="0"></div>
   </div>
 </div>
 
@@ -1599,7 +1607,7 @@
         tău — cea de aici rămâne.</p>
       <div class="s-btns row">
         <button type="button" id="sess-all">Deconectează toate celelalte dispozitive</button>
-        <a href="/logout"><button type="button">Ieși din cont</button></a>
+        <a href="/logout" class="buton-legatura">Ieși din cont</a>
       </div>
       <span class="s-msg" id="sess-msg"></span>
     </section>

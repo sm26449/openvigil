@@ -1237,7 +1237,8 @@ $('#s-digest-now') && ($('#s-digest-now').onclick = async () => {
   flash('#s-msg-digest', d && d.ok ? t('Rezumatul a plecat ✓') : (d && d.error) || t('Eroare'), !!(d && d.error));
 });
 
-$('#set-nav')?.setAttribute('role', 'tablist');   // model de taburi ARIA (audit T2)
+// rolul tablist sta pe .snav-tabs (in index.html): #set-nav contine si cautarea si bifa „avansate”,
+// care nu au voie intr-un tablist (audit UX A4)
 for (const p of document.querySelectorAll('.set-pane')) p.setAttribute('role', 'tabpanel');
 for (const b of document.querySelectorAll('.snav-item')) {
   b.setAttribute('role', 'tab');

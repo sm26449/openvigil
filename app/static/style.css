@@ -1,13 +1,19 @@
 :root {
+  /* controalele native (select, calendar, bare de derulare) pe tema inchisa — erau albe (audit UX A10) */
+  color-scheme: dark;
   /* Suprafete — neutre reci, ca imaginea video sa fie singurul lucru colorat */
   --bg: #14171c; --surface: #1c2128; --surface-2: #22272e; --line: #2d333b;
   /* Text — 3 niveluri; --text-3 luminat de la #768390 (4.18:1, sub standard) la 5.5:1 */
   --text: #e6e8eb; --text-2: #adbac7; --text-3: #8b98a5;
   /* Actiuni */
   --accent: #316dca; --accent-hi: #4184e4;
+  /* text de legatura/actiune: --accent-hi avea 4.0–4.35:1 pe suprafete (sub 4.5, audit UX A1) */
+  --link: #539bf5;
   /* STARI — singurele locuri unde e permisa culoarea saturata */
   --ok: #347d39; --ok-hi: #57ab5a; --ok-hover: #46954a;
   --alarm: #cf222e; --alarm-hi: #f85149; --warn: #d29922; --motion: #f0883e;
+  /* text rosu: --alarm-hi avea 4.2–4.5:1 pe suprafete; --alarm-text are >= 5.6:1 */
+  --alarm-text: #ff7b72;
   /* Scara tipografica: 5 trepte in loc de 10 */
   --fs-xs: 12px; --fs-sm: 13px; --fs-md: 14px; --fs-lg: 16px; --fs-xl: 20px;
   /* bara de navigare de jos (telefon): inaltimea ei intra in orice element lipit de marginea de jos */
@@ -19,6 +25,34 @@
   --focus: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent-hi);
 }
 
+
+/* tinte de atingere: minimum 24 px (WCAG 2.5.8) pentru orice control; pe ecrane tactile 32 px.
+   Masurat inainte: „Contul meu" 35x18 lipit de „ieși" 20x17, legaturile de job 26x18, Adnotare ‹ › 20x21 (audit UX A8) */
+:where(button, .link-btn, select, input:not([type=checkbox], [type=radio], [type=range], [type=hidden], [type=color])) { min-height: 24px; }
+:where(button.link-btn, a.link-btn, .view-del, #ad-prev, #ad-next) { min-width: 24px; }
+:where(a.link-btn) { display: inline-flex; align-items: center; justify-content: center; }
+@media (pointer: coarse) {
+  :where(button, .link-btn, select, input:not([type=checkbox], [type=radio], [type=range], [type=hidden], [type=color])) { min-height: 32px; }
+}
+#user-chip { display: inline-flex; align-items: center; gap: var(--s2); }
+#user-chip .me-open, #user-chip a { min-height: 32px; display: inline-flex; align-items: center; padding: 0 var(--s2); border-radius: var(--r1); }
+/* Windows „contrast ridicat": umbrele (inelul de focus e box-shadow) dispar -> contur real (audit UX A10) */
+@media (forced-colors: active) {
+  :where(button, a, input, select, [tabindex]):focus-visible { outline: 2px solid CanvasText; outline-offset: 2px; }
+}
+/* legaturile de sine statatoare (nu in fraza) si <summary>: minimum 24 px inaltime (audit UX A8) */
+#quick-links a, .set-card a:not(p a, .link-btn, .buton-legatura), #cam-panel a:not(p a, .link-btn), summary { display: inline-flex; align-items: center; min-height: 24px; }
+summary { display: list-item; }
+/* grupul de taburi din Setari: rol ARIA propriu, fara sa schimbe asezarea (audit UX A4) */
+.snav-tabs { display: contents; }
+/* salt la continut: invizibil pana primeste focus de la tastatura (audit UX A2) */
+.sari-continut { position: absolute; left: var(--s2); top: -100px; z-index: 100; background: var(--accent);
+  color: #fff !important; padding: var(--s2) var(--s4); border-radius: var(--r1); text-decoration: none; }
+.sari-continut:focus { top: var(--s2); }
+#continut:focus { outline: none; }
+#cam-panel-title:focus { outline: none; }
+/* legaturile fara clasa luau albastrul implicit al browserului (#0000ee, 1.72:1 pe fundal) */
+:where(a:link, a:visited) { color: var(--link); }
 
 /* ---- accesibilitate: navigarea cu tastatura era complet invizibila ---- */
 :where(button, a, input, select, [tabindex]):focus-visible {
@@ -43,7 +77,7 @@ header h1 { font-size: var(--fs-md); margin: 0; color: var(--text); font-weight:
   letter-spacing: .06em; text-transform: uppercase; }
 header h1::before { content: "●"; color: var(--ok-hi); margin-right: var(--s2); font-size: 9px;
   vertical-align: middle; }
-#ver-badge { font-size: 9px; color: var(--text-3); font-weight: 400; letter-spacing: 0;
+#ver-badge { font-size: var(--fs-xs); color: var(--text-3); font-weight: 400; letter-spacing: 0;
   text-transform: none; margin-left: 5px; vertical-align: super; }   /* versiunea care ruleaza */
 /* taburile pe un singur rand: iau tot spatiul liber din antet si, daca tot nu incap, deruleaza orizontal in loc sa se rupa pe 3 randuri */
 header > nav { display: flex; gap: var(--s2); flex: 1 1 auto; min-width: 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
@@ -51,7 +85,6 @@ header > nav { display: flex; gap: var(--s2); flex: 1 1 auto; min-width: 0; flex
    largeste pe orizontala, iar antetul arata un scrollbar subtire cand taburile nu incap (UX-03) */
 @media (min-width: 761px) and (max-width: 1100px) {
   html, body { overflow-x: clip; }
-  header > nav { scrollbar-width: thin; }
 }
 header > nav::-webkit-scrollbar { display: none; }
 header > nav button { white-space: nowrap; flex: none; }
@@ -78,12 +111,15 @@ header > nav button.active { background: var(--accent); color: #fff; }
 #add-cam:hover { background: var(--ok); color: #fff; }
 #quick-links { margin-left: auto; display: flex; gap: var(--s3); font-size: var(--fs-sm); }
 #quick-links a { color: var(--text-3); text-decoration: none; }
-#quick-links a:hover { color: var(--accent-hi); }
+#quick-links a:hover { color: var(--link); }
 #status { font-size: var(--fs-sm); color: var(--text-3); }
 .s-links { display: flex; flex-direction: column; gap: var(--s2); margin-bottom: 10px; }
 .s-links a { color: var(--text-2); text-decoration: none; font-size: var(--fs-sm); padding: var(--s2) var(--s3); background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r1); }
 .s-links a:hover { border-color: var(--accent); color: #fff; }
 .view { padding: var(--s4); }
+/* adresa ecranului (#cams, #live, #pb…) e si id-ul sectiunii: browserul derula pana la ea, iar
+   bara de sus a ecranului ajungea sub antetul lipit (audit UX D5). Marja mare = ancora ramane la 0. */
+main > .view { scroll-margin-top: 100vh; }
 .hidden { display: none; }
 #blocat { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 10px 16px;
   background: color-mix(in srgb, var(--warn) 22%, var(--bg)); border-bottom: 1px solid var(--warn); }
@@ -170,7 +206,7 @@ header > nav button.active { background: var(--accent); color: #fff; }
 #addcam-form label { display: block; font-size: var(--fs-sm); color: var(--text-2); margin-bottom: 10px; }
 #addcam-form input { display: block; width: 100%; margin-top: 4px; background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: var(--r1); padding: var(--s2) var(--s3); font-size: var(--fs-md); }
 #addcam-msg { font-size: var(--fs-sm); min-height: 16px; color: var(--text-3); margin-bottom: 10px; }
-#addcam-msg.err { color: var(--alarm-hi); }
+#addcam-msg.err { color: var(--alarm-text); }
 .addcam-btns { display: flex; gap: var(--s3); justify-content: flex-end; }
 .addcam-btns button { border: 0; padding: var(--s2) var(--s4); border-radius: var(--r1); cursor: pointer; font-size: var(--fs-md); }
 #addcam-cancel { background: var(--line); color: var(--text-2); }
@@ -211,7 +247,7 @@ header > nav button.active { background: var(--accent); color: #fff; }
 .zoomed video { cursor: grab; }
 .zoomed video:active { cursor: grabbing; }
 #hd-player video-stream, #hd-player video { width: 100%; height: 100%; object-fit: contain; }
-.hd-err { color: var(--alarm-hi); font-size: var(--fs-md); }
+.hd-err { color: var(--alarm-text); font-size: var(--fs-md); }
 /* sagetile de margine ale HD-ului: implicit ascunse (desktopul are click pe grila), vizibile
    pe telefon ca indiciu de swipe intre camere (vezi blocul pointer:coarse) */
 .hd-edge { display: none; }
@@ -305,7 +341,7 @@ header > nav button.active { background: var(--accent); color: #fff; }
 .cam-name { background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: var(--r1); padding: var(--s2) var(--s3); font-size: var(--fs-md); width: 230px; }
 .cam-meta { font-size: var(--fs-xs); color: var(--text-3); }
 .cam-meta a { color: var(--text-3); }
-.cam-meta a:hover { color: var(--accent-hi); }
+.cam-meta a:hover { color: var(--link); }
 .cam-caps { margin: var(--s2) 0; display: flex; gap: var(--s2); flex-wrap: wrap; }
 .chip { background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r2); padding: var(--s1) var(--s3); font-size: var(--fs-xs); color: var(--text-2); }
 .chip.dim { color: var(--text-3); }
@@ -326,6 +362,10 @@ header > nav button.active { background: var(--accent); color: #fff; }
 .set-card .hint { font-size: var(--fs-xs); color: var(--text-3); margin: var(--s2) 0 var(--s3); overflow-wrap: anywhere; }
 .set-card button { background: var(--line); color: var(--text); border: 0; padding: var(--s2) var(--s4); border-radius: var(--r1); cursor: pointer; font-size: var(--fs-sm); }
 .set-card button:hover { background: var(--accent); color: #fff; }
+/* legatura de navigare care arata ca un buton (Ieși din cont): fara <button> in <a> (audit UX A4) */
+a.buton-legatura { display: inline-flex; align-items: center; background: var(--line); color: var(--text);
+  padding: var(--s2) var(--s4); border-radius: var(--r1); font-size: var(--fs-sm); text-decoration: none; min-height: 32px; box-sizing: border-box; }
+a.buton-legatura:hover { background: var(--accent); color: #fff; }
 .s-checks { display: flex; flex-wrap: wrap; gap: var(--s1) 0; margin-bottom: 12px; }
 .s-btns { display: flex; flex-direction: column; gap: var(--s2); margin: var(--s3) 0; }
 .s-btns a { display: block; }
@@ -335,7 +375,7 @@ header > nav button.active { background: var(--accent); color: #fff; }
 #s-save:hover { background: var(--ok-hover); }
 .s-msg { font-size: var(--fs-sm); color: var(--text-3); }
 .s-msg.ok { color: var(--ok-hi); }
-.s-msg.err { color: var(--alarm-hi); }
+.s-msg.err { color: var(--alarm-text); }
 
 /* editor zona de detectie */
 #zone-overlay { position: fixed; inset: 0; z-index: 58; background: rgba(0,0,0,.93); display: flex; flex-direction: column; }
@@ -368,7 +408,7 @@ header > nav button.active { background: var(--accent); color: #fff; }
 .count-item { display: flex; align-items: center; gap: var(--s2); font-size: var(--fs-sm); padding: var(--s2) 0; }
 .count-item > span:nth-child(2) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .count-badge { width: 20px; text-align: center; }
-.count-badge.count-linie { color: #4184e4; }
+.count-badge.count-linie { color: var(--link); }
 .count-badge.count-zona { color: #57ab5a; }
 .count-del { color: var(--text-3); }
 @media (max-width: 640px) { #count-main { flex-direction: column; } #count-list { width: auto; border-left: 0; border-top: 1px solid var(--line); max-height: 30vh; } }
@@ -379,14 +419,14 @@ header > nav button.active { background: var(--accent); color: #fff; }
 #ph-fix button { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--line); border-radius: var(--r-pill); padding: var(--s2) var(--s3); font-size: var(--fs-sm); cursor: pointer; }
 #ph-fix button:hover { border-color: var(--accent); color: #fff; }
 #ph-fix .fix-sep { flex-basis: 100%; height: 0; }
-#ph-fix .fix-del { border-color: var(--alarm); color: var(--alarm-hi); margin-top: var(--s2); }
+#ph-fix .fix-del { border-color: var(--alarm); color: var(--alarm-text); margin-top: var(--s2); }
 #ph-fix .fix-del:hover { background: var(--alarm); border-color: var(--alarm); color: #fff; }
 
 /* playback: player + lista de evenimente alaturi */
 .pb-main { display: flex; gap: var(--s3); align-items: flex-start; }
 .pb-left { flex: 1; min-width: 0; }
 .pb-right { width: 230px; flex-shrink: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r2); padding: var(--s3); max-height: 78vh; overflow-y: auto; }
-.pb-right h3 { margin: 0 0 8px; font-size: var(--fs-sm); color: var(--text-2); }
+.pb-right h2, .pb-right h3 { margin: 0 0 8px; font-size: var(--fs-sm); color: var(--text-2); }
 .pb-right .hint { font-size: var(--fs-sm); color: var(--text-3); }
 .ev-row { display: flex; gap: var(--s2); align-items: center; min-height: 44px; padding: var(--s2); border-radius: var(--r1); cursor: pointer; font-size: var(--fs-xs); color: var(--text-2); }
 .ev-row:hover { background: var(--surface-2); }
@@ -413,7 +453,7 @@ header > nav button.active { background: var(--accent); color: #fff; }
 #timeline .evdot.det { background: var(--ok); }
 #timeline .evdot:hover { transform: scale(1.5); }
 /* pastila de grup: text minim 12px si inaltime mai mare ca sa fie lizibila si atinsa (UX-02) */
-#timeline .evgrup { position: absolute; top: -2px; height: 18px; min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--alarm); color: #fff; font-size: 12px; line-height: 18px; text-align: center; transform: translateX(-50%); cursor: zoom-in; border: 1px solid #fff3; z-index: 3; }
+#timeline .evgrup { position: absolute; top: -2px; height: 24px; min-width: 24px; padding: 0 6px; border-radius: 12px; box-sizing: border-box; background: var(--alarm); color: #fff; font-size: 12px; line-height: 22px; text-align: center; transform: translateX(-50%); cursor: zoom-in; border: 1px solid #fff3; z-index: 3; }
 #timeline .evgrup:hover { filter: brightness(1.2); }
 /* focus vizibil la navigarea de la tastatura pe pastile si pe punctele timeline-ului (UX-02) */
 #timeline .evgrup:focus-visible, #timeline .evdot:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -549,7 +589,7 @@ body.wall #wall-exit { display: block; }
 .an-play:hover { background: var(--ok-hover) !important; }
 .an-play:disabled { opacity: .5; cursor: default; }
 .cam-row.announce a.cam-hint { color: var(--text-3); text-decoration: none; }
-.cam-row.announce a.cam-hint:hover { color: var(--accent-hi); }
+.cam-row.announce a.cam-hint:hover { color: var(--link); }
 #s-tts-audio { width: 100%; margin-top: var(--s2); }
 #s-tts-audio.hidden { display: none; }
 #s-auto-test, #s-tts-play, #s-tts-dl { background: var(--surface-2); border: 1px solid var(--line); }
@@ -594,14 +634,14 @@ body.wall #wall-exit { display: block; }
 .view-chip.on .view-go { color: #fff; }
 .view-del { background: transparent; border: 0; color: var(--text-3); cursor: pointer;
   padding: 0 var(--s2) 0 0; display: flex; align-items: center; }
-.view-del:hover { color: var(--alarm-hi); }
+.view-del:hover { color: var(--alarm-text); }
 #view-save { background: var(--surface); color: var(--text-2); border: 1px solid var(--line);
   border-radius: var(--r1); padding: var(--s1) var(--s3); font-size: var(--fs-sm); cursor: pointer; }
 #view-save:hover { border-color: var(--accent); color: var(--text); }
 #views .hint { font-size: var(--fs-xs); color: var(--text-3); }
 
 /* ---- operatii in masa ---- */
-.link-btn { background: none; border: 0; color: var(--accent-hi); font-size: var(--fs-sm);
+.link-btn { background: none; border: 0; color: var(--link); font-size: var(--fs-sm);
   cursor: pointer; text-decoration: underline; padding: 0; }
 #bulk-bar { position: sticky; top: 52px; z-index: 8; display: flex; gap: var(--s2);
   align-items: center; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--accent);
@@ -650,7 +690,7 @@ body.wall #wall-exit { display: block; }
 .row-rec.r-motion { color: var(--motion); background: rgba(240,136,62,.14); }
 .row-rec.r-off { color: var(--text-3); background: var(--surface-2); }
 .row-ai { font-size: var(--fs-xs); color: var(--text-3); text-align: center; }
-.row-ai.on { color: var(--accent-hi); }
+.row-ai.on { color: var(--link); }
 .row-go { color: var(--text-3); font-size: var(--fs-lg); text-align: right; }
 @media (max-width: 860px) {
   /* layout mobil pe 2 randuri (audit C4): [bifa, miniatura, nume] sus; [sanatate, mod inreg.] jos.
@@ -694,11 +734,11 @@ body.wall #wall-exit { display: block; }
 .panel-toggle:hover, .panel-action:hover { border-color: var(--accent); color: var(--text); }
 .panel-toggle.on { background: var(--ok); border-color: var(--ok); color: #fff; }
 .panel-action { background: var(--accent); border-color: var(--accent); color: #fff; }
-.panel-action.danger { background: transparent; border-color: var(--alarm); color: var(--alarm-hi); }
+.panel-action.danger { background: transparent; border-color: var(--alarm); color: var(--alarm-text); }
 .panel-action.danger:hover { background: var(--alarm); color: #fff; }
 .panel-checks label { display: block; font-size: var(--fs-sm); color: var(--text-2); margin-bottom: var(--s2); }
 .panel-links { display: flex; gap: var(--s3); align-items: center; flex-wrap: wrap; font-size: var(--fs-xs); }
-.panel-links a { color: var(--accent-hi); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+.panel-links a { color: var(--link); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
 .panel-loading { font-size: var(--fs-sm); color: var(--text-3); }
 
 /* ---- tabelul se ingusteaza cand se deschide panoul (nu se ascunde sub el) ---- */
@@ -713,12 +753,12 @@ body.panel-open #cams { margin-right: 420px; }
 }
 .cam-row-head .sortable { cursor: pointer; user-select: none; }
 .cam-row-head .sortable:hover { color: var(--text); }
-.cam-row-head .sorted { color: var(--accent-hi); }
+.cam-row-head .sorted { color: var(--link); }
 .cam-row.open { background: var(--surface-2); box-shadow: inset 3px 0 0 var(--accent-hi); }
 .cam-row.kb { outline: 1px solid var(--accent); outline-offset: -1px; }
 .row-state { font-size: var(--fs-xs); text-align: center; }
 .row-state.s-ok { color: var(--ok-hi); }
-.row-state.s-alarm { color: var(--alarm-hi); }
+.row-state.s-alarm { color: var(--alarm-text); }
 .row-state.s-down { color: var(--warn); }
 .row-state.s-unknown { color: var(--text-3); }   /* telemetrie neverificata inca (audit C2) */
 .row-gb { font-size: var(--fs-xs); color: var(--text-3); text-align: right; }
@@ -753,7 +793,7 @@ body.panel-open #cams { margin-right: 420px; }
 .sys-bar i { display: block; height: 100%; background: var(--accent); transition: width .4s ease; }
 .sys-bar i.warn { background: var(--warn); }
 .sys-net { font-size: var(--fs-sm); color: var(--text-2); }
-.sys-net b { color: var(--accent-hi); font-variant-numeric: tabular-nums; }
+.sys-net b { color: var(--link); font-variant-numeric: tabular-nums; }
 .restore-lbl { display: inline-block; background: var(--surface-2); border: 1px solid var(--line);
   border-radius: var(--r1); padding: var(--s2) var(--s3); font-size: var(--fs-sm);
   color: var(--text-2); cursor: pointer; }
@@ -876,7 +916,7 @@ body.panel-open #cams { margin-right: 420px; }
   color: var(--text-2); margin-bottom: var(--s2); }
 .noise-head b { color: var(--text); }
 .noise-now { font-variant-numeric: tabular-nums; color: var(--ok-hi); font-weight: 600; }
-.noise-now.loud { color: var(--alarm-hi); }
+.noise-now.loud { color: var(--alarm-text); }
 .noise-head small { margin-left: auto; font-size: var(--fs-xs); color: var(--text-3); }
 .noise-graph { position: relative; display: flex; align-items: flex-end; gap: 1px;
   height: 54px; background: var(--bg); border-radius: var(--r1); padding: 2px; overflow: hidden; }
@@ -926,7 +966,7 @@ body.panel-open #cams { margin-right: 420px; }
 .cont-sum { font-size: var(--fs-md); font-weight: 600; padding: var(--s2) var(--s3);
   border-radius: var(--r1); margin-bottom: var(--s3); }
 .cont-sum.bun { background: rgba(87, 171, 90, .12); color: var(--ok-hi); }
-.cont-sum.rau { background: rgba(248, 81, 73, .12); color: var(--alarm-hi); }
+.cont-sum.rau { background: rgba(248, 81, 73, .12); color: var(--alarm-text); }
 .cont-cams { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: var(--s2); }
 .cont-cam { display: flex; align-items: baseline; gap: var(--s2); background: var(--surface-2);
@@ -936,7 +976,7 @@ body.panel-open #cams { margin-right: 420px; }
 .cont-cam b { font-weight: 500; color: var(--text-2); overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap; }
 .cont-cam span { margin-left: auto; color: var(--text-3); font-variant-numeric: tabular-nums; }
-.cont-cam.mut span { color: var(--alarm-hi); }
+.cont-cam.mut span { color: var(--alarm-text); }
 
 .cov-grid { display: grid; gap: 2px; align-items: center; overflow-x: auto; }
 .cov-nume { font-size: var(--fs-sm); font-weight: 450; color: var(--text-2);
@@ -966,7 +1006,7 @@ body.panel-open #cams { margin-right: 420px; }
 .sp-tab th { color: var(--text-3); font-weight: 500; font-size: var(--fs-xs); }
 .sp-tab td { font-variant-numeric: tabular-nums; color: var(--text-2); }
 .cont-goluri { margin-top: var(--s3); font-size: var(--fs-sm); color: var(--text-2); }
-.cont-goluri b { color: var(--alarm-hi); margin-right: var(--s2); }
+.cont-goluri b { color: var(--alarm-text); margin-right: var(--s2); }
 .cont-goluri span { display: inline-block; background: rgba(248, 81, 73, .1);
   border-radius: var(--r1); padding: 2px 8px; margin: 0 var(--s2) var(--s1) 0;
   font-variant-numeric: tabular-nums; }
@@ -987,7 +1027,7 @@ body.panel-open #cams { margin-right: 420px; }
 .inc-et span { font-size: var(--fs-xs); background: var(--surface-2); border: 1px solid var(--line);
   border-radius: var(--r-pill); padding: 1px 7px; color: var(--text-2); }
 .inc-play { width: 100%; margin-top: auto; border: 0; border-top: 1px solid var(--line);
-  background: var(--surface-2); color: var(--accent-hi); font: inherit; font-size: var(--fs-sm);
+  background: var(--surface-2); color: var(--link); font: inherit; font-size: var(--fs-sm);
   padding: var(--s2); cursor: pointer; border-radius: 0 0 var(--r1) var(--r1); }
 .inc-play:hover { background: var(--accent); color: #fff; }
 .inc-play:focus-visible { box-shadow: var(--focus); outline: none; }
@@ -1020,7 +1060,7 @@ body.panel-open #cams { margin-right: 420px; }
 .wh-events b { font-size: var(--fs-sm); color: var(--text-2); font-weight: 600; }
 .wh-events label { display: flex; align-items: flex-start; gap: var(--s2); font-size: var(--fs-sm); }
 .wh-events code { font-size: var(--fs-xs); background: var(--surface-2); padding: 1px 5px;
-  border-radius: 3px; color: var(--accent-hi); }
+  border-radius: 3px; color: var(--link); }
 .wh-actions { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap;
   margin-bottom: var(--s3); }
 .wh-h3 { font-size: var(--fs-md); margin: var(--s4) 0 var(--s2); color: var(--text); }
@@ -1032,7 +1072,7 @@ body.panel-open #cams { margin-right: 420px; }
   padding: 3px 0; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
 .wh-row b { min-width: 52px; }
 .wh-row.ok b { color: var(--ok-hi); }
-.wh-row.rau b { color: var(--alarm-hi); }
+.wh-row.rau b { color: var(--alarm-text); }
 .wh-row i { color: var(--text-3); font-style: normal; min-width: 90px; }
 .wh-row u { color: var(--text-3); text-decoration: none; overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap; }
@@ -1130,7 +1170,7 @@ body.no-admin #view-save, body.no-admin .view-del,
 body.no-admin #ph-fix, body.no-admin #quick-links { display: none !important; }
 
 #user-chip { color: var(--text-2); font-size: var(--fs-sm); white-space: nowrap; }
-#user-chip a { color: var(--accent-hi); }
+#user-chip a { color: var(--link); }
 /* „Contul meu" e buton (focusabil, Enter/Space nativ — audit T1), dar aratat ca textul dinainte */
 .me-open { background: none; border: 0; padding: 0; margin: 0; font: inherit; color: inherit; cursor: pointer; }
 
@@ -1227,12 +1267,12 @@ body.no-admin #tab-ai { display: none !important; }   /* AI = configurare, doar 
 .ev-row { display: flex; gap: 10px; padding: var(--s2) 2px; border-bottom: 1px solid var(--line); font-size: var(--fs-sm);
   font-size: var(--fs-sm); align-items: baseline; }
 .ev-t { color: var(--text-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.ev-tip { color: var(--accent-hi); white-space: nowrap; min-width: 110px; }
+.ev-tip { color: var(--link); white-space: nowrap; min-width: 110px; }
 .ev-cam { white-space: nowrap; min-width: 90px; }
 .ev-det { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 
 /* pasii formularului de reguli + zilele saptamanii */
-.ru-step { margin: 14px 0 6px; font-size: var(--fs-sm); color: var(--accent-hi);
+.ru-step { margin: 14px 0 6px; font-size: var(--fs-sm); color: var(--link);
   text-transform: uppercase; letter-spacing: .4px; }
 .ru-days { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; }
 #ru-groups { width: 100%; background: var(--surface-2); color: var(--text);
@@ -1251,7 +1291,7 @@ body.no-admin #tab-ai { display: none !important; }   /* AI = configurare, doar 
   border: 1px solid var(--line); border-left: 3px solid var(--accent);
   border-radius: var(--r1); padding: 12px 14px; font-size: var(--fs-md); }
 .ask-clip { display: flex; align-items: center; justify-content: center;
-  height: 110px; background: var(--surface-2); color: var(--accent-hi);
+  height: 110px; background: var(--surface-2); color: var(--link);
   border-radius: var(--r1) var(--r1) 0 0; text-decoration: none; }
 #tk-cams { width: 100%; background: var(--surface-2); color: var(--text);
   border: 1px solid var(--line); border-radius: var(--r1); }
@@ -1351,7 +1391,7 @@ button.ask-clip { background: none; border: 0; color: inherit; cursor: pointer; 
 .exp-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: var(--fs-sm); }
 .exp-st { font-size: var(--fs-xs); }
 .exp-st-gata { color: var(--ok-hi); }
-.exp-st-eroare { color: var(--alarm-hi); }
+.exp-st-eroare { color: var(--alarm-text); }
 .exp-st-ruleaza, .exp-st-asteapta { color: var(--text-3); }
 .exp-dl { font-size: var(--fs-lg); }
 .caz-row { border-bottom: 1px solid var(--line); padding: 8px 0; }
@@ -1388,7 +1428,7 @@ button.ask-clip { background: none; border: 0; color: inherit; cursor: pointer; 
   padding: 12px; text-align: center; }
 .dig-num b { display: block; font-size: 26px; line-height: 1.1; }
 .dig-num span { font-size: var(--fs-xs); color: var(--text-2); }
-.dig-num.crit b { color: #e5534b; }
+.dig-num.crit b { color: var(--alarm-text); }
 .dig-num.soft { opacity: .75; }
 .dig-sec { margin: 12px 0 0; padding: 8px 12px; background: rgba(229,83,75,.12);
   border-left: 3px solid #e5534b; border-radius: var(--r1); font-size: var(--fs-sm); }
@@ -1410,17 +1450,17 @@ button.ask-clip { background: none; border: 0; color: inherit; cursor: pointer; 
 .sev-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--line-2, #888); }
 .ev-row.sev-atentie .sev-dot { background: var(--warn, #d4a72c); }
 .ev-row.sev-critic .sev-dot { background: var(--crit, #e5534b); box-shadow: 0 0 0 3px color-mix(in srgb, var(--crit, #e5534b) 25%, transparent); }
-.ev-row.sev-critic .ev-tip { color: var(--crit, #e5534b); font-weight: 600; }
+.ev-row.sev-critic .ev-tip { color: var(--alarm-text); font-weight: 600; }
 
 /* ---------- panou de incidente ---------- */
 .tab-badge { display: inline-flex; align-items: center; justify-content: center;
-  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; font-size: 11px;
+  min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; font-size: var(--fs-xs);
   font-weight: 700; background: var(--warn, #d4a72c); color: #000; margin-left: 4px;
   vertical-align: middle; }
-.tab-badge.crit { background: var(--crit, #e5534b); color: #fff; }
+.tab-badge.crit { background: var(--alarm); color: #fff; }
 .tab-badge.hidden { display: none; }
 #tab-inc.flash { animation: incflash .5s ease-in-out 6; }
-@keyframes incflash { 50% { background: var(--crit, #e5534b); color: #fff; } }
+@keyframes incflash { 50% { background: var(--alarm); color: #fff; } }
 @media (prefers-reduced-motion: reduce) { #tab-inc.flash { animation: none; } }
 
 .inc-bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
@@ -1603,7 +1643,7 @@ body.viewer .act-only { display: none !important; }
 .hc-rand:last-child { border-bottom: 0; }
 .hc-rand span { color: var(--text-3); }
 .hc-rand b { color: var(--text); font-variant-numeric: tabular-nums; text-align: right; overflow-wrap: anywhere; }
-.hc-rand.hc-rau b { color: var(--alarm-hi); }
+.hc-rand.hc-rau b { color: var(--alarm-text); }
 .hc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: var(--s3); }
 .hc-cam { display: flex; gap: var(--s3); background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r1); padding: var(--s2); }
 .hc-cam.hc-rau { border-color: var(--alarm); }
@@ -1615,7 +1655,7 @@ body.viewer .act-only { display: none !important; }
 .hc-b { font-size: var(--fs-xs); padding: 1px 6px; border-radius: var(--r-pill); background: var(--line); color: var(--text-2); }
 .hc-b.hc-rec { background: var(--alarm); color: #fff; }
 .hc-b.hc-alarm { background: var(--warn); color: #000; }
-.hc-b.hc-off { background: var(--alarm-hi); color: #fff; }
+.hc-b.hc-off { background: var(--alarm); color: #fff; }
 
 /* ---------- Program & automatizare (#program-overlay) ---------- */
 .pg-wrap { width: 100%; max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: var(--s4); padding: var(--s4); }
@@ -1630,7 +1670,7 @@ body.viewer .act-only { display: none !important; }
 .pg-seg .pg-h { width: 7.5em; }
 .pg-seg .pg-mod { flex: 1; min-width: 0; }
 .pg-seg .pg-del { color: var(--text-3); }
-.pg-seg .pg-del:hover { color: var(--alarm-hi); }
+.pg-seg .pg-del:hover { color: var(--alarm-text); }
 .pg-actiuni { display: flex; align-items: center; gap: var(--s3); margin-top: var(--s3); }
 .pg-reg-list { display: flex; flex-direction: column; gap: var(--s2); }
 .pg-regula { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); padding: var(--s2) 0; border-bottom: 1px dashed var(--line); }
@@ -1736,9 +1776,9 @@ body.no-admin .semantic-learn-button { display: none !important; }
 }
 /* ascunderea din antet se aliniaza cu pragul foii mobile (760px), unde cautarea reapare in
    foaia „Mai mult"; la 800px ramanea un gol de 40px fara cautare nicaieri (audit #17) */
-@media (max-width: 760px) { #q-global { display: none; } }
+@media (max-width: 1100px), (max-height: 500px) { #q-global { display: none; } }
 /* sanatatea camerei in lista */
-.row-state small { display: block; font-size: 10.5px; line-height: 1.2; color: var(--text-3); font-weight: 400; white-space: normal; }
+.row-state small { display: block; font-size: var(--fs-xs); line-height: 1.2; color: var(--text-3); font-weight: 400; white-space: normal; }
 .row-state.s-goluri small { color: var(--warn); }
 /* gaseste-l pe toate camerele (re-ID) */
 dialog#reid { background: var(--surface); color: var(--text); border: 1px solid var(--line); border-radius: var(--r2); padding: 0; width: min(900px, 96vw); max-height: 90vh; }
@@ -1755,11 +1795,14 @@ dialog#reid::backdrop { background: rgba(0, 0, 0, .6); }
 /* starea canalelor de notificare */
 .sys-item.sys-alarm { outline: 1px solid var(--alarm); border-radius: var(--r1); }
 .sys-item .sys-net b.ok { color: var(--ok-hi); } .sys-item .sys-net b.off { color: var(--text-3); font-weight: 400; }
-.sys-item.sys-alarm small { color: var(--alarm-hi); }
+.sys-item.sys-alarm small { color: var(--alarm-text); }
 
 
-/* ---------- telefon (<= 760 px): navigarea in bara de jos, restul antetului in foaia „Mai mult” ---------- */
-@media (max-width: 760px) {
+/* ---------- navigarea de jos + foaia „Mai mult”: telefon, TABLETA si telefon CULCAT ----------
+   Pe tableta (820 px) si culcat (844x390) meniul de sus derula orizontal fara indiciu si ascundea
+   AI/Camere/Setari/Stare/Program (audit UX 2026-11-14, D4). Pragul e acelasi ca navMobil din
+   05-navigare.js; restul ajustarilor de telefon raman la 760 px. */
+@media (max-width: 1100px), (max-height: 500px) {
   :root { --bara-jos: calc(60px + env(safe-area-inset-bottom, 0px)); }
   /* padding-top: antetul (titlu + butoane de mod) sa nu stea sub bara de stare / notch pe iPhone */
   body { padding-bottom: var(--bara-jos); }
@@ -1771,9 +1814,9 @@ dialog#reid::backdrop { background: rgba(0, 0, 0, .6); }
   #mod-chip button { padding: var(--s1) var(--s2); font-size: var(--fs-xs); min-height: 36px; }
   header > nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 55; height: var(--bara-jos); padding: 0 0 env(safe-area-inset-bottom, 0px); margin: 0;
         display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; background: var(--surface); border-top: 1px solid var(--line); flex-wrap: nowrap; }
-  header > nav button { flex-direction: column; justify-content: center; gap: 2px; border-radius: 0; background: transparent; color: var(--text-3); font-size: 11px; padding: var(--s1) 0; min-height: 56px; min-width: 0; position: relative; }
+  header > nav button { flex-direction: column; justify-content: center; gap: 2px; border-radius: 0; background: transparent; color: var(--text-3); font-size: var(--fs-xs); padding: var(--s1) 0; min-height: 56px; min-width: 0; position: relative; }
   header > nav button .ic { display: block; width: 22px; height: 22px; }
-  header > nav button.active { background: transparent; color: var(--accent-hi); }
+  header > nav button.active { background: transparent; color: var(--link); }
   header > nav button.active::after { content: ""; position: absolute; top: 0; left: 20%; right: 20%; height: 2px; background: var(--accent-hi); border-radius: 0 0 2px 2px; }
   header > nav .tab-badge { position: absolute; top: 4px; left: calc(50% + 6px); }
   header > nav .doar-mobil { display: inline-flex; }
@@ -1790,6 +1833,9 @@ dialog#reid::backdrop { background: rgba(0, 0, 0, .6); }
   .set-savebar { bottom: var(--bara-jos); }
   body:has(.set-savebar:not(.hidden)) #jobs-tray { bottom: calc(var(--bara-jos) + 80px); }
   #cam-panel { bottom: var(--bara-jos); }
+}
+/* ---------- telefon (<= 760 px): continutul ecranelor (navigarea de jos e in blocul de mai sus) ---------- */
+@media (max-width: 760px) {
   .view { padding: var(--s3); }
   /* nimic nu are voie sa largeasca pagina pe telefon: altfel browserul mareste „viewport-ul de layout” si bara fixa iese din ecran */
   html, body { overflow-x: clip; }
@@ -1952,3 +1998,25 @@ dialog#reid::backdrop { background: rgba(0, 0, 0, .6); }
   .scena-card { width: calc(50% - var(--s2)); }
   .scena-card img, .scena-card .scena-fara { width: 100%; }
 }
+
+/* telefon culcat: inaltimea e resursa rara — antet subtire, bara de jos mai joasa (audit UX C) */
+@media (max-height: 500px) {
+  :root { --bara-jos: calc(48px + env(safe-area-inset-bottom, 0px)); }
+  header { padding-top: calc(var(--s1) + env(safe-area-inset-top, 0px)); padding-bottom: var(--s1); }
+  header > nav button { min-height: 44px; }
+  header > nav button > span:not(.tab-badge) { display: none; }
+  .view { padding-top: var(--s2); }
+}
+
+/* select-urile lungi (Reguli: Eveniment, Utilizatori: Rol) largeau pagina pe telefon (audit UX D6) */
+select { max-width: 100%; }
+/* gradatiile timeline-ului: prima si ultima nu mai ies din bara; pe ecrane inguste doar din 6 in 6 ore */
+#ticks span:first-child, #hd-ticks span:first-child { transform: none; }
+#ticks span:last-child, #hd-ticks span:last-child { transform: translateX(-100%); }
+@media (max-width: 480px) { #ticks span:nth-child(even), #hd-ticks span:nth-child(even) { display: none; } }
+/* lightbox: titlul lung nu mai impinge „Închide” in afara ecranului (320 px) */
+#ph-bar { flex-wrap: wrap; }
+#ph-cap { flex: 1 1 12rem; min-width: 0; overflow-wrap: anywhere; }
+#ph-bar button { flex: none; }
+/* HD: fundal opac peste tot (pe tableta grila se vedea prin overlay) */
+#hd-overlay { background: #000; }

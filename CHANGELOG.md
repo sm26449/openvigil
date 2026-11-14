@@ -26,6 +26,32 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   ce e ascuns și au un buton care arată opțiunile.
 - „O cameră nu scrie pe disc” în loc de „1 camere nu scriu pe disc”.
 
+### Accesibilitate
+- Contrast WCAG AA peste tot: culoare proprie pentru legături și text roșu (`--link`,
+  `--alarm-text`), insigna de incidente lizibilă, nicio legătură pe albastrul implicit.
+- Reper `<main>` și legătura „Sari la conținut”; titlul ferestrei spune ecranul curent
+  („Evenimente — Jurnal · OpenVigil”); paginile publice se numesc „… — OpenVigil”.
+- Roluri ARIA corecte: taburile din Evenimente și Setări sunt tab-uri reale, cu săgeți
+  Home/End; linia de timp nu mai e un „slider” cu butoane în el; punctul de stare al camerei
+  are nume; zonele derulabile și căutarea semantică au etichete.
+- Panoul camerei primește focusul la deschidere, se închide cu Escape și întoarce focusul
+  pe rândul camerei.
+- Ținte de minimum 24 px (32 px pe ecrane tactile), „Contul meu” și „Ieși” despărțite,
+  „Ieși din cont” fără buton în legătură; textul de minimum 12 px.
+- Controalele native pe tema închisă (`color-scheme`) și contur de focus în modul
+  „contrast ridicat” din Windows.
+- Suita izolată de interfață verifică automat (axe-core) ecranele principale pe desktop și
+  telefon: zero încălcări critice sau serioase, `<main>`, titlu pe ecran, ținte ≥ 24 px.
+
+### Schimbat
+- Pe tabletă (≤ 1100 px) și pe telefonul culcat (înălțime ≤ 500 px) navigarea trece în bara
+  de jos cu „Mai mult”; înainte, meniul de sus ascundea AI, Camere, Setări, Stare și Program.
+- Un ecran nou se deschide de sus: adresa (#cams, #live…) nu mai derulează secțiunea sub
+  antetul lipit, iar derularea ecranului anterior nu se mai păstrează.
+- Nimic nu mai lărgește pagina pe telefon (select-urile lungi din Reguli și Utilizatori);
+  gradațiile liniei de timp rămân în bară; „Închide” din lightbox rămâne în ecran la 320 px;
+  HD are fundal opac.
+
 ### Adăugat
 - „Învață căutarea” în interfață: verdicte pe concept și imagine, exemple păstrate în
   PostgreSQL și backup, navigare prin arhivă și recuperarea exemplelor confirmate sub prag.

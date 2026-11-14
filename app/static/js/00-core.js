@@ -120,7 +120,7 @@ if (!ADMIN) document.body.classList.add('no-admin');
 if (!CAN_ACT) document.body.classList.add('viewer');
 if (ME.user) {
   const rol = ADMIN ? '' : ` (${ME.role === 'operator' ? t('operator') : t('vizualizare')})`;
-  $('#user-chip').innerHTML = html`<button type="button" class="me-open" title="${t('Contul meu: 2FA, notificari push, dispozitive')}">${ME.user}${rol}${ME.totp ? ' 🔐' : ''}</button> · <a href="/logout">${t('ieși')}</a>`;
+  $('#user-chip').innerHTML = html`<button type="button" class="me-open" aria-label="${t('Contul meu ({user})', { user: ME.user })}" title="${t('Contul meu: 2FA, notificari push, dispozitive')}">${ME.user}${rol}${ME.totp ? ' 🔐' : ''}</button> · <a href="/logout">${t('ieși')}</a>`;
 }
 // Versiunea care ruleaza, mereu vizibila langa titlu — ca sa stii pe ce build esti (mai ales in
 // dev, cu build-uri locale ne-publicate). Vine din /api/me (ME.versiune); „dev" daca lipseste.

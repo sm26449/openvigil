@@ -11,6 +11,8 @@
 //   T1  „Contul meu" e buton real, focusabil de la tastatura
 //   P0  PWA instalabil cu push: meta iOS, manifest (standalone/maskable/scurtaturi), icon-uri
 //   M0  mobil (390px): fara debordare pe 6 ecrane; Inregistrari cu unelte export/analiza pliate
+//   AX  accesibilitate (axe-core, WCAG 2.1 AA): zero incalcari critice/serioase pe ecranele
+//       principale + reper <main>, titlu de pagina pe ecran, tinte >= 24 px (audit UX 2026-11-14)
 // Ruleaza: node tests/ui-regresie.js   (are nevoie de Chromium — npx playwright install chromium)
 const { chromium } = require('playwright');
 const { startStatic, installApi, err500 } = require('./ui-fixtures');
@@ -405,12 +407,49 @@ async function scenOV(browser) {
   } finally { await app.close(); }
 }
 
+// ---- AX: accesibilitate automata (axe-core) pe ecranele principale, desktop si telefon ----
+const AXE_SRC = require('fs').readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
+const AX_ECRANE = ['#live', '#ev/inc', '#ev/jurnal', '#ev/poze', '#pb', '#ai/pers', '#ai/reguli', '#cams', '#set/stare', '#set/notif', '#set/sistem', '#set/utilizatori'];
+async function scenAX(browser) {
+  console.log('\n== AX. Accesibilitate (axe-core, WCAG 2.1 AA) pe ecranele principale ==');
+  for (const [nume, opt] of [['desktop', {}], ['telefon', { viewport: { width: 390, height: 844 }, mobile: true }]]) {
+    const app = await openApp(browser, opt);
+    const { page } = app;
+    try {
+      await page.addScriptTag({ content: AXE_SRC });
+      const grave = new Map(); const titluri = new Set(); const mici = new Set();
+      for (const h of AX_ECRANE) {
+        await page.evaluate((x) => { location.hash = x; }, h);
+        await page.waitForTimeout(400);
+        titluri.add(await page.title());
+        const r = await page.evaluate(async () => {
+          const v = (await window.axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'best-practice'] }, resultTypes: ['violations'] })).violations;
+          const vis = (e) => { const b = e.getBoundingClientRect(); return b.width > 0 && b.height > 0 && getComputedStyle(e).visibility !== 'hidden' && !e.closest('[inert]'); };
+          const tinte = [...document.querySelectorAll('button, a[href], select, input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=range])')]
+            .filter(vis).filter((e) => { const b = e.getBoundingClientRect(); return b.height < 23.5 && !e.closest('p, li, td, .hint'); })
+            .slice(0, 5).map((e) => (e.id ? '#' + e.id : e.tagName.toLowerCase() + '.' + (e.className || '').toString().split(' ')[0]) + ' ' + Math.round(e.getBoundingClientRect().height) + 'px');
+          return { v: v.filter((x) => x.impact === 'critical' || x.impact === 'serious')
+            .map((x) => `${x.id} (${x.impact}): ${x.nodes.slice(0, 2).map((n) => n.target.join(' ')).join(', ')}`), tinte };
+        });
+        for (const x of r.v) if (!grave.has(x.split(':')[0])) grave.set(x.split(':')[0], `${h} ${x}`);
+        for (const x of r.tinte) mici.add(`${h} ${x}`);
+      }
+      grave.size ? bad(`AX ${nume}`, `${grave.size} incalcari critice/serioase: ` + [...grave.values()].slice(0, 6).join(' | '))
+        : ok(`AX ${nume}: zero incalcari critice/serioase pe ${AX_ECRANE.length} ecrane`);
+      const m = await page.evaluate(() => ({ main: document.querySelectorAll('main').length, sari: !!document.querySelector('.sari-continut') }));
+      (m.main === 1 && m.sari) ? ok(`AX ${nume}: un singur <main> + „Sari la conținut”`) : bad(`AX ${nume}`, `main=${m.main} sari=${m.sari}`);
+      titluri.size >= 5 ? ok(`AX ${nume}: titlul paginii se schimba pe ecran (${titluri.size} titluri distincte)`) : bad(`AX ${nume}`, `titlul nu se schimba: ${[...titluri].join(' | ')}`);
+      mici.size ? bad(`AX ${nume}`, `tinte sub 24 px: ${[...mici].slice(0, 6).join(' | ')}`) : ok(`AX ${nume}: nicio tinta de control sub 24 px`);
+    } finally { await app.close(); }
+  }
+}
+
 (async () => {
   const srv = await startStatic();
   globalThis.__ORIGIN = srv.origin;
   const browser = await chromium.launch();
   try {
-    for (const scen of [scenBoot, scenA1, scenA2, scenS1, scenS2, scenC2, scenL2, scenT1, scenC4, scenP0, scenM0, scenHD, scenOV]) {
+    for (const scen of [scenBoot, scenA1, scenA2, scenS1, scenS2, scenC2, scenL2, scenT1, scenC4, scenP0, scenM0, scenHD, scenOV, scenAX]) {
       try { await scen(browser); }
       catch (e) { bad(scen.name, 'exceptie in scenariu: ' + String(e).slice(0, 160)); }
     }

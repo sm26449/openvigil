@@ -430,6 +430,7 @@ function buildCamsTable() {
     pick.className = 'cam-pick';
     pick.checked = selected.has(c.id);
     pick.title = t('Selectează pentru operatii în masa');
+    pick.setAttribute('aria-label', t('Selectează camera {name}', { name: c.name }));   // doar title nu e eticheta (audit UX A7)
     pick.onclick = (e) => e.stopPropagation();
     pick.onchange = () => {
       pick.checked ? selected.add(c.id) : selected.delete(c.id);
@@ -491,6 +492,7 @@ function buildCamsTable() {
     go.textContent = '›';
 
     row.append(pick, th, nm, grp, caps, st, rec, ai, gb, go);
+    row.dataset.cam = c.id;
     if (openCam === c.id) row.classList.add('open');
     row.onclick = () => openCamPanel(c);
     box.appendChild(row);
@@ -882,12 +884,22 @@ function openCamPanel(c) {
   body.appendChild(msg);
   p.classList.remove('hidden');
   buildCamsTable();   // evidentiaza randul deschis
+  // focusul intra in panou (inainte ramanea pe body: tastatura/cititorul nu aflau ca s-a deschis)
+  try { $('#cam-panel-title').focus({ preventScroll: true }); } catch (_) {}
 }
 function closeCamPanel() {
+  const fost = openCam;
+  const eraDeschis = !$('#cam-panel').classList.contains('hidden');
   openCam = null;
   document.body.classList.remove('panel-open');
   $('#cam-panel').classList.add('hidden');
   buildCamsTable();
+  // focusul revine pe randul camerei (randurile se reconstruiesc, deci il cautam dupa id)
+  if (eraDeschis && fost !== null && !$('#cams').classList.contains('hidden')) {
+    const r = document.querySelector(`#cams-table .cam-row[data-cam="${fost}"]`);
+    const tinta = r && (r.querySelector('.cam-pick') || r);
+    if (tinta) { if (tinta === r) r.tabIndex = -1; try { tinta.focus({ preventScroll: true }); } catch (_) {} }
+  }
 }
 
 /* scanner de retea */

@@ -21,29 +21,69 @@ const VIEWS = ['live', 'harta', 'ev', 'pb', 'ai', 'cams', 'set'];
 const EV_PANES = { inc: loadIncidents, jurnal: loadJournal, poze: loadAlarms };
 const EV_ALIAS = { inc: 'inc', al: 'poze' };
 let evPane = 'inc';
+let ecranAnterior = null;
 function show(view, updateHash = true) {
   if (EV_ALIAS[view]) { showEv(EV_ALIAS[view], updateHash); return; }
   for (const v of VIEWS) {
     $('#' + v).classList.toggle('hidden', view !== v);
     $('#tab-' + v).classList.toggle('active', view === v);
+    if (view === v) $('#tab-' + v).setAttribute('aria-current', 'page'); else $('#tab-' + v).removeAttribute('aria-current');
   }
+  titluPagina(view);
+  // un ecran nou incepe de sus: derularea ramasa de pe ecranul anterior il deschidea la jumatate,
+  // cu bara de instrumente ascunsa sub antetul lipit (audit UX 2026-11-14, D5)
+  if (view !== ecranAnterior) { ecranAnterior = view; window.scrollTo(0, 0); }
   if (view !== 'cams') closeCamPanel();   // panoul de administrare a camerei nu ramane peste alt ecran (audit C3)
   if (view === 'harta') loadHarta();
   if (updateHash) setHash(view === 'pb' && pbDate !== null ? pbHash() : view === 'ev' ? '#ev/' + evPane : '#' + view);
 }
+// titlul ferestrei spune unde esti (istoric, file, cititor de ecran) — era „OpenVigil" peste tot
+function titluPagina(view) {
+  const eticheta = (el) => (el?.querySelector('span')?.textContent || el?.textContent || '').trim();
+  let nume = eticheta($('#tab-' + view));
+  if (view === 'ev') { const p = document.querySelector('#ev-nav button.on'); if (p) nume += ' — ' + p.textContent.trim(); }
+  // doar textul propriu al titlului (fara insigna de versiune din <sup>)
+  const sistem = ([...($('#nume-sistem')?.childNodes || [])].filter((n) => n.nodeType === 3).map((n) => n.textContent).join('').trim()) || 'OpenVigil';
+  document.title = nume ? `${nume} · ${sistem}` : sistem;
+}
+// „Sari la continut": focus pe zona principala fara sa schimbe adresa (#continut nu e un ecran)
+$('.sari-continut') && ($('.sari-continut').onclick = (e) => { e.preventDefault(); $('#continut').focus(); });
 function showEv(pane, updateHash = true) {
   if (!EV_PANES[pane] || (pane === 'inc' && !CAN_ACT)) pane = CAN_ACT ? 'inc' : 'jurnal';
   evPane = pane;
-  for (const b of document.querySelectorAll('#ev-nav button')) b.classList.toggle('on', b.dataset.evpane === pane);
+  for (const b of document.querySelectorAll('#ev-nav button')) {
+    b.classList.toggle('on', b.dataset.evpane === pane);
+    b.setAttribute('aria-selected', b.dataset.evpane === pane ? 'true' : 'false');
+  }
   for (const el of document.querySelectorAll('#ev .ev-pane')) el.classList.toggle('hidden', el.id !== { inc: 'inc', jurnal: 'evjurnal', poze: 'al' }[pane]);
   show('ev', updateHash);
   EV_PANES[pane]();
 }
 const evPaneVisible = (pane) => !$('#ev').classList.contains('hidden') && evPane === pane;
+// #ev-nav e tablist: copiii trebuie sa fie tab-uri, cu panoul lor (audit UX A4)
+for (const b of document.querySelectorAll('#ev-nav button')) {
+  b.setAttribute('role', 'tab');
+  b.setAttribute('aria-controls', { inc: 'inc', jurnal: 'evjurnal', poze: 'al' }[b.dataset.evpane]);
+  b.setAttribute('aria-selected', b.classList.contains('on') ? 'true' : 'false');
+}
+for (const id of ['inc', 'evjurnal', 'al']) $('#' + id)?.setAttribute('role', 'tabpanel');
+// sagetile muta intre tab-urile oricarui tablist (modelul ARIA; Home/End la capete)
+document.addEventListener('keydown', (e) => {
+  const tab = e.target.closest?.('[role="tab"]');
+  const lista = tab && tab.closest('[role="tablist"]');
+  if (!lista || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) return;
+  const toate = [...lista.querySelectorAll('[role="tab"]')].filter((x) => x.offsetParent !== null);
+  const i = toate.indexOf(tab);
+  if (i < 0) return;
+  const j = e.key === 'Home' ? 0 : e.key === 'End' ? toate.length - 1
+    : (i + (e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 1) + toate.length) % toate.length;
+  e.preventDefault(); e.stopPropagation();
+  toate[j].focus(); toate[j].click();
+}, true);
 $('#ev-nav').onclick = (e) => { const b = e.target.closest('button[data-evpane]'); if (b) showEv(b.dataset.evpane); };
 /* ---------- telefon: bara de jos cu 4 taburi + „Mai mult”; restul antetului intra in foaie ----------
    Elementele sunt ACELEASI (handlerele raman), doar se muta in DOM dupa latime. */
-const navMobil = window.matchMedia('(max-width: 760px)');
+const navMobil = window.matchMedia('(max-width: 1100px), (max-height: 500px)');   // acelasi prag ca CSS (audit UX D4)
 const IN_FOAIE = ['tab-harta', 'tab-ai', 'tab-set', 'tab-stare', 'tab-program', 'add-cam', 'q-global', 'quick-links', 'user-chip', 'status'];
 const navAcasa = {};   // id -> [parinte, urmatorul frate] ca sa le punem inapoi
 function asazaNav() {
@@ -146,7 +186,7 @@ const OVERLAY_CLOSE = [['#mask-overlay', '#mask-close'], ['#heat-overlay', '#hea
   ['#zone-overlay', '#zone-close'], ['#count-overlay', '#count-close'], ['#addcam-overlay', '#addcam-cancel'],
   ['#cases-modal', '#cases-close'], ['#digest-modal', '#digest-close'], ['#clip-modal', '#clip-close'], ['#ph-overlay', '#ph-close'],
   ['#exports-modal', '#exports-close'], ['#health-overlay', '#health-close'],
-  ['#program-overlay', '#program-close']];
+  ['#program-overlay', '#program-close'], ['#cam-panel', '#cam-panel-close']];
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;           // si din campurile formularului (focusul e in overlay)
   if (meDlg && meDlg.open) return;                      // dialogul nativ se inchide singur
