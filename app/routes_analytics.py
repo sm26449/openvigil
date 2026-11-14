@@ -51,6 +51,11 @@ def api_relabel():
         return jsonify({"error": t("nume de fișier necunoscut")}), 400
     new = os.path.join(d, f"{m[1]}{label}.jpg")
     os.rename(p, new)
+    old_meta=semantic._parse_fn(fn)
+    if old_meta:
+        semantic.remove_asset(os.path.basename(d),old_meta)
+    with open(new,'rb') as f:
+        semantic.enqueue(os.path.basename(d),os.path.basename(new),f.read())
     return jsonify({"ok": True, "url": f"/snapshots/{os.path.basename(d)}/{os.path.basename(new)}"})
 
 
@@ -60,7 +65,11 @@ def api_alarm_delete():
     p = _snap_path((request.get_json(silent=True) or {}).get("url"))
     if not p:
         return jsonify({"error": t("cerere invalida")}), 400
+    day,fn=os.path.basename(os.path.dirname(p)),os.path.basename(p)
     os.remove(p)
+    meta=semantic._parse_fn(fn)
+    if meta:
+        semantic.remove_asset(day,meta)
     return jsonify({"ok": True})
 
 
@@ -225,6 +234,9 @@ def api_semantic_config():
 
 @bp.route("/api/semantic/backfill", methods=["POST"])
 def api_semantic_backfill():
+    if semantic.persistent():
+        import semantic_store
+        semantic_store.retry_failed()
     if ai_client.remote():
         d = ai_client.semantic_backfill()
         if d is not None:

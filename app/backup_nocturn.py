@@ -21,6 +21,8 @@ import subprocess
 import tarfile
 import threading
 import time
+import csv
+import tempfile
 import logare
 from i18n import t
 
@@ -40,6 +42,11 @@ FETE = ["faces/persons", "faces/embeddings.json", "faces/log.jsonl", "faces/unkn
 # intra in arhiva ca pg/<tabel>.csv — dump logic prin COPY, fara binare externe (vezi
 # _dump_pg_in_tar); refacerea cu incarca_pg().
 _lock = threading.Lock()
+_BINARY_TABLES = {'semantic_vectors'}
+
+
+def _pg_arcname(table):
+    return f"pg/{table}.{'bin' if table in _BINARY_TABLES else 'csv'}"
 
 
 def cheie(genereaza=True):
@@ -108,6 +115,20 @@ def _dump_pg_in_tar(tar):
                 continue
             lista = ", ".join(f'"{x}"' for x in cols)
             ordine = (" ORDER BY " + ", ".join(f'"{x}"' for x in ident)) if ident else ""
+            if tabel in _BINARY_TABLES:
+                # COPY binar pastreaza float32; nu dilatam vectorii in miliarde de cifre CSV.
+                with tempfile.SpooledTemporaryFile(max_size=8*1024*1024) as data:
+                    with c.cursor() as cur,cur.copy(
+                            f'COPY (SELECT {lista} FROM "{tabel}"{ordine}) TO STDOUT (FORMAT BINARY)') as cp:
+                        for chunk in cp:
+                            data.write(chunk)
+                    info=tarfile.TarInfo(name=_pg_arcname(tabel));info.size=data.tell();info.mtime=int(time.time())
+                    data.seek(0);tar.addfile(info,data)
+                header=json.dumps(cols).encode()
+                info=tarfile.TarInfo(name=f'pg/{tabel}.columns.json');info.size=len(header)
+                tar.addfile(info,io.BytesIO(header))
+                randuri[tabel]=c.execute(f'SELECT count(*) FROM "{tabel}"').fetchone()[0]
+                continue
             date = bytearray()
             with c.cursor() as cur, cur.copy(
                     f'COPY (SELECT {lista} FROM "{tabel}"{ordine}) TO STDOUT (FORMAT csv, HEADER)') as cp:
@@ -133,29 +154,66 @@ def incarca_pg(dir_sursa):
     d = os.path.join(dir_sursa, "pg")
     if not os.path.isdir(d):
         d = dir_sursa
-    fisiere = sorted(fn for fn in os.listdir(d) if fn.endswith(".csv"))
+    fisiere = sorted(fn for fn in os.listdir(d) if fn.endswith((".csv",'.bin')))
     if not fisiere:
         raise ValueError("nicio tabela de incarcat (pg/*.csv lipseste)")
-    # validam si citim totul INAINTE de a atinge baza
+    # Validam antetele inainte de mutatie; datele mari se transmit in flux, nu integral in RAM.
     incarcari = []
     for fn in fisiere:
-        with open(os.path.join(d, fn), "rb") as f:
-            date = f.read()
-        antet = date.split(b"\n", 1)[0]
-        if not antet.strip():
-            raise ValueError(f"{fn}: antet lipsa / fisier gol")
-        lista = ", ".join(f'"{x.strip()}"' for x in antet.decode().split(","))
-        incarcari.append((fn[:-4], lista, date))
+        path=os.path.join(d,fn)
+        table=fn[:-4]
+        if fn.endswith('.bin'):
+            if table not in _BINARY_TABLES:
+                raise ValueError('tabel binar necunoscut')
+            with open(path,'rb') as f:
+                if f.read(11)!=b'PGCOPY\n\xff\r\n\0':
+                    raise ValueError('antet COPY binar invalid')
+            with open(os.path.join(d,table+'.columns.json')) as f:
+                columns=json.load(f)
+            fmt='BINARY'
+        else:
+            with open(path,'r',newline='') as f:
+                columns=next(csv.reader(f),[])
+            fmt='csv, HEADER'
+        if not isinstance(columns,list) or not columns or not all(isinstance(x,str) for x in columns):
+            raise ValueError(f'{fn}: antet lipsa sau invalid')
+        with db.conn() as c:
+            allowed=_coloane_ne_identity(c,table)
+        if not set(columns)<=set(allowed) or len(columns)!=len(set(columns)):
+            raise ValueError(f'{fn}: coloane necunoscute sau repetate')
+        incarcari.append((table,columns,path,fmt))
     rez = {}
+    from psycopg import sql
     with db.tx() as c:                                   # rollback automat la orice exceptie
-        for tabel, _lista, _date in incarcari:
-            c.execute(f'TRUNCATE "{tabel}"')
-        for tabel, lista, date in incarcari:
-            with c.cursor() as cur, cur.copy(
-                    f'COPY "{tabel}" ({lista}) FROM STDIN (FORMAT csv, HEADER)') as cp:
-                cp.write(date)
-        for tabel, _lista, _date in incarcari:
-            rez[tabel] = c.execute(f'SELECT count(*) FROM "{tabel}"').fetchone()[0]
+        # Golirea simultana respecta relatiile FK; la incarcare, parintii preced copiii.
+        dependencies = c.execute(
+            "SELECT conrelid::regclass::text, confrelid::regclass::text "
+            "FROM pg_constraint WHERE contype='f'"
+        ).fetchall()
+        pending = {item[0]: item for item in incarcari}
+        ordered = []
+        while pending:
+            ready = [name for name in pending if not any(
+                child == name and parent in pending and parent != child
+                for child, parent in dependencies)]
+            if not ready:
+                raise ValueError('relatii circulare intre tabelele din backup')
+            for name in ready:
+                ordered.append(pending.pop(name))
+        incarcari = ordered
+        c.execute(sql.SQL('TRUNCATE {}').format(
+            sql.SQL(',').join(sql.Identifier(t) for t,_,_,_ in incarcari)))
+        for tabel,cols,path,fmt in incarcari:
+            query=sql.SQL('COPY {} ({}) FROM STDIN (FORMAT '+fmt+')').format(
+                sql.Identifier(tabel),sql.SQL(',').join(map(sql.Identifier,cols)))
+            with open(path,'rb') as f,c.cursor() as cur,cur.copy(query) as cp:
+                while chunk:=f.read(1024*1024):
+                    cp.write(chunk)
+        if any(t=='semantic_tasks' for t,_,_,_ in incarcari):
+            c.execute("UPDATE semantic_tasks SET state='pending',generation=generation+1,lease_token=NULL,lease_until=NULL, "
+                      "available_at=clock_timestamp() WHERE state='running'")
+        for tabel,_,_,_ in incarcari:
+            rez[tabel] = c.execute(sql.SQL('SELECT count(*) FROM {}').format(sql.Identifier(tabel))).fetchone()[0]
     return rez
 
 
@@ -192,7 +250,7 @@ def creeaza(dest_dir=None, fete=None, data_dir=None, progres=None):
         # roteste peste copiile bune si marcheaza ok:False) — o arhiva fara baza relationala
         # nu trebuie sa para reusita
         pg_randuri = _dump_pg_in_tar(tar)
-        continut += [f"pg/{tb}.csv" for tb in pg_randuri]
+        continut += [_pg_arcname(tb) for tb in pg_randuri]
         if progres:
             progres(40, t("arhiva construita"))
     clar = buf.getvalue()

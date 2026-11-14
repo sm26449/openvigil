@@ -23,7 +23,7 @@
 | Reguli, jurnal (PostgreSQL, tabelul `events`), MQTT, webhook | **nvr-web** | stare in-memory (cooldown-uri) care nu poate exista în două procese |
 | Notificări Telegram pentru față/număr (`notify.face/plate`) | **nvr-ai** | singurul apelant după pas 1; cooldown-urile au un singur stăpân |
 | Modelele: YOLO partajat, verify, InsightFace + anti-spoof, ALPR, Qwen VLM, SigLIP | **nvr-ai** | VRAM: o instanță de fiecare |
-| Indexul semantic (`data/semantic/`) | **nvr-ai scrie** (worker + backfill + prune); web trimite doar (zi, nume) la `/semantic/index` | modelul e acolo (#9 pas 3) |
+| Indexul semantic | **nvr-ai calculează vectorii**; implicit scrie `data/semantic/`; opțional vectori și joburi în PostgreSQL | cu `semantic_persistent`, web poate înscrie direct jobul durabil; modelul rămâne în AI |
 | Biblioteca de fețe (`data/faces/*`): embeddings, crop-uri, log | **nvr-ai scrie** (enroll/delete/proces); web doar **citește** (liste, poze, istoric) | scrierea cere modelul |
 | `data/settings.json`, `cameras.json`, `rules.json` | **nvr-web scrie**, nvr-ai citește (mtime) | UI-ul e în web |
 | Snapshot-uri (`data/snapshots/`) | ambele scriu fișiere JPG (FS comun); indexarea o face web | fișiere independente, fără conflict |
@@ -75,11 +75,19 @@ cu drepturile înainte de top-k. Intervalele sunt calendaristice locale, cu sfâ
 orele cerute se aplică separat în fiecare zi. `coverage.scope=snapshots` se referă la
 pozele salvate, nu la întreaga înregistrare sau la toate decupajele scenei.
 
-Indexul live folosește acum `<zi>.npz`, cu vectori și metadate în același commit atomic.
+Backendul `files` folosește `<zi>.npz`, cu vectori și metadate în același commit atomic.
 Fișierele vechi NPY/JSON rămân citibile și sunt păstrate pentru revenirea la imaginea
 anterioară. Reconcilierea la 5 minute recuperează snapshot-uri și candidați ai scenei
 din jurnal; `backfill` separă reușitele, erorile de imagine și o eroare de procesare.
 Prototipul `semantic_pg` este disponibil numai pentru baza de test și nu comută indexul live.
+
+Backendul opțional de producție este `semantic_store`, separat de prototip. Activarea
+explicită, importul integral verificat și revenirea sunt descrise în
+[semantic-search.md](semantic-search.md). `semantic_persistent` activează joburile durabile;
+`semantic_control.backend` selectează `files` sau `postgres`. În modul PostgreSQL,
+`semantic/status` adaugă starea backendului și a joburilor; câmpurile existente pentru
+rezultate și autorizarea camerelor rămân valabile. Workerul persistent pornește după
+încălzirea secvențială a modelelor, pentru a evita încărcarea concurentă la pornire.
 
 ## Degradare & fallback
 

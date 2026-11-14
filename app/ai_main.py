@@ -187,6 +187,7 @@ def _shim_output_plane():
     detect.IS_HOST = True     # bucla de detectie traieste in procesul asta (#9 pas 2)
     import semantic
     semantic.IS_HOST = True   # indexul SigLIP traieste tot aici (#9 pas 3)
+    semantic.WORKER_READY = False
 
 
 def _cam_entry(cam_id):
@@ -1122,6 +1123,9 @@ def main():
             if semantic.enabled():
                 import scena_fundal           # exemplele invatate din verdicte, aliniate la feedback.jsonl
                 threading.Thread(target=scena_fundal.reconstruieste, daemon=True, name="scena-fundal").start()
+        semantic.WORKER_READY = True
+        if semantic.enabled():
+            semantic._ensure_worker()        # reia si lease-urile persistente dupa restart
         ai_track.sync(emit)                   # urmaritorii dupa track_cams
         import detect
         detect.sync()                         # bucla de detectie (#9 pas 2) — AICI

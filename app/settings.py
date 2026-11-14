@@ -171,6 +171,7 @@ DEFAULTS = {
     "lpr_alert_cams": [],        # ...doar pe camerele astea (gol = toate); ex. poarta
     # Cautare semantica in alarme (SigLIP multilingual, index in data/semantic/)
     "semantic_enabled": False,
+    "semantic_persistent": False,  # activat de migrarea verificata; coada PG si controlul backendului
     # Puntea MQTT (evenimente publicate + actiunea "mqtt" din reguli)
     "mqtt_enabled": False,
     "mqtt_host": "",

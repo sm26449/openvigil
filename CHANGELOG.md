@@ -17,6 +17,9 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   iar observațiile din jurnal nu sunt prezentate ca numărătoare completă a trecerilor.
 
 ### Adăugat
+- Backend semantic PostgreSQL opțional, coadă persistentă cu lease și retry, import
+  reluabil cu verificare integrală și export/revenire NPZ fără recalculare GPU.
+- Backup binar al vectorilor și restaurare tranzacțională în ordinea relațiilor dintre tabele.
 - Prototip pgvector pentru comparații exacte pe vectorii existenți, izolat în baza de test,
   fără recalcularea embeddings-urilor și fără comutarea backendului instalației.
 

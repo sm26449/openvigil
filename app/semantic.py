@@ -25,6 +25,7 @@ import fcntl
 import unicodedata
 from contextlib import contextmanager
 from functools import lru_cache
+from collections import OrderedDict
 
 import numpy as np
 
@@ -48,6 +49,37 @@ _worker_started = False
 backfill_state = {"running": False, "done": 0, "total": 0, "failed": 0, "error": None}
 _backfill_lock = threading.Lock()
 _dropped = 0
+WORKER_READY = True
+_hints = OrderedDict()
+_hints_lock = threading.Lock()
+
+
+def persistent():
+    active=bool(settings.get('semantic_persistent'))
+    if active:
+        import semantic_store
+        if semantic_store.CHECKPOINT!=MODEL_NAME:
+            raise RuntimeError('modelul semantic s-a schimbat; este necesara migrarea colectiei')
+    return active
+
+
+def pg_backend():
+    if not persistent():
+        return False
+    import semantic_store
+    return semantic_store.control()['backend'] == 'postgres'
+
+
+@contextmanager
+def storage_lock(exclusive=False):
+    """Bariera intre mutatiile live si comutare/export. Ordine: storage -> zi -> PG."""
+    os.makedirs(SEM_DIR,exist_ok=True)
+    with open(os.path.join(SEM_DIR,'.storage.lock'),'a') as f:
+        fcntl.flock(f,fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH)
+        try:
+            yield
+        finally:
+            fcntl.flock(f,fcntl.LOCK_UN)
 
 
 def enabled():
@@ -82,6 +114,9 @@ def _get_model():
             _proc = AutoProcessor.from_pretrained(MODEL_NAME)
             _model.eval()
             logare.info(f"[semantic] model siglip incarcat ({_device})")
+    if persistent():
+        import semantic_store
+        semantic_store.assert_revision(getattr(_model.config,'_commit_hash',None))
     return _model, _proc
 
 
@@ -221,6 +256,18 @@ def _write_lock(day):
 
 
 def shard_add(day, embs, metas):
+    if persistent():
+        import semantic_store
+        with storage_lock(),_write_lock(day):
+            semantic_store.put(day,embs,metas,normalize_label)
+            cfg=semantic_store.control()
+            if cfg['backend']=='files' or cfg['mirror']:
+                _file_add(day,embs,metas,locked=True)
+        return
+    return _file_add(day,embs,metas)
+
+
+def _file_add(day, embs, metas, locked=False):
     """Adauga randuri la shard-ul unei zile. Scrierea e ATOMICA (fisier temporar +
     os.replace): backfill-ul scrie in timp ce /api/semantic/status citeste, iar un
     np.save direct l-a lasat odata pe cititor cu jumatate de fisier (EOFError)."""
@@ -228,7 +275,8 @@ def shard_add(day, embs, metas):
         return
     if len(embs) != len(metas):
         raise ValueError('vectori si metadate cu lungimi diferite')
-    with _write_lock(day):
+    from contextlib import nullcontext
+    with (nullcontext() if locked else _write_lock(day)):
         old, old_meta = shard_load(day)
         mat = np.vstack([old, embs]) if old is not None else np.asarray(embs)
         all_meta = old_meta + list(metas)
@@ -292,6 +340,10 @@ def adauga_scena(cam, fn, eticheta, emb):
     day = f"{m[1]}-{m[2]}-{m[3]}"
     meta = {"fn": fn, "time": f"{m[4]}:{m[5]}:{m[6]}", "cam": int(cam), "label": eticheta,
             "sursa": "scena", "url": f"/api/cam/{int(cam)}/scena/fisier/{fn}"}
+    if persistent():
+        _catalog(day,meta,emb)
+        _ensure_worker()
+        return True
     _ensure_worker()
     try:
         _queue_scena.put_nowait((day, meta, np.asarray(emb, np.float32)))
@@ -308,6 +360,18 @@ def actualizeaza_scena(cam, fn, eticheta):
     if not m:
         return False
     day = f"{m[1]}-{m[2]}-{m[3]}"
+    if persistent():
+        import semantic_store
+        neutral=eticheta in scena_clasa.NEUTRE or eticheta=='nimic'
+        meta={'sursa':'scena','cam':int(cam),'fn':fn,'label':eticheta}
+        with storage_lock(),_write_lock(day):
+            changed=semantic_store.remove(day,meta) if neutral else semantic_store.relabel(day,meta,normalize_label)
+            cfg=semantic_store.control()
+            if cfg['backend']=='files' or cfg['mirror']:
+                _file_scene_label(day,cam,fn,eticheta,neutral)
+        if not neutral:
+            _catalog(day,_scene_meta(cam,fn,eticheta))
+        return bool(changed) or not neutral
     with _write_lock(day):
         mat, meta = shard_load(day)
         if mat is None:
@@ -325,6 +389,33 @@ def actualizeaza_scena(cam, fn, eticheta):
     return True
 
 
+def _file_scene_label(day,cam,fn,label,neutral):
+    mat,rows=shard_load(day)
+    if mat is None:
+        return
+    keep=[]
+    for i,m in enumerate(rows):
+        if m.get('sursa')=='scena' and m['cam']==int(cam) and m['fn']==fn:
+            if neutral:
+                continue
+            m['label']=label
+        keep.append(i)
+    _shard_write(day,mat[keep],[rows[i] for i in keep])
+
+
+def remove_asset(day,meta):
+    """Stergerea din interfata nu asteapta reconcilierea periodica."""
+    with storage_lock(),_write_lock(day):
+        if persistent():
+            import semantic_store
+            semantic_store.remove(day,meta)
+        if not persistent() or semantic_store.control()['backend']=='files' or semantic_store.control()['mirror']:
+            mat,rows=shard_load(day)
+            if mat is not None:
+                keep=[i for i,m in enumerate(rows) if asset_key(m)!=asset_key(meta)]
+                _shard_write(day,mat[keep],[rows[i] for i in keep])
+
+
 def _scrie_scena():
     """Goleste coada decupajelor scenei in shard-urile zilelor lor (chemata de lucrator)."""
     pe_zi = {}
@@ -334,6 +425,9 @@ def _scrie_scena():
             day, meta, emb = _queue_scena.get_nowait()
         except queue.Empty:
             break
+        if persistent():
+            _catalog(day,meta,emb)
+            continue
         if meta.get('sursa') == 'scena':
             import scena_web
             import scena_clasa
@@ -381,6 +475,36 @@ def prune():
         import ai_client
         ai_client.semantic_prune()
         return
+    if persistent():
+        import semantic_store
+        keep=int(settings.get('retention_snapshots_days') or 0)
+        with storage_lock(exclusive=True):
+            cfg=semantic_store.control()
+            if keep:
+                cutoff,_=search_time.bounds(keep)
+                cutoff_day=time.strftime('%Y-%m-%d',time.localtime(cutoff))
+                semantic_store.expire(cutoff_day)
+                for day in indexed_days():
+                    if day<cutoff_day:
+                        with _write_lock(day):
+                            for path in (*_shard_paths(day),os.path.join(SEM_DIR,day+'.npz')):
+                                try:os.unlink(path)
+                                except FileNotFoundError:pass
+            if cfg['backend']=='files' or cfg['mirror']:
+                for day in indexed_days():
+                    with _write_lock(day):
+                        mat,rows=shard_load(day)
+                        if mat is None:continue
+                        keep_rows=[]
+                        for i,m in enumerate(rows):
+                            if os.path.isfile(source_path(day,m)):
+                                keep_rows.append(i)
+                            else:
+                                semantic_store.remove(day,m)
+                        if len(keep_rows)!=len(rows):
+                            _shard_write(day,mat[keep_rows],[rows[i] for i in keep_rows])
+        _reconcile_persistent()
+        return
     keep = int(settings.get("retention_snapshots_days") or 0)
     for day in indexed_days():
         try:
@@ -415,7 +539,7 @@ def _parse_fn(fn):
 # ---- indexare incrementala (snapshot-urile noi) ----
 def _ensure_worker():
     global _worker_started
-    if _worker_started:
+    if _worker_started or (persistent() and (not IS_HOST or not WORKER_READY)):
         return
     _worker_started = True
     threading.Thread(target=_worker, daemon=True, name="semantic-index").start()
@@ -427,7 +551,33 @@ def _worker():
     from PIL import Image
     lot, incercari = [], 0
     reconcile_at = time.monotonic() + 300
+    persistent_seen = False
     while True:
+        if persistent():
+            try:
+                if not enabled():
+                    time.sleep(1)
+                    continue
+                if not persistent_seen or time.monotonic()>=reconcile_at:
+                    start_backfill()
+                    reconcile_at=time.monotonic()+300
+                    persistent_seen=True
+                # Livreaza si elementele primite in RAM inainte de activarea persistentei.
+                while True:
+                    try:
+                        d,fn,_data=_queue.get_nowait()
+                    except queue.Empty:
+                        break
+                    m=_parse_fn(fn)
+                    if m:
+                        _catalog(d,m)
+                _scrie_scena()
+                if not _process_persistent():
+                    time.sleep(1)
+            except Exception as e:
+                logare.error(f'[semantic] coada persistenta: {str(e)[:100]}')
+                time.sleep(5)
+            continue
         try:
             item = _queue.get(timeout=5)
             lot.append(item)
@@ -479,6 +629,12 @@ def enqueue(day, fn, jpeg_bytes):
     global _dropped
     if not enabled():
         return
+    if persistent():
+        m=_parse_fn(fn)
+        if m:
+            _catalog(day,m)
+        _ensure_worker()
+        return
     if not IS_HOST and settings.get("ai_service"):
         import ai_client
         ai_client.semantic_index(day, fn)   # fisierul e pe FS comun; modelul e acolo
@@ -498,6 +654,189 @@ def start_backfill():
         backfill_state.update(running=True, done=0, total=0, failed=0, error=None)
     threading.Thread(target=_backfill, daemon=True, name="semantic-backfill").start()
     return True
+
+
+def _scene_meta(cam,fn,label):
+    match=re.fullmatch(r'(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})-\d+\.jpg',fn)
+    if not match:
+        raise ValueError('nume de decupaj invalid')
+    return {'sursa':'scena','cam':int(cam),'fn':fn,'label':label,
+            'time':f'{match[4]}:{match[5]}:{match[6]}','url':f'/api/cam/{int(cam)}/scena/fisier/{fn}'}
+
+
+def source_path(day,m):
+    if not re.fullmatch(r'\d{4}-\d{2}-\d{2}',day) or os.path.basename(m['fn'])!=m['fn']:
+        raise ValueError('cale semantica invalida')
+    return (os.path.join(SCENA_DIR,str(int(m['cam'])),m['fn']) if m.get('sursa')=='scena'
+            else os.path.join(SNAP_DIR,day,m['fn']))
+
+
+def fingerprint(day,m):
+    st=os.stat(source_path(day,m))
+    return f'{st.st_mtime_ns}:{st.st_size}'
+
+
+def _feedback():
+    import scena_web
+    return {(r['cam'],r.get('poza')):r for r in scena_web.feedback_citeste().values()}
+
+
+def _current_meta(meta,feedback):
+    m=dict(meta)
+    if m.get('sursa')=='scena':
+        import scena_clasa
+        verdict=feedback.get((m['cam'],m['fn']),{})
+        if verdict.get('verdict')=='gresit' and verdict.get('eticheta'):
+            m['label']=verdict['eticheta']
+        if m['label'] in scena_clasa.NEUTRE-{'necunoscut'} or m['label']=='nimic':
+            return None
+    return m
+
+
+def _catalog(day,meta,embedding=None,current=False):
+    import semantic_store
+    m=dict(meta) if current else _current_meta(meta,_feedback() if meta.get('sursa')=='scena' else {})
+    if m is None:
+        remove_asset(day,meta)
+        return False
+    try:
+        version=fingerprint(day,m)
+    except FileNotFoundError:
+        remove_asset(day,m)
+        return False
+    m['_fingerprint']=version
+    semantic_store.enqueue(day,m,version)
+    if embedding is not None:
+        hint=(day,asset_key(m),version)
+        with _hints_lock:
+            _hints[hint]=np.asarray(embedding,np.float32)
+            _hints.move_to_end(hint)
+            while len(_hints)>512:
+                _hints.popitem(last=False)
+    return True
+
+
+def _process_persistent():
+    """Un lot cu confirmare tranzactionala, versiune verificata inainte SI dupa GPU."""
+    import semantic_store
+    from PIL import Image
+    tasks=semantic_store.claim()
+    if not tasks:
+        return False
+    feedback=_feedback()
+    ready=[];images=[];to_embed=[]
+    for task in tasks:
+        day,m=task['day'],task['meta']
+        try:
+            current=_current_meta(m,feedback)
+            if current is None:
+                remove_asset(day,m);continue
+            if current!=m or fingerprint(day,m)!=task['fingerprint']:
+                _catalog(day,current,current=True);continue
+            with _hints_lock:
+                value=_hints.pop((day,asset_key(m),task['fingerprint']),None)
+            if value is None:
+                value=semantic_store.existing(task)
+            if value is not None:
+                ready.append((task,value));continue
+            with Image.open(source_path(day,m)) as image:
+                images.append(image.convert('RGB'))
+            to_embed.append(task)
+        except FileNotFoundError:
+            remove_asset(day,m)
+        except (OSError,ValueError,Image.DecompressionBombError) as e:
+            semantic_store.fail(task,e,permanent=True)
+    if images:
+        try:
+            ready.extend(zip(to_embed,_embed_masurat(images)))
+        except Exception as e:
+            for task in to_embed:
+                semantic_store.fail(task,e)
+    for task,value in ready:
+        day,m=task['day'],task['meta']
+        try:
+            # Feedback-ul se verifica iar sub bariera; generatia PG inchide si cursa cu web-ul.
+            with storage_lock(),_write_lock(day):
+                cfg=semantic_store.control()
+                current=_current_meta(m,_feedback() if m.get('sursa')=='scena' else {})
+                if current is None:
+                    semantic_store.remove(day,m)
+                    if cfg['backend']=='files' or cfg['mirror']:
+                        _file_scene_label(day,m['cam'],m['fn'],'nimic',True)
+                    continue
+                version=fingerprint(day,m)
+                if current!=m or version!=task['fingerprint']:
+                    semantic_store.enqueue(day,{**current,'_fingerprint':version},version)
+                    continue
+                mirror=(lambda: _file_add(day,[value],[m],locked=True)) if cfg['backend']=='files' or cfg['mirror'] else None
+                semantic_store.finish(task,value,normalize_label,before_commit=mirror)
+        except FileNotFoundError:
+            remove_asset(day,m)
+        except Exception as e:
+            semantic_store.fail(task,e)
+    return True
+
+
+def _reconcile_persistent():
+    """Fisierul e dovada recuperabila si cand PG/serviciul era indisponibil la captura."""
+    import semantic_store
+    cfg=semantic_store.control()
+    keep=int(settings.get('retention_snapshots_days') or 90)
+    cutoff,_=search_time.bounds(keep)
+    first=time.strftime('%Y-%m-%d',time.localtime(cutoff))
+    by_day={};records={};queued=0
+
+    def load(day):
+        if day not in by_day:
+            metas=semantic_store.metadata(day) if cfg['backend']=='postgres' else shard_meta(day)
+            by_day[day]={asset_key(m):m for m in metas}
+            records[day]={asset_key(m):(finger,state,m) for m,finger,state in semantic_store.task_records(day)}
+
+    def consider(day,m):
+        nonlocal queued
+        load(day)
+        k=asset_key(m)
+        old=by_day[day].get(k)
+        if old and cfg['backend']=='files' and '_fingerprint' not in old:
+            return
+        try:
+            f=fingerprint(day,m)
+        except FileNotFoundError:
+            return
+        m={**m,'_fingerprint':f}
+        if old==m or records[day].get(k)==(f,'failed',m):
+            return
+        if _catalog(day,m,current=True):
+            queued+=1
+
+    for day in sorted(os.listdir(SNAP_DIR)) if os.path.isdir(SNAP_DIR) else []:
+        dd=os.path.join(SNAP_DIR,day)
+        if day<first or not os.path.isdir(dd):
+            continue
+        for fn in os.listdir(dd):
+            m=_parse_fn(fn)
+            if m:
+                consider(day,m)
+    for day,m,_ in _scene_assets():
+        if day>=first:
+            consider(day,m)
+    feedback=_feedback()
+    # Tombstone-uri pentru stergeri / verdicte pierdute la o intrerupere de transport.
+    days=[d for d,n in semantic_store.metadata()] if cfg['backend']=='postgres' else indexed_days()
+    for day in days:
+        # Retentia sterge zilele expirate in bloc prin prune(); nu rescriem un NPZ
+        # istoric pentru fiecare fotografie care a disparut deja de pe disc.
+        if day<first:
+            continue
+        load(day)
+        for m in by_day[day].values():
+            current=_current_meta(m,feedback)
+            if current is None or not os.path.isfile(source_path(day,m)):
+                remove_asset(day,m)
+            elif current!=m:
+                actualizeaza_scena(m['cam'],m['fn'],current['label'])
+    backfill_state.update(done=queued,total=queued)
+    return queued
 
 
 def _scene_assets():
@@ -534,6 +873,9 @@ def _backfill():
     """Indexeaza snapshot-urile care nu sunt inca in index, zi cu zi, in ritm lent."""
     from PIL import Image
     try:
+        if persistent():
+            _reconcile_persistent()
+            return
         # Retentia e apelata zilnic de snaps.prune(); reconcilierea la 5 minute
         # nu reciteste toate matricile si nu face stat pe intreaga arhiva.
         todo = []
@@ -596,6 +938,18 @@ def _backfill():
 
 
 def status():
+    if persistent():
+        import semantic_store
+        s=semantic_store.stats()
+        counts=s['tasks']
+        pending=counts.get('pending',0)+counts.get('running',0)
+        total=sum(n for state,n in counts.items() if state!='gone')
+        indexed=s['indexed'] if s['backend']=='postgres' else sum(len(shard_meta(d)) for d in indexed_days())
+        return {'enabled':enabled(),'indexed':indexed,'days':s['days'] if s['backend']=='postgres' else len(indexed_days()),
+                'backend':s['backend'],'persistent':True,'model':s['model'],'tasks':counts,
+                'backfill':{**backfill_state,'running':backfill_state['running'] or pending>0,
+                            'done':counts.get('done',0),'total':total,'failed':counts.get('failed',0)},
+                'queued':pending,'queued_scene':0,'deferred':0}
     total = 0
     for day in indexed_days():
         meta = shard_meta(day)
@@ -629,6 +983,11 @@ def _hits(text, days=30, visible=None, labels=None, since=None, until=None, hour
     if since >= until or visible == set():
         return
     qe = embed_text(text)
+    if pg_backend():
+        import semantic_store
+        for r in semantic_store.hits(qe,since,until,visible,labels,hours,generic=GENERIC_LABELS):
+            yield {**r,'url':url_poza(r['day'],r)}
+        return
     for day in reversed(indexed_days()):
         if day < lo[:10] or day > hi[:10]:
             continue
@@ -712,6 +1071,14 @@ def search(text, days=14, limit=40, visible=None, since=None, until=None, hours=
     Scorurile SigLIP sunt mici in valoare absoluta (potrivire buna ~0.05-0.2);
     le intoarcem brute, ordinea e cea care conteaza."""
     import heapq
+    if pg_backend():
+        import semantic_store
+        if visible is not None and not visible:
+            return []
+        a,b=search_time.bounds(days)
+        results=semantic_store.hits(embed_text(text),a if since is None else since,b if until is None else until,
+                                   visible=visible,hours=hours,limit=limit)
+        return [{**r,'url':url_poza(r['day'],r),'weak':r['score']<.08,'score':round(r['score'],4)} for r in results]
     results = heapq.nlargest(max(0, limit), _hits(text, days, visible, None, since, until, hours),
                             key=lambda r: (r['score'], r['day'], r['time'], r['cam'], r['fn']))
     return [{**r, 'weak': r['score'] < .08, 'score': round(r['score'], 4)} for r in results]
@@ -733,7 +1100,12 @@ def coverage(days=30, visible=None, since=None, until=None, hours=None):
             if (m and (visible is None or m['cam'] in visible)
                     and lo <= f"{day} {m['time']}" < hi and search_time.in_hours(m['time'], hours)):
                 names.add(fn)
-        have = {m['fn'] for m in shard_meta(day) if m.get('sursa', 'detectie') == 'detectie'
+        if pg_backend():
+            import semantic_store
+            metas=semantic_store.metadata(day)
+        else:
+            metas=shard_meta(day)
+        have = {m['fn'] for m in metas if m.get('sursa', 'detectie') == 'detectie'
                 and (visible is None or m['cam'] in visible)}
         saved += len(names)
         indexed += len(names & have)
