@@ -252,6 +252,10 @@ async function hdGoLive(gen) {
   const hd = streamEl(d.stream, HD_MODE, false, hdBufferTarget());  // HD (mainstream) deasupra
   hd.style.position = 'absolute'; hd.style.inset = '0';
   hd.style.opacity = '0'; hd.style.transition = 'opacity .25s';
+  // fundal negru: proportiile straturilor difera (posterul JPEG e 4:3 cu pixeli patrati, fluxurile
+  // 3:2 cu pixeli non-patrati), iar pe telefon in portret stratul de dedesubt iesea sus si jos —
+  // data si numele camerei se vedeau de doua ori (raportat 2026-11-14)
+  hd.style.background = '#000'; sub.style.background = '#000';
   wrap.appendChild(sub);   // substream-ul RAMANE mereu dedesubt (nu-l mai scot)
   wrap.appendChild(hd);
   // Dezvaluim HD-ul O SINGURA DATA, cand a rulat CONTINUU ~1 s. NU mai comutam inapoi la
@@ -261,6 +265,10 @@ async function hdGoLive(gen) {
   // (nobuffer pierdea IDR-ul — reparat in gen_go2rtc.py); acum primul cadru HD e curat.
   let last = -1, good = 0, ticks = 0;
   wrap._hdMon = setInterval(() => {
+    // posterul (cadru 4:3) dispare la primul cadru video, oricare ar fi: altfel ramane vizibil pe
+    // langa fluxul cu alte proportii
+    const vs = sub.video || sub.querySelector('video');
+    if (poster.isConnected && ((vs && vs.videoWidth > 0) || (hd.video || hd.querySelector('video'))?.videoWidth > 0)) poster.remove();
     const v = hd.video || hd.querySelector('video');
     if (!v) return;
     ticks++;
@@ -272,6 +280,9 @@ async function hdGoLive(gen) {
     }
     if (good >= 2) {                              // ~1s de redare CONTINUA -> aratam si gata
       hd.style.opacity = '1';
+      // substream-ul ruleaza mai departe dedesubt (rezerva), dar nu se mai vede: daca are alte
+      // proportii decat HD-ul, ar iesi pe margini cu propriul text OSD
+      setTimeout(() => { if (hd.style.opacity === '1') sub.style.visibility = 'hidden'; }, 300);
       clearInterval(wrap._hdMon); wrap._hdMon = null;
     } else if (ticks > 40) {                      // 20s si tot nu s-a stabilizat -> renuntam,
       clearInterval(wrap._hdMon); wrap._hdMon = null;   // ramane substream-ul (fara oscilatie)

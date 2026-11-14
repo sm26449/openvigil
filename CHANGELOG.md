@@ -74,6 +74,12 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   loc de „1 segment”; Mașini explică atunci când ultimele citiri sunt mai vechi de 7 zile.
 - `/api/incidents` calculează coada o singură dată pentru listă și numărătoare (era de două ori).
 
+### Reparat
+- HD pe telefon în portret: data și numele camerei nu se mai văd de două ori. Cadrul-poster
+  (4:3) și substream-ul rămâneau sub fluxul HD (3:2) și ieșeau sus și jos; acum posterul
+  dispare la primul cadru video, substream-ul se ascunde când apare HD-ul, iar straturile au
+  fundal negru.
+
 ### Reparat (reverificarea auditului frontend din 2026-11-12)
 - Butonul de ascultare din HD pornește sunetul pe fluxul care rulează (erau două video).
 - Tava de joburi: fără legătură cu serverul arată „reîncerc…” și rărește încercările până la
