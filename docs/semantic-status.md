@@ -75,6 +75,14 @@ Acestea sunt repere istorice; importul final trebuie să raporteze numerele actu
 
 ## Următorii pași, în ordine
 
+Evaluarea vizuală a început cu un lot privat de 10 rezultate actuale pentru „mașină de gunoi”,
+din ultimele 30 de zile, exportate din PostgreSQL. Galeria offline include imaginile,
+mărire, marcaje Corect / Greșit / Neclar, observații, salvare în browser și import/export JSON.
+Baseline-ul și galeria sunt în `docs/audits/2026-11-14-semantic-evaluation/`, excluse din Git.
+Etichetele umane sunt încă în așteptare; precizia și acoperirea trecerilor rămân necunoscute.
+Pentru trecerile ratate sunt necesare intervale confirmate independent de rezultatele top-k.
+Lotul curent este pentru explorare; validarea ajustărilor trebuie făcută pe un lot separat.
+
 1. Evaluarea vizuală pe exemple etichetate, apoi prioritizarea track-urilor, verificării VLM
    selective și alertelor semantice. Aceste funcții nu sunt declarate implementate.
 2. Măsurarea și reducerea consumului RAM al backupului complet: transportul vectorilor

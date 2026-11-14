@@ -135,6 +135,15 @@ folosind modelul din serviciul AI local. Etichetează identificatorii din export
 raportul păstrează precizia necunoscută; scorurile modelului nu sunt folosite ca adevăr.
 `known_positive_recall_at_k` acoperă doar exemplele pozitive declarate, nu întregul corpus.
 
+Galeria privată de evaluare poate păstra separat Corect / Greșit / Neclar și observațiile
+pentru fiecare rezultat. Marcajele se salvează în browser; exportul JSON este copia de păstrat
+și poate fi importat înapoi în același lot. Scorurile pot fi ascunse până la verdict.
+Cazurile neclare nu devin rezultate negative și nu sunt eliminate din numitor pentru a
+afișa o precizie artificială: precizia strictă a lotului rămâne necunoscută până la
+verificarea tuturor rezultatelor. Etichetele automate de test nu sunt etichete umane.
+Rezultatele top-k pot măsura calitatea selecției; pentru treceri omise sunt necesare
+intervale verificate independent, iar pentru reglaje se păstrează un lot separat de validare.
+
 ---
 
 Questions work in both global search and the alarm gallery through `/api/search`.
