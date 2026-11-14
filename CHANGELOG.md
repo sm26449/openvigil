@@ -51,6 +51,10 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 - Nimic nu mai lărgește pagina pe telefon (select-urile lungi din Reguli și Utilizatori);
   gradațiile liniei de timp rămân în bară; „Închide” din lightbox rămâne în ecran la 320 px;
   HD are fundal opac.
+- Telefonul culcat pliază uneltele (Redare, Live, Camere) ca pe telefon, ca videoul să aibă loc.
+- Camere pe telefon: starea camerei stă pe toată lățimea, iar la 320 px numele se rupe pe
+  rânduri în loc să fie tăiat; filtrele de grup nu mai par toate active.
+- Pastilele de evenimente de pe linia de timp nu se mai suprapun pe ecranele înguste.
 
 ### Adăugat
 - „Învață căutarea” în interfață: verdicte pe concept și imagine, exemple păstrate în

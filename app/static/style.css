@@ -322,7 +322,9 @@ main > .view { scroll-margin-top: 100vh; }
 
 /* tabul Camere (administrare) */
 .cams-bar { display: flex; gap: var(--s3); align-items: center; margin-bottom: 12px; }
-.cams-bar button { background: var(--accent); color: #fff; border: 0; padding: var(--s2) var(--s4); border-radius: var(--r1); cursor: pointer; font-size: var(--fs-sm); }
+/* doar actiunile din bara; filtrele de grup (.chip-btn) si legaturile isi pastreaza stilul — altfel toate
+   filtrele pareau active, albastre (audit UX C) */
+.cams-bar button:not(.chip-btn, .link-btn) { background: var(--accent); color: #fff; border: 0; padding: var(--s2) var(--s4); border-radius: var(--r1); cursor: pointer; font-size: var(--fs-sm); }
 #cams-info { font-size: var(--fs-sm); color: var(--text-3); }
 #scan-panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r2); padding: var(--s4); margin-bottom: 14px; }
 #scan-panel.hidden { display: none; }
@@ -699,8 +701,13 @@ body.wall #wall-exit { display: block; }
   .cam-row > .row-caps, .cam-row > .row-group, .cam-row > .row-ai,
   .cam-row > .row-gb, .cam-row > .row-go { display: none; }
   .cam-row-head { display: none; }
-  .cam-row > .row-state { grid-column: 2; justify-self: start; }
-  .cam-row > .row-rec { grid-column: 3; justify-self: start; }
+  /* starea sta pe toata latimea de sub nume (in coloana miniaturii de 56 px se rupea pe 5-7 randuri) */
+  .cam-row > .row-state { grid-column: 2 / -1; justify-self: start; }
+  .cam-row > .row-rec { grid-column: 2 / -1; justify-self: start; }
+}
+/* la 320-480 px numele se rupe pe randuri in loc sa fie taiat (WCAG 1.4.10, audit UX C) */
+@media (max-width: 480px) {
+  .row-name b, .row-name small { white-space: normal; overflow-wrap: anywhere; text-overflow: clip; }
 }
 
 /* ---- panou lateral cu setarile unei camere ---- */
@@ -883,7 +890,8 @@ body.panel-open #cams { margin-right: 420px; }
    800px = sub-navul din Setari/AI trece pe mai multe randuri (are nevoie de mai multa latime);
    pointer:coarse = dimensionare tactila (tinte 44px + campuri 16px contra zoom-ului iOS).
    Barele cu filtre nu incap pe un rand la 390px: le lasam sa se rupa, cautarea ocupa tot randul. */
-@media (max-width: 760px) {
+/* + telefon culcat: inaltimea mica cere aceleasi bare pliate, altfel uneltele Redarii acopereau videoul (audit UX C) */
+@media (max-width: 760px), (max-height: 500px) {
   .live-bar, .cams-bar, .al-controls, .pb-controls, .views-bar {
     flex-wrap: wrap; gap: var(--s2); }
   .search { min-width: 0; flex: 1 1 100%; }
