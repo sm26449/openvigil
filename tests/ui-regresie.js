@@ -12,6 +12,7 @@
 //   P0  PWA instalabil cu push: meta iOS, manifest (standalone/maskable/scurtaturi), icon-uri
 //   M0  mobil (390px): fara debordare pe 6 ecrane; Inregistrari cu unelte export/analiza pliate
 //   BF  selectiile multiple (Ctrl+clic) sunt bife, sincronizate in ambele sensuri cu select-ul
+//   UG  „Cât ai lipsit” la intoarcere + glisarea in triaj pe telefon, cu „Anulează”
 //   GR  triaj: incidentele repetate de pe aceeasi camera devin un grup cu actiuni pe toate
 //   AX  accesibilitate (axe-core, WCAG 2.1 AA): zero incalcari critice/serioase pe ecranele
 //       principale + reper <main>, titlu de pagina pe ecran, tinte >= 24 px (audit UX 2026-11-14)
@@ -29,7 +30,7 @@ const eStream = (t) => /:8076|go2rtc|videortc|video-stream|ws(e)?\b|websocket/i.
 
 // deschide aplicatia cu un set de raspunsuri /api si asteapta boot-ul complet (app.js pune
 // data-gata='2' dupa loadCameras().then(routeHash)). Intoarce { page, calls, errors, close }.
-async function openApp(browser, { api = {}, viewport, mobile = false } = {}) {
+async function openApp(browser, { api = {}, viewport, mobile = false, init = null } = {}) {
   const dev = mobile ? { isMobile: true, hasTouch: true, deviceScaleFactor: 3 } : {};   // declanseaza pointer:coarse
   const ctx = await browser.newContext({ locale: 'ro-RO', viewport: viewport || { width: 1280, height: 900 }, bypassCSP: true, ...dev });
   const page = await ctx.newPage();
@@ -37,6 +38,7 @@ async function openApp(browser, { api = {}, viewport, mobile = false } = {}) {
   page.on('console', (m) => { if (m.type() === 'error' && !eStream(m.text())) errors.push(m.text().slice(0, 160)); });
   page.on('pageerror', (e) => { if (!eStream(String(e))) errors.push('EXCEPTIE: ' + String(e).slice(0, 160)); });
   const calls = await installApi(page, api);
+  if (init) await page.addInitScript(init);
   const origin = globalThis.__ORIGIN;
   await page.goto(origin, { waitUntil: 'domcontentloaded', timeout: 20000 });
   await page.waitForSelector('html[data-gata="2"]', { timeout: 15000 });
@@ -439,6 +441,48 @@ async function scenBF(browser) {
   } finally { await app.close(); }
 }
 
+// ---- UG: „Cât ai lipsit” + glisare (audit UX-G) ----
+async function scenUG(browser) {
+  console.log('\n== UG. Rezumatul de la intoarcere si glisarea in triaj ==');
+  const rez = { de_la: '2026-11-14 01:00:00', ore: 7.5, incidente: 4, critice: 3, netratate: 4, grupuri_total: 1,
+    grupuri: [{ tip: 'episod', cam: 1, n: 3, netratate: 3, sev: 'critic', de_la: '2026-11-14 01:00:00', pana_la: '2026-11-14 01:30:00',
+      id: 'ep0', text: 'o persoană necunoscută', poza: '/api/flux/thumb/2026-11-14/013000_cam1_person.jpg' }],
+    persoane: [{ nume: 'maria', n: 2 }], vehicule: [], camere_cazute: [2] };
+  const ep = (i, ora) => ({ id: 'ep' + i, tip: 'episod', cam: 1, sev: 'critic', stare: 'nou', t: `2026-11-14 ${ora}`, text: 'x' });
+  const app = await openApp(browser, { viewport: { width: 390, height: 844 }, mobile: true,
+    init: () => { try { localStorage.setItem('ov.vazutLa.admin', String(Math.round(Date.now() / 1000) - 5 * 3600)); } catch (e) {} },
+    api: { '/api/rezumat/absenta': rez,
+      '/api/incidents': { incidente: [ep(0, '23:45:00'), { id: 'x', tip: 'intrus', cam: 2, sev: 'critic', stare: 'nou', t: '2026-11-14 22:00:00', eticheta: 'person' }], counts: { noi: 2, critic_noi: 2 } },
+      '/api/incidents/stare-bloc': ({ body }) => ({ ok: true, n: (body && body.ids || []).length }) } });
+  const { page, calls } = app;
+  try {
+    await page.waitForSelector('#absenta:not(.hidden)', { timeout: 6000 });
+    const a = await page.evaluate(() => ({ titlu: document.querySelector('#absenta h2')?.textContent, n: document.querySelectorAll('#absenta .abs-item').length,
+      rez: document.querySelector('#absenta .abs-rez')?.textContent || '', fisa: !!document.querySelector('#absenta [data-fisa]') }));
+    (a.titlu === 'Cât ai lipsit' && a.n === 1 && /maria de 2 ori/.test(a.rez) && /nu răspund: Terasă/.test(a.rez) && a.fisa)
+      ? ok('dupa 5 ore, „Cât ai lipsit” arata grupul, pe maria si camera cazuta (cu nume), cu fisa') : bad('UG', JSON.stringify(a));
+    await page.click('#absenta .abs-ok');
+    const dupa = await page.evaluate(() => ({ ascuns: document.querySelector('#absenta').classList.contains('hidden'),
+      vazut: +localStorage.getItem('ov.vazutLa.admin') }));
+    (dupa.ascuns && Date.now() / 1000 - dupa.vazut < 60) ? ok('„Am văzut” il inchide si muta reperul la acum') : bad('UG', JSON.stringify(dupa));
+    // glisare spre dreapta pe primul incident = confirmat, cu „Anulează”
+    await page.evaluate(() => { location.hash = '#ev/inc'; });
+    await page.waitForSelector('#inc-list .inc-card', { timeout: 6000 });
+    await page.evaluate(() => {
+      const c = document.querySelector('#inc-list .inc-card'); const r = c.getBoundingClientRect(), y = r.top + r.height / 2;
+      const ev = (tip, x) => c.dispatchEvent(new PointerEvent(tip, { pointerType: 'touch', clientX: x, clientY: y, bubbles: true, isPrimary: true }));
+      ev('pointerdown', r.left + 20); for (const x of [40, 80, 160, 260, 340]) ev('pointermove', r.left + x); ev('pointerup', r.left + 340);
+    });
+    const c1 = await waitForCall(calls, '/api/incidents/stare-bloc', 'POST');
+    (c1 && c1.body.stare === 'confirmat' && c1.body.ids[0] === 'ep0') ? ok('glisarea spre dreapta confirma incidentul') : bad('UG', 'cerere: ' + JSON.stringify(c1 && c1.body));
+    await page.waitForSelector('#inc-anulare.show', { timeout: 3000 });
+    calls.length = 0;
+    await page.click('#inc-anulare button');
+    const c2 = await waitForCall(calls, '/api/incidents/stare-bloc', 'POST');
+    (c2 && c2.body.stare === 'nou' && c2.body.ids[0] === 'ep0') ? ok('„Anulează” il readuce la netratat') : bad('UG', 'anulare: ' + JSON.stringify(c2 && c2.body));
+  } finally { await app.close(); }
+}
+
 // ---- GR: triaj pe grupuri (audit UX-F) ----
 async function scenGR(browser) {
   console.log('\n== GR. Incidentele repetate devin un grup, tratat dintr-un clic ==');
@@ -527,7 +571,7 @@ async function scenAX(browser) {
   globalThis.__ORIGIN = srv.origin;
   const browser = await chromium.launch();
   try {
-    for (const scen of [scenBoot, scenA1, scenA2, scenS1, scenS2, scenC2, scenL2, scenT1, scenC4, scenP0, scenM0, scenHD, scenOV, scenBF, scenGR, scenAX]) {
+    for (const scen of [scenBoot, scenA1, scenA2, scenS1, scenS2, scenC2, scenL2, scenT1, scenC4, scenP0, scenM0, scenHD, scenOV, scenBF, scenGR, scenUG, scenAX]) {
       try { await scen(browser); }
       catch (e) { bad(scen.name, 'exceptie in scenariu: ' + String(e).slice(0, 160)); }
     }

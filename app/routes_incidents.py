@@ -42,6 +42,17 @@ def api_incidents():
         "counts": incidents_mod.counts(visible=vis, toate=toate)})
 
 
+@bp.route("/api/rezumat/absenta")
+def api_rezumat_absenta():
+    """?de_la=<epoch> — „Cât ai lipsit”: incidentele grupate, cine a venit, camerele cazute
+    de la ultima vizita pe dispozitivul respectiv (cel mult 7 zile). Filtrat pe camerele contului."""
+    import absenta
+    de_la = request.args.get("de_la", type=float)
+    if not de_la:
+        return jsonify({"error": t("lipsește momentul ultimei vizite")}), 400
+    return jsonify(absenta.rezumat(de_la, visible=_visible_ids()))
+
+
 @bp.route("/api/incidents/stare-bloc", methods=["POST"])
 def api_incident_state_bloc():
     """Body: {ids: [...], stare: confirmat|fals|nou}. Triajul pe grupuri: zeci de episoade

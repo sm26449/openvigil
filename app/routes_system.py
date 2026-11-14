@@ -9,10 +9,12 @@ si _noise_event RAMAN in server — le porneste main(), nu sunt rute.
 """
 import json
 import os
+import re
 import shutil
 import subprocess
 import time
 
+import requests
 from flask import Blueprint, Response, jsonify, request, send_file
 
 import ai_client
@@ -587,6 +589,75 @@ def api_settings_test(channel):
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 502
+
+
+# ---- asistentul „Conectează Telegram” (audit UX-G): jeton -> chat gasit singur -> salvat ----
+# Inainte: Chat ID si URL-ul api.telegram.org/bot<TOKEN>/getUpdates, de cautat de mana.
+_TG_JETON = re.compile(r"^\d{5,12}:[A-Za-z0-9_-]{30,50}$")
+
+
+def _tg(jeton, metoda, **params):
+    r = requests.get(f"https://api.telegram.org/bot{jeton}/{metoda}", params=params, timeout=15)
+    return r.json()
+
+
+@bp.route("/api/telegram/asistent/verifica", methods=["POST"])
+def api_tg_verifica():
+    """Body {jeton}: botul exista? -> numele si @utilizatorul lui."""
+    jeton = ((request.get_json(silent=True) or {}).get("jeton") or "").strip()
+    if not _TG_JETON.match(jeton):
+        return jsonify({"error": t("Jetonul nu arată ca unul de la @BotFather (cifre:litere).")}), 400
+    try:
+        d = _tg(jeton, "getMe")
+    except requests.RequestException:
+        return jsonify({"error": t("Telegram nu răspunde — verifică internetul serverului.")}), 502
+    if not d.get("ok"):
+        return jsonify({"error": t("Telegram nu recunoaște jetonul. Copiază-l din nou de la @BotFather.")}), 400
+    b = d.get("result") or {}
+    return jsonify({"ok": True, "nume": b.get("first_name"), "utilizator": b.get("username")})
+
+
+@bp.route("/api/telegram/asistent/chat", methods=["POST"])
+def api_tg_chat():
+    """Body {jeton}: chat-urile care i-au scris botului, cele mai noi primele."""
+    jeton = ((request.get_json(silent=True) or {}).get("jeton") or "").strip()
+    if not _TG_JETON.match(jeton):
+        return jsonify({"error": t("Jetonul nu arată ca unul de la @BotFather (cifre:litere).")}), 400
+    import telegram_bot
+    # bucla botului asculta deja cu acelasi jeton: ea primeste mesajele, nu noi
+    if telegram_bot.activ() and jeton == settings.get("telegram_token"):
+        chats = sorted(telegram_bot.vazute.values(), key=lambda c: -c["t"])
+        return jsonify({"chats": chats})
+    try:
+        d = _tg(jeton, "getUpdates", timeout=0, allowed_updates='["message"]')
+    except requests.RequestException:
+        return jsonify({"error": t("Telegram nu răspunde — verifică internetul serverului.")}), 502
+    if not d.get("ok"):
+        return jsonify({"error": str(d.get("description") or t("eroare Telegram"))[:160]}), 502
+    vazute = {}
+    for u in d.get("result") or []:
+        m = u.get("message") or {}
+        ch = m.get("chat") or {}
+        if ch.get("id"):
+            vazute[str(ch["id"])] = {"id": str(ch["id"]), "tip": ch.get("type"), "t": int(m.get("date") or 0),
+                                     "nume": ch.get("title") or " ".join(x for x in (ch.get("first_name"), ch.get("last_name")) if x) or ch.get("username") or ""}
+    return jsonify({"chats": sorted(vazute.values(), key=lambda c: -c["t"])})
+
+
+@bp.route("/api/telegram/asistent/salveaza", methods=["POST"])
+def api_tg_salveaza():
+    """Body {jeton, chat}: salveaza si trimite un mesaj de proba pe chat-ul ales."""
+    b = request.get_json(silent=True) or {}
+    jeton, chat = (b.get("jeton") or "").strip(), str(b.get("chat") or "").strip()
+    if not _TG_JETON.match(jeton) or not re.match(r"^-?\d{3,20}$", chat):
+        return jsonify({"error": t("Jeton sau chat invalid.")}), 400
+    settings.update({"telegram_token": jeton, "telegram_chat": chat})
+    audit.log("telegram conectat (asistent)", chat)
+    try:
+        notify.test_channel("telegram")
+    except Exception as e:
+        return jsonify({"ok": True, "proba": False, "error": str(e)[:160]})
+    return jsonify({"ok": True, "proba": True})
 
 
 # ---- vremea (vreme.py): starea curenta si geocodarea localitatii ----

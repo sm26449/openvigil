@@ -20,8 +20,10 @@ import './js/70-ai.js';
 import './js/75-adnotare.js';
 import { loadCameras } from './js/10-live.js';
 import { routeHash } from './js/05-navigare.js';
+import { verificaAbsenta } from './js/40-evenimente.js';
 
 // toate modulele si-au pus handlerele cand ajungem aici: marcam documentul ca „gata” (testele
 // si orice script extern asteapta atributul in loc sa ghiceasca dupa timp)
 document.documentElement.dataset.gata = '1';
-loadCameras().then(routeHash).finally(() => { document.documentElement.dataset.gata = '2'; });
+// „Cât ai lipsit” dupa camere: rezumatul are nevoie de numele lor
+loadCameras().then(routeHash).then(verificaAbsenta).finally(() => { document.documentElement.dataset.gata = '2'; });

@@ -219,7 +219,8 @@ def guard():
                     return None
                 return jsonify({"error": t("nu ai acces la această camera")}), 403
             # triajul incidentelor e treaba paznicului: confirma / marcheaza fals
-            if re.match(r"^/api/incidents/[a-z0-9]+/stare$", p):
+            # (si pe grupuri: ruta filtreaza singura incidentele dupa camerele contului)
+            if re.match(r"^/api/incidents/[a-z0-9]+/stare$", p) or p == "/api/incidents/stare-bloc":
                 return None
         # dosarele de caz le construieste paznicul: creare/adaugare/stergere proba
         if u["role"] == "operator" and re.match(

@@ -74,6 +74,17 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   loc de „1 segment”; Mașini explică atunci când ultimele citiri sunt mai vechi de 7 zile.
 - `/api/incidents` calculează coada o singură dată pentru listă și numărătoare (era de două ori).
 
+### Adăugat (UX-G)
+- „Cât ai lipsit”: la întoarcere după mai mult de 2 ore, un card sus pe Live rezumă ce s-a
+  întâmplat de la ultima privire pe acel dispozitiv — incidentele grupate cu poză, cine a venit
+  (fețe și numere cunoscute), camerele căzute (`GET /api/rezumat/absenta`, cel mult 7 zile).
+- Triaj prin glisare pe telefon: spre dreapta confirmă, spre stânga marchează alarmă falsă,
+  pe un incident sau pe un grup, cu „Anulează” 6 secunde.
+- „Conectează Telegram (pas cu pas)”: jetonul se verifică, chat-ul se găsește singur după un
+  mesaj trimis botului, iar salvarea trimite o probă; funcționează și când botul ascultă deja.
+- Paznicul (operator) poate trata și grupurile de incidente, nu doar câte unul.
+- Indiciul comenzilor Telegram arată `/acasa` (comenzile nu pot avea diacritice).
+
 ### Controale
 - Un singur sistem de controale: select-urile, câmpurile, butoanele și „Alege fișierul” fără
   stil propriu iau stilul temei (nu mai apar native, albe); bifele și butoanele radio au

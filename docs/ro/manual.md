@@ -284,6 +284,21 @@ este jurnalul modificarilor (cine si cand a schimbat ceva). Tabul AI: fiecare se
 masini vin?") si o fraza de stare din date (persoane, recunoasteri in 30 de zile, citiri
 LPR, reguli active, cadre etichetate), ca sa vezi dintr-o privire ce produce fiecare.
 
+## Triaj, „Cât ai lipsit” si conectarea Telegram (2026-11-14)
+- **De tratat** grupeaza incidentele repetate: 3+ de pe aceeasi camera, de acelasi tip, la cel
+  mult 30 de minute unul de altul, devin un card cu miniatura, „✓ confirmă toate”, „✕ fals
+  toate” si „Arată toate”. Fiecare incident are cadrul salvat cel mai apropiat; un clic pe el
+  deschide fisa. „Încarcă mai multe incidente” cere pana la 480 de la server.
+- **Pe telefon**, un card (sau un grup) se trateaza glisand: spre dreapta = confirmat, spre
+  stanga = alarma falsa; 6 secunde ramane butonul „Anulează”. Butoanele merg in continuare.
+- **„Cât ai lipsit”**: cand revii dupa mai mult de 2 ore (pagina deschisa sau adusa in fata),
+  sus pe Live apare rezumatul de la ultima privire pe acel dispozitiv — incidentele grupate cu
+  poza, cine a venit (fete si numere cunoscute), camerele cazute. „Am văzut” il inchide.
+  Reperul e tinut in browser, pe dispozitiv si cont (pe telefon si pe PC separat).
+- **Setari → Notificari → „Conectează Telegram (pas cu pas)”**: lipesti jetonul de la
+  @BotFather, ii scrii botului orice mesaj, iar chat-ul apare singur; un clic salveaza si
+  trimite o proba. Campurile de mana (jeton, chat ID) raman pentru cazurile avansate.
+
 ## Recunoastere persoane (Face ID)
 Cand detectia YOLO confirma un om, `app/faces.py` cere camerei un cadru la rezolutie
 mare (ISAPI picture — pe substreamul de 640px fetele sunt inutilizabile) si cauta fete

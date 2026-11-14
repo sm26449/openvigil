@@ -1458,6 +1458,63 @@ $('#s-train-apply').onclick = async () => {
   loadTrainStatus();
 };
 
+/* ---------- asistentul „Conectează Telegram” (audit UX-G) ----------
+   1) jetonul de la @BotFather, verificat; 2) omul ii scrie botului, iar serverul gaseste singur
+   chat-ul; 3) un clic salveaza si trimite o proba. Inainte trebuia cautat chat ID-ul de mana
+   in raspunsul JSON de la api.telegram.org/bot<TOKEN>/getUpdates. */
+let tgTimer = null, tgPana = 0;
+// fara alert() la erori (post() din 10-live.js arata o fereastra la fiecare): mesajul sta in card
+const tgPost = async (url, body) => {
+  try { return await (await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json(); }
+  catch { return { error: t('Serverul nu răspunde.') }; }
+};
+const tgMsg = (txt, err = false) => { const m = $('#tg-a-msg'); m.textContent = txt; m.classList.toggle('err', err); };
+function tgOpreste() { clearTimeout(tgTimer); tgTimer = null; }
+async function tgCautaChat() {
+  tgOpreste();
+  if ($('#tg-asistent').classList.contains('hidden') || Date.now() > tgPana) {
+    if (Date.now() > tgPana) $('#tg-a-astept').textContent = t('N-am primit niciun mesaj în 3 minute. Scrie-i botului și apasă din nou „Verifică jetonul”.');
+    return;
+  }
+  const d = await tgPost('/api/telegram/asistent/chat', { jeton: $('#tg-a-jeton').value.trim() });
+  const chats = (d && d.chats) || [];
+  if (d && d.error) tgMsg(d.error, true);
+  if (chats.length) {
+    $('#tg-a-astept').textContent = t('Am găsit {n}. Alege unde să primești notificările:', { n: chats.length === 1 ? t('o conversație') : t('{n} conversații', { n: chats.length }) });
+    const box = $('#tg-a-chats');
+    box.innerHTML = html`${chats.map((c) => html`<button type="button" class="tg-a-alege" data-chat="${c.id}">${t('Folosește: {nume}', { nume: c.nume || c.id })}${c.tip && c.tip !== 'private' ? ' (' + t('grup') + ')' : ''}</button>`)}`;
+    for (const b of box.querySelectorAll('.tg-a-alege')) b.onclick = () => tgSalveaza(b.dataset.chat, b);
+  }
+  tgTimer = setTimeout(tgCautaChat, 3000);
+}
+async function tgSalveaza(chat, b) {
+  tgOpreste();
+  b.disabled = true;
+  const d = await tgPost('/api/telegram/asistent/salveaza', { jeton: $('#tg-a-jeton').value.trim(), chat });
+  if (!d || !d.ok) { tgMsg((d && d.error) || t('Eroare'), true); b.disabled = false; return; }
+  tgMsg(d.proba ? t('Gata ✓ — Telegram e conectat; ți-am trimis un mesaj de probă.') : t('Salvat, dar mesajul de probă n-a plecat: {e}', { e: d.error || '' }), !d.proba);
+  $('#tg-a-chats').innerHTML = '';
+  loadSettings(true);   // campurile de mai jos arata noile valori (si bara „nesalvat” nu se aprinde)
+}
+$('#tg-a-start') && ($('#tg-a-start').onclick = () => {
+  const box = $('#tg-asistent'), des = box.classList.toggle('hidden');
+  $('#tg-a-start').setAttribute('aria-expanded', des ? 'false' : 'true');
+  if (des) tgOpreste(); else $('#tg-a-jeton').focus();
+});
+$('#tg-a-verif') && ($('#tg-a-verif').onclick = async () => {
+  tgMsg('');
+  const d = await tgPost('/api/telegram/asistent/verifica', { jeton: $('#tg-a-jeton').value.trim() });
+  if (!d || d.error) { tgMsg((d && d.error) || t('Eroare'), true); return; }
+  const link = $('#tg-a-link');
+  link.href = 'https://t.me/' + encodeURIComponent(d.utilizator || '');
+  link.textContent = '@' + (d.utilizator || '');
+  $('#tg-a-p2').classList.remove('hidden');
+  $('#tg-a-astept').textContent = t('Botul „{nume}” e în regulă. Aștept mesajul tău…', { nume: d.nume || d.utilizator });
+  $('#tg-a-chats').innerHTML = '';
+  tgPana = Date.now() + 180000;
+  tgCautaChat();
+});
+
 export { SET_LABELS, flash, hdBufferTarget, hdHeightParam, loadSettings, meDlg };
 
 /* ---------- mod demo: camere sintetice (Setari -> Unelte) ---------- */

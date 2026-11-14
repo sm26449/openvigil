@@ -2108,3 +2108,36 @@ select.bife-sursa { display: none !important; }
     -webkit-mask-image: linear-gradient(to right, #000 85%, transparent); mask-image: linear-gradient(to right, #000 85%, transparent); }
   #ai-nav .ainav-item { flex: none; }
 }
+
+/* ================= UX-G ================= */
+/* „Cât ai lipsit” sus pe Live */
+.absenta { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--r2);
+  padding: var(--s3) var(--s4); margin-bottom: var(--s3); }
+.abs-cap { display: flex; align-items: baseline; gap: var(--s3); flex-wrap: wrap; }
+.abs-cap h2 { margin: 0; font-size: var(--fs-lg); }
+.abs-rez { margin: var(--s2) 0; color: var(--text-2); }
+.abs-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
+.abs-item { display: flex; align-items: center; gap: var(--s3); padding: var(--s2); background: var(--surface-2); border-radius: var(--r1);
+  border-left: 3px solid var(--line); }
+.abs-item.sev-critic { border-left-color: var(--alarm); }
+.abs-item.sev-atentie { border-left-color: var(--warn); }
+.abs-item img { width: 80px; height: 45px; object-fit: cover; border-radius: var(--r1); flex: none; }
+.abs-ico { width: 80px; text-align: center; font-size: 22px; flex: none; }
+.abs-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: var(--fs-sm); }
+.abs-acts { display: flex; gap: var(--s2); margin-top: var(--s3); flex-wrap: wrap; }
+.abs-acts .abs-ok { background: var(--accent); color: #fff; }
+@media (max-width: 760px) { .abs-item img, .abs-ico { width: 64px; } }
+
+/* glisarea in triaj: pe ecranele tactile cardul se misca pe orizontala, pagina pe verticala */
+@media (pointer: coarse) { #inc-list .inc-card { touch-action: pan-y; } }
+#inc-list .inc-card[data-glisare="ok"] { box-shadow: inset 6px 0 0 var(--ok-hi); }
+#inc-list .inc-card[data-glisare="fals"] { box-shadow: inset -6px 0 0 var(--alarm-text); }
+#inc-anulare { position: fixed; left: 50%; bottom: calc(var(--bara-jos) + 16px); transform: translate(-50%, 200%); z-index: 60;
+  display: flex; gap: var(--s3); align-items: center; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r2);
+  padding: var(--s2) var(--s3); box-shadow: 0 6px 24px rgba(0,0,0,.4); transition: transform .2s; max-width: calc(100vw - 32px); }
+#inc-anulare.show { transform: translate(-50%, 0); }
+#inc-anulare button { background: var(--accent); color: #fff; }
+/* telegram: asistentul pas cu pas */
+.tg-asistent { background: var(--surface-2); border-radius: var(--r1); padding: var(--s3); margin: var(--s2) 0 var(--s3); }
+.tg-pasi { margin: 0; padding-left: 1.2em; display: grid; gap: var(--s3); }
+.tg-pasi code { background: var(--line); padding: 0 4px; border-radius: 4px; }

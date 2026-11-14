@@ -284,6 +284,21 @@ change log (who changed what, and when). The AI tab: each section has its questi
 vehicles come?") and a status sentence built from the data (people, recognitions in 30 days, LPR
 readings, active rules, labelled frames), so you can see at a glance what each one produces.
 
+## Triage, "While you were away" and connecting Telegram (2026-11-14)
+- **To handle** groups repeated incidents: 3+ from the same camera, of the same type, at most
+  30 minutes apart, become one card with a thumbnail, "✓ confirm all", "✕ all false" and
+  "Show all". Each incident shows the closest saved frame; clicking it opens the record.
+  "Load more incidents" fetches up to 480 from the server.
+- **On a phone**, a card (or a group) is handled by swiping: right = confirmed, left = false
+  alarm; an "Undo" button stays for 6 seconds. The buttons keep working.
+- **"While you were away"**: when you come back after more than 2 hours (page opened or brought
+  to the front), the top of Live summarises what happened since you last looked on that device —
+  grouped incidents with a picture, who came (known faces and plates), cameras that went down.
+  "Got it" closes it. The marker is kept in the browser, per device and account.
+- **Settings → Notifications → "Connect Telegram (step by step)"**: paste the token from
+  @BotFather, send the bot any message, and the chat appears by itself; one click saves it and
+  sends a test. The manual fields (token, chat ID) remain for advanced cases.
+
 ## Person recognition (Face ID)
 When YOLO detection confirms a person, `app/faces.py` asks the camera for a high-resolution
 frame (ISAPI picture — on the 640px substream faces are unusable) and looks for faces

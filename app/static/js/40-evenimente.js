@@ -5,7 +5,7 @@
    ==================================================================== */
 import { S } from './state.js';
 import { openSemanticReview } from './49-semantic-review.js';
-import { $, CAN_ACT, DET_RO, EV_RO, bindMore, clipReady, esc, html, icon, lista, raw, runJob, t, toast } from './00-core.js';
+import { $, CAN_ACT, DET_RO, EV_RO, ME, bindMore, clipReady, esc, html, icon, lista, raw, runJob, t, toast } from './00-core.js';
 import { evPane, show, showEv } from './05-navigare.js';
 import { popupTile, post } from './10-live.js';
 import { closeHD } from './20-hd.js';
@@ -83,6 +83,7 @@ let incGrupRand = null;
 function leagaInc(container) {
   wireClips(container);
   wireDosar(container);
+  leagaGlisare(container);
   // poza deschide fisa incidentului
   for (const img of container.querySelectorAll('.inc-poza')) {
     img.onclick = () => img.closest('.inc-card')?.querySelector('.fisa-btn')?.click();
@@ -1114,5 +1115,126 @@ $('#ev-grup') && ($('#ev-grup').onchange = loadJournal);
 // scrisa doar de ecranul Evenimente
 let storageData = {};
 
-export { AL_ICO, AL_RO, EV_TIP_RO, alNume, evCompact, initView, loadAlarms, loadIncidents, loadJournal, openCases, openClip, refreshIncBadge, storageData, wireClips };
+/* ---------- „Cât ai lipsit” (audit UX-G) ----------
+   La intoarcere (pagina deschisa sau revenita in fata) dupa mai mult de 2 ore, un card sus pe Live
+   rezuma ce s-a intamplat de la ultima privire pe acest dispozitiv: incidentele grupate cu poza,
+   cine a venit, camerele cazute. „Am văzut” il inchide si muta reperul la acum. */
+const ABS_PRAG = 2 * 3600;
+const absCheie = () => 'ov.vazutLa.' + (ME.user || '');
+const absCiteste = () => { try { return +localStorage.getItem(absCheie()) || 0; } catch { return 0; } };
+const absPune = (sec = Date.now() / 1000) => { try { localStorage.setItem(absCheie(), String(Math.round(sec))); } catch {} };
+const absDeschis = () => !$('#absenta').classList.contains('hidden');
+async function verificaAbsenta() {
+  if (!CAN_ACT || absDeschis()) return;
+  const v = absCiteste(), acum = Date.now() / 1000;
+  if (!v) { absPune(acum); return; }
+  if (acum - v < ABS_PRAG) return;
+  let d;
+  try { d = await (await fetch('/api/rezumat/absenta?de_la=' + Math.round(v))).json(); } catch { return; }
+  if (!d || d.error) return;
+  if (!d.incidente && !d.persoane.length && !d.vehicule.length && !d.camere_cazute.length) { absPune(acum); return; }
+  const names = Object.fromEntries(S.cameras.map((c) => [c.id, c.name]));
+  const cam = (id) => names[id] || t('cam {id}', { id });
+  const bucati = [
+    d.incidente ? t('{n} incidente', { n: d.incidente }) + (d.critice ? ' · ' + t('{n} critice', { n: d.critice }) : '') + (d.netratate ? ' · ' + t('{n} netratate', { n: d.netratate }) : '') : t('niciun incident'),
+    ...d.persoane.map((p) => (p.n > 1 ? t('{nume} de {n} ori', { nume: p.nume, n: p.n }) : p.nume)),
+    ...d.vehicule.map((p) => (p.n > 1 ? t('{nume} de {n} ori', { nume: p.nume, n: p.n }) : p.nume)),
+    ...(d.camere_cazute.length ? [t('nu răspund: {lista}', { lista: d.camere_cazute.map(cam).join(', ') })] : []),
+  ];
+  const box = $('#absenta');
+  box.innerHTML = html`
+    <div class="abs-cap"><h2 id="absenta-titlu">${t('Cât ai lipsit')}</h2>
+      <span class="hint">${t('de la {cand} · {ore} h', { cand: cand(d.de_la), ore: String(d.ore).replace('.', ',') })}</span></div>
+    <p class="abs-rez">${bucati.join(' · ')}</p>
+    ${d.grupuri.length ? html`<ul class="abs-lista">${d.grupuri.map((g) => html`<li class="abs-item sev-${g.sev}">
+      ${g.poza ? html`<img src="${g.poza}" alt="" loading="lazy">` : html`<span class="abs-ico" aria-hidden="true">${EV_ICO[g.tip] || '•'}</span>`}
+      <span class="abs-txt"><b>${g.n > 1 ? t('{n} × {tip}', { n: g.n, tip: t(EV_TIP_RO[g.tip] || g.tip) }) : t(EV_TIP_RO[g.tip] || g.tip)}</b>${g.text ? ' · ' + g.text : ''}
+        <span class="hint">${cam(g.cam)} · ${g.n > 1 ? cand(g.de_la) + ' – ' + cand(g.pana_la) : cand(g.pana_la)}${g.netratate ? ' · ' + t('{n} netratate', { n: g.netratate }) : ''}</span></span>
+      <button type="button" class="link-btn" data-fisa="${JSON.stringify({ cam: g.cam, t: g.pana_la, tip: g.tip, sev: g.sev, id: g.id, det: '' })}">${t('Vezi')}</button>
+    </li>`)}</ul>` : ''}
+    ${d.grupuri_total > d.grupuri.length ? html`<p class="hint">${t('și încă {n} grupuri', { n: d.grupuri_total - d.grupuri.length })}</p>` : ''}
+    <div class="abs-acts"><button type="button" class="abs-tot">${t('Toate incidentele')}</button>
+      <button type="button" class="abs-ok">${t('Am văzut')}</button></div>`;
+  box.classList.remove('hidden');
+  box.querySelector('.abs-ok').onclick = () => { box.classList.add('hidden'); absPune(); };
+  box.querySelector('.abs-tot').onclick = () => { box.classList.add('hidden'); absPune(); showEv('inc'); };
+}
+// reperul „ultima privire": cand pagina iese din vedere (daca rezumatul nu asteapta sa fie citit)
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { if (!absDeschis()) absPune(); } else verificaAbsenta();
+});
+addEventListener('pagehide', () => { if (!absDeschis()) absPune(); });
+
+/* ---------- glisare in triaj pe ecrane tactile (audit UX-G) ----------
+   → confirma, ← alarma falsa, pe un incident sau pe tot grupul; 6 s pentru „Anulează”.
+   Butoanele raman: glisarea e o scurtatura, nu singura cale. */
+const TACTIL = matchMedia('(pointer: coarse)');
+let anulareTimer = null;
+function arataAnulare(text, laAnulare) {
+  let bar = $('#inc-anulare');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'inc-anulare';
+    bar.setAttribute('role', 'status');
+    document.body.appendChild(bar);
+  }
+  bar.innerHTML = html`<span>${text}</span><button type="button">${t('Anulează')}</button>`;
+  bar.classList.add('show');
+  clearTimeout(anulareTimer);
+  const ascunde = () => bar.classList.remove('show');
+  bar.querySelector('button').onclick = async () => { clearTimeout(anulareTimer); ascunde(); await laAnulare(); };
+  anulareTimer = setTimeout(ascunde, 6000);
+}
+async function glisatTratat(card, stare) {
+  const ids = (card.dataset.ids || card.dataset.id || '').split(',').filter(Boolean);
+  if (!ids.length) return;
+  card.style.transition = 'transform .18s ease-out, opacity .18s';
+  card.style.transform = `translateX(${stare === 'confirmat' ? 110 : -110}%)`;
+  card.style.opacity = '0';
+  const d = await post('/api/incidents/stare-bloc', { ids, stare });
+  if (!d || d.error) { card.style.transform = ''; card.style.opacity = ''; return; }
+  setTimeout(() => card.remove(), 200);
+  refreshIncBadge();
+  arataAnulare(stare === 'confirmat' ? t('{n} confirmate', { n: ids.length }) : t('{n} marcate ca alarmă falsă', { n: ids.length }), async () => {
+    await post('/api/incidents/stare-bloc', { ids, stare: 'nou' });
+    incSig = ''; loadIncidents(); refreshIncBadge();
+  });
+}
+function leagaGlisare(container) {
+  if (!TACTIL.matches) return;
+  for (const card of container.querySelectorAll('.inc-card')) {
+    if (card._glisare || !card.querySelector('.inc-ok, .inc-grup-ok')) continue;   // doar cele netratate
+    card._glisare = true;
+    // clicul care urmeaza imediat unei glisari (pe poza) nu deschide fisa
+    card.addEventListener('click', (ev) => {
+      if (Date.now() - (card._glisatLa || 0) < 400) { ev.stopPropagation(); ev.preventDefault(); }
+    }, true);
+    let x0 = null, y0 = 0, dx = 0, axa = null;
+    card.addEventListener('pointerdown', (e) => {
+      if (e.pointerType !== 'touch' || e.target.closest('button, a')) return;
+      x0 = e.clientX; y0 = e.clientY; dx = 0; axa = null;
+    });
+    card.addEventListener('pointermove', (e) => {
+      if (x0 === null) return;
+      const ddx = e.clientX - x0, ddy = e.clientY - y0;
+      if (axa === null && (Math.abs(ddx) > 12 || Math.abs(ddy) > 12)) axa = Math.abs(ddx) > Math.abs(ddy) ? 'x' : 'y';
+      if (axa !== 'x') return;
+      dx = ddx;
+      card.style.transform = `translateX(${dx}px)`;
+      card.dataset.glisare = dx > 0 ? 'ok' : 'fals';
+    });
+    const gata = () => {
+      if (x0 === null) return;
+      const prag = card.offsetWidth * 0.35, d = dx;
+      x0 = null; delete card.dataset.glisare;
+      if (axa === 'x') card._glisatLa = Date.now();
+      if (axa === 'x' && Math.abs(d) > prag) glisatTratat(card, d > 0 ? 'confirmat' : 'fals');
+      else card.style.transform = '';
+    };
+    card.addEventListener('pointerup', gata);
+    card.addEventListener('pointercancel', () => { x0 = null; card.style.transform = ''; delete card.dataset.glisare; });
+  }
+}
+
+export { AL_ICO, AL_RO, EV_TIP_RO, alNume, evCompact, initView, verificaAbsenta, loadAlarms, loadIncidents, loadJournal, openCases, openClip, refreshIncBadge, storageData, wireClips };
 document.addEventListener('incident-schimbat', () => { loadIncidents(); refreshIncBadge(); });

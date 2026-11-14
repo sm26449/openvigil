@@ -84,6 +84,7 @@
 <main id="continut" tabindex="-1">
 <!-- LIVE -->
 <section id="live" class="view">
+  <section id="absenta" class="absenta hidden" aria-labelledby="absenta-titlu"></section>
   <div class="live-bar views-bar">
     <span class="bar-label">Vizualizari</span>
     <div id="views" class="chips"></div>
@@ -887,14 +888,27 @@
     <div class="set-cols">
     <div class="set-card">
       <h2 data-ic="alarm">Notificări Telegram</h2>
+      <div class="s-btns"><button type="button" id="tg-a-start" aria-expanded="false" aria-controls="tg-asistent">Conectează Telegram (pas cu pas)</button></div>
+      <div id="tg-asistent" class="tg-asistent hidden">
+        <ol class="tg-pasi">
+          <li id="tg-a-p1"><b>Creează botul.</b> În Telegram, deschide <a href="https://t.me/BotFather" target="_blank" rel="noopener">@BotFather</a>,
+            trimite <code>/newbot</code>, alege un nume, apoi copiază jetonul primit aici:
+            <label class="tg-jeton">Jetonul botului <input id="tg-a-jeton" type="password" autocomplete="off" spellcheck="false" placeholder="123456789:AA…"></label>
+            <button type="button" id="tg-a-verif">Verifică jetonul</button></li>
+          <li id="tg-a-p2" class="hidden"><b>Scrie-i botului.</b> Deschide <a id="tg-a-link" target="_blank" rel="noopener"></a> și trimite-i
+            orice mesaj (de exemplu „salut”). Pentru un grup, adaugă botul în grup și scrie ceva acolo.
+            <p class="hint" id="tg-a-astept" role="status">Aștept mesajul…</p>
+            <div id="tg-a-chats" class="s-btns"></div></li>
+        </ol>
+        <span class="s-msg" id="tg-a-msg" role="status"></span>
+      </div>
       <label>Token bot <input id="s-tg-token" type="password" autocomplete="off"
              placeholder="de la @BotFather"></label>
       <label>Chat ID <input id="s-tg-chat" autocomplete="off" placeholder="ex. 123456789"></label>
       <label>Adresa interfeței (legături în mesaje) <input id="s-web-url" autocomplete="off" placeholder="ex. http://192.168.1.2:8079"></label>
-      <p class="hint">Creezi botul cu @BotFather (/newbot), îi trimiți un mesaj, apoi iei
-        chat ID-ul din https://api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</p>
+      <p class="hint">Sau completează de mână jetonul și chat ID-ul (avansat).</p>
       <label class="inline"><input id="s-tg-cmd" type="checkbox"> Acceptă comenzi din acest chat
-        (/acasă, /plecat, /noapte, /stare)</label>
+        (/acasa, /plecat, /noapte, /stare)</label>
       <button class="s-test" data-ch="telegram">Trimite test Telegram</button>
       <span class="s-msg" id="s-msg-telegram"></span>
       <h3 class="wh-h3">Rezumatul zilei</h3>
