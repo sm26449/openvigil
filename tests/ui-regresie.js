@@ -448,11 +448,17 @@ const AX_ECRANE = ['#live', '#ev/inc', '#ev/jurnal', '#ev/poze', '#pb', '#ai/per
 async function scenAX(browser) {
   console.log('\n== AX. Accesibilitate (axe-core, WCAG 2.1 AA) pe ecranele principale ==');
   for (const [nume, opt] of [['desktop', {}], ['telefon', { viewport: { width: 390, height: 844 }, mobile: true }], ['culcat', { viewport: { width: 844, height: 390 }, mobile: true }]]) {
-    const app = await openApp(browser, opt);
+    // fluxul de langa Live cu 30 de cadre: prinde randurile strivite (regresia din UX-B)
+    const cadre = Array.from({ length: 30 }, (_, i) => ({ cat: 'om', cam: 1, cam_nume: 'Poartă', zi: '2026-01-01',
+      time: `12:${String(59 - i).padStart(2, '0')}:00`, url: `/snapshots/2026-01-01/12${String(59 - i).padStart(2, '0')}00_cam1_person.jpg`,
+      thumb: `/api/flux/thumb/2026-01-01/12${String(59 - i).padStart(2, '0')}00_cam1_person.jpg`, label: 'person' }));
+    const app = await openApp(browser, { ...opt, api: { '/api/flux': { zi: '2026-01-01', cadre } } });
     const { page } = app;
     try {
+      await page.evaluate(() => { if (document.querySelector('#flux')?.classList.contains('hidden')) document.querySelector('#flux-toggle')?.click(); });
+      await page.waitForTimeout(300);
       await page.addScriptTag({ content: AXE_SRC });
-      const grave = new Map(); const titluri = new Set(); const mici = new Set();
+      const grave = new Map(); const titluri = new Set(); const mici = new Set(); const strivite = new Set();
       for (const h of AX_ECRANE) {
         await page.evaluate((x) => { location.hash = x; }, h);
         await page.waitForTimeout(400);
@@ -463,11 +469,16 @@ async function scenAX(browser) {
           const tinte = [...document.querySelectorAll('button, a[href], select, input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=range])')]
             .filter(vis).filter((e) => { const b = e.getBoundingClientRect(); return b.height < 23.5 && !e.closest('p, li, td, .hint'); })
             .slice(0, 5).map((e) => (e.id ? '#' + e.id : e.tagName.toLowerCase() + '.' + (e.className || '').toString().split(' ')[0]) + ' ' + Math.round(e.getBoundingClientRect().height) + 'px');
+          // controale strivite sub continutul lor (ex. randurile din fluxul Live, 24 px peste o poza de 54)
+          const strivite = [...document.querySelectorAll('button, .link-btn')].filter(vis)
+            .filter((e) => e.scrollHeight > e.clientHeight + 2 && getComputedStyle(e).overflowY === 'visible')
+            .slice(0, 3).map((e) => (e.id ? '#' + e.id : e.tagName.toLowerCase() + '.' + String(e.className).split(' ')[0]) + ` ${e.clientHeight}<${e.scrollHeight}`);
           return { v: v.filter((x) => x.impact === 'critical' || x.impact === 'serious')
-            .map((x) => `${x.id} (${x.impact}): ${x.nodes.slice(0, 2).map((n) => n.target.join(' ')).join(', ')}`), tinte };
+            .map((x) => `${x.id} (${x.impact}): ${x.nodes.slice(0, 2).map((n) => n.target.join(' ')).join(', ')}`), tinte, strivite };
         });
         for (const x of r.v) if (!grave.has(x.split(':')[0])) grave.set(x.split(':')[0], `${h} ${x}`);
         for (const x of r.tinte) mici.add(`${h} ${x}`);
+        for (const x of r.strivite) strivite.add(`${h} ${x}`);
       }
       grave.size ? bad(`AX ${nume}`, `${grave.size} incalcari critice/serioase: ` + [...grave.values()].slice(0, 6).join(' | '))
         : ok(`AX ${nume}: zero incalcari critice/serioase pe ${AX_ECRANE.length} ecrane`);
@@ -475,6 +486,7 @@ async function scenAX(browser) {
       (m.main === 1 && m.sari) ? ok(`AX ${nume}: un singur <main> + „Sari la conținut”`) : bad(`AX ${nume}`, `main=${m.main} sari=${m.sari}`);
       titluri.size >= 5 ? ok(`AX ${nume}: titlul paginii se schimba pe ecran (${titluri.size} titluri distincte)`) : bad(`AX ${nume}`, `titlul nu se schimba: ${[...titluri].join(' | ')}`);
       mici.size ? bad(`AX ${nume}`, `tinte sub 24 px: ${[...mici].slice(0, 6).join(' | ')}`) : ok(`AX ${nume}: nicio tinta de control sub 24 px`);
+      strivite.size ? bad(`AX ${nume}`, `controale strivite sub continut: ${[...strivite].slice(0, 6).join(' | ')}`) : ok(`AX ${nume}: niciun control strivit sub continutul lui`);
     } finally { await app.close(); }
   }
 }

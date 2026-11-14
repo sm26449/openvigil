@@ -86,6 +86,8 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   până la 480): cu gruparea, primele 60 puteau deveni doar 3 carduri.
 - Poze: pagini de câte 60, cu „Încă N” și încărcare la derulare, în loc de sute de carduri
   într-o singură pagină.
+- Fluxul de lângă Live nu mai are rândurile suprapuse (regresie a țintelor minime de 24 px); suita
+  izolată verifică acum că niciun buton nu e strivit sub conținutul lui.
 - Pe Live, mișcarea simplă (VMD) apare portocaliu, fără chenar roșu; roșul rămâne pentru
   intruziune, linie trecută, sabotaj și celelalte alarme.
 
