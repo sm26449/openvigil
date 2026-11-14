@@ -5,145 +5,106 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 
 ## [Unreleased]
 
-### Reparat
-- Căutarea semantică aplică intervalele calendaristice și camerele înainte de limitarea
-  rezultatelor; întrebările funcționează și din bara globală, inclusiv prima apariție,
-  ore exacte și numele camerei. Etichetele românești și alarmele generice rămân eligibile.
-- Indexarea păstrează toate zilele unui lot, evită duplicatele și publică vectorii împreună
-  cu metadatele într-un fișier atomic. Reconcilierea periodică recuperează imaginile omise.
-- Eticheta declanșatoare a unui cadru întreg nu ascunde alte obiecte din imagine; filtrarea
-  pe clasă se aplică decupajelor. Backfill-ul grupează scrierile pe disc, cu loturi GPU mici.
-- Răspunsurile arată acoperirea pozelor și perioada; gruparea nu unește camere diferite,
-  iar observațiile din jurnal nu sunt prezentate ca numărătoare completă a trecerilor.
-- Setări → spațiul și retenția nu mai dau eroare când curățarea șterge un segment chiar în
-  timpul măsurării; arhiva nu mai raportează 0 GB la primul fișier dispărut.
-- Centrul de sănătate arată memoria GPU („5,1 din 16 GB (32%)”) în loc de „[object Object]”.
-- „Șterge poza” din lightbox cere confirmare și stă pe un rând separat de butoanele de
-  recatalogare, ca o atingere greșită pe telefon să nu mai șteargă o probă.
-- Redarea HLS de rezervă pe Safari/iOS fără MSE nu mai este blocată de politica de securitate
-  a conținutului (`media-src` permite lista de redare `data:`).
-- Panourile de setări care conțin doar opțiuni avansate (Sistem) nu mai apar goale: explică
-  ce e ascuns și au un buton care arată opțiunile.
-- „O cameră nu scrie pe disc” în loc de „1 camere nu scriu pe disc”.
+## [2.2.0] — în pregătire (candidat: 2.2.0-rc3)
 
-### Accesibilitate
-- Contrast WCAG AA peste tot: culoare proprie pentru legături și text roșu (`--link`,
-  `--alarm-text`), insigna de incidente lizibilă, nicio legătură pe albastrul implicit.
-- Reper `<main>` și legătura „Sari la conținut”; titlul ferestrei spune ecranul curent
-  („Evenimente — Jurnal · OpenVigil”); paginile publice se numesc „… — OpenVigil”.
-- Roluri ARIA corecte: taburile din Evenimente și Setări sunt tab-uri reale, cu săgeți
-  Home/End; linia de timp nu mai e un „slider” cu butoane în el; punctul de stare al camerei
-  are nume; zonele derulabile și căutarea semantică au etichete.
-- Panoul camerei primește focusul la deschidere, se închide cu Escape și întoarce focusul
-  pe rândul camerei.
-- Ținte de minimum 24 px (32 px pe ecrane tactile), „Contul meu” și „Ieși” despărțite,
-  „Ieși din cont” fără buton în legătură; textul de minimum 12 px.
-- Controalele native pe tema închisă (`color-scheme`) și contur de focus în modul
-  „contrast ridicat” din Windows.
-- Suita izolată de interfață verifică automat (axe-core) ecranele principale pe desktop și
-  telefon: zero încălcări critice sau serioase, `<main>`, titlu pe ecran, ținte ≥ 24 px.
+**Highlights (English)** — Faster triage, a calmer and more accessible interface, and a persistent
+semantic search index.
+- **Triage that scales.** Repeated incidents from the same camera are grouped into one card with
+  "confirm all / all false"; every incident shows the nearest saved frame; on a phone you swipe
+  right to confirm or left for a false alarm, with Undo. A "While you were away" card on Live
+  summarises what happened since you last looked.
+- **Choose the stream in HD**, like a commercial NVR: Auto, the camera's small stream (fast, little
+  data), or HD 720p / native — only one stream on screen at a time.
+- **Accessible and usable on every screen.** WCAG AA contrast, real tabs and landmarks, keyboard
+  focus that never gets lost, 24 px minimum targets; the bottom navigation now also covers tablets
+  and phones in landscape; multi-selects became checkboxes that work on touch screens.
+- **Connect Telegram in three steps** — paste the bot token, send the bot a message, done; the chat
+  ID is found automatically.
+- **Semantic search in PostgreSQL (optional).** The index can move from per-day files to pgvector,
+  with a persistent indexing queue, a "teach the search" workflow and binary backup of vectors.
 
-### Schimbat
-- Pe tabletă (≤ 1100 px) și pe telefonul culcat (înălțime ≤ 500 px) navigarea trece în bara
-  de jos cu „Mai mult”; înainte, meniul de sus ascundea AI, Camere, Setări, Stare și Program.
-- Un ecran nou se deschide de sus: adresa (#cams, #live…) nu mai derulează secțiunea sub
-  antetul lipit, iar derularea ecranului anterior nu se mai păstrează.
-- Nimic nu mai lărgește pagina pe telefon (select-urile lungi din Reguli și Utilizatori);
-  gradațiile liniei de timp rămân în bară; „Închide” din lightbox rămâne în ecran la 320 px;
-  HD are fundal opac.
-- Telefonul culcat pliază uneltele (Redare, Live, Camere) ca pe telefon, ca videoul să aibă loc.
-- Camere pe telefon: starea camerei stă pe toată lățimea, iar la 320 px numele se rupe pe
-  rânduri în loc să fie tăiat; filtrele de grup nu mai par toate active.
-- Pastilele de evenimente de pe linia de timp nu se mai suprapun pe ecranele înguste.
-
-### Conținut și limbaj
-- Diacritice în toată interfața: ~230 de texte corectate („Notificări”, „Intră”, „șterge”,
-  „după”, zilele săptămânii…). O verificare nouă (`scripts/diacritice_check.py`, rulată de
-  teste) pică dacă un text nou de interfață are forme fără diacritice.
-- Rezumatul episoadelor („o persoană necunoscută · 45s · a zăbovit pe loc”) se reface la
-  afișare în limba interfeței: în engleză nu mai apare în română, iar episoadele vechi își
-  primesc diacriticele. Semnalmentele se salvează separat pentru episoadele noi.
-- Numele camerei în loc de „cam N” în exporturi, citirile de numere, fețe și lista de
-  utilizatori. IP-ul nu mai stă pe dalele Live (se suprapunea peste textul camerei și îl vedeau
-  și conturile viewer); administratorul îl vede la trecerea cu mouse-ul și în Camere.
-- Termeni unici: butonul din antet se numește „Sănătate” (deschide Centrul de sănătate), iar
-  jurnalul modificărilor din Setări se numește „Audit” — nu se mai confundă cu Setări → Stare
-  și cu Evenimente → Jurnal.
-- Numere care se potrivesc: insigna și „de tratat” arată același număr de incidente (înainte
-  200 față de 60), cu „99+” pe insignă; Redarea arată durata înregistrată și întreruperile în
-  loc de „1 segment”; Mașini explică atunci când ultimele citiri sunt mai vechi de 7 zile.
-- `/api/incidents` calculează coada o singură dată pentru listă și numărătoare (era de două ori).
-
-### Reparat
-- HD: „Calitate” alege și fluxul, ca la Synology — **Auto** (fluxul mic al camerei, apoi HD
-  când rulează fluid), **Flux mic** (doar fluxul 2 al camerei: rapid, puține date) sau **HD
-  720p / HD nativ** (doar fluxul mare). Pe ecran rămâne un singur flux: în Auto, substream-ul
-  se oprește când apare HD-ul. În Înregistrări, „Flux mic” înseamnă 720p.
-- HD pe telefon în portret: data și numele camerei nu se mai văd de două ori. Cadrul-poster
-  (4:3) și substream-ul rămâneau sub fluxul HD (3:2) și ieșeau sus și jos; acum posterul
-  dispare la primul cadru video, substream-ul se ascunde când apare HD-ul, iar straturile au
-  fundal negru.
-
-### Reparat (reverificarea auditului frontend din 2026-11-12)
-- Butonul de ascultare din HD pornește sunetul pe fluxul care rulează (erau două video).
-- Tava de joburi: fără legătură cu serverul arată „reîncerc…” și rărește încercările până la
-  10 s (înainte bătea serverul la 800 ms în tăcere); focusul de pe ✕/⬇ nu se mai pierde la
-  fiecare reîmprospătare.
-- Panoul camerei se închide cu Esc, dar nu mai blochează fundalul: din listă se trece direct
-  la altă cameră (regresie a accesibilității din aceeași serie).
-- Starea partajată dintre ecrane (`state.js`) își declară proprietățile, valoarea inițială și
-  cine le scrie; un test pică la o proprietate nedeclarată.
-
-### Adăugat (UX-G)
-- „Cât ai lipsit”: la întoarcere după mai mult de 2 ore, un card sus pe Live rezumă ce s-a
-  întâmplat de la ultima privire pe acel dispozitiv — incidentele grupate cu poză, cine a venit
-  (fețe și numere cunoscute), camerele căzute (`GET /api/rezumat/absenta`, cel mult 7 zile).
-- Triaj prin glisare pe telefon: spre dreapta confirmă, spre stânga marchează alarmă falsă,
-  pe un incident sau pe un grup, cu „Anulează” 6 secunde.
-- „Conectează Telegram (pas cu pas)”: jetonul se verifică, chat-ul se găsește singur după un
-  mesaj trimis botului, iar salvarea trimite o probă; funcționează și când botul ascultă deja.
-- Paznicul (operator) poate trata și grupurile de incidente, nu doar câte unul.
-- Indiciul comenzilor Telegram arată `/acasa` (comenzile nu pot avea diacritice).
-
-### Controale
-- Un singur sistem de controale: select-urile, câmpurile, butoanele și „Alege fișierul” fără
-  stil propriu iau stilul temei (nu mai apar native, albe); bifele și butoanele radio au
-  culoarea de accent.
-- Selecțiile multiple cu Ctrl+clic (zone și camere în Reguli, camere la Utilizatori, camerele
-  urmăririi, ale alertei de mașini și ale time-lapse-ului) sunt acum bife, utilizabile pe
-  telefon; select-ul rămâne sursa datelor, deci salvarea și editarea merg neschimbate.
-- Câmpurile numerice și de oră din Setări și AI nu se mai întind pe toată lățimea: unitatea
-  („zile”, „secunde”, „s”) stă lângă ele. „Salvează regula” e butonul principal.
-- Bara Live are un singur stil de comutator (Previzualizare, Mod perete, I/O, Pop-up, Flux),
-  cu stare `aria-pressed`. Butonul modului activ își arată și numele („🏠 Acasă”).
-- Pe telefon, taburile din Setări și AI stau pe un singur rând derulabil (înainte 2–3 rânduri
-  înainte de conținut); tabul ales intră singur în vedere.
-
-### Triaj
-- Incidentele au miniatură: cadrul salvat al camerei cel mai apropiat de momentul lor (la
-  episod, de intervalul în care a stat omul); un clic pe ea deschide fișa. Mini-harta
-  traseului apare doar când omul chiar s-a mișcat (altfel era o casetă goală cu un punct roșu).
-- Incidentele repetate (3+ de pe aceeași cameră, același tip, la cel mult 30 de minute unul de
-  altul) devin un singur card cu „✓ confirmă toate”, „✕ fals toate” (cu confirmare) și
-  „Arată toate”; serverul are `POST /api/incidents/stare-bloc`, cu aceeași regulă de
-  vizibilitate pe camere ca la un incident.
-- Lista de tratat cere mai multe incidente de la server la cerere („Încarcă mai multe incidente”,
-  până la 480): cu gruparea, primele 60 puteau deveni doar 3 carduri.
-- Poze: pagini de câte 60, cu „Încă N” și încărcare la derulare, în loc de sute de carduri
-  într-o singură pagină.
-- Fluxul de lângă Live nu mai are rândurile suprapuse (regresie a țintelor minime de 24 px); suita
-  izolată verifică acum că niciun buton nu e strivit sub conținutul lui.
-- Pe Live, mișcarea simplă (VMD) apare portocaliu, fără chenar roșu; roșul rămâne pentru
-  intruziune, linie trecută, sabotaj și celelalte alarme.
+### Notă de actualizare (instalări existente)
+- Nu e nevoie de schimbări în Compose: baza folosește deja imaginea `pgvector/pgvector:pg16`, iar
+  extensia `vector` se creează singură la pornire.
+- Căutarea semantică rămâne pe fișierele pe zile (`data/semantic/*.npz`) până o muți explicit:
+  `scripts/semantic_migrate.py` (prepare → import → verify → activate). Importul se reia la
+  întrerupere, verifică fiecare vector, iar `export`/`rollback` te întorc la fișiere fără
+  recalculare pe GPU. Detalii: `docs/semantic-search.md`.
+- Dacă interfața e instalată ca aplicație pe telefon, închide-o complet o dată după actualizare.
 
 ### Adăugat
-- „Învață căutarea” în interfață: verdicte pe concept și imagine, exemple păstrate în
-  PostgreSQL și backup, navigare prin arhivă și recuperarea exemplelor confirmate sub prag.
-- Backend semantic PostgreSQL opțional, coadă persistentă cu lease și retry, import
-  reluabil cu verificare integrală și export/revenire NPZ fără recalculare GPU.
-- Backup binar al vectorilor și restaurare tranzacțională în ordinea relațiilor dintre tabele.
-- Prototip pgvector pentru comparații exacte pe vectorii existenți, izolat în baza de test,
-  fără recalcularea embeddings-urilor și fără comutarea backendului instalației.
+- **Triaj pe grupuri:** 3+ incidente de pe aceeași cameră, de același tip, la cel mult 30 de
+  minute unul de altul, devin un card cu „✓ confirmă toate”, „✕ fals toate” și „Arată toate”
+  (`POST /api/incidents/stare-bloc`, aceeași regulă de vizibilitate pe camere ca la un incident;
+  permis și paznicului). „Încarcă mai multe incidente” aduce până la 480.
+- **Miniatură pe fiecare incident:** cadrul salvat cel mai apropiat de moment (la episod, din
+  intervalul în care a stat omul); un clic deschide fișa.
+- **Glisare în triaj pe telefon:** dreapta confirmă, stânga marchează alarmă falsă, cu „Anulează”.
+- **„Cât ai lipsit”:** la întoarcere după peste 2 ore, un card pe Live cu incidentele grupate și
+  poze, cine a venit (fețe și numere cunoscute) și camerele căzute (`GET /api/rezumat/absenta`).
+- **Alegerea fluxului în HD:** Auto / Flux mic (camera) / HD 720p / HD nativ, cu un singur flux pe
+  ecran; în Înregistrări, „Flux mic” înseamnă 720p.
+- **„Conectează Telegram (pas cu pas)”:** jetonul se verifică, chat-ul se găsește singur după un
+  mesaj trimis botului, salvarea trimite o probă (merge și când botul ascultă deja).
+- **Căutare semantică în PostgreSQL (opțional):** vectori pgvector, coadă persistentă cu lease și
+  reîncercări, import reluabil cu verificare integrală, export și revenire la fișiere fără GPU,
+  backup binar al vectorilor cu restaurare tranzacțională.
+- **„Învață căutarea”** din interfață: verdicte pe concept și imagine, exemple păstrate în
+  PostgreSQL și în backup, navigare prin arhivă, recuperarea exemplelor confirmate sub prag.
+
+### Schimbat
+- **Navigare:** pe tabletă (≤ 1100 px) și pe telefonul culcat (≤ 500 px înălțime) navigarea e în
+  bara de jos cu „Mai mult”; un ecran nou se deschide de sus; nimic nu mai lărgește pagina pe
+  telefon; telefonul culcat pliază uneltele ca videoul să aibă loc.
+- **Controale unificate:** select-urile, câmpurile, butoanele și „Alege fișierul” au stilul temei;
+  selecțiile multiple (Ctrl+clic) sunt bife; câmpurile numerice nu se mai întind pe toată lățimea;
+  bara Live are un singur stil de comutator; modul activ își arată numele („🏠 Acasă”); taburile
+  din Setări și AI stau pe un rând derulabil pe telefon.
+- **Mai puțin zgomot vizual:** mișcarea simplă e portocalie (roșul rămâne pentru alarme reale);
+  IP-ul a ieșit de pe dalele Live (adminul îl vede la trecerea cu mouse-ul și în Camere); numele
+  camerei înlocuiește „cam N”; Poze se încarcă pe pagini de câte 60.
+- **Termeni unici:** butonul din antet e „Sănătate” (Centrul de sănătate), jurnalul modificărilor
+  din Setări e „Audit”.
+- **Numere care se potrivesc:** insigna și „de tratat” arată același număr (cu „99+”); Redarea
+  arată durata înregistrată și întreruperile; Mașini explică citirile mai vechi de 7 zile.
+- `/api/incidents` calculează coada o singură dată pentru listă și numărătoare.
+
+### Accesibilitate
+- Contrast WCAG AA peste tot (`--link`, `--alarm-text`, insigna de incidente, nicio legătură pe
+  albastrul implicit).
+- Reper `<main>`, „Sari la conținut”, titlul ferestrei spune ecranul curent.
+- Roluri ARIA corecte: tab-uri reale cu săgeți și Home/End; linia de timp nu mai e un „slider” cu
+  butoane în el; etichete pe zonele derulabile, căutare și bifele de cameră.
+- Panoul camerei primește focusul, se închide cu Esc și întoarce focusul pe rând.
+- Ținte de minimum 24 px (32 px pe ecrane tactile), text de minimum 12 px, `color-scheme` închis
+  pentru controalele native și contur de focus în modul „contrast ridicat” din Windows.
+
+### Reparat
+- **Căutarea semantică:** intervalele și camerele se aplică înainte de limitarea rezultatelor;
+  întrebările merg și din bara globală (prima apariție, ore exacte, numele camerei); indexarea
+  nu mai pierde zile și nu mai face dubluri (fișiere atomice, reconciliere periodică); eticheta
+  unui cadru întreg nu mai ascunde alte obiecte; răspunsurile arată acoperirea și perioada.
+- **HD pe telefon:** data și numele camerei nu se mai văd de două ori (posterul și substream-ul
+  rămâneau sub fluxul HD cu alte proporții); sunetul pornește pe fluxul care rulează.
+- **Setări:** spațiul și retenția nu mai dau eroare când curățarea șterge un segment în timpul
+  măsurării; Sistem nu mai apare gol când opțiunile avansate sunt ascunse; memoria GPU apare ca
+  text, nu „[object Object]”.
+- **Poze:** „Șterge poza” cere confirmare și stă separat de recatalogare.
+- **Safari/iOS:** redarea HLS de rezervă nu mai e blocată de politica de securitate a conținutului.
+- **Limbaj:** ~230 de texte primesc diacritice; rezumatul episoadelor apare în limba interfeței
+  (și cu diacritice pentru cele vechi); „O cameră nu scrie pe disc”; indiciul comenzilor
+  Telegram arată `/acasa`.
+- **Tava de joburi:** fără legătură cu serverul spune „reîncerc…” și rărește încercările; focusul
+  nu se mai pierde la reîmprospătare.
+- **Prima pornire pe o bază nouă:** conexiunile deschise înainte de crearea extensiei `vector`
+  își înregistrează tipul la următoarea folosire (vectorii nu mai vin ca octeți bruți).
+
+### Intern
+- Teste noi: accesibilitate automată cu axe-core pe desktop, telefon și telefon culcat (inclusiv
+  controale strivite), triaj și glisare, rezumatul de absență, asistentul Telegram, alegerea
+  fluxului HD, bifele, contractul stării partajate (`state.js`), diacriticele
+  (`scripts/diacritice_check.py`).
+- Capturile auditurilor locale (`tests/_audit`) nu mai intră în imaginea Docker.
 
 ## [2.1.2] — 2026-11-12
 
