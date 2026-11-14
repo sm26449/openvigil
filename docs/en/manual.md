@@ -911,5 +911,5 @@ The installation's configuration (NVR IP/user/password, web port, playback heigh
 
 ## GPU (transcoding acceleration)
 **Active**: the whole video chain runs on the GPU (RTX 2000 Ada: NVDEC decode +
-h264_nvenc encode) — see `journalctl -u nvr-web | grep hwaccel` ("DA"). Without the card,
+h264_nvenc encode) — see `docker compose logs web | grep hwaccel` ("DA"). Without the card,
 the system falls back automatically to the CPU (libx264, accelerated playback limited to 2x).

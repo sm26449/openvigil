@@ -911,5 +911,5 @@ Configurarea instalarii (NVR: IP/utilizator/parola, port web, inaltimea redarii 
 
 ## GPU (accelerare transcodare)
 **Activ**: tot lantul video ruleaza pe GPU (RTX 2000 Ada: decode NVDEC + encode
-h264_nvenc) — vezi `journalctl -u nvr-web | grep hwaccel` ("DA"). Fara placa,
+h264_nvenc) — vezi `docker compose logs web | grep hwaccel` ("DA"). Fara placa,
 sistemul cade automat pe CPU (libx264, redare accelerata limitata la 2x).
