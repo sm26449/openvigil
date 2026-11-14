@@ -89,6 +89,17 @@ identitatea între camere și numărul total de treceri rămân neconfirmate.
 Pentru trecerile ratate sunt necesare intervale confirmate independent de rezultatele top-k.
 Lotul curent este pentru explorare; validarea ajustărilor trebuie făcută pe un lot separat.
 
+Identificarea altor referințe a început cu un reper calendaristic oferit de utilizator.
+Au fost inspectate vizual 434 de cadre selectate prin clase de obiecte în alte sâmbete,
+fără o nouă trecere confirmată; acest screening nu reprezintă vizionarea exhaustivă a video-ului.
+Căutarea de piste a fost apoi extinsă la celelalte 89 de zile păstrate, prin asemănare cu
+un decupaj confirmat. Au fost pregătiți 8 candidați din alte zile, în așteptarea confirmării
+utilizatorului, în `docs/audits/2026-11-14-semantic-independent/` (privat).
+Rezultatele textuale top-100 pe 90 de zile au fost fixate separat, înaintea etichetării.
+Unele referințe propuse depășesc perioada inițială de 30 de zile și nu pot fi numărate ca
+ratări ale acelei căutări. Pistele folosesc același encoder vizual, deci nu constituie
+un lot independent pentru estimarea recall-ului global. Nu s-au modificat praguri sau modele.
+
 1. Evaluarea vizuală pe exemple etichetate, apoi prioritizarea track-urilor, verificării VLM
    selective și alertelor semantice. Aceste funcții nu sunt declarate implementate.
 2. Măsurarea și reducerea consumului RAM al backupului complet: transportul vectorilor
