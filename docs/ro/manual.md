@@ -554,6 +554,11 @@ settings.json, go2rtc.yaml sunt in .gitignore; vezi config.example.py).
 readuce, iar **mini-timeline-ul zilei** (segmente verzi + puncte de evenimente + marcaj
 "acum" rosu) permite click oriunde = redare din acel moment. `↗ Deschide in Inregistrari`
 duce camera in tabul mare.
+**Calitatea in HD** (selectorul din bara de jos, tinut minte pe dispozitiv) alege si fluxul, ca la
+un NVR comercial: **Auto** porneste pe fluxul mic al camerei si trece pe HD cand acesta ruleaza
+fluid (fluxul mic se opreste atunci); **Flux mic (camera)** = doar fluxul 2 al camerei, rapid si cu
+putine date (bun pe date mobile); **HD 720p** / **HD nativ** = doar fluxul mare. Pe ecran e mereu un
+singur flux. In Inregistrari exista doar fluxul mare, deci acolo „Flux mic” inseamna 720p.
 **In tabul Inregistrari** (Etapa 2 din audit, 2026-10-23): timeline-ul se incarca singur la
 schimbarea camerei sau a zilei; **zoom** 24h / 6h / 1h / 15 min (butoane, `+`/`−`, rotita pe
 bara; Shift+rotita deruleaza; fereastra urmareste cursorul); **pauza** (Space/K), **cadru cu
@@ -565,7 +570,7 @@ doar cu GPU, 8x masurat 0.995x realtime pe HEVC 2688x1520), **Link** copiaza adr
 *De tratat* (triajul de incidente, cu badge pe tab), *Jurnal* (istoricul permanent, episoade,
 CSV, clip/MP4/raport) si *Poze* (snapshot-urile cu filtre, cautarea semantica si intrebarile);
 adresele `#ev/inc`, `#ev/jurnal`, `#ev/poze` (`#inc` si `#al` raman ca aliasuri). Setari →
-Jurnal ramane separat: e istoricul modificarilor de configurare, nu evenimente.
+Audit ramane separat: e istoricul modificarilor de configurare, nu evenimente.
 Adresa paginii spune mereu unde esti (`#live`, `#ev/...`, `#pb/...`, `#hd/<cam>`): un link
 primit pe Telegram deschide direct momentul (cu `web_url` din Setari → Notificari,
 notificarile primesc legatura), iar Inapoi pe telefon inchide overlay-ul HD.
@@ -879,7 +884,7 @@ verificat e ca GetStreamUri intoarce un RTSP accesibil de pe server.
     ultima folosire. Pe HTTPS cookie-ul primeste `Secure` (per cerere, LAN-ul pe HTTP merge
     in continuare).
   - **Push**: vezi „Notificari push" mai jos.
-- **Jurnalul de modificari** (Setari -> Jurnal) retine utilizatorul (nu IP-ul; IP-ul apare
+- **Jurnalul de modificari** (Setari -> Audit) retine utilizatorul (nu IP-ul; IP-ul apare
   la hover) si, ca plasa de siguranta, orice POST/PUT/PATCH/DELETE reusit pe care ruta nu
   l-a auditat explicit („cerere POST /api/..." cu corpul, fara secrete). 20.000 de intrari.
 - **Zone de detectie**: butonul ▣ (in bara HD a camerei) deschide editorul — desenezi

@@ -554,6 +554,12 @@ settings.json, go2rtc.yaml are in .gitignore; see config.example.py).
 back, and the **day's mini-timeline** (green segments + event dots + red "now"
 marker) lets you click anywhere = play from that moment. `↗ Open in Recordings`
 takes the camera to the big tab.
+**Quality in HD** (the selector in the bottom bar, remembered per device) also picks the stream, as
+on a commercial NVR: **Auto** starts on the camera's small stream and switches to HD once it plays
+smoothly (the small stream then stops); **Small stream (camera)** = only the camera's second
+stream, fast and light on data (good on mobile data); **HD 720p** / **HD native** = only the main
+stream. There is always a single stream on screen. Recordings only have the main stream, so there
+"Small stream" means 720p.
 **In the Recordings tab** (stage 2 of the audit, 2026-10-23): the timeline loads by itself when
 the camera or the day changes; **zoom** 24h / 6h / 1h / 15 min (buttons, `+`/`−`, wheel on the
 bar; Shift+wheel scrolls; the window follows the cursor); **pause** (Space/K), **frame by
@@ -565,7 +571,7 @@ only with a GPU, 8x measured 0.995x realtime on HEVC 2688x1520), **Link** copies
 *Open* (incident triage, with a badge on the tab), *Log* (the permanent history, episodes,
 CSV, clip/MP4/report) and *Snapshots* (snapshots with filters, semantic search and questions);
 addresses `#ev/inc`, `#ev/jurnal`, `#ev/poze` (`#inc` and `#al` remain as aliases). Settings →
-Log stays separate: it is the history of configuration changes, not events.
+Audit stays separate: it is the history of configuration changes, not events.
 The page address always says where you are (`#live`, `#ev/...`, `#pb/...`, `#hd/<cam>`): a link
 received on Telegram opens the moment directly (with `web_url` from Settings → Notifications,
 notifications get the link), and Back on a phone closes the HD overlay.
@@ -877,7 +883,7 @@ check is that GetStreamUri returns an RTSP reachable from the server.
     last use. On HTTPS the cookie gets `Secure` (per request, LAN over HTTP keeps
     working).
   - **Push**: see "Push notifications" below.
-- **The change log** (Settings -> Log) records the user (not the IP; the IP appears
+- **The change log** (Settings -> Audit) records the user (not the IP; the IP appears
   on hover) and, as a safety net, any successful POST/PUT/PATCH/DELETE that the route did not
   audit explicitly ("POST request /api/..." with the body, no secrets). 20,000 entries.
 - **Detection zones**: the ▣ button (in the camera's HD bar) opens the editor — you draw the
