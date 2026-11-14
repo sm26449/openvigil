@@ -747,6 +747,12 @@ function buildFixBar() {
   del.innerHTML = icon('trash', 14) + ' ' + esc(t('Șterge poza'));
   del.title = t('Scoate doar acest snapshot (nu schimbă triajul incidentelor). Ca să corectezi AI-ul, folosește recatalogarea de mai sus.');
   del.onclick = deleteAlarm;
+  // pe randul ei, departe de cele 15 butoane de recatalogare: o atingere gresita pe telefon
+  // nu mai poate sterge o proba (audit UX 2026-11-14, D3)
+  const sep = document.createElement('span');
+  sep.className = 'fix-sep';
+  sep.setAttribute('aria-hidden', 'true');
+  bar.appendChild(sep);
   bar.appendChild(del);
 }
 async function relabel(label) {
@@ -764,6 +770,7 @@ async function relabel(label) {
 async function deleteAlarm() {
   if (phIdx < 0) return;
   const it = alList[phIdx];
+  if (!confirm(t('Ștergi definitiv această poză? Nu se poate anula.'))) return;
   const d = await post('/api/alarms/delete', { url: it.url });
   if (!d || d.error) return;
   alDayItems = alDayItems.filter((x) => x.url !== it.url);

@@ -1169,7 +1169,10 @@ function hcAi(ai) {
   if (!ai) return '';
   const bits = [
     hcRand(t('Serviciu'), ai.serviciu === 'nvr-ai' ? 'nvr-ai (GPU)' : t('local')),
-    ai.gpu ? hcRand('GPU', ai.gpu) : '',
+    // ai.gpu e {folosit_mb, total_mb, procent}; afisat direct ar iesi „[object Object]"
+    ai.gpu ? hcRand(t('Memorie GPU'), typeof ai.gpu === 'object'
+      ? t('{folosit} din {total} GB ({p}%)', { folosit: (ai.gpu.folosit_mb / 1024).toFixed(1).replace('.', ','), total: (ai.gpu.total_mb / 1024).toFixed(1).replace('.', ','), p: ai.gpu.procent })
+      : ai.gpu, typeof ai.gpu === 'object' && ai.gpu.procent >= 90) : '',
     hcSubsistem(t('Fețe'), ai.face),
     hcSubsistem(t('Numere (LPR)'), ai.lpr),
     hcSubsistem(t('Descriere'), ai.descriere),

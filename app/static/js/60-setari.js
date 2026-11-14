@@ -180,6 +180,18 @@ function setAvansat(on, save = true) {
     }
   }
 }
+// un panou cu TOATE cardurile avansate (Sistem) ramanea gol, doar cu titlul, cat timp
+// „avansate" e oprit — parea o pagina stricata (audit UX 2026-11-14, D8)
+for (const pane of document.querySelectorAll('#set .set-pane')) {
+  const carduri = pane.querySelectorAll('.set-card');
+  if (!carduri.length || [...carduri].some((c) => !c.hasAttribute('data-avansat'))) continue;
+  const gol = document.createElement('div');
+  gol.className = 'set-card set-doar-simplu';
+  gol.innerHTML = html`<p>${t('Toate opțiunile de aici sunt avansate (MQTT, ora camerelor, fluiditatea grilei, NVR) și sunt ascunse.')}</p>
+    <button type="button" class="set-arata-avansat">${t('Arată opțiunile avansate')}</button>`;
+  gol.querySelector('button').onclick = () => setAvansat(true);
+  (pane.querySelector('.set-cols') || pane).prepend(gol);
+}
 $('#set-adv') && ($('#set-adv').onchange = () => setAvansat($('#set-adv').checked));
 try { if ($('#set-adv')) setAvansat(localStorage.getItem('setAvansat') === '1', false); } catch {}
 
@@ -838,7 +850,7 @@ async function loadContinuity() {
     // 1. cine scrie chiar acum
     const mute = d.acum.filter((c) => !c.scrie);
     $('#cont-live').innerHTML = html`<div class="cont-sum ${mute.length ? 'rau' : 'bun'}">${
-        mute.length ? t('{n} camere nu scriu pe disc', { n: mute.length }) : t('Toate cele {n} camere scriu pe disc', { n: d.acum.length })
+        mute.length === 1 ? t('O cameră nu scrie pe disc') : mute.length ? t('{n} camere nu scriu pe disc', { n: mute.length }) : t('Toate cele {n} camere scriu pe disc', { n: d.acum.length })
       }</div><div class="cont-cams">${d.acum.map((c) => {
         const v = c.varsta === null ? '—' : c.varsta < 90 ? `${c.varsta}s` : `${Math.round(c.varsta / 60)} min`;
         return html`<div class="cont-cam${c.scrie ? '' : ' mut'}" title="${t('{cam} — ultima scriere acum {v}', { cam: c.name, v })}${

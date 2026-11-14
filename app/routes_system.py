@@ -223,6 +223,15 @@ def api_continuity():
                     "probleme": continuity.problems()})
 
 
+def _marime(p):
+    """Marimea unui segment; 0 daca retentia l-a sters intre listare si masurare (cursa
+    reala: /api/retention si /api/storage dadeau 500 in minutul curatarii)."""
+    try:
+        return os.path.getsize(p)
+    except OSError:
+        return 0
+
+
 _spatiu_memo = {"t": 0, "v": {}}
 
 
@@ -242,7 +251,7 @@ def spatiu_per_camera(ttl=60):
         files = record._files(cid)
         if not files:
             continue
-        out[cid] = {"octeti": sum(os.path.getsize(p) for _, p, _ in files),
+        out[cid] = {"octeti": sum(_marime(p) for _, p, _ in files),
                     "zile": round((time.time() - files[0][0]) / 86400, 1),
                     "segmente": len(files)}
     _spatiu_memo.update(t=time.time(), v=out)
@@ -274,7 +283,7 @@ def api_retention():
                 if n.startswith("cam") and n[3:].isdigit():
                     for t, p, fn in record._listeaza(ad, int(n[3:])):
                         arhiva["segmente"] += 1
-                        arhiva["gb"] += os.path.getsize(p) / 2**30
+                        arhiva["gb"] += _marime(p) / 2**30
             arhiva["gb"] = round(arhiva["gb"], 1)
             arhiva["liber_gb"] = round(shutil.disk_usage(ad).free / 2**30, 1)
         except OSError:

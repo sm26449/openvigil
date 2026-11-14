@@ -15,6 +15,16 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   pe clasă se aplică decupajelor. Backfill-ul grupează scrierile pe disc, cu loturi GPU mici.
 - Răspunsurile arată acoperirea pozelor și perioada; gruparea nu unește camere diferite,
   iar observațiile din jurnal nu sunt prezentate ca numărătoare completă a trecerilor.
+- Setări → spațiul și retenția nu mai dau eroare când curățarea șterge un segment chiar în
+  timpul măsurării; arhiva nu mai raportează 0 GB la primul fișier dispărut.
+- Centrul de sănătate arată memoria GPU („5,1 din 16 GB (32%)”) în loc de „[object Object]”.
+- „Șterge poza” din lightbox cere confirmare și stă pe un rând separat de butoanele de
+  recatalogare, ca o atingere greșită pe telefon să nu mai șteargă o probă.
+- Redarea HLS de rezervă pe Safari/iOS fără MSE nu mai este blocată de politica de securitate
+  a conținutului (`media-src` permite lista de redare `data:`).
+- Panourile de setări care conțin doar opțiuni avansate (Sistem) nu mai apar goale: explică
+  ce e ascuns și au un buton care arată opțiunile.
+- „O cameră nu scrie pe disc” în loc de „1 camere nu scriu pe disc”.
 
 ### Adăugat
 - „Învață căutarea” în interfață: verdicte pe concept și imagine, exemple păstrate în

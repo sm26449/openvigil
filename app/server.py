@@ -291,7 +291,9 @@ def security_headers(resp):
         "script-src 'self'",
         "style-src 'self' 'unsafe-inline'",
         f"img-src 'self' data: blob: http://{releu} https://{releu}",
-        f"media-src 'self' blob: http://{releu} https://{releu}",
+        # data: — calea HLS din video-rtc.js (Safari/iOS fara MSE) da lista de redare ca
+        # data:application/vnd.apple.mpegurl; fara el rezerva Apple era blocata de CSP
+        f"media-src 'self' data: blob: http://{releu} https://{releu}",
         f"connect-src 'self' ws://{releu} wss://{releu} http://{releu} https://{releu} "
         f"wss://{host} ws://{host}",
         "object-src 'none'", "base-uri 'self'", "form-action 'self'",

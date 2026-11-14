@@ -1,4 +1,10 @@
 {
+  "Memorie GPU": "GPU memory",
+  "{folosit} din {total} GB ({p}%)": "{folosit} of {total} GB ({p}%)",
+  "Ștergi definitiv această poză? Nu se poate anula.": "Delete this photo permanently? This cannot be undone.",
+  "Toate opțiunile de aici sunt avansate (MQTT, ora camerelor, fluiditatea grilei, NVR) și sunt ascunse.": "All options here are advanced (MQTT, camera clock, grid smoothness, NVR) and are hidden.",
+  "Arată opțiunile avansate": "Show advanced options",
+  "O cameră nu scrie pe disc": "1 camera is not writing to disk",
   "Cum funcționează": "How it works",
   "Apasă Arată pentru a încărca noua descriere.": "Press Show to load the new description.",
   "Salvează observația": "Save note",
