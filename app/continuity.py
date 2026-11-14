@@ -314,11 +314,11 @@ def _propunere(disponibil, gb_zi, frac):
     med = (sum(frac.values()) / len(frac)) if frac else 0
     if med > 0.5:
         return {"zile": max(1, zile), "zile_evenimente": max(1, zile),
-                "motiv": t("{procent}% din segmente contin evenimente, deci treapta lunga s-ar aplica oricum la aproape tot. Doua numere diferite ar fi o promisiune fara acoperire.",
+                "motiv": t("{procent}% din segmente conțin evenimente, deci treapta lungă s-ar aplica oricum la aproape tot. Două numere diferite ar fi o promisiune fără acoperire.",
                            procent=round(med * 100))}
     lung = int(disponibil / (gb_zi * (med + (1 - med) * 0.35)) * 0.85)
     return {"zile": max(1, zile), "zile_evenimente": max(1, min(lung, zile * 4)),
-            "motiv": t("Segmentele fara evenimente pot fi sterse mai devreme, deci treapta lunga incape.")}
+            "motiv": t("Segmentele fără evenimente pot fi șterse mai devreme, deci treapta lungă încape.")}
 
 
 def problems():
@@ -340,12 +340,12 @@ def problems():
             ora = time.strftime("%H:%M", time.localtime(g["start"]))
             out.append({"cheie": f"gol-{cam['id']}-{int(g['start'] // 600)}",
                         "cam_id": cam["id"], "grav": True,
-                        "text": t("{cam}: gol de {n} min in inregistrare, incepand {ora}",
+                        "text": t("{cam}: gol de {n} min în înregistrare, începând {ora}",
                                   cam=cam['name'], n=g['sec'] // 60, ora=ora)})
     f = forecast()
     if not f["incape"]:
         out.append({"cheie": "retentie", "grav": True,
-                    "text": t("Retentia configurata cere {necesar} GB, dar avem loc de {disponibil} GB. Inregistrarile vor fi sterse mai devreme decat scrie in setari.",
+                    "text": t("Retenția configurată cere {necesar} GB, dar avem loc de {disponibil} GB. Înregistrările vor fi șterse mai devreme decât scrie în setări.",
                               necesar=f['necesar_gb'], disponibil=f['disponibil_gb'])})
     return out
 

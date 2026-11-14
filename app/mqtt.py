@@ -158,7 +158,7 @@ def test():
     while not state["connected"] and time.time() - t0 < 6:
         time.sleep(0.1)
     if not state["connected"]:
-        raise RuntimeError(state.get("error") or t("brokerul nu raspunde (adresa/portul/user/parola?)"))
+        raise RuntimeError(state.get("error") or t("brokerul nu răspunde (adresa/portul/utilizatorul/parola?)"))
     c.publish(f"{_base()}/proba",
               json.dumps({"mesaj": f"salut de la {C.NUME}",
                           "moment": time.strftime("%H:%M:%S")}, ensure_ascii=False))

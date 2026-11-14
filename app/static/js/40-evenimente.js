@@ -90,8 +90,11 @@ async function loadIncidents(auto = false) {
     const list0 = $('#inc-list');
     const prevArat = auto ? incArat : 0;       // cate carduri erau desfasurate (le re-desfasuram)
     const scrollTop = list0.scrollTop, docTop = (document.scrollingElement || {}).scrollTop || 0;
+    // numarul real de netratate (acelasi ca pe insigna), nu cate carduri s-au incarcat
+    const deTratat = d.counts ? d.counts.noi : inc.length;
     $('#inc-info').textContent = incFilter === 'noi'
-      ? t('{n} de tratat', { n: inc.length }) : t('{n} incidente', { n: inc.length });
+      ? (deTratat > inc.length ? t('{n} de tratat (sunt afișate primele {k})', { n: deTratat, k: inc.length }) : t('{n} de tratat', { n: deTratat }))
+      : t('{n} incidente', { n: inc.length });
     incRand = (e) => {
       const det = e.text || e.nume || e.numar || (e.eticheta && t(DET_RO[e.eticheta] || e.eticheta))
         || (e.subtip && t(EV_RO[(e.subtip || '').toLowerCase()] || e.subtip)) || '';
@@ -128,7 +131,7 @@ async function loadIncidents(auto = false) {
           title="${t('Fișa evenimentului: poză, clip, acțiuni')}">${t('fișă')}</button>` : ''}
         ${e.cam ? html`<button class="dosar-btn link-btn" data-cam="${e.cam}" data-t="${evClipT(e)}"
           data-id="${e.id}" data-lbl="${t(EV_TIP_RO[e.tip] || e.tip)}${det ? ': ' + det : ''}"
-          title="${t('Adauga la un dosar de caz')}">${t('🗂 la dosar')}</button>` : ''}
+          title="${t('Adaugă la un dosar de caz')}">${t('🗂 la dosar')}</button>` : ''}
         <div class="inc-acts">${act}</div>
       </div>`;
     };
@@ -193,15 +196,15 @@ async function renderCases() {
           <b>${c.titlu}</b>
           <span class="hint">${t('{n} probe', { n: c.nr_probe })} · ${c.creat.slice(0, 16)}</span>
           <span class="caz-acts">
-            ${pick ? html`<button class="caz-add link-btn" data-id="${c.id}">${t('+ adauga aici')}</button>` : ''}
+            ${pick ? html`<button class="caz-add link-btn" data-id="${c.id}">${t('+ adaugă aici')}</button>` : ''}
             <button class="caz-view link-btn" data-id="${c.id}">${t('vezi')}</button>
-            ${c.nr_probe ? html`<a class="link-btn job-link" href="/api/cases/${c.id}/export" title="${t('Descarca dosarul ZIP (clipuri cu filigran + manifest SHA-256)')}">⬇ ZIP</a>` : ''}
+            ${c.nr_probe ? html`<a class="link-btn job-link" href="/api/cases/${c.id}/export" title="${t('Descarcă dosarul ZIP (clipuri cu filigran + manifest SHA-256)')}">⬇ ZIP</a>` : ''}
             <button class="caz-del link-btn" data-id="${c.id}" title="${t('Șterge dosarul')}">🗑</button>
           </span>
         </div>
         <div class="caz-probe hidden" data-for="${c.id}"></div>
       </div>`,
-      `<p class="hint">${esc(t('Niciun dosar. Apasa „+ Caz nou" ca sa deschizi unul.'))}</p>`);
+      `<p class="hint">${esc(t('Niciun dosar. Apasă „+ Caz nou” ca să deschizi unul.'))}</p>`);
     for (const b of $('#cases-body').querySelectorAll('.caz-add'))
       b.onclick = () => addPending(b.dataset.id);
     for (const b of $('#cases-body').querySelectorAll('.caz-view'))
@@ -212,7 +215,7 @@ async function renderCases() {
         await fetch(`/api/cases/${b.dataset.id}`, { method: 'DELETE' });
         renderCases();
       };
-  } catch { $('#cases-body').innerHTML = `<p class="hint">${esc(t('Eroare la incarcarea dosarelor.'))}</p>`; }
+  } catch { $('#cases-body').innerHTML = `<p class="hint">${esc(t('Eroare la încărcarea dosarelor.'))}</p>`; }
 }
 async function toggleProbe(cid) {
   const wrap = $(`.caz-probe[data-for="${cid}"]`);
@@ -225,7 +228,7 @@ async function toggleProbe(cid) {
       <span class="hint">${p.start.slice(9, 15).replace(/(..)(..)(..)/, '$1:$2:$3')} · ${names[p.cam] || 'cam ' + p.cam}</span>
       <span>${p.nota || ''}</span>
       <button class="proba-del link-btn" data-c="${cid}" data-p="${p.id}">✕</button>
-    </div>`, `<p class="hint">${esc(t('Fara probe.'))}</p>`);
+    </div>`, `<p class="hint">${esc(t('Fără probe.'))}</p>`);
   wrap.classList.remove('hidden');
   for (const b of wrap.querySelectorAll('.proba-del'))
     b.onclick = async () => {
@@ -296,9 +299,9 @@ async function loadDigest() {
         <div><h3>${t('Cele mai active camere')}</h3>${topCam}</div>
         <div><h3>${t('Activitate')}</h3>
           <p class="dig-when">${d.prima_activitate && d.ultima_activitate
-            ? raw(t('Intre {de_la} si {pana_la}', { de_la: `<b>${esc(d.prima_activitate)}</b>`, pana_la: `<b>${esc(d.ultima_activitate)}</b>` }))
-            : t('Fara activitate')}
-          ${d.ora_varf ? html`<br>${t('Ora de varf:')} <b>${d.ora_varf[0]}</b> (${t('{n} evenimente', { n: d.ora_varf[1] })})` : ''}</p>
+            ? raw(t('Între {de_la} și {pana_la}', { de_la: `<b>${esc(d.prima_activitate)}</b>`, pana_la: `<b>${esc(d.ultima_activitate)}</b>` }))
+            : t('Fără activitate')}
+          ${d.ora_varf ? html`<br>${t('Ora de vârf:')} <b>${d.ora_varf[0]}</b> (${t('{n} evenimente', { n: d.ora_varf[1] })})` : ''}</p>
         </div>
       </div>`;
   } catch { $('#digest-body').innerHTML = `<p class="hint">${esc(t('Eroare la calcularea rezumatului.'))}</p>`; }
@@ -336,7 +339,8 @@ async function refreshIncBadge() {
     const d = await (await fetch('/api/incidents?noi=1&limit=120')).json();
     const n = d.counts ? d.counts.noi : 0, crit = d.counts ? d.counts.critic_noi : 0;
     const badge = $('#inc-badge');
-    badge.textContent = n; badge.classList.toggle('hidden', !n);
+    badge.textContent = n > 99 ? '99+' : n; badge.classList.toggle('hidden', !n);
+    badge.title = t('{n} incidente de tratat', { n });
     badge.classList.toggle('crit', crit > 0);
     // alarma la un incident CRITIC nou (id nevazut)
     const ids = new Set((d.incidente || []).filter((e) => e.sev === 'critic').map((e) => e.id));
@@ -395,7 +399,7 @@ $('#hd-close').onclick = () => closeHD();
 const AL_RO = {
   attendedBaggage: 'Obiect luat', unattendedBaggage: 'Obiect abandonat',
   parkingdetection: 'Parcare interzisă', loitering: 'Zăbovire', running: 'Alergare',
-  peopleDetection: 'Persoana', vehicledetection: 'Vehicul', faceDetection: 'Față',
+  peopleDetection: 'Persoană', vehicledetection: 'Vehicul', faceDetection: 'Față',
   audioexception: 'Zgomot', zgomot: 'Zgomot', diskfull: 'Disc plin',
   diskerror: 'Eroare disc', nicbroken: 'Rețea întreruptă', ipconflict: 'Conflict IP',
   illaccess: 'Acces respins', videomismatch: 'Semnal video pierdut', ...EV_RO, ...DET_RO };
@@ -733,7 +737,7 @@ $('#ph-context').onclick = () => {
 /* ---------- recatalogare din lightbox ---------- */
 function buildFixBar() {
   const bar = $('#ph-fix');
-  bar.innerHTML = `<span class="fix-lbl">${esc(t('Corecteaza:'))}</span>`;
+  bar.innerHTML = `<span class="fix-lbl">${esc(t('Corectează:'))}</span>`;
   for (const [en, ro] of Object.entries(DET_RO)) {
     const b = document.createElement('button');
     b.textContent = `${AL_ICO[en] || ''} ${t(ro)}`;
@@ -894,9 +898,9 @@ function wireClips(container) {
 
 /* ---------- jurnalul de evenimente ---------- */
 const SEV_RO = { info: 'Informativ', atentie: 'Atenție', critic: 'Critic' };
-const EV_TIP_RO = { detectie: 'Detecție', persoana: 'Persoana', persoana_necunoscuta: 'Față necunoscută',
+const EV_TIP_RO = { detectie: 'Detecție', persoana: 'Persoană', persoana_necunoscuta: 'Față necunoscută',
   fata_falsa: 'Față FALSĂ (spoofing)', descriere: 'Semnalmente', obiect: 'Obiect urmărit',
-  numar: 'Număr', alarma_camera: 'Alarma camera', zgomot: 'Zgomot', sirena: 'Sirena',
+  numar: 'Număr', alarma_camera: 'Alarmă de la cameră', zgomot: 'Zgomot', sirena: 'Sirenă',
   regula: 'Regula', camera_offline: 'Camera căzută', camera_online: 'Camera revenita',
   gol_inregistrare: 'Gol înregistrare', intrus: 'INTRUS confirmat',
   trecere: 'Trecere linie', intrare_zona: 'Intrare în zona',
@@ -976,7 +980,7 @@ async function loadJournal() {
           <span class="ev-det">${det}${e.evenimente > 1 ? ` · ×${e.evenimente}` : ''}</span>
           ${e.cam ? html`<button class="fisa-btn link-btn" title="${t('Fișa evenimentului: poză, clip, acțiuni')}"
             data-fisa="${JSON.stringify({ cam: e.cam, t: e.inceput, tip: e.tip, sev: e.sev, id: e.id, det: e.detaliu || '', cine: e.nume || '' })}">${t('fișă')}</button>` : ''}${acts}</div>`;
-      }, `<p class="hint">${esc(t('Niciun episod (inca).'))}</p>`);
+      }, `<p class="hint">${esc(t('Niciun episod (încă).'))}</p>`);
       wireClips($('#ev-list'));
       return;
     }
@@ -997,7 +1001,7 @@ async function loadJournal() {
         <span class="ev-det">${detalii}${e.context ? ' · ' + e.context : ''}${
           e.actiuni ? ' · ' + e.actiuni.join(', ') : ''}</span>
         ${clip}</div>`;
-    }, `<p class="hint">${esc(t('Niciun eveniment (inca).'))}</p>`);
+    }, `<p class="hint">${esc(t('Niciun eveniment (încă).'))}</p>`);
     wireClips($('#ev-list'));
   } catch {}
 }

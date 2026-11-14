@@ -76,7 +76,7 @@ def test_answer_cand(monkeypatch):
         [_grup("2026-08-15 09:12:33"), _grup("2026-08-12 09:05:00")], 0.15))
     r = ask.answer("cand a venit masina de gunoi?", cam_names={4: "Poarta"})
     assert "Ultima data:" in r["raspuns"] and "Poarta" in r["raspuns"]
-    assert "Inainte de asta:" in r["raspuns"]
+    assert "Înainte de asta:" in r["raspuns"]
     assert len(r["aparitii"]) == 2
 
 
@@ -84,36 +84,36 @@ def test_answer_numarare(monkeypatch):
     monkeypatch.setattr(semantic, "appearances", lambda c, days=30, visible=None, gap=None, labels=None, **kw: (
         [_grup("2026-08-15 09:12:33")] * 4, 0.15))
     r = ask.answer("de cate ori a venit masina de gunoi luna asta?")
-    assert "4 aparitii" in r["raspuns"]
+    assert "4 apariții" in r["raspuns"]
 
 
 def test_answer_potrivire_slaba_avertizeaza(monkeypatch):
     monkeypatch.setattr(semantic, "appearances", lambda c, days=30, visible=None, gap=None, labels=None, **kw: (
         [_grup("2026-08-15 09:12:33", scor=0.07)], 0.07))
     r = ask.answer("cand a venit girafa?")
-    assert "s-ar putea sa ma insel" in r["raspuns"]
+    assert "s-ar putea să mă înșel" in r["raspuns"]
     monkeypatch.setattr(semantic, "appearances", lambda c, days=30, visible=None, gap=None, labels=None, **kw: (
         [_grup("2026-08-15 09:12:33", scor=0.12)], 0.12))
     r = ask.answer("cand a venit masina de gunoi?")
-    assert "insel" not in r["raspuns"]
+    assert "înșel" not in r["raspuns"]
 
 
 def test_answer_negasit(monkeypatch):
     monkeypatch.setattr(semantic, "appearances",
                         lambda c, days=30, visible=None, gap=None, labels=None, **kw: ([], 0.02))
     r = ask.answer("cand a venit girafa?")
-    assert "Nu am gasit" in r["raspuns"] and r["aparitii"] == []
+    assert "Nu am găsit" in r["raspuns"] and r["aparitii"] == []
 
 
 def test_answer_fara_concept():
     r = ask.answer("cand a venit ultima data?")
-    assert "Nu am inteles" in r["raspuns"]
+    assert "Nu am înțeles" in r["raspuns"]
 
 
 def test_fmt_azi_si_zi_saptamana():
     azi = time.strftime("%Y-%m-%d")
     assert ask._fmt(f"{azi} 09:12:00") == "azi 09:12"
-    assert ask._fmt("2026-08-11 14:30:00").startswith("marti 11.08")
+    assert ask._fmt("2026-08-11 14:30:00").startswith("marți 11.08")
 
 
 def test_appearances_grupare_si_prag(monkeypatch, tmp_path):

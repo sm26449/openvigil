@@ -585,7 +585,7 @@ def model_verifica():
         m = YOLO(path)
         clase = set(m.names.values()) & detect.INTERESTING
         if "person" not in clase or not (clase & {"car", "truck", "bus"}):
-            return jsonify({"error": t("modelul nu acopera clasele contractului (are doar: {clase})",
+            return jsonify({"error": t("modelul nu acoperă clasele contractului (are doar: {clase})",
                                        clase=sorted(clase))}), 422
         m.to("cpu")
         m.predict(np.zeros((320, 320, 3), "uint8"), imgsz=320,
@@ -651,7 +651,7 @@ def _reid_query_emb(b):
     if b.get("crop_zi") and b.get("crop_fn"):
         e = reid_arhiva.embedding_din(b["crop_zi"], b["crop_fn"])
         if e is None:
-            raise ValueError(t("esantionul nu mai e in arhivă"))
+            raise ValueError(t("eșantionul nu mai e în arhivă"))
         return e, None
     poza = b.get("poza") or ""
     m = re.match(r"^(\d{4}-\d{2}-\d{2})/(\d{6}_cam\d+_[A-Za-z0-9_.-]+\.jpg)$", poza)
@@ -1073,7 +1073,7 @@ def capabilities():
             "lpr": {"activ": bool(s["lpr_enabled"]), "incarcat": plates._alpr is not None},
             "describe": {"activ": bool(s["person_describe"]),
                          "incarcat": describe._model is not None,
-                         "nota": t("lazy; se descarca dupa inactivitate")},
+                         "nota": t("la cerere; se descarcă după inactivitate")},
             "semantic": {"activ": bool(s["semantic_enabled"]),
                          "incarcat": semantic._model is not None,
                          "backfill": dict(semantic.backfill_state)},

@@ -96,7 +96,7 @@ def api_focus(cam_id):
     if not cam:
         return jsonify({"error": t("camera inexistenta")}), 404
     if not drivers.este_hik(cam):
-        return jsonify({"error": t("focalizarea se seteaza doar pe camerele Hikvision")}), 400
+        return jsonify({"error": t("focalizarea se setează doar pe camerele Hikvision")}), 400
     try:
         if request.method == "GET":
             return jsonify({"mod": camctl.get_focus_mode(cam), "optiuni": camctl.FOCUS_MODES})
@@ -187,7 +187,7 @@ def api_deploy_smart(cam_id):
     lines = (settings.get("count_lines") or {}).get(str(cam_id)) or []
     zones = (settings.get("count_zones") or {}).get(str(cam_id)) or []
     if not lines and not zones:
-        return jsonify({"error": t("desenează întâi o linie sau o zona")}), 400
+        return jsonify({"error": t("desenează întâi o linie sau o zonă")}), 400
     try:
         res = camctl.deploy_smart(cam, lines, zones)
     except Exception as e:
@@ -268,7 +268,7 @@ def _job_camera_noua(job):
     try:
         r = sess.get(f"http://{ip}/ISAPI/System/deviceInfo", timeout=12)
         if r.status_code == 401:
-            raise jobs.JobError(t("autentificare esuata (user/parola)"))
+            raise jobs.JobError(t("autentificare eșuată (utilizator/parolă)"))
         r.raise_for_status()
         info = ET.fromstring(r.text)
         model = xml_text(info, "model")
@@ -648,7 +648,7 @@ def api_cam_config(cam_id):
                     cam["onvif"] = probe["onvif"]
             except Exception as e:
                 msg = str(e)
-                if "401" in msg or msg == t("autentificare esuata (user/parola)"):
+                if "401" in msg or msg == t("autentificare eșuată (utilizator/parolă)"):
                     return jsonify({"error": t("utilizator sau parola greșite")}), 401
                 return jsonify({"error": t("nu pot contacta camera la {ip}: {e}", ip=probe["ip"], e=msg[:80])}), 502
             cam.update(conn)

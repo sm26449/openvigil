@@ -34,30 +34,30 @@ from i18n import t
 # Evenimentele pe care le putem trimite. Cheia e ce apare in payload si in setari;
 # textul e doar pentru interfata.
 EVENIMENTE = {
-    "detectie": "Obiect detectat de inteligenta artificiala (om, caine, pisica...)",
-    "alarma_camera": "Alarma raportata de camera (miscare, linie trecuta, intrare in zona)",
-    "zgomot": "Prag de zgomot depasit",
+    "detectie": "Obiect detectat de inteligența artificială (om, câine, pisică…)",
+    "alarma_camera": "Alarmă raportată de cameră (mișcare, linie trecută, intrare în zonă)",
+    "zgomot": "Prag de zgomot depășit",
     "scena_candidat": "Ceva nou in scena unei camere (detectie pe schimbare), cu eticheta propusa",
     "scena_analiza": "Analiza adanca a unui candidat „ceva nou” (YOLO + vocabular + VLM), la cerere",
-    "camera_offline": "O camera nu mai raspunde",
-    "camera_online": "O camera a revenit",
-    "gol_inregistrare": "Gol in inregistrarea unei camere",
+    "camera_offline": "O cameră nu mai răspunde",
+    "camera_online": "O cameră a revenit",
+    "gol_inregistrare": "Gol în înregistrarea unei camere",
     "sirena": "S-a declansat sirena",
     "persoana": "Persoana recunoscuta (Face ID), cu numele ei",
-    "persoana_necunoscuta": "Fata gasita, dar care nu e in biblioteca",
-    "fata_falsa": "Tentativa de pacalire: poza sau ecran aratat camerei",
-    "descriere": "Semnalmentele persoanei detectate (gen, varsta, imbracaminte)",
-    "obiect": "Obiect urmarit complet (ByteTrack): eticheta, durata, directia",
-    "trecere": "Obiect care a traversat o linie de numarare (sens: intra/iese)",
-    "intrare_zona": "Obiect care a intrat intr-o zona definita",
+    "persoana_necunoscuta": "Față găsită, dar care nu e în bibliotecă",
+    "fata_falsa": "Tentativă de păcălire: poză sau ecran arătat camerei",
+    "descriere": "Semnalmentele persoanei detectate (gen, vârstă, îmbrăcăminte)",
+    "obiect": "Obiect urmărit complet (ByteTrack): etichetă, durată, direcție",
+    "trecere": "Obiect care a traversat o linie de numărare (sens: intră/iese)",
+    "intrare_zona": "Obiect care a intrat într-o zonă definită",
     "intrus": "Intrus CONFIRMAT de AI la perimetru (om/vehicul pe cadrul HD)",
-    "obiect_nou": "Obiect nou aparut si ramas in cadru (camera statica)",
-    "obiect_disparut": "Obiect care era in cadru si a disparut",
-    "numar": "Numar de inmatriculare citit (LPR), cu numele masinii daca e cunoscuta",
-    "regula": "O regula din motorul de reguli s-a declansat",
+    "obiect_nou": "Obiect nou apărut și rămas în cadru (cameră statică)",
+    "obiect_disparut": "Obiect care era în cadru și a dispărut",
+    "numar": "Număr de înmatriculare citit (LPR), cu numele mașinii dacă e cunoscută",
+    "regula": "O regulă din motorul de reguli s-a declanșat",
     "parcare_inceput": "Un vehicul a parcat (a stat pe loc 2+ minute)",
-    "parcare_sfarsit": "Vehiculul parcat a plecat (cu durata stationarii)",
-    "episod": "Episod de prezenta umana incheiat: cine, cat, pe unde, incotro",
+    "parcare_sfarsit": "Vehiculul parcat a plecat (cu durata staționării)",
+    "episod": "Episod de prezență umană încheiat: cine, cât, pe unde, încotro",
 }
 
 TIMEOUT = 6
@@ -113,7 +113,7 @@ def _trimite(url, secret, corp):
             ultim = type(e).__name__
         if i < INCERCARI - 1:
             time.sleep(2 ** i)      # 1s, apoi 2s
-    _note(url, False, t("{ultim} dupa {n} incercari", ultim=ultim, n=INCERCARI))
+    _note(url, False, t("{ultim} după {n} încercări", ultim=ultim, n=INCERCARI))
     return False
 
 

@@ -75,7 +75,7 @@ def create(cam, start, end, motiv="", nota="", pana_la=None, sursa="manual", who
     tx, ts = _norm_t(start)
     t_end, ts_end = _norm_t(end)
     if ts_end < ts:
-        raise ValueError(t("sfarsitul e inaintea inceputului"))
+        raise ValueError(t("sfârșitul e înaintea începutului"))
     if ts_end - ts > MAX_DURATA:
         raise ValueError(t("o probă acoperă cel mult 7 zile"))
     motiv = (motiv or "").strip()[:120]

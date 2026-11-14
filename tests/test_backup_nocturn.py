@@ -132,7 +132,7 @@ def test_rotatie_lista_si_trimitere(mediu, tmp_path):
     def run_fals(cmd, **kw): vazut["cmd"] = cmd; return R()
     ok, msg = bn.trimite(str(out / ultima["fisier"]), "stefan@casa:/backup/nvr", run=run_fals)
     assert ok and vazut["cmd"][0] == "rsync" and vazut["cmd"][-1] == "stefan@casa:/backup/nvr/"
-    assert bn.trimite(str(out / ultima["fisier"]), "") == (None, "fara destinatie externa")
+    assert bn.trimite(str(out / ultima["fisier"]), "") == (None, "fără destinație externă")
     # ruleaza(): stare + manifest cu extern
     cfg["backup_remote"] = str(tmp_path / "extern2")
     m = bn.ruleaza(cine="test")

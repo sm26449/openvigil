@@ -152,7 +152,7 @@ def api_tts():
                         "-ar", "8000", "-ac", "1", "-acodec", "pcm_s16le", out],
                        capture_output=True, timeout=30, check=True)
     except FileNotFoundError:
-        return jsonify({"error": t("sinteza vocala nu e instalata pe server")}), 500
+        return jsonify({"error": t("sinteza vocală nu e instalată pe server")}), 500
     except subprocess.CalledProcessError as e:
         return jsonify({"error": e.stderr.decode(errors="ignore")[-160:]}), 500
     return send_file(out, mimetype="audio/wav", as_attachment=bool(b.get("download")),

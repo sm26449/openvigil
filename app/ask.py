@@ -20,7 +20,7 @@ import search_time
 
 from i18n import t
 
-ZILE_RO = ["luni", "marti", "miercuri", "joi", "vineri", "sambata", "duminica"]
+ZILE_RO = ["luni", "marți", "miercuri", "joi", "vineri", "sâmbătă", "duminică"]
 
 # expresii care fac parte din intrebare, nu din concept (fara diacritice, lowercase)
 _STOP = [
@@ -174,7 +174,7 @@ def answer(q, visible=None, cam_names=None, cam=None, days=30):
         cam = int(cam)
         visible = {cam} if visible is None else (visible & {cam})
     if not p["concept"]:
-        return {**p, "raspuns": t("Nu am inteles ce cauti — incearca de exemplu: „cand a venit masina de gunoi?”"),
+        return {**p, "raspuns": t("Nu am înțeles ce cauți — încearcă de exemplu: „când a venit mașina de gunoi?”"),
                 "aparitii": []}
     fereastra = t('între {start} și {end}',
                   start=time.strftime('%Y-%m-%d %H:%M', time.localtime(p['since'])),
@@ -232,23 +232,23 @@ def answer(q, visible=None, cam_names=None, cam=None, days=30):
     if p['first']:
         grupuri.reverse()
     if not grupuri:
-        text = (t("Nu am gasit „{concept}” {fereastra}.", concept=p["concept"], fereastra=fereastra) + " "
-                + t("Conceptul se cauta in pozele salvate la detectii — daca nu declanseaza detectia, nu are cum sa apara aici."))
+        text = (t("Nu am găsit „{concept}” {fereastra}.", concept=p["concept"], fereastra=fereastra) + " "
+                + t("Conceptul se caută în pozele salvate la detecții — dacă nu declanșează detecția, nu are cum să apară aici."))
         text += ' ' + t('Nu am găsit dovezi în perioada căutată; aceasta nu confirmă absența unei treceri.')
         return finish(text, [], top)
     ultima = grupuri[0]
     if p["mod"] == "cate":
-        text = (t("„{concept}”: aproximativ {n} aparitii distincte {fereastra}.", concept=p["concept"], n=len(grupuri), fereastra=fereastra)
+        text = (t("„{concept}”: aproximativ {n} apariții distincte {fereastra}.", concept=p["concept"], n=len(grupuri), fereastra=fereastra)
                 + " " + t("Ultima: {cand} ({unde}).", cand=_fmt(ultima["inceput"]), unde=unde(ultima)))
     else:
         text = (t('Prima apariție găsită: {cand} ({unde}).', cand=_fmt(ultima['inceput']), unde=unde(ultima))
                 if p['first'] else t("Ultima data: {cand} ({unde}).", cand=_fmt(ultima["inceput"]), unde=unde(ultima)))
         if len(grupuri) > 1 and not p['first']:
-            text += " " + t("Inainte de asta: {cand}.", cand=_fmt(grupuri[1]["inceput"]))
-        text += " " + t("In total {n} aparitii {fereastra}.", n=len(grupuri), fereastra=fereastra)
+            text += " " + t("Înainte de asta: {cand}.", cand=_fmt(grupuri[1]["inceput"]))
+        text += " " + t("În total {n} apariții {fereastra}.", n=len(grupuri), fereastra=fereastra)
     # Onestitate: sub pragul asta, SigLIP potriveste si "girafa cu elicopterul" pe
     # cate ceva (masurat: nonsensul da ~0.075, potrivirile bune 0.08+). Mai bine
     # spunem ca nu suntem siguri decat sa raspundem cu aplomb la orice.
     if any(g.get('weak', g['scor'] < .08) for g in grupuri[:20]):
-        text += " " + t("⚠ Potrivirea e slaba — verifica pozele, s-ar putea sa ma insel.")
+        text += " " + t("⚠ Potrivirea e slabă — verifică pozele, s-ar putea să mă înșel.")
     return finish(text, grupuri, top, total=len(grupuri), count_complete=False)

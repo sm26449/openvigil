@@ -198,7 +198,7 @@ def _swap_formal(sursa):
     if ai_client.remote():
         v = ai_client.model_verifica(sursa)
         if v is None:
-            return {"error": t("nvr-ai nu raspunde — nu schimb modelul pe nevazute")}, 503
+            return {"error": t("nvr-ai nu răspunde — nu schimb modelul pe nevăzute")}, 503
         if v.get("error"):
             return {"error": t("pre-flight picat: {e}", e=v["error"])}, 422
     shutil.copy2(MODEL_PATH, MODEL_PATH + ".bak")

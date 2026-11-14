@@ -120,7 +120,7 @@ if (!ADMIN) document.body.classList.add('no-admin');
 if (!CAN_ACT) document.body.classList.add('viewer');
 if (ME.user) {
   const rol = ADMIN ? '' : ` (${ME.role === 'operator' ? t('operator') : t('vizualizare')})`;
-  $('#user-chip').innerHTML = html`<button type="button" class="me-open" aria-label="${t('Contul meu ({user})', { user: ME.user })}" title="${t('Contul meu: 2FA, notificari push, dispozitive')}">${ME.user}${rol}${ME.totp ? ' 🔐' : ''}</button> · <a href="/logout">${t('ieși')}</a>`;
+  $('#user-chip').innerHTML = html`<button type="button" class="me-open" aria-label="${t('Contul meu ({user})', { user: ME.user })}" title="${t('Contul meu: 2FA, notificări push, dispozitive')}">${ME.user}${rol}${ME.totp ? ' 🔐' : ''}</button> · <a href="/logout">${t('ieși')}</a>`;
 }
 // Versiunea care ruleaza, mereu vizibila langa titlu — ca sa stii pe ce build esti (mai ales in
 // dev, cu build-uri locale ne-publicate). Vine din /api/me (ME.versiune); „dev" daca lipseste.
@@ -210,8 +210,8 @@ function renderJobs() {
         <span class="job-t">${t(JOB_RO[j.tip] || j.tip)}</span>
         <span class="job-m">${j.mesaj || t(JOB_STARE_RO[j.stare] || j.stare)}${activ && j.progres ? ' · ' + j.progres + '%' : ''}</span>
         ${activ ? html`<button class="job-x link-btn" title="${t('Anuleaza')}">✕</button>`
-          : j.stare === 'gata' && j.are_fisier ? html`<button class="job-dl link-btn" title="${t('Descarca din nou')}">⬇</button>`
-          : html`<button class="job-hide link-btn" title="${t('Inchide')}">✕</button>`}
+          : j.stare === 'gata' && j.are_fisier ? html`<button class="job-dl link-btn" title="${t('Descarcă din nou')}">⬇</button>`
+          : html`<button class="job-hide link-btn" title="${t('Închide')}">✕</button>`}
       </div>
       ${activ ? html`<div class="job-bar"><i style="width:${j.progres || 0}%"></i></div>` : ''}
     </div>`;
@@ -299,7 +299,7 @@ async function renderExports() {
   box.innerHTML = lista(joburi, (j) => {
     const iv = _ivJob(j.parametri);
     const camId = j.cam || (j.parametri && j.parametri.channel);
-    const cam = camId ? t('cam {id}', { id: camId }) : '';
+    const cam = camId ? numeCam(camId) : '';
     const r = j.rezultat || {};
     const partial = r.partial ? ' · ' + t('parțial {r}/{n}', { r: r.probe, n: r.din }) : '';
     const detaliu = j.stare === 'eroare' ? (j.mesaj || t('eroare'))
@@ -366,4 +366,6 @@ const EV_RO = {
 // text fara diacritice si cu litere mici, pentru cautari („Masina” gaseste „mașină”)
 const fdia = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
-export { $, ADMIN, CAN_ACT, DET_RO, EV_RO, GO2RTC, HD_MODE, HLS_SUFFIX, JOB_STARE_RO, LIMBA, ME, bindMore, clipReady, esc, fdia, gridFrame, html, icon, lista, raw, runJob, streamEl, t, talkStart, talkStop, toast };
+// numele camerei pentru afisare; „cam N” doar daca a disparut din configurare (audit UX-D)
+const numeCam = (id) => (S.cameras.find((c) => c.id === +id) || {}).name || t('cam {id}', { id });
+export { $, ADMIN, CAN_ACT, DET_RO, EV_RO, GO2RTC, HD_MODE, HLS_SUFFIX, JOB_STARE_RO, LIMBA, ME, bindMore, clipReady, esc, fdia, gridFrame, html, icon, lista, numeCam, raw, runJob, streamEl, t, talkStart, talkStop, toast };

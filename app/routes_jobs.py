@@ -50,7 +50,7 @@ def api_job_fisier(jid):
         return jsonify({"error": t("nu există")}), 404
     f = jobs.cale_fisier(jid)
     if not f:
-        return jsonify({"error": t("fișierul nu (mai) există — joburile se păstrează o ora")}), 404
+        return jsonify({"error": t("fișierul nu (mai) există — joburile se păstrează o oră")}), 404
     cale, nume, mime = f
     return send_file(cale, mimetype=mime or "application/octet-stream",
                      as_attachment=True, download_name=nume or "rezultat")

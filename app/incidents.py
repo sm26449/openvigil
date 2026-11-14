@@ -115,11 +115,15 @@ def feed(limit=60, min_sev="atentie", doar_noi=False, visible=None):
     # descrescator -> critic sus, iar in cadrul aceleiasi severitati cele mai noi primele
     evs.sort(key=lambda e: e.get("t", ""), reverse=True)
     evs.sort(key=lambda e: rules.SEV_RANK.get(e.get("sev", "info"), 0), reverse=True)
-    return evs[:limit]
+    return evs if limit is None else evs[:limit]
 
 
-def counts(visible=None):
-    """{noi, critic_noi} — pentru badge-ul de pe tab si alarma."""
-    fresh = feed(limit=200, doar_noi=True, visible=visible)
+def counts(visible=None, toate=None):
+    """{noi, critic_noi} — pentru badge-ul de pe tab si alarma. `toate` = feed-ul deja calculat
+    (fara limita), ca /api/incidents sa nu-l refaca a doua oara; inainte numaratoarea se oprea
+    la 200, iar lista arata cate carduri incarcase (60) — doua numere pentru acelasi lucru."""
+    if toate is None:
+        toate = feed(limit=None, visible=visible)
+    fresh = [e for e in toate if e.get("stare") == "nou"]
     return {"noi": len(fresh),
             "critic_noi": sum(1 for e in fresh if e.get("sev") == "critic")}

@@ -111,7 +111,7 @@ def _pozitie(v):
         d = float(v.get("dir", 0)) % 360
         fov = max(10.0, min(180.0, float(v.get("fov", 70))))
     except (TypeError, ValueError):
-        raise ValueError(t("directie/unghi invalid"))
+        raise ValueError(t("direcție/unghi invalid"))
     return {"x": round(x, 4), "y": round(y, 4), "dir": round(d, 1), "fov": round(fov, 1)}
 
 

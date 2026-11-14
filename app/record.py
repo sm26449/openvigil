@@ -191,7 +191,7 @@ class Recorder(threading.Thread):
                 if self.rec_fails == 5:
                     try:
                         import notify
-                        notify.send(t("⚠️ Înregistrarea cam{id} pica in bucla (5 caderi sub 60s) — verifica camera/reteaua",
+                        notify.send(t("⚠️ Înregistrarea cam{id} pică în buclă (5 căderi sub 60 s) — verifică camera/rețeaua",
                                       id=self.cam['id']),
                                     key=f"rec-fail-{self.cam['id']}")
                     except Exception as e:
@@ -585,7 +585,7 @@ def prune():
         logare.error(f"[record] CURATAREA A ESUAT: {e}")
         try:
             import notify
-            notify.send(t("⚠️ Curatarea inregistrarilor a eșuat ({e}) — reincerc peste o ora", e=str(e)[:80]),
+            notify.send(t("⚠️ Curățarea înregistrărilor a eșuat ({e}) — reîncerc peste o oră", e=str(e)[:80]),
                         key="prune-esuat")
         except Exception:
             pass
@@ -707,7 +707,7 @@ def _prune_body():
                     f"Retentia configurata nu se poate respecta.")
         try:
             import notify
-            notify.send("⚠️ " + t("Spatiu insuficient: am sters {n} segmente care nu expirasera. Retentia configurata nu se poate respecta.", n=fortat),
+            notify.send("⚠️ " + t("Spațiu insuficient: am șters {n} segmente care nu expiraseră. Retenția configurată nu se poate respecta.", n=fortat),
                         key="retentie-fortata")
         except Exception:
             pass

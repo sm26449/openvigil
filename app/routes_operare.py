@@ -70,7 +70,7 @@ def api_harta_save():
             p = harta.redenumeste(str(b["id"]), str(b["nume"]))
             audit.log("plan de harta redenumit", p["nume"])
         else:
-            return jsonify({"error": t("nimic de facut")}), 400
+            return jsonify({"error": t("nimic de făcut")}), 400
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     return jsonify({"ok": True, "plan": {"id": p["id"], "nume": p.get("nume"),

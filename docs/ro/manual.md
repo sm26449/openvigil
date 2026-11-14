@@ -277,8 +277,10 @@ valoarea si camera). Orice element cu `data-fisa='{json}'` o deschide (delegare 
 toate sectiunile, doar cardurile al caror titlu sau text contine cuvintele, fara diacritice)
 si bifa „avansate" (implicit oprita, tinuta in browser) care ascunde cardurile rar atinse:
 MQTT, ora camerelor, fluiditatea grilei, automatizarile si jetonul, detectia pe regiuni,
-legaturile rapide (`data-avansat` pe card). Butonul „Stare" din antet e scurtatura catre
-Setari -> Stare. Tabul AI: fiecare sectiune are intrebarea sub nume („cine intra?", „ce
+legaturile rapide (`data-avansat` pe card); un panou care are doar optiuni avansate (Sistem)
+explica ce e ascuns si are un buton care le arata. Butonul „Sănătate" din antet deschide
+Centrul de sanatate (serverul, canalele, AI-ul si fiecare camera); panoul „Audit" din Setari
+este jurnalul modificarilor (cine si cand a schimbat ceva). Tabul AI: fiecare sectiune are intrebarea sub nume („cine intra?", „ce
 masini vin?") si o fraza de stare din date (persoane, recunoasteri in 30 de zile, citiri
 LPR, reguli active, cadre etichetate), ca sa vezi dintr-o privire ce produce fiecare.
 

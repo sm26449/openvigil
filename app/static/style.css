@@ -159,8 +159,6 @@ main > .view { scroll-margin-top: 100vh; }
   font-size: var(--fs-sm); color: var(--text); pointer-events: none;
   background: linear-gradient(transparent, rgba(0,0,0,.8)); display: flex; align-items: center; gap: var(--s2); }
 .tile .label .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tile .label .ip { margin-left: auto; color: var(--text-3); font-size: var(--fs-xs); flex-shrink: 0; }
-@media (max-width: 1100px) { .tile .label .ip { display: none; } }
 /* Punctul de stare: singurul element permanent din coltul de sus. Verde = inregistreaza,
    rosu pulsand = alarma activa. Se citeste de la distanta, fara sa acopere imaginea. */
 .tile .dot { position: absolute; left: var(--s2); top: var(--s2); width: 8px; height: 8px;

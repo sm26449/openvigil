@@ -97,7 +97,7 @@ def apel(url, user, pw, corp, timeout=TIMEOUT, run=None):
     except requests.RequestException as e:
         raise EroareOnvif(t("nu răspunde: {e}", e=str(e)[:100]))
     if r.status_code == 401:
-        raise EroareOnvif(t("autentificare esuata (user/parola)"))
+        raise EroareOnvif(t("autentificare eșuată (utilizator/parolă)"))
     try:
         root = ET.fromstring(r.content)
     except ET.ParseError:
@@ -106,7 +106,7 @@ def apel(url, user, pw, corp, timeout=TIMEOUT, run=None):
     if fault is not None or not r.ok:
         motiv = text(fault, "Text", "") or text(fault, "Reason", "") or f"HTTP {r.status_code}"
         if r.status_code == 401 or "NotAuthorized" in r.text or "Unauthorized" in r.text:
-            raise EroareOnvif(t("autentificare esuata (user/parola)"))
+            raise EroareOnvif(t("autentificare eșuată (utilizator/parolă)"))
         raise EroareOnvif(t("SOAP: {motiv}", motiv=motiv[:120]))
     return root
 
@@ -310,6 +310,6 @@ def identifica(ip, user, pw, port=80, run=None):
                 "serial": i.get("serial"), "firmware": i.get("firmware"),
                 "name": i.get("model") or "ONVIF"}
     except EroareOnvif as e:
-        if str(e) == t("autentificare esuata (user/parola)"):
+        if str(e) == t("autentificare eșuată (utilizator/parolă)"):
             return {"vendor": "onvif", "auth": False}
         return None

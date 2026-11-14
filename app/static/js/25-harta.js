@@ -46,7 +46,7 @@ function renderHarta() {
       empty.innerHTML = html`${t('Harta nu s-a putut încărca.')} <button id="harta-retry" class="link-btn">${t('Reîncearcă')}</button>`;
       const rb = $('#harta-retry'); if (rb) rb.onclick = loadHarta;
     } else {
-      empty.textContent = ADMIN ? t('Niciun plan încă. Apasă „Editează” → „Plan nou”, apoi încarcă o imagine (schiță curții, o captura din satelit) și așază camerele.')
+      empty.textContent = ADMIN ? t('Niciun plan încă. Apasă „Editează” → „Plan nou”, apoi încarcă o imagine (schiță curții, o captură din satelit) și așază camerele.')
                                 : t('Administratorul nu a configurat încă harta proprietății.');
     }
     empty.classList.remove('hidden');
@@ -55,7 +55,7 @@ function renderHarta() {
   }
   if (!p.imagine) {
     img.removeAttribute('src'); wrap.classList.add('gol');
-    empty.textContent = ADMIN ? t('Planul nu are imagine: apasa „Incarca imaginea” (PNG/JPEG/WebP, pana la 8 MB).') : t('Planul nu are încă o imagine.');
+    empty.textContent = ADMIN ? t('Planul nu are imagine: apasă „Încarcă imaginea” (PNG/JPEG/WebP, până la 8 MB).') : t('Planul nu are încă o imagine.');
     empty.classList.remove('hidden');
   } else {
     empty.classList.add('hidden'); wrap.classList.remove('gol');
@@ -195,7 +195,7 @@ $('#harta-del').onclick = async () => {
   if (d.error) { alert(t('Eroare: {err}', { err: d.error })); return; }
   hartaPid = ''; loadHarta();
 };
-$('#harta-upload').onclick = () => { if (hartaPlan()) $('#harta-file').click(); else toast(t('Fa întâi un plan'), true); };
+$('#harta-upload').onclick = () => { if (hartaPlan()) $('#harta-file').click(); else toast(t('Fă întâi un plan'), true); };
 $('#harta-file').onchange = async () => {
   const f = $('#harta-file').files[0], p = hartaPlan();
   if (!f || !p) return;

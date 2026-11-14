@@ -113,7 +113,7 @@ def _worker():
         state.update(running=False, last=t("niciun encoder hardware disponibil"))
         return
     if not record.archive_dir() or not os.path.isdir(record.archive_dir()):
-        state.update(running=False, last=t("recodarea cere un nivel de arhiva configurat (Setari -> Inregistrare)"))
+        state.update(running=False, last=t("recodarea cere un nivel de arhivă configurat (Setări → Înregistrare)"))
         return
     for path in _candidates():
         if not settings.get("reencode_enabled"):

@@ -65,7 +65,7 @@ def create(cam, start, end=None, eticheta="", nota="", who=None):
     tx, ts = _norm_t(start)
     t_end, ts_end = _norm_t(end) if end else (tx, ts)
     if ts_end < ts:
-        raise ValueError(t("sfarsitul e inaintea inceputului"))
+        raise ValueError(t("sfârșitul e înaintea începutului"))
     if ts_end - ts > MAX_DURATA:
         raise ValueError(t("un marcaj ține cel mult 24 de ore"))
     eticheta = (eticheta or "").strip()[:60]

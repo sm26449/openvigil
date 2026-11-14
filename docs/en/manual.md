@@ -277,8 +277,10 @@ the value and the camera). Any element with `data-fisa='{json}'` opens it (deleg
 all sections, only the cards whose title or text contains the words, ignoring diacritics)
 and an "advanced" tick box (off by default, kept in the browser) that hides the rarely touched cards:
 MQTT, camera time, grid fluidity, automations and the token, region detection,
-quick links (`data-avansat` on the card). The "Status" button in the header is a shortcut to
-Settings -> Status. The AI tab: each section has its question under the name ("who is coming in?", "which
+quick links (`data-avansat` on the card); a pane that only has advanced options (System)
+explains what is hidden and has a button that shows them. The "Health" button in the header opens
+the health centre (server, channels, AI and every camera); the "Audit" pane in Settings is the
+change log (who changed what, and when). The AI tab: each section has its question under the name ("who is coming in?", "which
 vehicles come?") and a status sentence built from the data (people, recognitions in 30 days, LPR
 readings, active rules, labelled frames), so you can see at a glance what each one produces.
 

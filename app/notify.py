@@ -21,7 +21,7 @@ EXT_FILE = os.path.join(ROOT, "data", "cameras.json")
 
 RO = {"person": "Om", "bird": "Pasare", "cat": "Pisica", "dog": "Caine",
       "horse": "Cal", "sheep": "Oaie", "cow": "Vaca", "bear": "Urs",
-      "chicken": "Gaina", "pigeon": "Porumbel", "car": "Masina",
+      "chicken": "Găină", "pigeon": "Porumbel", "car": "Mașină",
       "truck": "Camion", "bus": "Autobuz", "motorcycle": "Motocicleta"}
 
 _last = {}
@@ -221,7 +221,7 @@ def _check_disk():
     limit = C.RECORD_MIN_FREE_GB * 2
     if free_gb < limit and time.time() - _disk_alerted > 12 * 3600:
         _disk_alerted = time.time()
-        send(t("💾 Atentie: doar {liber}GB liberi pe disc (sub {prag}GB incep sa se stearga inregistrarile vechi)",
+        send(t("💾 Atenție: doar {liber} GB liberi pe disc (sub {prag} GB încep să se șteargă înregistrările vechi)",
                liber=f"{free_gb:.0f}", prag=C.RECORD_MIN_FREE_GB))
 
 
@@ -286,7 +286,7 @@ def _check_streams():
     lipsa = [i for i in ids if f"cam{i}" not in have]
     if lipsa and time.time() - _stream_alerted > 6 * 3600:
         _stream_alerted = time.time()
-        send(t("⚠️ Camerele {lista} nu au flux video configurat — nu se vad in interfata", lista=lipsa))
+        send(t("⚠️ Camerele {lista} nu au flux video configurat — nu se văd în interfață", lista=lipsa))
         logare.info(f"[notify] camere fara stream: {lipsa}")
 
 

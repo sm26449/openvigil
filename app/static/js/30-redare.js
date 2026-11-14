@@ -56,7 +56,13 @@ async function searchRecordings() {
   if (gen !== pbCtxGen) return;   // alta camera/zi aleasa cat am asteptat
   if (d.error) { $('#pb-info').textContent = t('Eroare: {err}', { err: d.error }); return; }
   curSegments = d.segments || [];
-  $('#pb-info').textContent = t('{n} segmente înregistrate', { n: d.count });
+  // serverul uneste fisierele consecutive in intervale continue: „1 segment” insemna de fapt
+  // „inregistrat continuu toata ziua” — aratam durata si intreruperile (audit UX-D)
+  const sec = curSegments.reduce((a, g) => a + Math.max(0, (Date.parse(g.end) - Date.parse(g.start)) / 1000), 0);
+  const durata = sec >= 3600 ? t('{h} h {m} min', { h: Math.floor(sec / 3600), m: Math.round((sec % 3600) / 60) }) : t('{m} min', { m: Math.round(sec / 60) });
+  $('#pb-info').textContent = !curSegments.length ? t('Nicio înregistrare în ziua asta.')
+    : curSegments.length === 1 ? t('Înregistrat {durata}, fără întreruperi', { durata })
+      : t('Înregistrat {durata}, în {n} intervale', { durata, n: curSegments.length });
   renderTimeline(date);
   drawEventDots(ch, date, gen);
   drawPbMarks(ch, date, gen);
@@ -99,7 +105,7 @@ async function drawEventDots(ch, date, gen) {
       ev.row = row;
       list.appendChild(row);
     }
-    if (!pbEvents.length) list.innerHTML = html`<p class="hint">${t('Niciun eveniment in ziua asta.')}</p>`;
+    if (!pbEvents.length) list.innerHTML = html`<p class="hint">${t('Niciun eveniment în ziua asta.')}</p>`;
   } catch {}
   relayoutTimeline();
 }
@@ -823,7 +829,7 @@ $('#exp-btn').onclick = () => {
   const ch = +$('#pb-cam').value;
   const date = $('#pb-date').value;
   const a = $('#exp-a').value, b = $('#exp-b').value;
-  if (!date || !a || !b) { alert(t('Alege data si intervalul (de la / pana la).')); return; }
+  if (!date || !a || !b) { alert(t('Alege data și intervalul (de la / până la).')); return; }
   const c = (t) => date.replace(/-/g, '') + 'T' + t.replace(/:/g, '').padEnd(6, '0') + 'Z';
   const secs = (t) => t.split(':').reduce((x, y) => x * 60 + +y, 0);
   const dur = secs(b) - secs(a);

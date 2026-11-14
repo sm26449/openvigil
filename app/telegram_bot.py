@@ -93,7 +93,7 @@ def raspuns(text, cine="telegram"):
         era = mod.curent()
         mod.set(m, cine=cine, sursa="telegram")
         if era == m:
-            return t("{ico} Deja in modul {mod}.", ico=mod.MOD_ICO[m], mod=t(mod.MOD_RO[m]))
+            return t("{ico} Deja în modul {mod}.", ico=mod.MOD_ICO[m], mod=t(mod.MOD_RO[m]))
         return t("{ico} Mod: {mod} (era {era}).", ico=mod.MOD_ICO[m], mod=t(mod.MOD_RO[m]), era=t(mod.MOD_RO[era]))
     if cmd in ("/mod", "/stare", "/status", "/start", "/help"):
         return (_stare_text() + "\n\n" + t("Comenzi: /acasa, /plecat, /noapte, /stare"))

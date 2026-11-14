@@ -31,13 +31,13 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 VAPID_FILE = os.path.join(ROOT, "data", "push_vapid.json")
 NIVELURI = ("critic", "atentie")
 TTL_EVENIMENT = 600        # un incident vechi de 10 min nu mai merita livrat
-TIP_RO = {"detectie": "Detectie", "persoana": "Persoana", "persoana_necunoscuta": "Fata necunoscuta",
-          "fata_falsa": "Fata FALSA (spoofing)", "descriere": "Semnalmente", "obiect": "Obiect urmarit",
-          "numar": "Numar", "alarma_camera": "Alarma camera", "zgomot": "Zgomot", "sirena": "Sirena",
+TIP_RO = {"detectie": "Detecție", "persoana": "Persoană", "persoana_necunoscuta": "Față necunoscută",
+          "fata_falsa": "Față FALSĂ (spoofing)", "descriere": "Semnalmente", "obiect": "Obiect urmarit",
+          "numar": "Număr", "alarma_camera": "Alarmă de la cameră", "zgomot": "Zgomot", "sirena": "Sirenă",
           "regula": "Regula", "camera_offline": "Camera cazuta", "camera_online": "Camera revenita",
-          "gol_inregistrare": "Gol inregistrare", "intrus": "INTRUS confirmat",
-          "trecere": "Trecere linie", "intrare_zona": "Intrare in zona",
-          "obiect_nou": "Obiect nou aparut", "obiect_disparut": "Obiect disparut",
+          "gol_inregistrare": "Gol în înregistrare", "intrus": "INTRUS confirmat",
+          "trecere": "Trecere linie", "intrare_zona": "Intrare în zonă",
+          "obiect_nou": "Obiect nou apărut", "obiect_disparut": "Obiect disparut",
           "parcare_inceput": "Vehicul parcat", "parcare_sfarsit": "Vehicul plecat din parcare",
           "episod": "Episod de prezenta"}
 _SEV_RANK = {"info": 0, "atentie": 1, "critic": 2}
@@ -130,7 +130,7 @@ def aboneaza(user, abonament, nivel="critic", agent=""):
         raise ValueError(t("abonamentului îi lipsesc cheile"))
     ep = str(abonament["endpoint"])[:2000]
     if not ep.startswith("https://"):
-        raise ValueError(t("endpoint-ul trebuie sa fie https"))
+        raise ValueError(t("adresa trebuie să fie https"))
     nivel = nivel if nivel in NIVELURI else "critic"
     _init()
     with db.conn() as c:
@@ -276,7 +276,7 @@ def eveniment(e, sync=False):
 
 def test(user):
     """Mesaj de proba pe toate dispozitivele utilizatorului (sincron, pentru buton)."""
-    return trimite({"titlu": f"✅ {C.NUME}", "corp": t("Notificarile push functioneaza pe acest dispozitiv."), "url": "/#ev/inc", "tag": "test"}, user=user, ttl=60, sync=True)
+    return trimite({"titlu": f"✅ {C.NUME}", "corp": t("Notificările push funcționează pe acest dispozitiv."), "url": "/#ev/inc", "tag": "test"}, user=user, ttl=60, sync=True)
 
 
 def reset():

@@ -330,7 +330,7 @@ def trimite(cale, remote, run=subprocess.run):
     intr-un director montat. Intoarce (ok, mesaj)."""
     remote = (remote or "").strip()
     if not remote:
-        return None, t("fara destinatie externa")
+        return None, t("fără destinație externă")
     fisiere = [cale, cale[:-len(".tar.gz.enc")] + ".json"]
     if ":" in remote and not os.path.isdir(remote):
         cmd = ["rsync", "-a", "--partial", "--timeout=120",
@@ -360,7 +360,7 @@ def restaureaza(cale, k, dest_dir, manifest=None):
     except (InvalidToken, ValueError):
         raise ValueError(t("cheie greșită sau fișier corupt"))
     if manifest and manifest.get("sha256_clar") and hashlib.sha256(clar).hexdigest() != manifest["sha256_clar"]:
-        raise ValueError(t("continutul nu corespunde manifestului (sha256)"))
+        raise ValueError(t("conținutul nu corespunde manifestului (sha256)"))
     os.makedirs(dest_dir, exist_ok=True)
     out = []
     with tarfile.open(fileobj=io.BytesIO(clar), mode="r:gz") as tar:

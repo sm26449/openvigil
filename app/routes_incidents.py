@@ -33,11 +33,12 @@ def api_incidents():
     """Coada de incidente (sev>=atentie), prioritizate, cu starea de tratare.
     ?noi=1 doar cele netratate. Filtrata pe camerele vizibile (operator/viewer)."""
     vis = _visible_ids()
+    # un singur calcul al cozii (jurnal + severitate + stare) pentru lista SI numaratoare
+    toate = incidents_mod.feed(limit=None, visible=vis)
+    lista = [e for e in toate if e["stare"] == "nou"] if request.args.get("noi") else toate
     return jsonify({
-        "incidente": incidents_mod.feed(
-            limit=min(120, max(1, request.args.get("limit", 60, type=int))),
-            doar_noi=bool(request.args.get("noi")), visible=vis),
-        "counts": incidents_mod.counts(visible=vis)})
+        "incidente": lista[:min(120, max(1, request.args.get("limit", 60, type=int)))],
+        "counts": incidents_mod.counts(visible=vis, toate=toate)})
 
 
 @bp.route("/api/incidents/<eid>/stare", methods=["POST"])

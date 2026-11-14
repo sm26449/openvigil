@@ -60,7 +60,7 @@ LOGIN_HTML = ("""<!DOCTYPE html><html lang="ro"><head><meta charset="utf-8">
 <input id="f-user" name="user" placeholder="Utilizator" autofocus autocomplete="username">
 <label for="f-pass">Parola</label>
 <input id="f-pass" type="password" name="password" placeholder="Parola" autocomplete="current-password">
-<button type="submit">Intra</button>
+<button type="submit">Intră</button>
 {limbi}
 <p class="hint"><a href="https://openvigil.dev" rel="noopener" style="color:#9da7b3">OpenVigil</a> · openvigil.dev</p></form></main></body></html>""")
 
@@ -68,15 +68,15 @@ SETUP_HTML = ("""<!DOCTYPE html><html lang="ro"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>Primul cont — OpenVigil</title>"""
               + _AUTH_CSS + """</head><body><main>
 <form method="post" action="/setup"><h1>🎥 """ + C.NUME + """ — <span>primul cont</span></h1>
-<p class="hint">Nu exista inca niciun utilizator. Creeaza contul de administrator.</p>
+<p class="hint">Nu există încă niciun utilizator. Creează contul de administrator.</p>
 <p class="err">{err}</p>
 <label for="s-user">Utilizator</label>
 <input id="s-user" name="user" placeholder="Utilizator" value="admin" autocomplete="username">
 <label for="s-pass">Parola (minim 6 caractere)</label>
 <input id="s-pass" type="password" name="password" placeholder="Parola (minim 6 caractere)"
  autocomplete="new-password" autofocus>
-<label for="s-pass2">Parola inca o data</label>
-<input id="s-pass2" type="password" name="password2" placeholder="Parola inca o data"
+<label for="s-pass2">Parola încă o dată</label>
+<input id="s-pass2" type="password" name="password2" placeholder="Parola încă o dată"
  autocomplete="new-password">
 <button type="submit">Creeaza contul</button>
 {limbi}
@@ -86,13 +86,13 @@ TOTP_HTML = ("""<!DOCTYPE html><html lang="ro"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>Codul de verificare — OpenVigil</title>"""
              + _AUTH_CSS + """</head><body><main>
 <form method="post" action="/login/2fa"><h1>🎥 """ + C.NUME + """ — <span>al doilea pas</span></h1>
-<p class="hint">Scrie codul din aplicatia de autentificare (sau un cod de recuperare).</p>
+<p class="hint">Scrie codul din aplicația de autentificare (sau un cod de recuperare).</p>
 <p class="err">{err}</p>
 <label for="t-cod">Cod de 6 cifre</label>
 <input id="t-cod" name="cod" placeholder="Cod de 6 cifre" autofocus inputmode="numeric"
  autocomplete="one-time-code" pattern="[0-9a-z ]*">
-<button type="submit">Intra</button>
-<p class="hint"><a href="/login" style="color:#9da7b3">Inapoi la login</a></p></form></main></body></html>""")
+<button type="submit">Intră</button>
+<p class="hint"><a href="/login" style="color:#9da7b3">Înapoi la login</a></p></form></main></body></html>""")
 
 # selectorul de limba de pe formulare: ?lang=xx ramane in cookie (server.py)
 _LIMBI_HTML = ('<p class="hint lang">' + " · ".join(

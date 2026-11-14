@@ -169,7 +169,7 @@ def api_search():
     Merge si pentru vieweri (rezultatele se filtreaza pe camerele lor)."""
     q = (request.args.get("q") or "").strip()
     if not q:
-        return jsonify({"error": t("scrie ce cauti")}), 400
+        return jsonify({"error": t("scrie ce cauți")}), 400
     if not semantic.enabled():
         return jsonify({"error": t("căutarea semantică nu e pornită (Setări → Detecție)")}), 409
     import ask

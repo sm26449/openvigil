@@ -57,38 +57,38 @@ LAST_FIRE_FILE = os.path.join(ROOT, "data", "rule_last_fire.json")
 # (`events_keep_days` din Setari, implicit un an), nu pe octeti ca in JSONL-ul vechi.
 # tipurile care pot declansa reguli (evenimentul "regula" lipseste intentionat)
 TRIGGER_TYPES = {
-    "detectie": "Detectie AI (om, caine, masina...)",
+    "detectie": "Detecție AI (om, câine, mașină…)",
     "persoana": "Persoana recunoscuta (Face ID)",
-    "persoana_necunoscuta": "Fata gasita, dar necunoscuta",
-    "fata_falsa": "Fata falsa (poza/ecran aratat camerei)",
-    "descriere": "Semnalmentele contin un cuvant (ex. rucsac)",
-    "obiect": "Obiect urmarit (numarare): eticheta, ex. car",
-    "numar": "Numar de inmatriculare citit",
-    "alarma_camera": "Alarma din camera (miscare, intruziune...)",
-    "trecere": "Linie de numarare trecuta (linia, sensul intra/iese)",
-    "intrare_zona": "Obiect intrat intr-o zona desenata (numele zonei)",
+    "persoana_necunoscuta": "Față găsită, dar necunoscută",
+    "fata_falsa": "Față falsă (poză/ecran arătat camerei)",
+    "descriere": "Semnalmentele conțin un cuvânt (ex. rucsac)",
+    "obiect": "Obiect urmărit (numărare): etichetă, ex. car",
+    "numar": "Număr de înmatriculare citit",
+    "alarma_camera": "Alarmă de la cameră (mișcare, intruziune…)",
+    "trecere": "Linie de numărare trecută (linia, sensul intră/iese)",
+    "intrare_zona": "Obiect intrat într-o zonă desenată (numele zonei)",
     "intrus": "Intrus confirmat de AI la perimetru (om, vehicul)",
-    "obiect_nou": "Obiect nou aparut si ramas in cadru",
-    "obiect_disparut": "Obiect care era in cadru si a disparut",
+    "obiect_nou": "Obiect nou apărut și rămas în cadru",
+    "obiect_disparut": "Obiect care era în cadru și a dispărut",
     "parcare_inceput": "Vehicul parcat (sta pe loc 2+ minute)",
     "zgomot": "Alarma de zgomot",
     "camera_offline": "Camera a cazut",
     "camera_online": "Camera a revenit",
-    "mod": "Modul s-a schimbat (acasa / plecat / noapte)",
+    "mod": "Modul s-a schimbat (acasă / plecat / noapte)",
 }
 ACTION_TYPES = {
     "sirena": "Sirena camerei",
     "strobo": "Stroboscop",
-    "anunt": "Anunt vocal (TTS) in difuzor",
-    "releu": "Releu (iesirea de alarma)",
+    "anunt": "Anunț vocal (TTS) în difuzor",
+    "releu": "Releu (ieșirea de alarmă)",
     "notificare": "Notificare Telegram/email",
-    "webhook": "Eveniment 'regula' catre Node-RED",
+    "webhook": "Eveniment 'regula' către Node-RED",
     "mqtt": "Mesaj MQTT pe un topic (lumini, prize, Home Assistant)",
-    "mod": "Trece sistemul in alt mod (acasa / plecat / noapte)",
+    "mod": "Trece sistemul în alt mod (acasă / plecat / noapte)",
 }
 MODURI = ("acasa", "plecat", "noapte")
 SABOTAJ = ("shelteralarm", "tamperdetection", "scenechangedetection", "defocusdetection")
-ZILE = ["luni", "marti", "miercuri", "joi", "vineri", "sambata", "duminica"]
+ZILE = ["luni", "marți", "miercuri", "joi", "vineri", "sâmbătă", "duminică"]
 
 _lock = threading.Lock()
 # rule_id -> ultimul moment declansat. Persistat pe disc: la restart, un cooldown de
@@ -149,7 +149,7 @@ def validate(rule):
         if a.get("tip") not in ACTION_TYPES:
             raise ValueError(t("acțiune necunoscută: {tip}", tip=a.get('tip')))
         if a["tip"] == "mod" and a.get("mod") not in MODURI:
-            raise ValueError(t("actiunea 'mod' are nevoie de un mod: acasa / plecat / noapte"))
+            raise ValueError(t("acțiunea 'mod' are nevoie de un mod: acasa / plecat / noapte"))
         actiuni.append(a)
     moduri = sorted({str(m) for m in (rule.get("moduri") or []) if m in MODURI})
     if not actiuni:
@@ -381,8 +381,15 @@ def journal(limit=200, tip=None, cam=None, day=None, min_sev=None, text=None, si
     """Cele mai noi evenimente, filtrabile dupa tip / camera / zi / severitate
     minima / fragment de text (fara diacritice). `cams` = restrictie de vizibilitate aplicata in
     query, inainte de LIMIT (audit #9). Cele mai noi primele; citire indexata (jurnal.py)."""
-    return jurnal.query(limit=limit, tip=tip, cam=cam, day=day, min_sev=min_sev, text=text,
-                        since=since, cams=cams)
+    evs = jurnal.query(limit=limit, tip=tip, cam=cam, day=day, min_sev=min_sev, text=text,
+                       since=since, cams=cams)
+    # rezumatul episoadelor e compus la creare, in romana: il refacem in limba cererii
+    # (interfata engleza il arata acum tradus, iar cele vechi primesc diacriticele) — audit UX-D
+    import episoade
+    for e in evs:
+        if e.get("tip") == "episod":
+            e["text"] = episoade.text_local(e)
+    return evs
 
 
 # ---- episoade: evenimentele grupate, cu inceput/sfarsit/durata ----

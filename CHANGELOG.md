@@ -56,6 +56,24 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   rânduri în loc să fie tăiat; filtrele de grup nu mai par toate active.
 - Pastilele de evenimente de pe linia de timp nu se mai suprapun pe ecranele înguste.
 
+### Conținut și limbaj
+- Diacritice în toată interfața: ~230 de texte corectate („Notificări”, „Intră”, „șterge”,
+  „după”, zilele săptămânii…). O verificare nouă (`scripts/diacritice_check.py`, rulată de
+  teste) pică dacă un text nou de interfață are forme fără diacritice.
+- Rezumatul episoadelor („o persoană necunoscută · 45s · a zăbovit pe loc”) se reface la
+  afișare în limba interfeței: în engleză nu mai apare în română, iar episoadele vechi își
+  primesc diacriticele. Semnalmentele se salvează separat pentru episoadele noi.
+- Numele camerei în loc de „cam N” în exporturi, citirile de numere, fețe și lista de
+  utilizatori. IP-ul nu mai stă pe dalele Live (se suprapunea peste textul camerei și îl vedeau
+  și conturile viewer); administratorul îl vede la trecerea cu mouse-ul și în Camere.
+- Termeni unici: butonul din antet se numește „Sănătate” (deschide Centrul de sănătate), iar
+  jurnalul modificărilor din Setări se numește „Audit” — nu se mai confundă cu Setări → Stare
+  și cu Evenimente → Jurnal.
+- Numere care se potrivesc: insigna și „de tratat” arată același număr de incidente (înainte
+  200 față de 60), cu „99+” pe insignă; Redarea arată durata înregistrată și întreruperile în
+  loc de „1 segment”; Mașini explică atunci când ultimele citiri sunt mai vechi de 7 zile.
+- `/api/incidents` calculează coada o singură dată pentru listă și numărătoare (era de două ori).
+
 ### Adăugat
 - „Învață căutarea” în interfață: verdicte pe concept și imagine, exemple păstrate în
   PostgreSQL și backup, navigare prin arhivă și recuperarea exemplelor confirmate sub prag.

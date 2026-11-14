@@ -31,7 +31,7 @@
     <button id="tab-ai"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg><span>AI</span></button>
     <button id="tab-cams"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h12v10H3z"/><path d="M15 10l6-3v10l-6-3z"/></svg><span>Camere</span></button>
     <button id="tab-set"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Setări</span></button>
-    <button id="tab-stare" title="Centru de sănătate: serverul, canalele, AI-ul și fiecare cameră"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg><span>Stare</span></button>
+    <button id="tab-stare" title="Centru de sănătate: serverul, canalele, AI-ul și fiecare cameră"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg><span>Sănătate</span></button>
     <button id="tab-program" class="admin-only" title="Program & automatizare: orarul săptămânal de moduri și starea regulilor"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M8 14l2.5 2.5L15 12"/></svg><span>Program</span></button>
     <button id="nav-more" class="doar-mobil" aria-haspopup="dialog" aria-controls="sheet" aria-expanded="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg><span>Mai mult</span></button>
   </nav>
@@ -66,7 +66,7 @@
     <label>Producator / protocol
       <select name="vendor" id="addcam-vendor">
         <option value="hik">Hikvision (ISAPI: sirena, difuzor, stroboscop, evenimente)</option>
-        <option value="onvif">Alt producator (ONVIF: flux, poza, PTZ, relee)</option>
+        <option value="onvif">Alt producător (ONVIF: flux, poză, PTZ, relee)</option>
       </select></label>
     <label>IP <input name="ip" placeholder="192.168.1.10" required autocomplete="off"></label>
     <label id="addcam-http" class="hidden">Port HTTP ONVIF <input name="http_port" type="number" value="80"></label>
@@ -147,7 +147,7 @@
     </div>
     <aside id="harta-side" class="hidden">
       <h3>Camere neașezate</h3>
-      <p class="hint">Click pe o camera o pune în mijlocul planului; apoi trage-o la loc.</p>
+      <p class="hint">Clic pe o cameră o pune în mijlocul planului; apoi trage-o la loc.</p>
       <div id="harta-unplaced"></div>
       <div id="harta-sel" class="hidden">
         <h3 id="harta-sel-name"></h3>
@@ -336,10 +336,10 @@
         <label class="btn sm fc-upload">Adaugă poza
           <input type="file" id="fc-file" accept="image/jpeg,image/png" hidden></label>
       </div>
-      <p class="hint">O persoana are nevoie de 3-5 poze din unghiuri diferite ca să fie
-        recunoscută sigur. Cel mai simplu: pornești funcția, treci prin față camerei,
+      <p class="hint">O persoană are nevoie de 3–5 poze din unghiuri diferite ca să fie
+        recunoscută sigur. Cel mai simplu: pornești funcția, treci prin fața camerei,
         apoi etichetezi fețele apărute mai jos — etichetarea e chiar înrolarea.
-        Click pe „istoric” la o persoana = toate aparițiile ei (când a mai venit).</p>
+        Clic pe „istoric” la o persoană = toate aparițiile ei (când a mai venit).</p>
 
       <h3 class="wh-h3">Necunoscuți, grupați pe persoană
         <button id="fc-group" class="link-btn" title="Regrupează acum (altfel se face singur la două minute după o față nouă); tu confirmi cine e fiecare, nimic nu se înrolează singur">↻ regrupează</button>
@@ -374,7 +374,7 @@
         <input id="lp-name" placeholder="nume (ex. duba lui Ion)" autocomplete="off">
         <button id="lp-add" class="btn sm">Adaugă</button>
       </div>
-      <p class="hint">O mașină cunoscută apare cu numele ei în notificari și în webhook-ul
+      <p class="hint">O mașină cunoscută apare cu numele ei în notificări și în webhook-ul
         <code>număr</code> — de acolo poți deschide poarta din Node-RED.</p>
 
       <h3 class="wh-h3">Ultimele citiri <button id="lp-clear" class="link-btn">
@@ -436,7 +436,7 @@
   <div class="ai-pane hidden" id="aipane-reguli">
     <header class="pane-head">
       <h2>Reguli</h2>
-      <p>Când se întâmplă X, fa Y — sirena, anunț, lumini, notificare.</p>
+      <p>Când se întâmplă X, fă Y — sirenă, anunț, lumini, notificare.</p>
       <p class="hint ai-stare" id="ai-stare-reguli"></p>
     </header>
     <div class="set-cols">
@@ -444,7 +444,7 @@
       <h2 data-ic="bolt">Regulile active</h2>
       <div id="ru-list"></div>
 
-      <h3 class="wh-h3" id="ru-form-title">Adaugă o regula</h3>
+      <h3 class="wh-h3" id="ru-form-title">Adaugă o regulă</h3>
       <input type="hidden" id="ru-id">
       <label>Numele regulii <input id="ru-name" placeholder="ex. sirena noaptea la om necunoscut"
              autocomplete="off"></label>
@@ -565,7 +565,7 @@
       <h2 data-ic="image">Căutare semantică în alarme</h2>
       <label class="inline"><input id="sem-on" type="checkbox"> Activata</label>
       <div id="sem-status" class="hint"></div>
-      <div class="s-btns"><button id="sem-backfill" class="btn sm">Indexeaza istoricul acum</button></div>
+      <div class="s-btns"><button id="sem-backfill" class="btn sm">Indexează istoricul acum</button></div>
       <span class="s-msg" id="sem-msg"></span>
       <p class="hint">Fiecare poza din Alarme primeste o „amprenta" de sens (SigLIP, local),
         iar câmpul de căutare din tabul Alarme găsește poze după descriere liberă: „mașină
@@ -656,12 +656,12 @@
     <button class="snav-item on" data-pane="stare">Stare</button>
     <button class="snav-item" data-pane="inreg">Înregistrare</button>
     <button class="snav-item" data-pane="detectie">Detecție</button>
-    <button class="snav-item" data-pane="notif">Notificari</button>
+    <button class="snav-item" data-pane="notif">Notificări</button>
     <button class="snav-item" data-pane="utilizatori">Utilizatori</button>
     <button class="snav-item" data-pane="audio">Audio</button>
     <button class="snav-item" data-pane="sistem">Sistem</button>
     <button class="snav-item" data-pane="unelte">Unelte</button>
-    <button class="snav-item" data-pane="jurnal">Jurnal</button>
+    <button class="snav-item" data-pane="jurnal">Audit</button>
     </div>
     <input id="set-q" class="search" placeholder="Caută în setări…" aria-label="Caută în toate setările">
     <label class="inline set-adv" title="Setările rar atinse: MQTT, ora camerelor, fluiditate, automatizări, jeton, regiuni, legături"><input id="set-adv" type="checkbox"> avansate</label>
@@ -676,9 +676,9 @@
     <div class="set-card wide">
       <h2 data-ic="live">Înregistrăm chiar acum?</h2>
       <div id="cont-live" class="cont-live"><span class="schelet"><i></i><i></i><i></i></span></div>
-      <p class="hint">Dovada nu e ca procesul trăiește sau ca răspunde camera — ci ca fișierul
-        de pe disc crește. Dacă o camera tace mai mult de trei minute, lanțul ei se repornește
-        singur și primesti notificare.</p>
+      <p class="hint">Dovada nu e că procesul trăiește sau că răspunde camera — ci că fișierul
+        de pe disc crește. Dacă o cameră tace mai mult de trei minute, lanțul ei se repornește
+        singur și primești notificare.</p>
     </div>
 
     <div class="set-card wide">
@@ -813,7 +813,7 @@
         aprinzi lumina când se mișcă ceva în spate, dai un salut la poarta când vede un om,
         anunți pe alt canal când apare un animal.</p>
 
-      <label>Unde trimitem evenimentele (o adresa pe linie)
+      <label>Unde trimitem evenimentele (o adresă pe linie)
         <textarea id="wh-urls" rows="3" placeholder="http://192.168.1.50:1880/nvr"></textarea></label>
 
       <label>Secret pentru semnătură (optional, dar recomandat)
@@ -858,7 +858,7 @@
     <div class="set-card">
       <h2 data-ic="paw">Ce detecții trimit notificare</h2>
       <div id="s-notify-labels" class="s-checks"></div>
-      <label>Pauză între notificari (secunde/camera/tip)
+      <label>Pauză între notificări (secunde/cameră/tip)
         <input id="s-cooldown" type="number" min="30" step="30"></label>
       <h2 data-ic="siren" style="margin-top:18px">Sirena automată la</h2>
       <p class="hint">Pe camerele cu automatizarea pornită. Nu alege "Pasăre" la găini :)</p>
@@ -881,12 +881,12 @@
   </div>
   <div class="set-pane hidden" id="pane-notif">
     <header class="pane-head">
-      <h2>Notificari</h2>
+      <h2>Notificări</h2>
       <p>Unde ajung anunțările.</p>
     </header>
     <div class="set-cols">
     <div class="set-card">
-      <h2 data-ic="alarm">Notificari Telegram</h2>
+      <h2 data-ic="alarm">Notificări Telegram</h2>
       <label>Token bot <input id="s-tg-token" type="password" autocomplete="off"
              placeholder="de la @BotFather"></label>
       <label>Chat ID <input id="s-tg-chat" autocomplete="off" placeholder="ex. 123456789"></label>
@@ -907,7 +907,7 @@
     </div>
 
     <div class="set-card">
-      <h2 data-ic="external">Notificari Email</h2>
+      <h2 data-ic="external">Notificări email</h2>
       <label class="inline"><input id="s-em-on" type="checkbox"> Activat</label>
       <label>Server SMTP <input id="s-em-smtp" placeholder="smtp.gmail.com"></label>
       <label>Port <input id="s-em-port" type="number" value="587"></label>
@@ -926,14 +926,14 @@
       <p class="hint">Comutatorul din antet. Regulile pot fi valabile doar în anumite moduri
         (pasul 3 al regulii), iar schimbarea modului e ea însăși un declanșator. Se comută
         din antet, Telegram (/plecat), MQTT (<code>nvr/mod/set</code>), API
-        (<code>POST /api/v1/mod</code>) sau dintr-o regula.</p>
+        (<code>POST /api/v1/mod</code>) sau dintr-o regulă.</p>
       <label class="inline"><input id="s-mod-noapte" type="checkbox"> Noaptea automat:
         acasă → noapte la începutul nopții și înapoi dimineața (orele din Detecție)</label>
     </div>
 
     <div class="set-card">
-      <h2 data-ic="alarm">Notificari push (telefon)</h2>
-      <p class="hint">Incidentele (atenție/critic) ajung ca notificari native pe telefoanele
+      <h2 data-ic="alarm">Notificări push (telefon)</h2>
+      <p class="hint">Incidentele (atenție/critic) ajung ca notificări native pe telefoanele
         abonate, cu legătură direct în redare. Fiecare utilizator își abonează dispozitivul
         din <b>Contul meu</b> (click pe numele lui, sus) și primeste doar camerele pe care le
         vede. Cere HTTPS (adresa de mai sus sau localhost). Telegram rămâne canalul de rezerva.</p>
@@ -960,7 +960,7 @@
         „deconectează" taie toate sesiunile contului, „scoate 2FA" îl lasă fără al doilea
         pas (telefon pierdut).</p>
       <div class="s-btns row">
-        <button type="button" class="me-open">Contul meu: 2FA, notificari push, dispozitive</button>
+        <button type="button" class="me-open">Contul meu: 2FA, notificări push, dispozitive</button>
         <a href="/logout" class="buton-legatura">Ieși din cont</a>
       </div>
     </div>
@@ -1020,7 +1020,7 @@
 <div class="set-pane hidden" id="pane-sistem">
     <header class="pane-head">
       <h2>Sistem</h2>
-      <p>Se configurează o data și se uita.</p>
+      <p>Se configurează o dată și se uită.</p>
     </header>
     <div class="set-cols">
     <div class="set-card" data-avansat>
@@ -1062,7 +1062,7 @@
           <option value="500">0,5 secunde — cea mai rapidă pornire</option>
           <option value="1000">1 secunda (recomandat)</option>
           <option value="2000">2 secunde</option>
-          <option value="2500">2,5 secunde (implicit din fabrica)</option>
+          <option value="2500">2,5 secunde (implicit din fabrică)</option>
           <option value="4000">4 secunde — cel mai economic</option>
         </select>
       </label>
@@ -1186,7 +1186,7 @@
       <h2 data-ic="lock">Copie nocturnă criptată</h2>
       <p class="hint">Toată starea care nu se poate reface (configurație, conturi, reguli,
         jurnalul de evenimente, marcaje, dosare, fețe, harta, amprentele segmentelor) într-o
-        arhiva criptată, zilnic. Fără cheie, copia e inutilă: noteaz-o în altă parte.</p>
+        arhivă criptată, zilnic. Fără cheie, copia e inutilă: noteaz-o în altă parte.</p>
       <label>Ora <input id="bn-ora" type="time"></label>
       <label>Director local (gol = data/backup) <input id="bn-dir" autocomplete="off" placeholder="ex. /mnt/arhiva/nvr-backup"></label>
       <label>Destinație în afara casei (rsync <code>user@host:/cale</code> sau director montat)
@@ -1194,7 +1194,7 @@
       <label>Păstrează local <input id="bn-keep" type="number" min="1" max="365"> copii</label>
       <label class="inline"><input id="bn-fete" type="checkbox"> Include biblioteca de fețe (~15 MB)</label>
       <div class="s-btns row">
-        <button type="button" id="bn-acum">Fa o copie acum</button>
+        <button type="button" id="bn-acum">Fă o copie acum</button>
         <button type="button" id="bn-cheie">Arată cheia de criptare</button>
       </div>
       <pre id="bn-cheie-val" class="hidden"></pre>
@@ -1213,7 +1213,7 @@
   </div>
   <div class="set-pane hidden" id="pane-jurnal">
     <header class="pane-head">
-      <h2>Jurnal</h2>
+      <h2>Jurnal de audit</h2>
       <p>Cine și când a schimbat ceva.</p>
     </header>
     <div class="set-cols">
@@ -1572,7 +1572,7 @@
       <span class="s-msg" id="tfa-msg"></span>
     </section>
     <section>
-      <h3>Notificari push pe acest dispozitiv</h3>
+      <h3>Notificări push pe acest dispozitiv</h3>
       <div id="instalare-app" class="hidden instalare-card">
         <p class="hint" id="instalare-text"></p>
         <button type="button" id="instalare-btn" class="hidden">Instalează aplicația</button>
@@ -1584,8 +1584,8 @@
           <option value="atentie">Atenție și critic (toate incidentele)</option>
         </select></label>
       <div class="s-btns row">
-        <button type="button" id="push-on">Pornește notificarile aici</button>
-        <button type="button" id="push-off" class="hidden">Oprește notificarile aici</button>
+        <button type="button" id="push-on">Pornește notificările aici</button>
+        <button type="button" id="push-off" class="hidden">Oprește notificările aici</button>
         <button type="button" id="push-test" class="hidden">Trimite o notificare de proba</button>
       </div>
       <span class="s-msg" id="push-msg"></span>

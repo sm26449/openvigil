@@ -76,7 +76,7 @@ def normalize(text):
     """'b 123-xyz' -> 'B123XYZ' (doar litere si cifre, majuscule)."""
     s = re.sub(r"[^A-Z0-9]", "", str(text or "").upper())
     if not 4 <= len(s) <= 10:
-        raise ValueError(t("numar invalid (4-10 litere/cifre)"))
+        raise ValueError(t("număr invalid (4–10 litere/cifre)"))
     return s
 
 
