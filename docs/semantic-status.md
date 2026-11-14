@@ -79,7 +79,13 @@ Evaluarea vizuală a început cu un lot privat de 10 rezultate actuale pentru �
 din ultimele 30 de zile, exportate din PostgreSQL. Galeria offline include imaginile,
 mărire, marcaje Corect / Greșit / Neclar, observații, salvare în browser și import/export JSON.
 Baseline-ul și galeria sunt în `docs/audits/2026-11-14-semantic-evaluation/`, excluse din Git.
-Etichetele umane sunt încă în așteptare; precizia și acoperirea trecerilor rămân necunoscute.
+Utilizatorul a etichetat toate cele 10 imagini: rezultatele 1–5 sunt mașini de gunoi;
+6 este o mașină mică, 7 o vidanjă, 8 o dubă, 9 altă vidanjă, iar 10 un tomberon.
+**Precizie top-5: 100% (5/5); precizie top-10: 50% (5/10)**, exclusiv pe acest lot exploratoriu.
+Verdictele, descrierile și raportul sunt salvate privat; baseline-ul original este neschimbat.
+Patru rezultate pozitive sunt apropiate temporal pe aceeași cameră; al cincilea este pe
+altă cameră. Gruparea temporală dă două grupuri per cameră, nu cinci treceri confirmate;
+identitatea între camere și numărul total de treceri rămân neconfirmate.
 Pentru trecerile ratate sunt necesare intervale confirmate independent de rezultatele top-k.
 Lotul curent este pentru explorare; validarea ajustărilor trebuie făcută pe un lot separat.
 
@@ -88,8 +94,9 @@ Lotul curent este pentru explorare; validarea ajustărilor trebuie făcută pe u
 2. Măsurarea și reducerea consumului RAM al backupului complet: transportul vectorilor
    este binar și folosește fișier temporar, dar arhiva și criptarea folosesc încă memoria.
 
-Exemplele vizuale exportate nu au încă adevăr de referință complet etichetat. Nu raportăm
-precizie/recall global din scorurile modelului. La reconcilierea anterioară au rămas 173 de
+Primul lot pentru „mașină de gunoi” are etichete umane complete; celelalte concepte și
+trecerile omise necesită evaluare independentă. Nu raportăm precizie/recall global din
+acest eșantion sau din scorurile modelului. La reconcilierea anterioară au rămas 173 de
 JPG-uri goale: sunt surse invalide, nu vectori care pot fi recuperați fără imagine.
 
 Procedura și comenzile sunt în [semantic-search.md](semantic-search.md), iar contractul
