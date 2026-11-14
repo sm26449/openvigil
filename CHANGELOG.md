@@ -82,6 +82,8 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   altul) devin un singur card cu „✓ confirmă toate”, „✕ fals toate” (cu confirmare) și
   „Arată toate”; serverul are `POST /api/incidents/stare-bloc`, cu aceeași regulă de
   vizibilitate pe camere ca la un incident.
+- Lista de tratat cere mai multe incidente de la server la cerere („Încarcă mai multe incidente”,
+  până la 480): cu gruparea, primele 60 puteau deveni doar 3 carduri.
 - Poze: pagini de câte 60, cu „Încă N” și încărcare la derulare, în loc de sute de carduri
   într-o singură pagină.
 - Pe Live, mișcarea simplă (VMD) apare portocaliu, fără chenar roșu; roșul rămâne pentru

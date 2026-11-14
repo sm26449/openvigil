@@ -1,4 +1,5 @@
 {
+  "Încarcă mai multe incidente": "Load more incidents",
   "lista de incidente lipsește sau e prea lungă": "the incident list is missing or too long",
   "Marchezi toate cele {n} incidente ca alarmă falsă?": "Mark all {n} incidents as false alarms?",
   "{n} incidente marcate": {"one": "{n} incident marked", "other": "{n} incidents marked"},

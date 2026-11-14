@@ -20,6 +20,8 @@ let incFilter = 'noi';
    insemnau 16 ecrane de derulat pe telefon). Ordinea ramane cea de prioritate (critic sus). */
 const INC_PAS = 30;
 let incToate = [], incArat = 0, incRand = null, incObs = null, incSig = '';
+let incLimit = 60, incTotal = 0;
+const INC_LIMIT_MAX = 480;
 function cand(ts) {
   // „18:57:16” azi, „ieri 18:57”, altfel „23.10 18:57” — ca sa stii dintr-o privire cat de vechi e
   const zi = ts.slice(0, 10), ora = ts.slice(11, 19);
@@ -40,6 +42,14 @@ function arataInc() {
   leagaInc(frag);
   incArat += felie.length;
   const ramase = incToate.length - incArat;
+  if (ramase <= 0 && incTotal > incToate.reduce((a, u) => a + (u.grup ? u.grup.length : 1), 0) && incLimit < INC_LIMIT_MAX) {
+    const srv = document.createElement('button');
+    srv.className = 'inc-mai';
+    srv.type = 'button';
+    srv.textContent = t('Încarcă mai multe incidente');
+    srv.onclick = () => { incLimit = Math.min(INC_LIMIT_MAX, incLimit + 120); incSig = ''; loadIncidents(); };
+    list.appendChild(srv);
+  }
   if (ramase > 0) {
     const mai = document.createElement('button');
     mai.className = 'inc-mai';
@@ -119,8 +129,9 @@ const EV_ICO = { persoana_necunoscuta: '👤', persoana: '👤', fata_falsa: '�
 // #13); cand chiar s-a schimbat, pastram cate erau afisate si pozitia de scroll.
 async function loadIncidents(auto = false) {
   try {
-    const qs = incFilter === 'noi' ? 'noi=1'
-      : incFilter === 'critic' ? 'limit=120' : 'limit=120';
+    // cu gruparea, primele 60 de incidente puteau fi 3 carduri: „încarcă mai multe” cere
+    // pagini mai mari de la server (incLimit), pana la 480
+    const qs = (incFilter === 'noi' ? 'noi=1&' : '') + `limit=${incFilter === 'noi' ? incLimit : Math.max(120, incLimit)}`;
     const d = await (await fetch(`/api/incidents?${qs}`)).json();
     const names = Object.fromEntries(S.cameras.map((c) => [c.id, c.name]));
     let inc = d.incidente || [];
@@ -136,6 +147,7 @@ async function loadIncidents(auto = false) {
     const scrollTop = list0.scrollTop, docTop = (document.scrollingElement || {}).scrollTop || 0;
     // numarul real de netratate (acelasi ca pe insigna), nu cate carduri s-au incarcat
     const deTratat = d.counts ? d.counts.noi : inc.length;
+    incTotal = incFilter === 'noi' ? deTratat : inc.length;
     $('#inc-info').textContent = incFilter === 'noi'
       ? (deTratat > inc.length ? t('{n} de tratat (sunt afișate primele {k})', { n: deTratat, k: inc.length }) : t('{n} de tratat', { n: deTratat }))
       : t('{n} incidente', { n: inc.length });

@@ -36,7 +36,7 @@ def api_incidents():
     # un singur calcul al cozii (jurnal + severitate + stare) pentru lista SI numaratoare
     toate = incidents_mod.feed(limit=None, visible=vis)
     lista = [e for e in toate if e["stare"] == "nou"] if request.args.get("noi") else toate
-    pagina = lista[:min(120, max(1, request.args.get("limit", 60, type=int)))]
+    pagina = lista[:min(480, max(1, request.args.get("limit", 60, type=int)))]
     return jsonify({
         "incidente": incidents_mod.adauga_poze(pagina),
         "counts": incidents_mod.counts(visible=vis, toate=toate)})
