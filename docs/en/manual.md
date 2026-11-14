@@ -325,8 +325,11 @@ the button in Settings → Detection. It also works for viewers (results are fil
 their cameras). Since 2026-10-27 the "Learn the scene" crops also go into the index (marked 🧩),
 with the SigLIP vector already computed at classification — see the "Learn the scene" section.
 
-## The AI tab: people, vehicles, rules, events
-A dedicated tab with four sections (sidebar, like Settings):
+## The AI tab: people, vehicles, rules, annotation, configuration
+A dedicated tab with five sections (sidebar, like Settings): People, Vehicles, Rules, **Annotation**
+(the label editor used for training the model) and **Configuration** (what is on and how
+strict: Face ID, LPR, thresholds, alert cameras). The event log described below has
+moved to the **Events** tab.
 - **People** — the Face ID library, labelling of unknown faces, and a per-person
   "history": all of their recognised appearances (`data/faces/log.jsonl`) — the answer to
   "when did X last come by?".

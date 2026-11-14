@@ -325,8 +325,11 @@ butonul din Setari → Detectie. Merge si pentru vieweri (rezultatele se filtrea
 camerele lor). Din 2026-10-27 intra in index si decupajele „Invata scena" (marcate 🧩),
 cu vectorul SigLIP deja calculat la clasificare — vezi sectiunea „Invata scena".
 
-## Tabul AI: persoane, masini, reguli, evenimente
-Tab dedicat cu patru sectiuni (sidebar, ca la Setari):
+## Tabul AI: persoane, masini, reguli, adnotare, configurare
+Tab dedicat cu cinci sectiuni (sidebar, ca la Setari): Persoane, Masini, Reguli, **Adnotare**
+(editorul de etichete pentru antrenarea modelului) si **Configurare** (ce porneste si cat de
+strict: Face ID, LPR, praguri, camere de alerta). Jurnalul de evenimente descris mai jos s-a
+mutat in tabul **Evenimente**.
 - **Persoane** — biblioteca Face ID, etichetarea fetelor necunoscute, si „istoric” per
   persoana: toate aparitiile ei recunoscute (`data/faces/log.jsonl`) — raspunsul la
   „cand a mai venit X pe la noi?".

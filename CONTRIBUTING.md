@@ -26,9 +26,12 @@ cp .env.example .env            # ajustează porturile dacă e nevoie
 docker compose up -d --build    # sau cu -f docker-compose.gpu.yml pentru NVIDIA
 docker compose run --rm --no-deps web test                    # pytest
 # dezvoltare pe interfata: codul din repo montat in containerul web (schimbarile din app/static
-# se vad la reincarcarea paginii; cele din Python dupa `docker compose restart web`)
+# se vad la reincarcarea paginii; cele din Python dupa `restart web`). Suprapunerea se aplica
+# doar cu `up -d` (un simplu `restart` pastreaza montarile vechi ale containerului).
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d web
-cd tests && npm install && NVR_TEST_USER=admin NVR_TEST_PASS=... node ui-test.js   # browser
+cd tests && npm ci && npm run test:ui                # regresia de interfata, izolata (ca in CI)
+# Playwright cere Node >= 20; pe o gazda mai veche, si pentru suita pe instanta vie
+# (ui-test.js), vezi tests/README.md
 python3 scripts/module_check.py                     # modulele ES ale interfeței
 ```
 
@@ -49,7 +52,7 @@ go2rtc) cu variabilele din `.env` exportate.
 - Rutele lungi sunt joburi (`app/jobs.py`), nu cereri care țin conexiunea.
 - Niciun secret în cod, în teste sau în capturi: parolele camerelor stau în `data/`, contul
   de test vine din variabile de mediu.
-- Testele însoțesc schimbarea: `tests/test_*.py` pentru backend, `tests/ui-test.js` pentru
+- Testele însoțesc schimbarea: `tests/test_*.py` pentru backend, `tests/ui-regresie.js` pentru
   ce vede utilizatorul.
 
 ## Commit-uri
