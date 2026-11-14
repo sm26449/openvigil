@@ -276,7 +276,8 @@ function buildCtrls(c, container, full) {
     const b = mkBtn(icon('listen'), t('Ascultă microfonul camerei'));
     b.onclick = (e) => {
       e.stopPropagation();
-      const v = container.querySelector('video');
+      // in HD sunt doua video (substream dedesubt, HD deasupra): sunetul pe cel care chiar ruleaza (audit #2)
+      const v = activeVideo(container);
       if (!v) return;
       v.muted = !v.muted;
       b.classList.toggle('on', !v.muted);

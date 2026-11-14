@@ -202,6 +202,9 @@ function jobsTray() {
 }
 function renderJobs() {
   const tray = jobsTray();
+  // tava se redeseneaza la fiecare tic: focusul de pe un buton (✕, ⬇) se pierdea (audit #12)
+  const fa = document.activeElement && tray.contains(document.activeElement)
+    ? [document.activeElement.closest('.job')?.dataset.id, document.activeElement.className.split(' ')[0]] : null;
   const jobs = [...jobsSeen.values()].slice(-6).reverse();
   tray.innerHTML = lista(jobs, (j) => {
     const activ = j.stare === 'asteapta' || j.stare === 'ruleaza';
@@ -223,6 +226,7 @@ function renderJobs() {
     if (dl) dl.onclick = () => descarcaJob(jobsSeen.get(id));
     if (h) h.onclick = () => { jobsSeen.delete(id); renderJobs(); };
   }
+  if (fa && fa[0]) tray.querySelector(`.job[data-id="${fa[0]}"] .${fa[1]}`)?.focus();
 }
 function descarcaJob(j) {
   const a = document.createElement('a');
@@ -231,13 +235,22 @@ function descarcaJob(j) {
   document.body.appendChild(a); a.click(); a.remove();
 }
 async function jobWait(job, { onProgress, download = true } = {}) {
+  let pauza = 800;
   for (;;) {
     jobsSeen.set(job.id, job);
     renderJobs();
     if (onProgress) onProgress(job);
     if (['gata', 'eroare', 'anulat'].includes(job.stare)) break;
-    await new Promise((r) => setTimeout(r, 800));
-    try { job = await (await fetch(`/api/jobs/${job.id}`)).json(); } catch {}
+    await new Promise((r) => setTimeout(r, pauza));
+    try {
+      job = await (await fetch(`/api/jobs/${job.id}`)).json();
+      pauza = 800;
+    } catch {
+      // fara legatura: spunem asta in tava si rarim incercarile (pana la 10 s), in loc sa
+      // batem serverul la 800 ms in tacere (audit #12)
+      pauza = Math.min(10000, pauza * 2);
+      job = { ...job, mesaj: t('fără legătură cu serverul — reîncerc…') };
+    }
     if (job.error) { job = { ...jobsSeen.get(job.id || ''), stare: 'eroare', mesaj: job.error }; }
   }
   if (job.stare === 'eroare') toast(`${t(JOB_RO[job.tip] || job.tip)}: ${job.mesaj}`, true);

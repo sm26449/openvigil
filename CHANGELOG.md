@@ -74,6 +74,16 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   loc de „1 segment”; Mașini explică atunci când ultimele citiri sunt mai vechi de 7 zile.
 - `/api/incidents` calculează coada o singură dată pentru listă și numărătoare (era de două ori).
 
+### Reparat (reverificarea auditului frontend din 2026-11-12)
+- Butonul de ascultare din HD pornește sunetul pe fluxul care rulează (erau două video).
+- Tava de joburi: fără legătură cu serverul arată „reîncerc…” și rărește încercările până la
+  10 s (înainte bătea serverul la 800 ms în tăcere); focusul de pe ✕/⬇ nu se mai pierde la
+  fiecare reîmprospătare.
+- Panoul camerei se închide cu Esc, dar nu mai blochează fundalul: din listă se trece direct
+  la altă cameră (regresie a accesibilității din aceeași serie).
+- Starea partajată dintre ecrane (`state.js`) își declară proprietățile, valoarea inițială și
+  cine le scrie; un test pică la o proprietate nedeclarată.
+
 ### Adăugat (UX-G)
 - „Cât ai lipsit”: la întoarcere după mai mult de 2 ore, un card sus pe Live rezumă ce s-a
   întâmplat de la ultima privire pe acel dispozitiv — incidentele grupate cu poză, cine a venit

@@ -191,11 +191,14 @@ const OVERLAY_CLOSE = [['#mask-overlay', '#mask-close'], ['#heat-overlay', '#hea
   ['#zone-overlay', '#zone-close'], ['#count-overlay', '#count-close'], ['#addcam-overlay', '#addcam-cancel'],
   ['#cases-modal', '#cases-close'], ['#digest-modal', '#digest-close'], ['#clip-modal', '#clip-close'], ['#ph-overlay', '#ph-close'],
   ['#exports-modal', '#exports-close'], ['#health-overlay', '#health-close'],
-  ['#program-overlay', '#program-close'], ['#cam-panel', '#cam-panel-close']];
+  ['#program-overlay', '#program-close']];
+// se inchid cu Esc, dar NU sunt modale (MODALE de mai jos ar ineria fundalul): panoul camerei e un
+// sertar lateral — din lista se poate trece direct la alta camera cat timp e deschis
+const ESC_INCHIDE = [['#cam-panel', '#cam-panel-close']];
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;           // si din campurile formularului (focusul e in overlay)
   if (meDlg && meDlg.open) return;                      // dialogul nativ se inchide singur
-  for (const [ov, btn] of OVERLAY_CLOSE) {
+  for (const [ov, btn] of [...OVERLAY_CLOSE, ...ESC_INCHIDE]) {
     const el = $(ov);
     if (el && !el.classList.contains('hidden')) { const b = $(btn); if (b) b.click(); return; }
   }
