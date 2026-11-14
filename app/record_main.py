@@ -112,7 +112,7 @@ def main():
     record.prune()
     motion_cleanup()
     continuity.start(_problema)
-    # lantul de custodie: SHA-256 pe fiecare segment inchis (data/segmente.db)
+    # lantul de custodie: SHA-256 pe fiecare segment inchis (PostgreSQL, tabelul `segmente`, lant.py)
     lant.start(lambda cam: [(t, p, fn) for t, p, fn in record._files(cam)],
                lambda: [c["id"] for c in all_cams()], record.SEGMENT)
     last = None

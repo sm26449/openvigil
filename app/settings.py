@@ -70,7 +70,7 @@ DEFAULTS = {
     "backup_remote": "",
     "backup_pastreaza": 14,
     "backup_fete": True,           # biblioteca de fete (persoane + embeddings, fara modele)
-    "events_keep_days": 365,       # jurnalul de evenimente (SQLite, ~45MB/luna)
+    "events_keep_days": 365,       # jurnalul de evenimente (PostgreSQL, tabelul `events`)
     # Alarma de zgomot (pe camerele cu microfon). Pragurile sunt in dBFS: 0 = maxim,
     # -60 = foarte liniste. Fondul obisnuit al unei curti e in jur de -45 dBFS.
     "webhook_urls": [],          # adresele catre care trimitem evenimente (Node-RED etc.)

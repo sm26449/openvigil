@@ -3,7 +3,7 @@
 
 Toate evenimentele sistemului (detectie, persoana recunoscuta/necunoscuta, numar de
 inmatriculare, alarma de camera, zgomot, camera cazuta...) trec printr-un singur punct:
-hooks.emit(). De acolo ajung si aici — intai in jurnalul permanent (data/events.db, SQLite,
+hooks.emit(). De acolo ajung si aici — intai in jurnalul permanent (PostgreSQL, tabelul `events`,
 vezi jurnal.py; istoricul "ce s-a intamplat si cand", descarcabil ca CSV), apoi prin reguli.
 
 O regula = declansator + conditii + actiuni:
@@ -53,7 +53,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RULES_FILE = os.path.join(ROOT, "data", "rules.json")
 LAST_FIRE_FILE = os.path.join(ROOT, "data", "rule_last_fire.json")
 
-# Jurnalul de evenimente sta in SQLite (jurnal.py): retentia e pe ZILE
+# Jurnalul de evenimente sta in PostgreSQL (jurnal.py, tabelul `events`): retentia e pe ZILE
 # (`events_keep_days` din Setari, implicit un an), nu pe octeti ca in JSONL-ul vechi.
 # tipurile care pot declansa reguli (evenimentul "regula" lipseste intentionat)
 TRIGGER_TYPES = {

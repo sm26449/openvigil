@@ -1194,7 +1194,7 @@ def main():
     _register_blueprints()
     ai_token()                # creeaza jetonul partajat cu nvr-ai daca lipseste
     init_ext()
-    jurnal.deschide()         # jurnalul SQLite (prima data: migrarea events.jsonl, ~10 s)
+    jurnal.deschide()         # jurnalul de evenimente: asigura schema PostgreSQL (tabelul `events`)
     jobs.start()              # lucratorii cozii de joburi (export, clip, dosar, camera noua)
     push.camere_fn = get_cameras   # notificarile push respecta restrictia pe camere a contului
     detect.sync()             # porneste workerii YOLO pentru camerele cu detectia activata

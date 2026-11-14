@@ -412,7 +412,7 @@ def _job_raport(job):
     goluri = [{"de_la": lt(a), "pana_la": lt(b), "secunde": int(b - a)} for a, b in record.goluri(ch, t0, t1)]
     cam = next((c for c in get_cameras() if c["id"] == ch), {})
     # lantul de custodie: segmentele-sursa cu amprentele lor de la INCHIDERE (nvr-record,
-    # data/segmente.db) si verificarea lor acum — dovedeste ca materialul brut e neatins
+    # tabelul `segmente` din PostgreSQL) si verificarea lor acum — dovedeste ca materialul brut e neatins
     import lant
     surse = []
     for sg in lant.lista(ch, since=t0, until=t1):

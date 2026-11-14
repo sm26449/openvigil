@@ -4,7 +4,7 @@
 Registrul exporturilor (data/exporturi.jsonl) retine, la fiecare export si fisa probatorie,
 amprenta SHA-256 a fisierului livrat, camera, intervalul, cine l-a cerut si cand. Pagina
 publica /verifica (fara login) calculeaza hash-ul fisierului urcat si il cauta: in registrul
-exporturilor si in lantul de custodie al segmentelor brute (data/segmente.db). Raspunsul spune
+exporturilor si in lantul de custodie al segmentelor brute (tabelul `segmente`). Raspunsul spune
 doar ce e nevoie pentru o verificare: ca fisierul a fost produs de acest NVR, cand, de pe ce
 camera si ca n-a fost modificat de atunci. Nimic altceva nu se dezvaluie.
 """
