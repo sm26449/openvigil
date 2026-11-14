@@ -80,6 +80,11 @@ document.addEventListener('keydown', (e) => {
   e.preventDefault(); e.stopPropagation();
   toate[j].focus(); toate[j].click();
 }, true);
+// in randurile de taburi derulabile (telefon), tabul ales intra in vedere
+document.addEventListener('click', (e) => {
+  const tab = e.target.closest?.('[role="tab"]');
+  if (tab) tab.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+});
 $('#ev-nav').onclick = (e) => { const b = e.target.closest('button[data-evpane]'); if (b) showEv(b.dataset.evpane); };
 /* ---------- telefon: bara de jos cu 4 taburi + „Mai mult”; restul antetului intra in foaie ----------
    Elementele sunt ACELEASI (handlerele raman), doar se muta in DOM dupa latime. */

@@ -366,6 +366,55 @@ const EV_RO = {
 // text fara diacritice si cu litere mici, pentru cautari („Masina” gaseste „mașină”)
 const fdia = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
+/* ---------- selectiile multiple devin bife (audit UX-E) ----------
+   <select multiple> cerea Ctrl+clic — imposibil pe telefon si greu de descoperit pe desktop.
+   Select-ul ramane sursa adevarului (ascuns): codul care il umple (innerHTML) sau il seteaza
+   (option.selected = …) si cel care citeste selectedOptions merg neschimbate; bifele il urmeaza. */
+function bifeMultiple(sel) {
+  if (!sel || sel._bife) return;
+  const box = document.createElement('div');
+  box.className = 'bife';
+  box.setAttribute('role', 'group');
+  const nume = sel.getAttribute('aria-label') || (sel.labels && sel.labels[0] ? sel.labels[0].textContent.replace(/\s+/g, ' ').trim() : '');
+  if (nume) box.setAttribute('aria-label', nume);
+  sel.classList.add('bife-sursa');
+  sel.after(box);
+  sel._bife = box;
+  const deseneaza = () => {
+    box.textContent = '';
+    for (const o of sel.options) {
+      const l = document.createElement('label');
+      l.className = 'bifa' + (o.selected ? ' on' : '');
+      const c = document.createElement('input');
+      c.type = 'checkbox'; c.checked = o.selected; c.disabled = o.disabled || sel.disabled;
+      c.onchange = () => {
+        o.selected = c.checked;
+        sel.dispatchEvent(new Event('input', { bubbles: true }));
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+      };
+      l.append(c, document.createTextNode(' ' + o.textContent));
+      box.appendChild(l);
+    }
+  };
+  sel._bifeSync = () => {
+    const cs = box.querySelectorAll('input');
+    [...sel.options].forEach((o, i) => { if (cs[i]) { cs[i].checked = o.selected; cs[i].parentElement.classList.toggle('on', o.selected); } });
+  };
+  new MutationObserver(deseneaza).observe(sel, { childList: true, subtree: true, characterData: true });
+  deseneaza();
+}
+// option.selected = … din cod (editarea unei reguli, golirea formularului) actualizeaza si bifele
+(() => {
+  const sync = (sel) => { if (sel && sel._bifeSync && !sel._bifeProgramat) { sel._bifeProgramat = true; queueMicrotask(() => { sel._bifeProgramat = false; sel._bifeSync(); }); } };
+  const d = Object.getOwnPropertyDescriptor(HTMLOptionElement.prototype, 'selected');
+  if (d && d.set) Object.defineProperty(HTMLOptionElement.prototype, 'selected', { ...d, set(v) { d.set.call(this, v); sync(this.closest('select')); } });
+  for (const prop of ['selectedIndex', 'value']) {
+    const ds = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, prop);
+    if (ds && ds.set) Object.defineProperty(HTMLSelectElement.prototype, prop, { ...ds, set(v) { ds.set.call(this, v); sync(this); } });
+  }
+})();
+for (const sel of document.querySelectorAll('select[multiple]')) bifeMultiple(sel);
+
 // numele camerei pentru afisare; „cam N” doar daca a disparut din configurare (audit UX-D)
 const numeCam = (id) => (S.cameras.find((c) => c.id === +id) || {}).name || t('cam {id}', { id });
 export { $, ADMIN, CAN_ACT, DET_RO, EV_RO, GO2RTC, HD_MODE, HLS_SUFFIX, JOB_STARE_RO, LIMBA, ME, bindMore, clipReady, esc, fdia, gridFrame, html, icon, lista, numeCam, raw, runJob, streamEl, t, talkStart, talkStop, toast };

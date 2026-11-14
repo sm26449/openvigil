@@ -74,6 +74,20 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   loc de „1 segment”; Mașini explică atunci când ultimele citiri sunt mai vechi de 7 zile.
 - `/api/incidents` calculează coada o singură dată pentru listă și numărătoare (era de două ori).
 
+### Controale
+- Un singur sistem de controale: select-urile, câmpurile, butoanele și „Alege fișierul” fără
+  stil propriu iau stilul temei (nu mai apar native, albe); bifele și butoanele radio au
+  culoarea de accent.
+- Selecțiile multiple cu Ctrl+clic (zone și camere în Reguli, camere la Utilizatori, camerele
+  urmăririi, ale alertei de mașini și ale time-lapse-ului) sunt acum bife, utilizabile pe
+  telefon; select-ul rămâne sursa datelor, deci salvarea și editarea merg neschimbate.
+- Câmpurile numerice și de oră din Setări și AI nu se mai întind pe toată lățimea: unitatea
+  („zile”, „secunde”, „s”) stă lângă ele. „Salvează regula” e butonul principal.
+- Bara Live are un singur stil de comutator (Previzualizare, Mod perete, I/O, Pop-up, Flux),
+  cu stare `aria-pressed`. Butonul modului activ își arată și numele („🏠 Acasă”).
+- Pe telefon, taburile din Setări și AI stau pe un singur rând derulabil (înainte 2–3 rânduri
+  înainte de conținut); tabul ales intră singur în vedere.
+
 ### Triaj
 - Incidentele au miniatură: cadrul salvat al camerei cel mai apropiat de momentul lor (la
   episod, de intervalul în care a stat omul); un clic pe ea deschide fișa. Mini-harta

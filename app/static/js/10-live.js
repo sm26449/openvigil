@@ -428,6 +428,12 @@ async function post(url, body) {
   } catch (e) { alert(t('Eroare rețea: {e}', { e })); }
 }
 
+// comutatoarele din bara Live isi spun starea si cititorului de ecran (aria-pressed urmeaza clasa .on)
+for (const id of ['preview', 'io-toggle', 'popup-toggle', 'flux-toggle']) {
+  const b = $('#' + id); if (!b) continue;
+  const pune = () => b.setAttribute('aria-pressed', b.classList.contains('on') ? 'true' : 'false');
+  pune(); new MutationObserver(pune).observe(b, { attributes: true, attributeFilter: ['class'] });
+}
 /* ---------- evenimente de alarma + detectii (badge-uri pe tile) ---------- */
 const alertEls = {}, detectEls = {};
 async function pollEvents() {

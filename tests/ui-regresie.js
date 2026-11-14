@@ -11,6 +11,7 @@
 //   T1  „Contul meu" e buton real, focusabil de la tastatura
 //   P0  PWA instalabil cu push: meta iOS, manifest (standalone/maskable/scurtaturi), icon-uri
 //   M0  mobil (390px): fara debordare pe 6 ecrane; Inregistrari cu unelte export/analiza pliate
+//   BF  selectiile multiple (Ctrl+clic) sunt bife, sincronizate in ambele sensuri cu select-ul
 //   GR  triaj: incidentele repetate de pe aceeasi camera devin un grup cu actiuni pe toate
 //   AX  accesibilitate (axe-core, WCAG 2.1 AA): zero incalcari critice/serioase pe ecranele
 //       principale + reper <main>, titlu de pagina pe ecran, tinte >= 24 px (audit UX 2026-11-14)
@@ -301,14 +302,20 @@ async function scenM0(browser) {
     const liveSecVizibil = await page.evaluate(() => getComputedStyle(document.querySelector('#preview')).display !== 'none');
     liveSecVizibil ? ok('butonul „⋯" (Live) desface actiunile secundare') : bad('M0', '⋯ Live nu desface .live-sec');
 
-    // 6) Setari: toate sub-taburile se vad (se rup pe randuri, niciunul taiat la dreapta)
+    // 6) Setari: sub-taburile stau pe un rand derulabil (UX-E); fiecare poate fi adus in ecran,
+    //    iar pagina nu se largeste
     await page.evaluate(() => document.querySelector('#tab-set')?.click());
     await page.waitForTimeout(250);
-    const taiate = await page.evaluate(() => {
-      const w = document.documentElement.clientWidth;
-      return [...document.querySelectorAll('#set-nav .snav-item')].filter((e) => e.getBoundingClientRect().right > w + 1).length;
+    const tab = await page.evaluate(() => {
+      const w = document.documentElement.clientWidth, rand = document.querySelector('#set-nav .snav-tabs');
+      const ultim = [...document.querySelectorAll('#set-nav .snav-item')].at(-1);
+      ultim.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+      const q = ultim.getBoundingClientRect();
+      return { derulabil: ['auto', 'scroll'].includes(getComputedStyle(rand).overflowX), ultimInEcran: q.right <= w + 1 && q.left >= 0,
+        lata: document.documentElement.scrollWidth > w + 1 };
     });
-    taiate === 0 ? ok('Setari: toate sub-taburile vizibile (niciunul taiat la dreapta)') : bad('M0', `${taiate} sub-taburi taiate la dreapta`);
+    (tab.derulabil && tab.ultimInEcran && !tab.lata) ? ok('Setari: sub-taburile pe un rand derulabil, ultimul se poate aduce in ecran, pagina nu se largeste')
+      : bad('M0', 'sub-taburi: ' + JSON.stringify(tab));
 
     // 7) campuri text >= 16px pe mobil (altfel iOS da zoom la focus)
     const inputMic = await page.evaluate(() => {
@@ -408,6 +415,30 @@ async function scenOV(browser) {
   } finally { await app.close(); }
 }
 
+// ---- BF: <select multiple> -> bife (audit UX-E) ----
+async function scenBF(browser) {
+  console.log('\n== BF. Selectiile multiple sunt bife, pe telefon ==');
+  const app = await openApp(browser, { viewport: { width: 390, height: 844 }, mobile: true,
+    api: { '/api/rules': { rules: [], triggers: { persoana_necunoscuta: 'Persoană necunoscută' }, zile: ['Lu', 'Ma', 'Mi', 'Jo', 'Vi', 'Sa', 'Du'], groups: ['Curte', 'Strada'] } } });
+  const { page } = app;
+  try {
+    await page.evaluate(() => { location.hash = '#ai/reguli'; });
+    await page.waitForFunction(() => document.querySelectorAll('#ru-cams + .bife .bifa').length >= 2, null, { timeout: 6000 });
+    const a = await page.evaluate(() => ({ selVizibil: getComputedStyle(document.querySelector('#ru-cams')).display !== 'none',
+      bife: document.querySelectorAll('#ru-cams + .bife .bifa').length, grupuri: document.querySelectorAll('#ru-groups + .bife .bifa').length }));
+    (!a.selVizibil && a.bife === 2 && a.grupuri === 2) ? ok('lista Ctrl+clic e inlocuita de bife (2 camere, 2 zone)') : bad('BF', JSON.stringify(a));
+    await page.locator('#ru-cams + .bife .bifa').nth(1).click();
+    const sel = await page.evaluate(() => [...document.querySelector('#ru-cams').selectedOptions].map((o) => o.value));
+    sel.length === 1 && sel[0] === '2' ? ok('o atingere pe bifa selecteaza optiunea din select') : bad('BF', 'selectate: ' + sel);
+    const sync = await page.evaluate(async () => {
+      for (const o of document.querySelector('#ru-cams').options) o.selected = o.value === '1';   // ca la editarea unei reguli
+      await new Promise((r) => setTimeout(r, 0));
+      return [...document.querySelectorAll('#ru-cams + .bife input')].map((c) => c.checked);
+    });
+    JSON.stringify(sync) === '[true,false]' ? ok('setarea din cod (editare regula) se vede in bife') : bad('BF', 'bife: ' + JSON.stringify(sync));
+  } finally { await app.close(); }
+}
+
 // ---- GR: triaj pe grupuri (audit UX-F) ----
 async function scenGR(browser) {
   console.log('\n== GR. Incidentele repetate devin un grup, tratat dintr-un clic ==');
@@ -496,7 +527,7 @@ async function scenAX(browser) {
   globalThis.__ORIGIN = srv.origin;
   const browser = await chromium.launch();
   try {
-    for (const scen of [scenBoot, scenA1, scenA2, scenS1, scenS2, scenC2, scenL2, scenT1, scenC4, scenP0, scenM0, scenHD, scenOV, scenGR, scenAX]) {
+    for (const scen of [scenBoot, scenA1, scenA2, scenS1, scenS2, scenC2, scenL2, scenT1, scenC4, scenP0, scenM0, scenHD, scenOV, scenBF, scenGR, scenAX]) {
       try { await scen(browser); }
       catch (e) { bad(scen.name, 'exceptie in scenariu: ' + String(e).slice(0, 160)); }
     }

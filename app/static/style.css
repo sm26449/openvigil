@@ -2045,3 +2045,66 @@ select { max-width: 100%; }
 /* miscarea simpla nu mai e rosie (rosul = alarma reala); textul inchis pe portocaliu are contrast */
 .tile .alert.miscare { background: rgba(240,136,62,.92); color: #1c1206; }
 .tile.miscare .dot { background: var(--motion); }
+
+/* ================= UX-E: un singur sistem de controale (audit UX 2026-11-14) =================
+   Baza, cu specificitate zero (:where): orice control fara stil propriu arata ca restul temei,
+   in loc de aspectul nativ (select-uri albe, butoane gri, „Choose File”). */
+:root { accent-color: var(--accent-hi); }
+:where(select, textarea, input:not([type=checkbox], [type=radio], [type=range], [type=file], [type=color], [type=hidden])) {
+  background-color: var(--surface-2); color: var(--text); border: 1px solid var(--line);
+  border-radius: var(--r1); padding: var(--s1) var(--s2); font: inherit; font-size: var(--fs-sm); max-width: 100%; }
+:where(select, textarea, input):focus-visible { border-color: var(--accent-hi); }
+:where(button) { background: var(--line); color: var(--text); border: 1px solid transparent; border-radius: var(--r1);
+  padding: var(--s1) var(--s3); font: inherit; font-size: var(--fs-sm); cursor: pointer; }
+:where(button):hover { border-color: var(--accent); }
+:where(button:disabled) { opacity: .55; cursor: not-allowed; }
+input[type=file] { color: var(--text-2); font-size: var(--fs-sm); max-width: 100%; }
+input[type=file]::file-selector-button { background: var(--line); color: var(--text); border: 0; border-radius: var(--r1);
+  padding: var(--s2) var(--s3); margin-right: var(--s3); cursor: pointer; font: inherit; }
+
+/* campurile numerice si de ora nu se mai intind pe toata latimea cardului: unitatea („zile”,
+   „secunde”, „s”) sta langa ele, nu dedesubt */
+.set-card input[type=number] { display: inline-block; width: 7.5em; vertical-align: middle; }
+.set-card input[type=time] { display: inline-block; width: 9.5em; vertical-align: middle; }   /* incape si „11:00 PM” */
+.set-card .ru-actions select, #ru-a-mod { width: auto; min-width: 9em; }
+.set-card .ru-actions input:not([type=checkbox]) { display: inline-block; margin-top: 0; }
+.set-card .ru-actions .ru-mini { width: 4.5em; }
+.set-card .ru-actions .ru-text { width: auto; min-width: 12em; flex: 1; }
+.ru-actions label.inline { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
+
+/* bara Live: aceleasi comutatoare pentru toate (Previzualizare, Mod perete, I/O, Pop-up, Flux) */
+#preview, #wall, #io-toggle, #popup-toggle, #flux-toggle {
+  background: var(--surface); color: var(--text-2); border: 1px solid var(--line); border-radius: var(--r1);
+  padding: var(--s1) var(--s3); font-size: var(--fs-sm); cursor: pointer; }
+#preview:hover, #wall:hover, #io-toggle:hover, #popup-toggle:hover, #flux-toggle:hover { border-color: var(--accent); color: var(--text); }
+#preview.on, #io-toggle.on, #popup-toggle.on, #flux-toggle.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* modul: pictogramele raman, iar modul ACTIV isi arata si numele (🏠🔒🌙 singure nu spun nimic pe telefon) */
+#mod-chip button.on span { display: inline !important; }
+@media (max-width: 360px) { #mod-chip button.on span { display: none !important; } }
+
+/* actiunea principala a formularului de regula */
+#ru-save { background: var(--accent); color: #fff; font-weight: 600; }
+#ru-save:hover { background: var(--accent-hi); }
+
+/* bifele care inlocuiesc <select multiple> */
+select.bife-sursa { display: none !important; }
+.bife { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s2); margin-top: var(--s1); }
+.bifa { display: inline-flex; align-items: center; gap: var(--s1); min-height: 32px; padding: 0 var(--s3);
+  border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--surface-2); color: var(--text-2);
+  font-size: var(--fs-sm); cursor: pointer; user-select: none; }
+.bifa.on, .bifa:has(input:checked) { border-color: var(--accent-hi); color: var(--text); background: color-mix(in srgb, var(--accent) 22%, var(--surface-2)); }
+.bifa input { margin: 0; }
+.set-card .bifa input { display: inline-block; width: auto; margin: 0; }
+
+/* telefon: taburile din Setari si AI pe un singur rand derulabil, cu indiciu de continuare —
+   inainte se rupeau pe 2-3 randuri (~180 px) inainte de continut, cu „Configurare” singur jos */
+@media (max-width: 800px) {
+  .snav-tabs { display: flex; flex: 1 1 100%; flex-wrap: nowrap; overflow-x: auto; gap: var(--s1); scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(to right, #000 85%, transparent); mask-image: linear-gradient(to right, #000 85%, transparent); }
+  .snav-tabs::-webkit-scrollbar, #ai-nav::-webkit-scrollbar { display: none; }
+  .snav-tabs .snav-item { flex: none; }
+  #ai-nav { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
+    -webkit-mask-image: linear-gradient(to right, #000 85%, transparent); mask-image: linear-gradient(to right, #000 85%, transparent); }
+  #ai-nav .ainav-item { flex: none; }
+}
