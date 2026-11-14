@@ -766,10 +766,10 @@ All from the Recordings tab (`app/analiza.py`, `app/routes_analiza.py`), on the 
 
 ## What remained open after the audit: logs, messages, accessibility, encryption
 - **Logs with levels** (`app/logare.py`): nvr-web, nvr-ai and nvr-record no longer write with
-  `print`, but through `logging` (logger "nvr", on stderr, picked up by journald). The message
-  text is unchanged (the `[record] ...` label stays), so `journalctl -u nvr-web`
-  reads the same; in addition each message has a level. `Environment=NVR_LOG_LEVEL=WARNING`
-  in the systemd unit (`systemctl edit nvr-web`) shows only problems; `DEBUG` shows everything.
+  `print`, but through `logging` (logger "nvr", on stderr, picked up by the Docker log). The message
+  text is unchanged (the `[record] ...` label stays), so `docker compose logs web`
+  reads the same; in addition each message has a level. `NVR_LOG_LEVEL=WARNING` in `.env`
+  (applied with `docker compose up -d`) shows only problems; `DEBUG` shows everything.
 - **Server messages have diacritics**: the JSON errors (`error`, `mesaj`, `hint`, `motiv`),
   job texts, notifications and audit entries are in correct Romanian, like the
   interface. JSON keys and "code" values (states, types) stay ASCII.
@@ -905,8 +905,9 @@ check is that GetStreamUri returns an RTSP reachable from the server.
 - **Statistics**: a mini-histogram by hour in the Alarms tab (respects the active filters).
 - **⛏ Extract frames from recordings** (Settings): 1 frame/min from all local
   recordings -> data/dataset, for training.
-NVR config (IP/user/password, web port, playback height): `config.py` (chmod 600).
-After you change `config.py`: `systemctl restart nvr-go2rtc nvr-web`.
+The installation's configuration (NVR IP/user/password, web port, playback height, etc.) lives in
+`.env` (chmod 600, see `.env.example`). After changing it: `docker compose up -d` — a plain
+`restart` does not re-read `.env`.
 
 ## GPU (transcoding acceleration)
 **Active**: the whole video chain runs on the GPU (RTX 2000 Ada: NVDEC decode +

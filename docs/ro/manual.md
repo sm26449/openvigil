@@ -766,10 +766,10 @@ Toate din tabul Inregistrari (`app/analiza.py`, `app/routes_analiza.py`), pe cam
 
 ## Ce a mai ramas deschis dupa audit: loguri, mesaje, accesibilitate, criptare
 - **Loguri cu niveluri** (`app/logare.py`): nvr-web, nvr-ai si nvr-record nu mai scriu cu
-  `print`, ci prin `logging` (logger „nvr", pe stderr, preluat de journald). Textul
-  mesajelor e neschimbat (eticheta `[record] ...` ramane), deci `journalctl -u nvr-web`
-  se citeste la fel; in plus fiecare mesaj are nivel. `Environment=NVR_LOG_LEVEL=WARNING`
-  in unitatea systemd (`systemctl edit nvr-web`) arata doar problemele; `DEBUG` arata tot.
+  `print`, ci prin `logging` (logger „nvr", pe stderr, preluat de jurnalul Docker). Textul
+  mesajelor e neschimbat (eticheta `[record] ...` ramane), deci `docker compose logs web`
+  se citeste la fel; in plus fiecare mesaj are nivel. `NVR_LOG_LEVEL=WARNING` in `.env`
+  (aplicat cu `docker compose up -d`) arata doar problemele; `DEBUG` arata tot.
 - **Mesajele serverului au diacritice**: erorile JSON (`error`, `mesaj`, `hint`, `motiv`),
   textele joburilor, notificarile si intrarile de audit sunt in romana corecta, ca
   interfata. Cheile JSON si valorile „de cod" (stari, tipuri) raman ASCII.
@@ -905,8 +905,9 @@ verificat e ca GetStreamUri intoarce un RTSP accesibil de pe server.
 - **Statistici**: mini-histograma pe ore in tabul Alarme (respecta filtrele active).
 - **⛏ Extrage cadre din inregistrari** (Setari): 1 cadru/min din toate inregistrarile
   locale -> data/dataset, pentru antrenament.
-Config NVR (IP/user/parola, port web, inaltime playback): `config.py` (chmod 600).
-Dupa ce schimbi `config.py`: `systemctl restart nvr-go2rtc nvr-web`.
+Configurarea instalarii (NVR: IP/utilizator/parola, port web, inaltimea redarii etc.) sta in
+`.env` (chmod 600, vezi `.env.example`). Dupa ce il schimbi: `docker compose up -d` — un simplu
+`restart` nu citeste din nou `.env`.
 
 ## GPU (accelerare transcodare)
 **Activ**: tot lantul video ruleaza pe GPU (RTX 2000 Ada: decode NVDEC + encode

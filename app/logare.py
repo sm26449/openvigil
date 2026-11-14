@@ -3,7 +3,7 @@
 
 Mesajele pastreaza eticheta modulului in text („[record] ...”), ca pana acum, deci
 `journalctl -u nvr-web` se citeste la fel; in plus fiecare are nivel (INFO / WARNING / ERROR)
-si poate fi filtrat: NVR_LOG_LEVEL=WARNING in unitatea systemd arata doar problemele.
+si poate fi filtrat: NVR_LOG_LEVEL=WARNING in .env (aplicat cu `docker compose up -d`) arata doar problemele.
 Scrie pe stderr (journald il preia cu unitatea), fara fisiere proprii.
 """
 import logging
