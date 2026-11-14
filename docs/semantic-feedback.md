@@ -84,5 +84,3 @@ Un test concurent șterge un exemplu după fixarea snapshotului și verifică at
 editărilor, cât și păstrarea imaginii și a verdictului corespunzător în copia de siguranță.
 `tests/ui-semantic-learning.js` verifică modulele reale în browser, inclusiv erori de salvare,
 redeschidere, observații, anulare, navigarea arhivei, schimbarea descrierii, XSS, telefon și roluri.
-
-Starea instalării și rezultatele măsurate sunt în [semantic-status.md](semantic-status.md).
