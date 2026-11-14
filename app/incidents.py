@@ -118,6 +118,53 @@ def feed(limit=60, min_sev="atentie", doar_noi=False, visible=None):
     return evs if limit is None else evs[:limit]
 
 
+def adauga_poze(evs):
+    """Miniatura fiecarui incident: cadrul salvat al camerei cel mai apropiat de momentul lui
+    (pentru episod, de mijlocul intervalului in care a stat omul). Fara poza, triajul se facea
+    orbeste — cardul avea doar text (audit UX-F)."""
+    import snaps
+    for e in evs:
+        if not e.get("cam") or not e.get("t"):
+            continue
+        day, ora = e["t"][:10], e["t"][11:19]
+        try:
+            h, m, sec = (int(x) for x in ora.split(":"))
+        except ValueError:
+            continue
+        t = h * 3600 + m * 60 + sec
+        if e.get("tip") == "episod" and e.get("inceput"):
+            try:
+                h0, m0, s0 = (int(x) for x in str(e["inceput"]).split(":"))
+                t0 = h0 * 3600 + m0 * 60 + s0
+                de_la, pana_la = t0 - 5, t0 + int(e.get("durata_sec") or 0) + 5
+            except ValueError:
+                de_la, pana_la = t - 300, t
+            if de_la < 0:          # episod inceput ieri, inchis azi: cautam doar in ziua lui t
+                de_la = 0
+        else:
+            de_la, pana_la = t - 30, t + 30
+        fn = snaps.cel_mai_apropiat(e["cam"], day, de_la, pana_la)
+        if fn:
+            e["poza"] = f"/api/flux/thumb/{day}/{fn}"
+    return evs
+
+
+def set_state_bloc(ids, stare, who=None):
+    """Aceeasi stare pe mai multe incidente, intr-o singura scriere (grupurile din triaj)."""
+    if stare not in STARI:
+        raise ValueError(t("stare necunoscută: {stare}", stare=stare))
+    acum = time.strftime("%Y-%m-%d %H:%M:%S")
+    with _lock:
+        data = _load()
+        for eid in ids:
+            if stare == "nou":
+                data.pop(eid, None)
+            else:
+                data[eid] = {"stare": stare, "cine": who, "cand": acum}
+        _write(data)
+    return len(ids)
+
+
 def counts(visible=None, toate=None):
     """{noi, critic_noi} — pentru badge-ul de pe tab si alarma. `toate` = feed-ul deja calculat
     (fara limita), ca /api/incidents sa nu-l refaca a doua oara; inainte numaratoarea se oprea

@@ -74,6 +74,19 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   loc de „1 segment”; Mașini explică atunci când ultimele citiri sunt mai vechi de 7 zile.
 - `/api/incidents` calculează coada o singură dată pentru listă și numărătoare (era de două ori).
 
+### Triaj
+- Incidentele au miniatură: cadrul salvat al camerei cel mai apropiat de momentul lor (la
+  episod, de intervalul în care a stat omul); un clic pe ea deschide fișa. Mini-harta
+  traseului apare doar când omul chiar s-a mișcat (altfel era o casetă goală cu un punct roșu).
+- Incidentele repetate (3+ de pe aceeași cameră, același tip, la cel mult 30 de minute unul de
+  altul) devin un singur card cu „✓ confirmă toate”, „✕ fals toate” (cu confirmare) și
+  „Arată toate”; serverul are `POST /api/incidents/stare-bloc`, cu aceeași regulă de
+  vizibilitate pe camere ca la un incident.
+- Poze: pagini de câte 60, cu „Încă N” și încărcare la derulare, în loc de sute de carduri
+  într-o singură pagină.
+- Pe Live, mișcarea simplă (VMD) apare portocaliu, fără chenar roșu; roșul rămâne pentru
+  intruziune, linie trecută, sabotaj și celelalte alarme.
+
 ### Adăugat
 - „Învață căutarea” în interfață: verdicte pe concept și imagine, exemple păstrate în
   PostgreSQL și backup, navigare prin arhivă și recuperarea exemplelor confirmate sub prag.

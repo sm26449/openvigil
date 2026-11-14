@@ -11,6 +11,7 @@
 //   T1  „Contul meu" e buton real, focusabil de la tastatura
 //   P0  PWA instalabil cu push: meta iOS, manifest (standalone/maskable/scurtaturi), icon-uri
 //   M0  mobil (390px): fara debordare pe 6 ecrane; Inregistrari cu unelte export/analiza pliate
+//   GR  triaj: incidentele repetate de pe aceeasi camera devin un grup cu actiuni pe toate
 //   AX  accesibilitate (axe-core, WCAG 2.1 AA): zero incalcari critice/serioase pe ecranele
 //       principale + reper <main>, titlu de pagina pe ecran, tinte >= 24 px (audit UX 2026-11-14)
 // Ruleaza: node tests/ui-regresie.js   (are nevoie de Chromium — npx playwright install chromium)
@@ -407,6 +408,40 @@ async function scenOV(browser) {
   } finally { await app.close(); }
 }
 
+// ---- GR: triaj pe grupuri (audit UX-F) ----
+async function scenGR(browser) {
+  console.log('\n== GR. Incidentele repetate devin un grup, tratat dintr-un clic ==');
+  const ep = (i, ora) => ({ id: 'ep' + i, tip: 'episod', cam: 1, sev: 'critic', stare: 'nou', t: `2026-11-14 ${ora}`,
+    text: 'o persoană necunoscută · 45s · a zăbovit pe loc', poza: i === 0 ? '/api/flux/thumb/2026-11-14/120000_cam1_person.jpg' : undefined });
+  const inc = [ep(0, '23:45:00'), ep(1, '23:30:00'), ep(2, '23:10:00'), ep(3, '22:55:00'),
+    { id: 'x', tip: 'intrus', cam: 2, sev: 'critic', stare: 'nou', t: '2026-11-14 23:40:00', eticheta: 'person' }];
+  const app = await openApp(browser, { api: {
+    '/api/incidents': { incidente: inc, counts: { noi: 5, critic_noi: 5 } },
+    '/api/incidents/stare-bloc': ({ body }) => ({ ok: true, n: (body && body.ids || []).length, ignorate: 0 }),
+  } });
+  const { page, calls } = app;
+  try {
+    await page.evaluate(() => { location.hash = '#ev/inc'; });
+    await page.waitForSelector('#inc-list .inc-grup', { timeout: 6000 });
+    const m = await page.evaluate(() => ({ grupuri: document.querySelectorAll('#inc-list .inc-grup').length,
+      carduri: document.querySelectorAll('#inc-list .inc-card:not(.inc-grup)').length,
+      ids: document.querySelector('#inc-list .inc-grup').dataset.ids,
+      poza: !!document.querySelector('#inc-list .inc-grup img.inc-poza'),
+      info: document.querySelector('#inc-info').textContent }));
+    (m.grupuri === 1 && m.carduri === 1) ? ok('4 episoade de pe aceeasi camera = 1 grup; intrusul ramane separat') : bad('GR', JSON.stringify(m));
+    m.ids === 'ep0,ep1,ep2,ep3' ? ok('grupul are toate cele 4 id-uri') : bad('GR', 'ids=' + m.ids);
+    m.poza ? ok('grupul arata miniatura cadrului') : bad('GR', 'fara miniatura');
+    /5 de tratat/.test(m.info) ? ok(`numarul de tratat vine din counts: „${m.info}”`) : bad('GR', 'info=' + m.info);
+    await page.click('#inc-list .inc-grup .inc-grup-ok');
+    const c = await waitForCall(calls, '/api/incidents/stare-bloc', 'POST');
+    (c && c.body && c.body.stare === 'confirmat' && c.body.ids.length === 4) ? ok('„confirmă toate” trimite cele 4 id-uri intr-o cerere') : bad('GR', 'cerere: ' + JSON.stringify(c && c.body));
+    await page.waitForSelector('#inc-list .inc-grup', { timeout: 6000 });
+    await page.click('#inc-list .inc-grup .inc-grup-arata');
+    const n = await page.evaluate(() => document.querySelectorAll('#inc-list .inc-grup-desfasurat .inc-card').length);
+    n === 4 ? ok('„Arată toate” desface grupul in 4 carduri') : bad('GR', `desfasurat: ${n}`);
+  } finally { await app.close(); }
+}
+
 // ---- AX: accesibilitate automata (axe-core) pe ecranele principale, desktop si telefon ----
 const AXE_SRC = require('fs').readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
 const AX_ECRANE = ['#live', '#ev/inc', '#ev/jurnal', '#ev/poze', '#pb', '#ai/pers', '#ai/reguli', '#cams', '#set/stare', '#set/notif', '#set/sistem', '#set/utilizatori'];
@@ -449,7 +484,7 @@ async function scenAX(browser) {
   globalThis.__ORIGIN = srv.origin;
   const browser = await chromium.launch();
   try {
-    for (const scen of [scenBoot, scenA1, scenA2, scenS1, scenS2, scenC2, scenL2, scenT1, scenC4, scenP0, scenM0, scenHD, scenOV, scenAX]) {
+    for (const scen of [scenBoot, scenA1, scenA2, scenS1, scenS2, scenC2, scenL2, scenT1, scenC4, scenP0, scenM0, scenHD, scenOV, scenGR, scenAX]) {
       try { await scen(browser); }
       catch (e) { bad(scen.name, 'exceptie in scenariu: ' + String(e).slice(0, 160)); }
     }

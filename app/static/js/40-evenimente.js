@@ -35,7 +35,7 @@ function arataInc() {
   const felie = incToate.slice(incArat, incArat + INC_PAS);
   const frag = document.createElement('div');
   frag.className = 'inc-felie';
-  frag.innerHTML = html`${felie.map(incRand)}`;
+  frag.innerHTML = html`${felie.map((u) => (u.grup ? incGrupRand(u) : incRand(u)))}`;
   list.appendChild(frag);
   leagaInc(frag);
   incArat += felie.length;
@@ -54,9 +54,53 @@ function arataInc() {
     }
   }
 }
+/* Grupuri in triaj: 3+ incidente de pe aceeasi camera, de acelasi tip/severitate/stare, la
+   cel mult 30 min unul de altul, devin un singur card cu actiuni pe toate (233 de „Episod de
+   prezență” identice de pe o camera se tratau unul cate unul — audit UX-F). */
+const GRUP_MIN = 3, GRUP_GOL = 1800;
+function grupeazaInc(lista) {
+  const sec = (e) => Date.parse(e.t.replace(' ', 'T')) / 1000;
+  const deschis = new Map(), grupuri = [];
+  for (const e of lista) {
+    const k = [e.cam, e.tip, e.sev, e.stare].join('|');
+    const g = deschis.get(k);
+    if (g && Math.abs(sec(g[g.length - 1]) - sec(e)) <= GRUP_GOL) g.push(e);
+    else { const nou = [e]; deschis.set(k, nou); grupuri.push(nou); }
+  }
+  return grupuri.flatMap((g) => (g.length >= GRUP_MIN ? [{ grup: g }] : g));
+}
+let incGrupRand = null;
 function leagaInc(container) {
   wireClips(container);
   wireDosar(container);
+  // poza deschide fisa incidentului
+  for (const img of container.querySelectorAll('.inc-poza')) {
+    img.onclick = () => img.closest('.inc-card')?.querySelector('.fisa-btn')?.click();
+  }
+  for (const b of container.querySelectorAll('.inc-grup-ok, .inc-grup-no')) {
+    b.onclick = async () => {
+      const ids = (b.closest('.inc-grup').dataset.ids || '').split(',').filter(Boolean);
+      const stare = b.classList.contains('inc-grup-ok') ? 'confirmat' : 'fals';
+      if (stare === 'fals' && !confirm(t('Marchezi toate cele {n} incidente ca alarmă falsă?', { n: ids.length }))) return;
+      b.disabled = true;
+      const d = await post('/api/incidents/stare-bloc', { ids, stare });
+      if (d && !d.error) toast(t('{n} incidente marcate', { n: d.n }));
+      loadIncidents(); refreshIncBadge();
+    };
+  }
+  for (const b of container.querySelectorAll('.inc-grup-arata')) {
+    b.onclick = () => {
+      const card = b.closest('.inc-grup');
+      const ids = new Set((card.dataset.ids || '').split(','));
+      const toate = incToate.flatMap((u) => (u.grup ? u.grup : [u])).filter((e) => ids.has(e.id));
+      const box = document.createElement('div');
+      box.className = 'inc-grup-desfasurat';
+      box.innerHTML = html`${toate.map(incRand)}`;
+      card.replaceWith(box);
+      leagaInc(box);
+      box.querySelector('button')?.focus();
+    };
+  }
   for (const b of container.querySelectorAll('.inc-ok, .inc-no, .inc-reopen')) {
     const stare = b.classList.contains('inc-ok') ? 'confirmat'
       : b.classList.contains('inc-no') ? 'fals' : 'nou';
@@ -107,7 +151,11 @@ async function loadIncidents(auto = false) {
         <button class="inc-reopen" data-id="${e.id}" title="${t('Redeschide')}">↺</button>`;
       // mini-harta traiectoriei (episoade E3): pe unde s-a miscat omul in cadru —
       // punct verde = intrare, rosu = iesire; forma spune singura "a trecut/s-a invartit"
-      const traseu = (e.traseu && e.traseu.length > 1) ? html`
+      // fara miscare (toate punctele in acelasi loc) mini-harta era o caseta goala cu un punct rosu
+      const ext = (e.traseu || []).reduce((a, p) => [Math.min(a[0], p[0]), Math.max(a[1], p[0]), Math.min(a[2], p[1]), Math.max(a[3], p[1])], [1, 0, 1, 0]);
+      const seMisca = e.traseu && e.traseu.length > 1 && (ext[1] - ext[0] > 0.04 || ext[3] - ext[2] > 0.04);
+      const poza = e.poza ? html`<img class="inc-poza" src="${e.poza}" alt="${t('Cadrul incidentului')}" loading="lazy" title="${t('Deschide fișa')}">` : '';
+      const traseu = seMisca ? html`
         <svg class="inc-traseu" viewBox="0 0 64 36" title="${t('traseul prin cadru')}">
           <polyline points="${e.traseu.map((p) =>
             `${(2 + p[0] * 60).toFixed(1)},${(2 + p[1] * 32).toFixed(1)}`).join(' ')}"/>
@@ -119,6 +167,7 @@ async function loadIncidents(auto = false) {
       return html`<div class="inc-card sev-${e.sev}" data-id="${e.id}">
         <span class="sev-dot"></span>
         <span class="inc-ico">${EV_ICO[e.tip] || '•'}</span>
+        ${poza}
         <div class="inc-main">
           <div class="inc-top"><b>${t(EV_TIP_RO[e.tip] || e.tip)}</b>${det ? ' · ' + det : ''}
             <span class="inc-when">${cand(e.t)} · ${cam}</span></div>
@@ -135,7 +184,26 @@ async function loadIncidents(auto = false) {
         <div class="inc-acts">${act}</div>
       </div>`;
     };
-    incToate = inc; incArat = 0;
+    incGrupRand = (u) => {
+      const g = u.grup, e = g[0], ultim = g[g.length - 1];
+      const det = e.text || e.nume || e.numar || (e.eticheta && t(DET_RO[e.eticheta] || e.eticheta)) || '';
+      const cam = e.cam ? (names[e.cam] || 'cam ' + e.cam) : '—';
+      const cuPoza = g.find((x) => x.poza);
+      return html`<div class="inc-card inc-grup sev-${e.sev}" data-ids="${g.map((x) => x.id).join(',')}">
+        <span class="sev-dot"></span>
+        <span class="inc-ico">${EV_ICO[e.tip] || '•'}</span>
+        ${cuPoza ? html`<img class="inc-poza" src="${cuPoza.poza}" alt="${t('Cadrul incidentului')}" loading="lazy">` : ''}
+        <div class="inc-main">
+          <div class="inc-top"><b>${t('{n} × {tip}', { n: g.length, tip: t(EV_TIP_RO[e.tip] || e.tip) })}</b>${det ? ' · ' + t('ultimul: {det}', { det }) : ''}
+            <span class="inc-when">${cand(ultim.t)} – ${cand(e.t)} · ${cam}</span></div>
+        </div>
+        <button class="inc-grup-arata link-btn" aria-label="${t('Arată toate cele {n} incidente din grup', { n: g.length })}">${t('Arată toate ({n})', { n: g.length })}</button>
+        ${e.stare === 'nou' ? html`<div class="inc-acts">
+          <button class="inc-grup-ok" title="${t('Am tratat tot grupul')}">${t('✓ confirmă toate')}</button>
+          <button class="inc-grup-no" title="${t('Tot grupul e alarmă falsă')}">${t('✕ fals toate')}</button></div>` : ''}
+      </div>`;
+    };
+    incToate = grupeazaInc(inc); incArat = 0;
     const list = $('#inc-list');
     list.innerHTML = inc.length ? '' : html`<p class="hint">${t('Niciun incident de tratat. Liniște.')}</p>`;
     if (inc.length) {
@@ -456,6 +524,8 @@ async function vezFilmarea(cam, date, sec) {
   await searchRecordings();
   playFrom(date, Math.max(0, sec - 10));   // 10s inainte, ca sa prinzi si intrarea in cadru
 }
+const AL_PAS = 60;
+let alObs = null;
 function renderAlarms() {
   const camF = $('#al-cam').value;
   const byCam = alIncidents.filter((g) => !camF || g.cam === +camF);
@@ -495,7 +565,9 @@ function renderAlarms() {
 
   const grid = $('#al-grid');
   grid.innerHTML = '';
-  for (const g of list) {
+  // pagini de AL_PAS carduri: o zi aglomerata avea 883 de carduri intr-o pagina de 52.000 px,
+  // cu sute de miniaturi incarcate pe telefon (audit UX-F)
+  const cardPentru = (g) => {
     const card = document.createElement('div');
     card.className = 'al-card inc';
     const et = Object.entries(g.etichete).sort((a, b) => b[1] - a[1]);
@@ -516,8 +588,27 @@ function renderAlarms() {
       e.stopPropagation();
       vezFilmarea(g.cam, g.date, g.sec);
     };
-    grid.appendChild(card);
-  }
+    return card;
+  };
+  let aratate = 0;
+  if (alObs) alObs.disconnect();
+  const maiMult = () => {
+    grid.querySelector('.al-mai')?.remove();
+    for (const g of list.slice(aratate, aratate + AL_PAS)) grid.appendChild(cardPentru(g));
+    aratate = Math.min(list.length, aratate + AL_PAS);
+    const ramase = list.length - aratate;
+    if (ramase <= 0) return;
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'al-mai inc-mai';
+    b.textContent = t('Încă {n} din {ramase} rămase', { n: Math.min(AL_PAS, ramase), ramase });
+    b.onclick = maiMult;
+    grid.appendChild(b);
+    if ('IntersectionObserver' in window) {
+      alObs = new IntersectionObserver((en) => { if (en.some((x) => x.isIntersecting)) { alObs.disconnect(); maiMult(); } }, { rootMargin: '400px' });
+      alObs.observe(b);
+    }
+  };
+  maiMult();
 }
 // mini-histograma: evenimentele filtrate, pe ore (o singura serie, direct din date)
 function renderAlarmChart(list) {

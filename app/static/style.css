@@ -2027,3 +2027,19 @@ select { max-width: 100%; }
 #ph-bar button { flex: none; }
 /* HD: fundal opac peste tot (pe tableta grila se vedea prin overlay) */
 #hd-overlay { background: #000; }
+
+/* triaj: miniatura incidentului si cardul de grup (audit UX-F) */
+.inc-poza { width: 96px; height: 54px; object-fit: cover; border-radius: var(--r1); flex: none;
+  background: var(--surface-2); cursor: pointer; }
+.inc-grup { border-left-style: double; border-left-width: 4px; }
+.inc-grup .inc-top b { white-space: nowrap; }
+.inc-grup-desfasurat { display: contents; }
+@media (max-width: 760px) {
+  .inc-poza { width: 72px; height: 40px; }
+  .inc-grup .inc-acts { order: 6; flex: 1 1 100%; display: flex; gap: var(--s2); }
+}
+.al-mai { grid-column: 1 / -1; }
+
+/* miscarea simpla nu mai e rosie (rosul = alarma reala); textul inchis pe portocaliu are contrast */
+.tile .alert.miscare { background: rgba(240,136,62,.92); color: #1c1206; }
+.tile.miscare .dot { background: var(--motion); }

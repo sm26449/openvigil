@@ -127,6 +127,50 @@ def list_day(day, limit=None):
     return out
 
 
+_index = {}          # zi -> (moment, {cam: [(secunda_din_zi, fisier), ...] sortat})
+_INDEX_TTL = 30
+
+
+def _index_zi(day):
+    """Cadrele unei zile indexate pe camera, refolosite 30 s (lista de incidente le cere la
+    fiecare reimprospatare; o zi poate avea mii de fisiere)."""
+    now = time.time()
+    v = _index.get(day)
+    if v and now - v[0] < _INDEX_TTL:
+        return v[1]
+    idx = {}
+    try:
+        for fn in os.listdir(os.path.join(SNAP_DIR, day)):
+            m = re.match(r"^(\d{2})(\d{2})(\d{2})_cam(\d+)_[A-Za-z0-9_.-]+\.jpg$", fn)
+            if m:
+                idx.setdefault(int(m[4]), []).append((int(m[1]) * 3600 + int(m[2]) * 60 + int(m[3]), fn))
+    except FileNotFoundError:
+        pass
+    for lst in idx.values():
+        lst.sort()
+    if len(_index) > 8:
+        _index.clear()
+    _index[day] = (now, idx)
+    return idx
+
+
+def cel_mai_apropiat(cam, day, de_la, pana_la):
+    """Cadrul salvat al camerei cel mai apropiat de mijlocul intervalului [de_la, pana_la]
+    (secunde din zi), sau None. Pentru miniatura de pe cardurile de incident (audit UX-F)."""
+    import bisect
+    lst = _index_zi(day).get(int(cam)) if re.match(r"^\d{4}-\d{2}-\d{2}$", day or "") else None
+    if not lst:
+        return None
+    mij = (de_la + pana_la) / 2
+    i = bisect.bisect_left(lst, (int(mij), ""))
+    best = None
+    for j in (i - 1, i):
+        if 0 <= j < len(lst) and de_la <= lst[j][0] <= pana_la:
+            if best is None or abs(lst[j][0] - mij) < abs(best[0] - mij):
+                best = lst[j]
+    return best[1] if best else None
+
+
 # Doua cadre de pe aceeasi camera la mai putin de atat distanta sunt aceeasi intamplare.
 # Salvarea are deja un racord de 60s per (camera, eticheta), deci fereastra TREBUIE sa fie
 # mai mare decat el, altfel doua cadre ale aceleiasi etichete n-ar lega niciodata.

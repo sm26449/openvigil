@@ -36,9 +36,32 @@ def api_incidents():
     # un singur calcul al cozii (jurnal + severitate + stare) pentru lista SI numaratoare
     toate = incidents_mod.feed(limit=None, visible=vis)
     lista = [e for e in toate if e["stare"] == "nou"] if request.args.get("noi") else toate
+    pagina = lista[:min(120, max(1, request.args.get("limit", 60, type=int)))]
     return jsonify({
-        "incidente": lista[:min(120, max(1, request.args.get("limit", 60, type=int)))],
+        "incidente": incidents_mod.adauga_poze(pagina),
         "counts": incidents_mod.counts(visible=vis, toate=toate)})
+
+
+@bp.route("/api/incidents/stare-bloc", methods=["POST"])
+def api_incident_state_bloc():
+    """Body: {ids: [...], stare: confirmat|fals|nou}. Triajul pe grupuri: zeci de episoade
+    aproape identice de pe aceeasi camera se trateaza dintr-un clic. Doar incidentele pe care
+    contul le vede (aceeasi regula ca la unul singur, SEC-06)."""
+    body = request.get_json(silent=True) or {}
+    ids, stare = body.get("ids") or [], body.get("stare")
+    if not isinstance(ids, list) or not ids or len(ids) > 500:
+        return jsonify({"error": t("lista de incidente lipsește sau e prea lungă")}), 400
+    vis = _visible_ids()
+    cunoscute = {e["id"]: e.get("cam") for e in incidents_mod.feed(limit=None, visible=vis)}
+    permise = [i for i in ids if isinstance(i, str) and i in cunoscute]
+    if not permise:
+        return jsonify({"error": t("nu există")}), 404
+    try:
+        n = incidents_mod.set_state_bloc(permise, stare, who=(current_user() or {}).get("user"))
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    audit.log("incidente " + str(stare), t("{n} incidente", n=n))
+    return jsonify({"ok": True, "n": n, "ignorate": len(ids) - len(permise)})
 
 
 @bp.route("/api/incidents/<eid>/stare", methods=["POST"])

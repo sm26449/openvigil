@@ -440,10 +440,15 @@ async function pollEvents() {
       if (st.active.length) {
         el.innerHTML = html`${icon('warn', 12)} ${st.active.map((x) => t(EV_RO[x] || x)).join(', ')}`;
         el.classList.remove('hidden');
-        el.parentElement.classList.add('alerting');
+        // doar miscare simpla (VMD) = portocaliu, fara chenar rosu; rosu ramane pentru intruziune,
+        // linie trecuta, sabotaj… — altfel jumatate din grila era rosie toata ziua (audit UX-F)
+        const doarMiscare = st.active.every((x) => x === 'VMD');
+        el.classList.toggle('miscare', doarMiscare);
+        el.parentElement.classList.toggle('alerting', !doarMiscare);
+        el.parentElement.classList.toggle('miscare', doarMiscare);
       } else {
         el.classList.add('hidden');
-        el.parentElement.classList.remove('alerting');
+        el.parentElement.classList.remove('alerting', 'miscare');
       }
     }
     hartaEvents(d);
