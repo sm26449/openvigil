@@ -1035,13 +1035,14 @@ function setQualityMode(m) {
   try { localStorage.setItem('hd_quality', m); } catch {}
   for (const id of ['hd-quality', 'pb-quality']) {
     const el = $('#' + id);
-    if (el) el.value = m;
+    // „Flux mic” exista doar la live (inregistrarile au numai fluxul mare): in Inregistrari = 720p
+    if (el) el.value = (m === 'mic' && id === 'pb-quality') ? 'eco' : m;
   }
 }
 let bwProbe = null;              // o singura masurare in fundal, nu una per redare
 function hdHeightParam() {
   const m = qualityMode();
-  if (m === 'eco') return '&height=720';
+  if (m === 'eco' || m === 'mic') return '&height=720';
   if (m === 'max') return '&height=0';
   const t = window.__bw && window.__bw.treapta;
   if (!t) {
@@ -1076,7 +1077,7 @@ $('#speed-btn') && ($('#speed-btn').onclick = async () => {
 for (const id of ['hd-quality', 'pb-quality']) {
   const el = $('#' + id);
   if (!el) continue;
-  el.value = qualityMode();
+  el.value = (qualityMode() === 'mic' && id === 'pb-quality') ? 'eco' : qualityMode();
   el.onchange = () => {
     setQualityMode(el.value);
     // in HD live noua treapta se aplica pe loc; in playback, la urmatoarea redare
@@ -1515,7 +1516,7 @@ $('#tg-a-verif') && ($('#tg-a-verif').onclick = async () => {
   tgCautaChat();
 });
 
-export { SET_LABELS, flash, hdBufferTarget, hdHeightParam, loadSettings, meDlg };
+export { SET_LABELS, flash, hdBufferTarget, hdHeightParam, loadSettings, meDlg, qualityMode };
 
 /* ---------- mod demo: camere sintetice (Setari -> Unelte) ---------- */
 $('#s-demo-add') && ($('#s-demo-add').onclick = async () => {

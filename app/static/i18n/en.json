@@ -1,4 +1,8 @@
 {
+  "Ce flux vezi: Auto pornește pe fluxul mic al camerei și trece pe HD când e gata; Flux mic = doar fluxul 2 al camerei (rapid, puține date); HD = doar fluxul mare": "Which stream you see: Auto starts on the camera's small stream and switches to HD when ready; Small stream = only the camera's second stream (fast, little data); HD = only the main stream",
+  "Calitatea imaginii": "Picture quality",
+  "Flux mic (camera)": "Small stream (camera)",
+  "HD nativ": "HD native",
   "fără legătură cu serverul — reîncerc…": "no connection to the server — retrying…",
   "lipsește momentul ultimei vizite": "the time of the last visit is missing",
   "Jetonul nu arată ca unul de la @BotFather (cifre:litere).": "The token doesn't look like one from @BotFather (digits:letters).",

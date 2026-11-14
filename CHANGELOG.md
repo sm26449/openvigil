@@ -75,6 +75,10 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 - `/api/incidents` calculează coada o singură dată pentru listă și numărătoare (era de două ori).
 
 ### Reparat
+- HD: „Calitate” alege și fluxul, ca la Synology — **Auto** (fluxul mic al camerei, apoi HD
+  când rulează fluid), **Flux mic** (doar fluxul 2 al camerei: rapid, puține date) sau **HD
+  720p / HD nativ** (doar fluxul mare). Pe ecran rămâne un singur flux: în Auto, substream-ul
+  se oprește când apare HD-ul. În Înregistrări, „Flux mic” înseamnă 720p.
 - HD pe telefon în portret: data și numele camerei nu se mai văd de două ori. Cadrul-poster
   (4:3) și substream-ul rămâneau sub fluxul HD (3:2) și ieșeau sus și jos; acum posterul
   dispare la primul cadru video, substream-ul se ascunde când apare HD-ul, iar straturile au

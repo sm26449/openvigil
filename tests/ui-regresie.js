@@ -13,6 +13,7 @@
 //   M0  mobil (390px): fara debordare pe 6 ecrane; Inregistrari cu unelte export/analiza pliate
 //   BF  selectiile multiple (Ctrl+clic) sunt bife, sincronizate in ambele sensuri cu select-ul
 //   UG  „Cât ai lipsit” la intoarcere + glisarea in triaj pe telefon, cu „Anulează”
+//   FL  HD: „Flux mic” = doar substream-ul, „HD 720p” = doar fluxul HD (un singur strat)
 //   GR  triaj: incidentele repetate de pe aceeasi camera devin un grup cu actiuni pe toate
 //   AX  accesibilitate (axe-core, WCAG 2.1 AA): zero incalcari critice/serioase pe ecranele
 //       principale + reper <main>, titlu de pagina pe ecran, tinte >= 24 px (audit UX 2026-11-14)
@@ -483,6 +484,27 @@ async function scenUG(browser) {
   } finally { await app.close(); }
 }
 
+// ---- FL: un singur flux vizibil in HD, ales din „Calitate” ----
+async function scenFL(browser) {
+  console.log('\n== FL. HD cu un singur strat: Flux mic / HD 720p ==');
+  for (const [mod, asteptat] of [['mic', 'cam1'], ['eco', 'hd1_h720']]) {
+    const app = await openApp(browser, { viewport: { width: 390, height: 844 }, mobile: true,
+      init: (m) => { try { localStorage.setItem('hd_quality', m); } catch (e) {} },
+      api: { '/api/play': { stream: 'hd1_h720' } } });
+    const { page, calls } = app;
+    try {
+      await page.evaluate((m) => { localStorage.setItem('hd_quality', m); location.hash = '#hd/1'; }, mod);
+      await page.waitForSelector('#hd-overlay:not(.hidden) #hd-player video-stream', { timeout: 6000 });
+      await page.waitForTimeout(600);
+      const r = await page.evaluate(() => ({ n: document.querySelectorAll('#hd-player video-stream').length,
+        src: [...document.querySelectorAll('#hd-player video-stream')].map((e) => String(e.wsURL || e.getAttribute('src') || '')) }));
+      const play = calls.some((c) => c.path === '/api/play');
+      const ok1 = r.n === 1 && r.src[0].includes(asteptat) && (mod === 'mic' ? !play : play);
+      ok1 ? ok(`„${mod}”: un singur flux in HD (${asteptat})${mod === 'mic' ? ', fara cerere de transcodare' : ''}`) : bad('FL', mod + ' ' + JSON.stringify({ ...r, play }));
+    } finally { await app.close(); }
+  }
+}
+
 // ---- GR: triaj pe grupuri (audit UX-F) ----
 async function scenGR(browser) {
   console.log('\n== GR. Incidentele repetate devin un grup, tratat dintr-un clic ==');
@@ -571,7 +593,7 @@ async function scenAX(browser) {
   globalThis.__ORIGIN = srv.origin;
   const browser = await chromium.launch();
   try {
-    for (const scen of [scenBoot, scenA1, scenA2, scenS1, scenS2, scenC2, scenL2, scenT1, scenC4, scenP0, scenM0, scenHD, scenOV, scenBF, scenGR, scenUG, scenAX]) {
+    for (const scen of [scenBoot, scenA1, scenA2, scenS1, scenS2, scenC2, scenL2, scenT1, scenC4, scenP0, scenM0, scenHD, scenOV, scenBF, scenFL, scenGR, scenUG, scenAX]) {
       try { await scen(browser); }
       catch (e) { bad(scen.name, 'exceptie in scenariu: ' + String(e).slice(0, 160)); }
     }
