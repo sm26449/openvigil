@@ -93,12 +93,27 @@ Identificarea altor referințe a început cu un reper calendaristic oferit de ut
 Au fost inspectate vizual 434 de cadre selectate prin clase de obiecte în alte sâmbete,
 fără o nouă trecere confirmată; acest screening nu reprezintă vizionarea exhaustivă a video-ului.
 Căutarea de piste a fost apoi extinsă la celelalte 89 de zile păstrate, prin asemănare cu
-un decupaj confirmat. Au fost pregătiți 8 candidați din alte zile, în așteptarea confirmării
-utilizatorului, în `docs/audits/2026-11-14-semantic-independent/` (privat).
+un decupaj confirmat. Utilizatorul a etichetat cele 8 referințe din alte zile: 1–3 și 5–8
+sunt mașini de gunoi, iar 4 este negativă (dubă și camion). Verdictul și auditul sunt în
+`docs/audits/2026-11-14-semantic-independent/` (privat).
 Rezultatele textuale top-100 pe 90 de zile au fost fixate separat, înaintea etichetării.
 Unele referințe propuse depășesc perioada inițială de 30 de zile și nu pot fi numărate ca
 ratări ale acelei căutări. Pistele folosesc același encoder vizual, deci nu constituie
 un lot independent pentru estimarea recall-ului global. Nu s-au modificat praguri sau modele.
+
+Acoperirea celor 7 referințe pozitive în căutarea de imagini fixată pe 90 de zile este
+**2/7 în top-10, 4/7 în top-40 și 7/7 în top-100**. Răspunsul fixat la întrebarea despre
+treceri acoperă **2/7 observații de referință (28,6%)**, în 2 din cele 6 zile cu exemple pozitive.
+Toate cele 14 grupuri ale acelui răspuns sunt disponibile; lipsurile nu provin din trunchierea
+listei. Aceste rapoarte nu reprezintă recall global sau un număr de vehicule distincte.
+
+Diagnosticul ulterior etichetării a folosit exact conceptul normalizat al întrebării.
+Cele 7 referințe sunt găsite în top-1.000; cele 5 omise de răspuns au, în diagnosticul curent,
+scoruri sub pragul adaptiv de aproximativ 0,1152. Referința negativă are scorul 0,1034,
+peste unele pozitive: un prag scalar singur nu poate separa acest set corect.
+Prioritatea pentru optimizare este evaluarea unei selecții mai largi cu verificare vizuală
+selectivă, pe alte exemple de validare. Ambele loturi etichetate formează acum un corpus
+privat de dezvoltare: **18 imagini, 12 pozitive și 6 negative**, fără exemple neclare.
 
 1. Evaluarea vizuală pe exemple etichetate, apoi prioritizarea track-urilor, verificării VLM
    selective și alertelor semantice. Aceste funcții nu sunt declarate implementate.
