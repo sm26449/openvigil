@@ -412,7 +412,7 @@ const AXE_SRC = require('fs').readFileSync(require.resolve('axe-core/axe.min.js'
 const AX_ECRANE = ['#live', '#ev/inc', '#ev/jurnal', '#ev/poze', '#pb', '#ai/pers', '#ai/reguli', '#cams', '#set/stare', '#set/notif', '#set/sistem', '#set/utilizatori'];
 async function scenAX(browser) {
   console.log('\n== AX. Accesibilitate (axe-core, WCAG 2.1 AA) pe ecranele principale ==');
-  for (const [nume, opt] of [['desktop', {}], ['telefon', { viewport: { width: 390, height: 844 }, mobile: true }]]) {
+  for (const [nume, opt] of [['desktop', {}], ['telefon', { viewport: { width: 390, height: 844 }, mobile: true }], ['culcat', { viewport: { width: 844, height: 390 }, mobile: true }]]) {
     const app = await openApp(browser, opt);
     const { page } = app;
     try {

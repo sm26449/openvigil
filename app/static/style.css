@@ -2012,7 +2012,8 @@ dialog#reid::backdrop { background: rgba(0, 0, 0, .6); }
   :root { --bara-jos: calc(48px + env(safe-area-inset-bottom, 0px)); }
   header { padding-top: calc(var(--s1) + env(safe-area-inset-top, 0px)); padding-bottom: var(--s1); }
   header > nav button { min-height: 44px; }
-  header > nav button > span:not(.tab-badge) { display: none; }
+  /* ascuns vizual, dar citit de cititorul de ecran (display:none lasa butoanele fara nume) */
+  header > nav button > span:not(.tab-badge) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .view { padding-top: var(--s2); }
 }
 
