@@ -16,6 +16,8 @@ docs/img
 docs/audits
 tests/_*.py
 tests/_*.js
+# capturile si rapoartele auditurilor locale (sute de MB) — intrau in imagine la fiecare build
+tests/_audit
 README*.md
 CONTRIBUTING.md
 SECURITY.md
