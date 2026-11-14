@@ -89,6 +89,15 @@ explicită, importul integral verificat și revenirea sunt descrise în
 rezultate și autorizarea camerelor rămân valabile. Workerul persistent pornește după
 încălzirea secvențială a modelelor, pentru a evita încărcarea concurentă la pornire.
 
+`POST /semantic/search` acceptă și `review: true` pe canalul autentificat web–AI: întoarce
+candidații modelului înaintea memoriei explicite. Web folosește această opțiune numai în
+interfața administrativă `/api/semantic/review`; căutarea obișnuită nu expune observațiile
+private. Rezultatele normale și grupurile pot avea `confirmed: true` pentru exemplele
+confirmate uman. Ele respectă în continuare camerele, perioada și orele cerute.
+Verdictele sunt comune serviciilor prin PostgreSQL; nu necesită apel AI pentru salvare,
+reluarea modelului sau reindexare. Contractul și limitele memoriei sunt în
+[semantic-feedback.md](semantic-feedback.md).
+
 ## Degradare & fallback
 
 - Comutatorul e `settings.ai_service` **și** health-ul viu (`ai_client.remote()`,

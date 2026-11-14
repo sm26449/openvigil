@@ -4,6 +4,7 @@
    pe toate; importurile/exporturile sunt verificate de scripts/module_check.py (si in pytest).
    ==================================================================== */
 import { S } from './state.js';
+import { openSemanticReview } from './49-semantic-review.js';
 import { $, CAN_ACT, DET_RO, EV_RO, bindMore, clipReady, esc, html, icon, lista, raw, runJob, t, toast } from './00-core.js';
 import { evPane, show, showEv } from './05-navigare.js';
 import { popupTile, post } from './10-live.js';
@@ -551,7 +552,9 @@ $('#al-search').onclick = loadAlarms;
 $('#al-cam').onchange = renderAlarms;
 
 /* ---------- cautare semantica: descriere libera peste pozele indexate ---------- */
+let semanticConcept = '', semanticSourceQ = '';
 function renderQuestion(d) {
+  semanticConcept = d.concept || $('#sem-q').value.trim();
   if (d.error) { $('#al-info').textContent = d.error; return; }
   const names = Object.fromEntries(S.cameras.map((c) => [c.id, c.name]));
   $('#al-pills').innerHTML = '';
@@ -576,6 +579,7 @@ function renderQuestion(d) {
               data-cap="${g.inceput} — ${g.camere.map((c) => names[c] || 'cam ' + c).join(', ')}">${t('▶ clip')}</button>
       <div class="al-cap">
         <div class="inc-cand">${g.inceput.slice(0, 16)}${durata}</div>
+        ${g.confirmed ? html`<div class="hint">${t('Confirmat pentru această descriere')}</div>` : ''}
         ${g.weak ? html`<div class="hint">${t('Potrivire slabă — verifică imaginile.')}</div>` : ''}
         <div class="inc-cam">${g.camere.map((c) => names[c] || 'cam ' + c).join(', ')}${
           g.poze > 1 ? ` · ${t('{n} cadre', { n: g.poze })}` : ''}</div>
@@ -592,6 +596,8 @@ let semGen = 0;
 async function semanticSearch() {
   const gen = ++semGen;
   const q = $('#sem-q').value.trim();
+  semanticSourceQ = q;
+  semanticConcept = q;
   if (!q) { loadAlarms(); return; }   // camp gol = inapoi la vederea pe zi
   $('#al-info').textContent = t('Caut...');
   let d;
@@ -607,6 +613,7 @@ async function semanticSearch() {
   if (gen !== semGen) return;
   if (d.error) { $('#al-info').textContent = d.error; return; }
   if (d.raspuns !== undefined) { renderQuestion(d); return; }
+  semanticConcept = d.q || q;
   const names = Object.fromEntries(S.cameras.map((c) => [c.id, c.name]));
   // Cautarea semantica merge pe TOATE camerele vizibile, ultimele 30 de zile — alt domeniu decat
   // ziua/camera din galerie. Aplicam filtrul de camera al galeriei pe rezultate si spunem EXPLICIT
@@ -615,7 +622,7 @@ async function semanticSearch() {
   let rez = d.results;
   if (camF) rez = rez.filter((p) => String(p.cam) === String(camF));
   alList = rez.map((p) => ({
-    url: p.url, time: p.time, label: p.label, cam: p.cam, date: p.day, sursa: p.sursa, weak: p.weak,
+    url: p.url, time: p.time, label: p.label, cam: p.cam, date: p.day, sursa: p.sursa, weak: p.weak, confirmed: p.confirmed,
     cap: `${p.day} ${p.time} — ${names[p.cam] || 'cam ' + p.cam} — ${p.sursa === 'scena' ? t(p.label) + ' · ' + t('scenă') : alNume(p.label)}`,
   }));
   $('#al-pills').innerHTML = '';
@@ -632,6 +639,7 @@ async function semanticSearch() {
     card.innerHTML = html`
       <img loading="lazy" src="${p.url}" alt="">
       <div class="al-cap">
+        ${p.confirmed ? html`<div class="hint">${t('Confirmat pentru această descriere')}</div>` : ''}
         ${p.weak ? html`<div class="hint">${t('Potrivire slabă — verifică imaginile.')}</div>` : ''}
         <div class="inc-cand">${p.date} ${p.time.slice(0, 5)}${p.sursa === 'scena' ? html` <span class="al-scena" title="${t('văzut de „Învață scena”, nu de YOLO')}">🧩 ${t(p.label)}</span>` : ''}</div>
         <div class="inc-cam">${names[p.cam] || 'cam ' + p.cam}</div>
@@ -641,6 +649,7 @@ async function semanticSearch() {
   });
 }
 $('#sem-go').onclick = semanticSearch;
+$('#sem-learn').onclick = () => openSemanticReview($('#sem-q').value.trim() === semanticSourceQ ? semanticConcept : $('#sem-q').value.trim(), { days: 30, cam: $('#al-cam').value });
 $('#sem-q').addEventListener('keydown', (e) => { if (e.key === 'Enter') semanticSearch(); });
 
 /* ---------- viewer poze (lightbox cu navigare) ---------- */

@@ -22,6 +22,7 @@ import tarfile
 import threading
 import time
 import csv
+import re
 import tempfile
 import logare
 from i18n import t
@@ -36,7 +37,7 @@ FISIERE = ["cameras.json", "settings.json", "detect.json", "users.json", "rules.
            "incidents.json", "cases.json", "mod.json", "harta.json", "continuity.json",
            "stationar.json", "rule_last_fire.json", "noise_stats.json", "changes.jsonl",
            "secret_key", "push_vapid.json", "vmd_backup.json", "stream_backup.json"]
-DIRECTOARE = ["plates", "harta", "cases"]     # NU semantic/ (indexul SigLIP, ~2 GB, se reface)
+DIRECTOARE = ["plates", "harta", "cases", "semantic-feedback"]  # exemplele umane se pastreaza cu baza
 FETE = ["faces/persons", "faces/embeddings.json", "faces/log.jsonl", "faces/unknown"]
 # Baza de date (events, segmente, jobs, push, marcaje, vectori) e in PostgreSQL din 2.0.0:
 # intra in arhiva ca pg/<tabel>.csv — dump logic prin COPY, fara binare externe (vezi
@@ -104,11 +105,22 @@ def _dump_pg_in_tar(tar):
     refacerea sa pastreze ordinea. Orice eroare se PROPAGA — o copie fara baza relationala nu
     trebuie sa para reusita. Intoarce {tabel: nr_randuri}."""
     import db
+    import fcntl
+    import semantic_feedback
     randuri = {}
-    with db.tx() as c:
+    # Incepem snapshotul relational si copiem imaginile sub lock-ul scurt al
+    # editorului. Restul dumpului (vectorii mari) continua dupa eliberarea lui.
+    with semantic_feedback.write_lock() as feedback_lock, db.tx() as c:
         c.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
         tabele = sorted(r[0] for r in c.execute(
             "SELECT tablename FROM pg_tables WHERE schemaname='public'").fetchall())
+        if 'semantic_feedback' in tabele:
+            for image_id, in c.execute('SELECT DISTINCT image_id FROM semantic_feedback').fetchall():
+                if not re.fullmatch(r'[a-f0-9]{64}',image_id):
+                    raise ValueError('identificator de imagine invatat invalid')
+                image=semantic_feedback.IMAGE_DIR/(image_id+'.jpg')
+                tar.add(image,arcname='semantic-feedback/'+image_id+'.jpg',recursive=False)
+        fcntl.flock(feedback_lock.fileno(),fcntl.LOCK_UN)
         for tabel in tabele:
             cols, ident = _coloane(c, tabel)
             if not cols:
@@ -242,6 +254,8 @@ def creeaza(dest_dir=None, fete=None, data_dir=None, progres=None):
     continut = []
     with tarfile.open(fileobj=buf, mode="w:gz") as tar:
         for rel in FISIERE + DIRECTOARE + (FETE if fete else []):
+            if rel=='semantic-feedback':
+                continue  # copiat cu snapshotul PostgreSQL, nu separat de verdicte
             p = os.path.join(data_dir, rel)
             if os.path.exists(p):
                 _adauga(tar, p, rel)
@@ -250,6 +264,8 @@ def creeaza(dest_dir=None, fete=None, data_dir=None, progres=None):
         # roteste peste copiile bune si marcheaza ok:False) — o arhiva fara baza relationala
         # nu trebuie sa para reusita
         pg_randuri = _dump_pg_in_tar(tar)
+        if pg_randuri.get('semantic_feedback'):
+            continut.append('semantic-feedback')
         continut += [_pg_arcname(tb) for tb in pg_randuri]
         if progres:
             progres(40, t("arhiva construita"))

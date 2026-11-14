@@ -985,8 +985,16 @@ def _hits(text, days=30, visible=None, labels=None, since=None, until=None, hour
     qe = embed_text(text)
     if pg_backend():
         import semantic_store
-        for r in semantic_store.hits(qe,since,until,visible,labels,hours,generic=GENERIC_LABELS):
+        import semantic_feedback
+        semantic_feedback.init()
+        positives=semantic_feedback.positive_hits(text,qe,since,until,visible,hours)
+        known={(r.get('sursa') or 'detectie',r['cam'],r['day'],r['fn']) for r in positives}
+        for r in positives:
             yield {**r,'url':url_poza(r['day'],r)}
+        for r in semantic_store.hits(qe,since,until,visible,labels,hours,generic=GENERIC_LABELS,
+                                     concept=semantic_feedback.query_concept(text)):
+            if (r.get('sursa') or 'detectie',r['cam'],r['day'],r['fn']) not in known:
+                yield {**r,'url':url_poza(r['day'],r)}
         return
     for day in reversed(indexed_days()):
         if day < lo[:10] or day > hi[:10]:
@@ -1027,7 +1035,7 @@ def appearances(text, days=30, visible=None, gap=APPEAR_GAP, labels=None,
         return [], 0.0
     top = max(h["score"] for h in hits)
     prag = max(MIN_SCORE, REL_SCORE * top)
-    hits = [h for h in hits if h["score"] >= prag]
+    hits = [h for h in hits if h.get('confirmed') or h["score"] >= prag]
     for h in hits:
         h["ts"] = time.mktime(time.strptime(f"{h['day']} {h['time']}",
                                             "%Y-%m-%d %H:%M:%S"))
@@ -1040,10 +1048,11 @@ def appearances(text, days=30, visible=None, gap=APPEAR_GAP, labels=None,
             g["sfarsit"] = f"{h['day']} {h['time']}"
             g["camere"] = sorted(set(g["camere"]) | {h["cam"]})
             g["poze"] += 1
-            if h["score"] > g["scor"]:
+            if (h.get('confirmed') and not g.get('confirmed')) or (bool(h.get('confirmed'))==bool(g.get('confirmed')) and h["score"] > g["scor"]):
                 g["scor"] = h["score"]
                 g["coperta"] = h["url"]
                 g['cover_cam'], g['cover_t'] = h['cam'], f"{h['day']} {h['time']}"
+            g['confirmed']=g.get('confirmed',False) or h.get('confirmed',False)
         else:
             g = {"inceput": f"{h['day']} {h['time']}",
                             "sfarsit": f"{h['day']} {h['time']}",
@@ -1051,20 +1060,21 @@ def appearances(text, days=30, visible=None, gap=APPEAR_GAP, labels=None,
                             "scor": h["score"],
                             "coperta": h["url"],
                             'cover_cam': h['cam'], 'cover_t': f"{h['day']} {h['time']}",
+                            'confirmed':bool(h.get('confirmed')),
                             '_start': h['ts'], "_last": h["ts"]}
             active[h['cam']] = g
             grupuri.append(g)
     for g in grupuri:
         g.pop("_last")
         g.pop('_start')
-        g['weak'] = g['scor'] < .08
+        g['weak'] = not g.get('confirmed') and g['scor'] < .08
         g["scor"] = round(g["scor"], 3)
     grupuri.sort(key=lambda g: g['inceput'], reverse=True)
     return grupuri, round(top, 3)
 
 
 # ---- cautarea ----
-def search(text, days=14, limit=40, visible=None, since=None, until=None, hours=None):
+def search(text, days=14, limit=40, visible=None, since=None, until=None, hours=None, review=False):
     """Cele mai potrivite snapshot-uri pentru o descriere libera.
 
     visible: None = toate camerele, sau multimea de id-uri permise (viewer restrans).
@@ -1073,12 +1083,23 @@ def search(text, days=14, limit=40, visible=None, since=None, until=None, hours=
     import heapq
     if pg_backend():
         import semantic_store
+        import semantic_feedback
         if visible is not None and not visible:
             return []
         a,b=search_time.bounds(days)
-        results=semantic_store.hits(embed_text(text),a if since is None else since,b if until is None else until,
-                                   visible=visible,hours=hours,limit=limit)
-        return [{**r,'url':url_poza(r['day'],r),'weak':r['score']<.08,'score':round(r['score'],4)} for r in results]
+        a,b=a if since is None else since,b if until is None else until
+        semantic_feedback.init()
+        qe=embed_text(text)
+        results=list(semantic_store.hits(qe,a,b,visible=visible,hours=hours,limit=limit,
+                                        concept=None if review else semantic_feedback.query_concept(text)))
+        if not review:
+            positives=semantic_feedback.positive_hits(text,qe,a,b,visible,hours)
+            unique={semantic_feedback.asset_key(r):r for r in results}
+            unique.update({semantic_feedback.asset_key(r):r for r in positives})
+            results=sorted(unique.values(),key=lambda r:(bool(r.get('confirmed')),r['score'],r['day'],r['time'],r['cam'],r['fn']),reverse=True)[:max(0,limit)]
+        if review:
+            results=semantic_feedback.annotate(text,results)
+        return [{**r,'url':url_poza(r['day'],r),'weak':not r.get('confirmed') and r['score']<.08,'score':round(r['score'],4)} for r in results]
     results = heapq.nlargest(max(0, limit), _hits(text, days, visible, None, since, until, hours),
                             key=lambda r: (r['score'], r['day'], r['time'], r['cam'], r['fn']))
     return [{**r, 'weak': r['score'] < .08, 'score': round(r['score'], 4)} for r in results]

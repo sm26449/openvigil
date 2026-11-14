@@ -9,11 +9,13 @@ import { S } from './state.js';
 import { $, DET_RO, fdia, html, lista, t } from './00-core.js';
 import { AL_RO, EV_TIP_RO } from './40-evenimente.js';
 import { openFisa } from './45-fisa.js';
+import { openSemanticReview } from './49-semantic-review.js';
 
 const PLACUTA = /^[A-Z]{1,2}\s?\d{2,3}\s?[A-Z]{3}$/i;
 let qRez = [], qCat = '', qUltim = '';
 let qAnswer = '', qPeriod = '';
 let qQuestion = false;
+let qConcept = '';
 let qEroare = false, qGen = 0, qEsecuri = [];   // qEroare: toate sursele au esuat (#11); qGen:
 // ultima cautare castiga (#2); qEsecuri: sursele picate, pentru avertisment de rezultate partiale (E2).
 
@@ -22,6 +24,7 @@ async function cauta(q) {
   if (!q) return;
   const gen = ++qGen;
   qUltim = q;
+  qConcept = q;
   const dlg = $('#cauta'); if (!dlg) return;
   $('#cauta-q').textContent = q;
   $('#cauta-info').textContent = t('caut…');
@@ -51,6 +54,7 @@ async function cauta(q) {
   qAnswer = sem?.raspuns || sem?.error || '';
   qPeriod = sem?.period || '';
   qQuestion = sem?.kind === 'question' || sem?.raspuns !== undefined;
+  qConcept = sem?.concept || q;
   qEroare = ok === 0 && qEsecuri.length > 0;
   // Perioada uniforma pe TOATE sursele (audit E3): numerele si persoanele nu au filtru de perioada
   // pe server, deci le taiem client-side la aceeasi fereastra ca semantic/jurnal (`zile`).
@@ -62,11 +66,11 @@ async function cauta(q) {
     const stamp = g.cover_t || g.inceput;
     rez.push({ cat: 'poze', cam: g.cover_cam || g.camere[0], t: stamp, rel: rez.length,
       titlu: sem.concept, poza: g.coperta, tip: g.source || 'detectie', det: sem.concept,
-      id: g.event_id, weak: g.weak });
+      id: g.event_id, weak: g.weak, confirmed: g.confirmed });
   }
   // pozele semantice vin ordonate dupa POTRIVIRE; pastram rangul ca sa putem sorta dupa relevanta (audit E4)
   ((sem && sem.results) || []).forEach((p, i) => {
-    rez.push({ cat: 'poze', cam: p.cam, t: `${p.day} ${p.time}`, rel: i, titlu: t(DET_RO[p.label] || AL_RO[p.label] || p.label) + (p.sursa === 'scena' ? ' 🧩' : ''), poza: p.url, tip: 'detectie', det: p.label, weak: p.weak });
+    rez.push({ cat: 'poze', cam: p.cam, t: `${p.day} ${p.time}`, rel: i, titlu: t(DET_RO[p.label] || AL_RO[p.label] || p.label) + (p.sursa === 'scena' ? ' 🧩' : ''), poza: p.url, tip: 'detectie', det: p.label, weak: p.weak, confirmed: p.confirmed });
   });
   for (const r of ((pl && pl.reads) || [])) {
     if (!inFereastra(r.t)) continue;
@@ -119,7 +123,7 @@ function qRender() {
   $('#cauta-grid').innerHTML = html`${qAnswer ? html`<div class="ask-answer">${qAnswer}</div>` : ''}` + lista(items, (r, i) => html`
     <button class="q-item" data-i="${i}" data-cat="${r.cat}">
       ${r.poza ? html`<img src="${r.poza}" alt="" loading="lazy">` : html`<span class="q-noimg">${r.cat === 'persoane' ? '👤' : '•'}</span>`}
-      <span class="q-main"><span class="q-titlu">${r.titlu}</span><span class="hint">${names[r.cam] || 'cam ' + r.cam} · ${r.t}</span>${r.weak ? html`<span class="hint">${t('Potrivire slabă — verifică imaginile.')}</span>` : ''}</span>
+      <span class="q-main"><span class="q-titlu">${r.titlu}</span><span class="hint">${names[r.cam] || 'cam ' + r.cam} · ${r.t}</span>${r.confirmed ? html`<span class="hint">${t('Confirmat pentru această descriere')}</span>` : ''}${r.weak ? html`<span class="hint">${t('Potrivire slabă — verifică imaginile.')}</span>` : ''}</span>
     </button>`, '');
   for (const b of $('#cauta-grid').querySelectorAll('.q-item')) {
     b.onclick = () => { const r = items[+b.dataset.i]; $('#cauta').close(); openFisa({ cam: r.cam, t: r.t, tip: r.tip, sev: r.sev, id: r.id, det: r.det, poza: r.poza, cine: r.cine }); };
@@ -128,6 +132,7 @@ function qRender() {
 
 $('#cauta') && (() => {
   $('#cauta-close').onclick = () => $('#cauta').close();
+  $('#cauta-learn').onclick = () => openSemanticReview(qConcept || qUltim, { days: +$('#cauta-zile').value });
   $('#cauta').onclick = (e) => { if (e.target.id === 'cauta') $('#cauta').close(); };
   for (const b of document.querySelectorAll('#cauta-chips button')) { b.dataset.txt = b.textContent; b.onclick = () => { qCat = b.dataset.cat; qRender(); }; }
   $('#cauta-zile').onchange = () => cauta(qUltim);

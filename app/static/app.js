@@ -12,6 +12,7 @@ import './js/40-evenimente.js';
 import './js/45-fisa.js';
 import './js/46-reid.js';
 import './js/48-cauta.js';
+import './js/49-semantic-review.js';
 import './js/50-camere.js';
 import './js/60-setari.js';
 import './js/65-program.js';

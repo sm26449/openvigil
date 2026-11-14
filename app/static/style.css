@@ -1695,6 +1695,42 @@ dialog#cauta .fisa-head select { font-size: var(--fs-xs); }
 .q-item .q-noimg { width: 96px; height: 54px; display: flex; align-items: center; justify-content: center; font-size: 22px; background: var(--surface); border-radius: var(--r1); flex: none; }
 .q-item .q-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: var(--fs-xs); }
 .q-item .q-titlu { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.no-admin .semantic-learn-button { display: none !important; }
+#semantic-review { width: min(1200px, 96vw); max-height: 94dvh; padding: 0; }
+#semantic-review, #semantic-review-photo { background: var(--surface); color: var(--text); border: 1px solid var(--line); border-radius: var(--r2); }
+#semantic-review::backdrop, #semantic-review-photo::backdrop { background: rgba(0, 0, 0, .65); }
+#semantic-review button, #semantic-review-photo button { background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: var(--r1); padding: 8px 12px; font: inherit; cursor: pointer; }
+#semantic-review button:disabled { opacity: .55; cursor: default; }
+#semantic-review input, #semantic-review select { background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: var(--r1); padding: 8px; font: inherit; font-size: 16px; width: 100%; min-width: 0; }
+#semantic-review .semantic-review-zoom { padding: 0; background: #080c10; border: 0; }
+#semantic-review button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.semantic-review-help { margin: 8px 0 16px; }
+.semantic-review-box { padding: var(--s4); overflow-y: auto; max-height: 92dvh; }
+.semantic-review-box > .fisa-head { position: sticky; top: 0; z-index: 2; background: var(--surface); padding-block: 8px; }
+.semantic-review-controls { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
+.semantic-review-controls label { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.semantic-review-controls label:first-child { flex: 1 0 100%; }
+.semantic-review-controls input, .semantic-review-controls select { max-width: 100%; min-height: 44px; }
+.semantic-review-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+.semantic-review-card { min-width: 0; padding: 12px; border: 2px solid var(--line); border-radius: var(--r1); background: var(--surface-2); }
+.semantic-review-card[data-verdict="yes"] { border-color: #53876b; }
+.semantic-review-card[data-verdict="no"] { border-color: #b46a65; }
+.semantic-review-card[data-verdict="unknown"] { border-color: #b18c47; }
+.semantic-review-card > label { display: block; margin-top: 10px; }
+.semantic-review-card button { min-height: 44px; }
+.semantic-review-card input { display: block; width: 100%; box-sizing: border-box; margin-top: 4px; }
+.semantic-review-zoom { display: block; width: 100%; padding: 0; background: #080c10; border: 0; }
+.semantic-review-zoom img { display: block; width: 100%; height: 220px; object-fit: contain; }
+.semantic-review-choices, .semantic-review-foot, .semantic-review-pages { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+.semantic-review-choices button, .semantic-review-pages button, .semantic-review-controls button { min-height: 44px; }
+.semantic-review-choices button[aria-pressed="true"] { outline: 2px solid var(--accent); outline-offset: 2px; }
+.semantic-review-foot { justify-content: space-between; }
+#semantic-review-photo { max-width: 96vw; max-height: 96dvh; }
+#semantic-review-photo-img { display: block; max-width: 90vw; max-height: 78dvh; object-fit: contain; }
+@media (max-width: 600px) {
+  .semantic-review-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .semantic-review-controls label:first-child { grid-column: 1 / -1; }
+}
 /* ascunderea din antet se aliniaza cu pragul foii mobile (760px), unde cautarea reapare in
    foaia „Mai mult"; la 800px ramanea un gol de 40px fara cautare nicaieri (audit #17) */
 @media (max-width: 760px) { #q-global { display: none; } }

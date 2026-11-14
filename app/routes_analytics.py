@@ -202,6 +202,86 @@ def api_semantic_status():
     return jsonify(semantic.status())
 
 
+# Administrarea exemplelor ramane sub garda admin + CSRF a serverului.
+def _review_ready():
+    return semantic.persistent() and semantic.pg_backend()
+
+
+def _review_concept(q):
+    import ask
+    import semantic_feedback
+    if not isinstance(q,str):raise ValueError('concept invalid')
+    text=q.strip()
+    if ask.is_question(text):
+        text=ask.parse(ask._plat(text),90)['concept']
+    semantic_feedback.canonical(text)
+    return text
+
+
+@bp.route('/api/semantic/review')
+def api_semantic_review():
+    import semantic_feedback as feedback
+    if not _review_ready():
+        return jsonify({'error':t('Învățarea căutării necesită indexul PostgreSQL activ.')}),409
+    try:
+        concept=_review_concept(request.args.get('q'))
+        mode=request.args.get('mode','candidates')
+        cam=request.args.get('cam',type=int)
+        if cam is not None and cam not in {c['id'] for c in get_cameras()}:
+            return jsonify({'error':t('camera nu există')}),404
+        days=min(90,max(1,request.args.get('days',90,type=int)))
+        offset=min(100000,max(0,request.args.get('offset',0,type=int)))
+        more=False
+        if mode=='candidates':
+            if not semantic.enabled():
+                return jsonify({'error':t('căutarea semantică nu e pornită (Setări → Detecție)')}),409
+            vis=None if cam is None else {cam}
+            rows=ai_client.semantic_search(concept,days,100,vis,review=True) if ai_client.remote() else None
+            if rows is None:rows=semantic.search(concept,days=days,limit=100,visible=vis,review=True)
+        else:
+            rows,more=feedback.browse(concept,mode,request.args.get('day'),cam,offset)
+            for row in rows:
+                if not row.get('url'):row['url']=semantic.url_poza(row['day'],row)
+        return jsonify({'concept':concept,'key':feedback.canonical(concept),'results':rows,'mode':mode,
+                        'offset':offset,'more':more,'stats':feedback.stats(concept),'concepts':feedback.concepts()})
+    except (ValueError,TypeError) as e:
+        return jsonify({'error':t('cerere invalida')+': '+str(e)}),400
+
+
+@bp.route('/api/semantic/review/feedback',methods=['POST','DELETE'])
+def api_semantic_review_feedback():
+    import semantic_feedback as feedback
+    from server import current_user
+    if not _review_ready():
+        return jsonify({'error':t('Învățarea căutării necesită indexul PostgreSQL activ.')}),409
+    body=request.get_json(silent=True) or {}
+    if not isinstance(body,dict):return jsonify({'error':t('cerere invalida')}),400
+    try:
+        concept=_review_concept(body.get('concept'))
+        asset=body.get('asset')
+        _,cam,_,_=feedback.validate_asset(asset)
+        if request.method=='DELETE':
+            feedback.forget(concept,asset);record=None
+        else:
+            record=feedback.save(concept,asset,body.get('verdict'),body.get('note',''),(current_user() or {})['user'])
+        audit.log('verdict căutare semantică',detail={'concept':feedback.canonical(concept),'cam':cam,
+                                                    'verdict':body.get('verdict') if record else 'removed'})
+        return jsonify({'ok':True,'feedback':record,'stats':feedback.stats(concept)})
+    except FileNotFoundError:
+        return jsonify({'error':t('Imaginea nu mai este disponibilă pentru evaluare.')}),404
+    except (ValueError,TypeError) as e:
+        return jsonify({'error':t('cerere invalida')+': '+str(e)}),400
+
+
+@bp.route('/api/semantic/review/image/<image_id>')
+def api_semantic_review_image(image_id):
+    import semantic_feedback
+    try:
+        return send_file(semantic_feedback.image_path(image_id),mimetype='image/jpeg',max_age=0)
+    except FileNotFoundError:
+        return jsonify({'error':t('Imaginea nu mai este disponibilă pentru evaluare.')}),404
+
+
 @bp.route("/api/tile", methods=["GET", "POST"])
 def api_tile():
     """Camerele cu detectie pe regiuni (obiecte mici la distanta). GET = lista,

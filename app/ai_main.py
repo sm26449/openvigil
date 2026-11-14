@@ -881,7 +881,7 @@ def semantic_search():
         rez = semantic.search((b.get("q") or "").strip(),
                               days=int(b.get("days") or 14),
                               limit=int(b.get("limit") or 40),
-                              visible=None if vis is None else {int(c) for c in vis})
+                              visible=None if vis is None else {int(c) for c in vis},review=b.get('review') is True)
         return jsonify({"results": rez})
     except Exception as e:
         return jsonify({"error": str(e)[:120]}), 500

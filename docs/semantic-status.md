@@ -5,7 +5,7 @@ backendului se citește din aplicație, nu se deduce din documentație.
 
 ## Instalație verificată
 
-- Web și AI rulează `2.1.3-local.4`; înregistrarea și baza sunt healthy.
+- Web și AI rulează `2.1.3-local.6`; înregistrarea și baza sunt healthy.
 - PostgreSQL este activ pentru căutare; coada este persistentă, iar oglindirea NPZ este oprită.
 - Verificarea de activare a comparat exact **829.525 vectori în 92 de zile** și metadatele lor,
   toate identice. După curățarea celor două zile expirate fără surse, indexul activ are 90 de zile.
@@ -41,7 +41,7 @@ Acestea sunt repere istorice; importul final trebuie să raporteze numerele actu
   încărcarea părinților înaintea tabelelor dependente și reluarea joburilor restaurate.
 - Pornirea workerului după încălzirea modelelor și actualizarea indexului la schimbarea surselor.
 
-## Validare încheiată
+## Validarea migrării PostgreSQL
 
 - Suita backend: **600 teste trecute**, pe PostgreSQL de test izolat.
 - Testele țintite de stocare și backup: **22 trecute**; verificările statice trec.
@@ -73,7 +73,47 @@ Acestea sunt repere istorice; importul final trebuie să raporteze numerele actu
   drenată, iar cele 173 de imagini goale rămân erori permanente. Baza temporară de test
   și exportul temporar au fost eliminate; rapoartele și copia criptată au fost păstrate.
 
-## Următorii pași, în ordine
+## Învățarea din UI, instalată local
+
+**Învață căutarea** se deschide din căutarea globală sau din galeria de alarme, pentru
+administrator. Are candidați ai modelului, exemple salvate și navigare cronologică prin
+arhiva indexată, cu filtre de cameră/perioadă/zi, paginare și imagine mărită.
+Se pot salva Corect / Greșit / Neclar, observații și eliminarea unui exemplu.
+Schimbarea descrierii dezactivează marcarea până la reîncărcare, pentru a evita verdicte
+accidentale pe conceptul precedent. Interfața este în română/engleză și verificată pe telefon.
+
+`semantic_feedback` păstrează în PostgreSQL verdictul pe concept, identitatea modelului,
+versiunea imaginii, metadatele, vectorul, autorul și observația. Imaginile marcate se păstrează
+separat de retenția capturilor și sunt incluse în backup. Exemplele se pot revedea și elimina
+din UI. Copierea imaginilor pentru backup este coordonată cu snapshotul DB printr-o blocare
+scurtă; apoi editările continuă în timpul copierii tabelelor mari.
+
+Au fost importate **18 exemple confirmate în conversație: 12 pozitive și 6 negative**.
+Importul nu suprascrie o eventuală decizie mai nouă din UI. Verificarea HTTP reală a recuperat
+toate cele **12 exemple pozitive** atât în căutarea de imagini, cât și în grupurile răspunsului
+la întrebare, pe 90 de zile; cele 6 negative au fost excluse din rezultatele imaginilor.
+Aceasta verifică memoria explicită a exemplelor cunoscute, nu generalizarea la imagini noi.
+Baseline-urile fără feedback și etichetele originale au fost păstrate separat.
+
+Validarea acestei etape: **612 teste backend trecute**, verificări statice fără erori,
+48 verificări ale interfeței existente trecute, regresia căutării și testele noii interfețe
+de învățare trecute. UI-ul live a fost verificat pe desktop și la 390 px, cu salvarea și
+eliminarea unui exemplu temporar. API-ul refuză lipsa autentificării/CSRF și ambele conturi
+restricționate existente; observațiile private nu apar în căutarea normală.
+Nu au rămas exemplele temporare de test în memorie.
+
+Copia reală a etapei UI a fost verificată prin decriptare, SHA-256 și citirea integrală
+a celor **831.976 rânduri binare de vectori**. Include și **18 verdicte și 18 imagini păstrate**,
+toate verificate în arhivă. Dimensiune: **3.263.743.844 octeți**; durată: 298,24 secunde.
+Restaurarea logică și coerența în timpul editărilor sunt acoperite de testele izolate;
+verificarea acestei copii reale nu este o restaurare integrală a producției într-o altă bază.
+
+Rapoartele și capturile acestei etape sunt în `docs/audits/2026-11-14-semantic-ui/` (privat).
+Fluxul, contractul și limitele sunt în [semantic-feedback.md](semantic-feedback.md).
+Ponderile SigLIP nu au fost reantrenate. Învățarea unor imagini noi prin similaritate sau
+VLM, alertele semantice și validarea pe un lot nou rămân etape separate.
+
+## Evaluarea care a precedat memoria explicită
 
 Evaluarea vizuală a început cu un lot privat de 10 rezultate actuale pentru „mașină de gunoi”,
 din ultimele 30 de zile, exportate din PostgreSQL. Galeria offline include imaginile,
@@ -115,8 +155,10 @@ Prioritatea pentru optimizare este evaluarea unei selecții mai largi cu verific
 selectivă, pe alte exemple de validare. Ambele loturi etichetate formează acum un corpus
 privat de dezvoltare: **18 imagini, 12 pozitive și 6 negative**, fără exemple neclare.
 
-1. Evaluarea vizuală pe exemple etichetate, apoi prioritizarea track-urilor, verificării VLM
-   selective și alertelor semantice. Aceste funcții nu sunt declarate implementate.
+## Următorii pași
+
+1. Validarea pe alte imagini, care nu sunt deja memorate, apoi prioritizarea track-urilor,
+   verificării VLM selective și alertelor semantice. Aceste funcții nu sunt declarate implementate.
 2. Măsurarea și reducerea consumului RAM al backupului complet: transportul vectorilor
    este binar și folosește fișier temporar, dar arhiva și criptarea folosesc încă memoria.
 

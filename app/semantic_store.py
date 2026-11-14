@@ -357,9 +357,14 @@ def _where(since,until,visible,labels,hours,generic):
     return ' AND '.join(cond),args
 
 
-def hits(value,since,until,visible=None,labels=None,hours=None,limit=None,min_score=.055,generic=()):
+def hits(value,since,until,visible=None,labels=None,hours=None,limit=None,min_score=.055,generic=(),concept=None):
     control()
     where,args=_where(since,until,visible,labels,hours,generic)
+    if concept is not None:
+        where+=" AND NOT EXISTS(SELECT 1 FROM semantic_feedback f WHERE f.model=semantic_vectors.model AND f.concept=%s " \
+               "AND (f.source,f.cam,f.day,f.fn)=(semantic_vectors.source,semantic_vectors.cam,semantic_vectors.day,semantic_vectors.fn) " \
+               "AND f.fingerprint=semantic_vectors.metadata->>'_fingerprint' AND f.verdict='no')"
+        args.append(concept)
     literal=vector(value)
     query='SELECT day,metadata,-(embedding <#> %s::vector) AS score FROM semantic_vectors WHERE '+where+' AND embedding <#> %s::vector<=%s'
     params=[literal,*args,literal,-min_score]

@@ -17,6 +17,8 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   iar observațiile din jurnal nu sunt prezentate ca numărătoare completă a trecerilor.
 
 ### Adăugat
+- „Învață căutarea” în interfață: verdicte pe concept și imagine, exemple păstrate în
+  PostgreSQL și backup, navigare prin arhivă și recuperarea exemplelor confirmate sub prag.
 - Backend semantic PostgreSQL opțional, coadă persistentă cu lease și retry, import
   reluabil cu verificare integrală și export/revenire NPZ fără recalculare GPU.
 - Backup binar al vectorilor și restaurare tranzacțională în ordinea relațiilor dintre tabele.

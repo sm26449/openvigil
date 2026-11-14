@@ -295,6 +295,7 @@
            placeholder="Caută sau întreabă: mașină albă · când a venit mașină de gunoi?"
            title="Căutare semantică sau întrebare liberă, în română. Întrebările (când.../de câte ori...) primesc răspuns direct, cu pozele-dovada.">
     <button id="sem-go">Caută</button>
+    <button id="sem-learn" class="semantic-learn-button">Învață căutarea</button>
     <span id="al-info"></span>
   </div>
   <div id="al-pills"></div>
@@ -1470,6 +1471,7 @@
       <select id="cauta-zile" aria-label="Perioada pentru poze"><option value="7">7 zile</option><option value="30" selected>30 zile</option><option value="90">90 zile</option></select>
       <button id="cauta-close" class="ov-close" aria-label="Închide">✕</button></div>
     <div class="cauta-bar">
+      <button id="cauta-learn" class="semantic-learn-button">Învață căutarea</button>
       <input id="cauta-again" class="search" placeholder="caută altceva… (Enter)" aria-label="Caută altceva">
       <div class="chips" id="cauta-chips" role="group" aria-label="Sursa rezultatelor">
         <button data-cat="" class="on">Toate</button><button data-cat="poze">Poze</button><button data-cat="numere">Numere</button><button data-cat="persoane">Persoane</button><button data-cat="jurnal">Jurnal</button>
@@ -1478,6 +1480,30 @@
     </div>
     <div id="cauta-grid" class="cauta-grid"></div>
   </div>
+</dialog>
+<dialog id="semantic-review" aria-labelledby="semantic-review-title">
+  <div class="semantic-review-box">
+    <div class="fisa-head"><h2 id="semantic-review-title">Învață căutarea</h2><button id="semantic-review-close" class="ov-close" aria-label="Închide">✕</button></div>
+    <details class="semantic-review-help"><summary>Cum funcționează</summary>
+      <p>Confirmă imaginile pentru această descriere. Exemplele corecte sunt recuperate, cele greșite sunt excluse, iar cele neclare nu influențează căutarea.</p>
+      <p class="hint">Exemplele și imaginile marcate se păstrează separat pentru învățare. Poți elimina oricând un exemplu.</p>
+    </details>
+    <div class="semantic-review-controls">
+      <label>Descriere<input id="semantic-review-q" list="semantic-review-concepts" maxlength="200" placeholder="mașină de gunoi"></label>
+      <datalist id="semantic-review-concepts"></datalist>
+      <label>Selecție<select id="semantic-review-mode"><option value="candidates">Candidați de verificat</option><option value="saved">Exemple salvate</option><option value="archive">Din arhivă, după zi</option></select></label>
+      <label>Perioada pentru candidați<select id="semantic-review-days"><option value="7">7 zile</option><option value="30">30 zile</option><option value="90" selected>90 zile</option></select></label>
+      <label>Camera<select id="semantic-review-cam"><option value="">Toate camerele</option></select></label>
+      <input id="semantic-review-day" type="date" aria-label="Ziua" class="hidden">
+      <button id="semantic-review-load">Arată</button>
+    </div>
+    <p id="semantic-review-count" aria-live="polite"></p><p id="semantic-review-info" class="hint" aria-live="polite"></p>
+    <div id="semantic-review-grid" class="semantic-review-grid"></div>
+    <div class="semantic-review-pages"><button id="semantic-review-prev" disabled>Înapoi</button><button id="semantic-review-next" disabled>Următoarele imagini</button></div>
+  </div>
+</dialog>
+<dialog id="semantic-review-photo" aria-labelledby="semantic-review-photo-caption">
+  <button id="semantic-review-photo-close">Închide</button><p id="semantic-review-photo-caption"></p><img id="semantic-review-photo-img" alt="Imagine mărită">
 </dialog>
 <dialog id="fisa" aria-labelledby="fisa-title">
   <div class="fisa-box">

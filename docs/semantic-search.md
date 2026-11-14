@@ -1,6 +1,7 @@
 # Căutare semantică / Semantic search
 
 Starea etapei locale, validările și lucrul rămas sunt în [semantic-status.md](semantic-status.md).
+Marcarea și memoria exemplelor direct din interfață sunt descrise în [semantic-feedback.md](semantic-feedback.md).
 
 Întrebările funcționează din bara globală și din galeria de alarme, prin `/api/search`.
 Exemple: „când a trecut mașina de gunoi ieri între 8 și 10 la poartă?”,
