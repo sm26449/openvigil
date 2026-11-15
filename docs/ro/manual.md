@@ -299,6 +299,28 @@ LPR, reguli active, cadre etichetate), ca sa vezi dintr-o privire ce produce fie
   @BotFather, ii scrii botului orice mesaj, iar chat-ul apare singur; un clic salveaza si
   trimite o proba. Campurile de mana (jeton, chat ID) raman pentru cazurile avansate.
 
+## Serviciul de alerte extern și mementourile pentru camere căzute (2026-11-15)
+
+- **Setări → Notificări → „Serviciul de alerte”** (opțional): adresa (`…/v1/fire`) și o cheie
+  API cu dreptul `fire`. Cu cheia goală totul merge ca înainte, doar pe botul propriu.
+  „Testează serviciul de alerte” trimite o alertă de test și arată ce a răspuns serviciul.
+- Cu serviciul configurat, **alertele de sistem** pleacă acolo ca tipuri `nvr_*`: cameră sau NVR
+  căzut/revenit, disc plin, înregistrare oprită/reluată, probleme de continuitate, curățare și
+  copie de siguranță eșuate, fluxuri lipsă, zgomot, acțiunea „notificare” a regulilor, rezumatul
+  zilei. Serviciul decide canalele (SMS, Telegram, email), pauzele și confirmarea.
+- **Detecțiile cu poză** (YOLO, Face ID, numere, „Învață scena”) rămân pe botul propriu, cu
+  butoanele ✓/✕. Intrușii confirmați (om) și persoanele necunoscute primesc o copie în serviciu:
+  `nvr_intrus` cu modul plecat/noapte (de obicei cu SMS), `nvr_intrus_acasa` noaptea, acasă.
+- **Rezerva**: dacă serviciul nu răspunde, dă eroare, nu cunoaște tipul sau toate canalele lui
+  au eșuat, mesajul pleacă pe botul propriu. O suprimare voită (pauză, ore de liniște) nu.
+- **Camera căzută nu e uitată**: prima alertă la cădere, apoi mementouri la 4, 8, 16, 32 de
+  minute, 1, 2, 4, 8, 16 ore, 1 zi și apoi zilnic, până revine; la revenire mesajul spune după
+  cât timp. Programul ține peste reporniri, iar o cameră deja căzută la pornire e anunțată.
+  Merge și fără serviciul extern, pe botul propriu.
+- **Problemele de înregistrare** se anunță o singură dată, când apar, și se închid când dispar
+  („scrie din nou”); golurile unei camere care nu mai scrie deloc nu se mai anunță separat.
+- Tipurile, contractul și un exemplu de șabloane: `docs/alerte.md`.
+
 ## Recunoastere persoane (Face ID)
 Cand detectia YOLO confirma un om, `app/faces.py` cere camerei un cadru la rezolutie
 mare (ISAPI picture — pe substreamul de 640px fetele sunt inutilizabile) si cauta fete

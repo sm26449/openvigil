@@ -5,10 +5,10 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 
 ## [Unreleased]
 
-## [2.2.0] — în pregătire (candidat: 2.2.0-rc3)
+## [2.2.0] — în pregătire (candidat: 2.2.0-rc6)
 
-**Highlights (English)** — Faster triage, a calmer and more accessible interface, and a persistent
-semantic search index.
+**Highlights (English)** — Faster triage, a calmer and more accessible interface, a persistent
+semantic search index, and system alerts that are not forgotten.
 - **Triage that scales.** Repeated incidents from the same camera are grouped into one card with
   "confirm all / all false"; every incident shows the nearest saved frame; on a phone you swipe
   right to confirm or left for a false alarm, with Undo. A "While you were away" card on Live
@@ -22,6 +22,11 @@ semantic search index.
   ID is found automatically.
 - **Semantic search in PostgreSQL (optional).** The index can move from per-day files to pgvector,
   with a persistent indexing queue, a "teach the search" workflow and binary backup of vectors.
+- **System alerts through an external alert service (optional).** Camera/NVR down, disk full,
+  recording stopped, failed backups and the daily summary can go to a service speaking
+  `POST /v1/fire`, which owns SMS, rate limits and acknowledgement; the built-in bot stays as the
+  fallback. A camera that is down now gets reminders (4, 8, 16, 32 min, 1–16 h, then daily) until
+  it comes back, and recording problems are announced once instead of every two minutes.
 
 ### Notă de actualizare (instalări existente)
 - Nu e nevoie de schimbări în Compose: baza folosește deja imaginea `pgvector/pgvector:pg16`, iar
@@ -33,6 +38,19 @@ semantic search index.
 - Dacă interfața e instalată ca aplicație pe telefon, închide-o complet o dată după actualizare.
 
 ### Adăugat
+- **Alertele de sistem prin serviciul extern de alerte** (opțional, contractul `POST /v1/fire`): cameră sau
+  NVR căzut/revenit, disc plin, înregistrare oprită/reluată, goluri și bucle de înregistrare,
+  curățare și copie de siguranță eșuate, fluxuri lipsă, zgomot, acțiunea „notificare” a regulilor
+  și rezumatul zilei pleacă ca tipuri `nvr_*`, cu episoade (`idempotency_key` + `resolved`) pentru
+  stările care se închid singure. Serviciul decide canalele (SMS, Telegram, email), pauzele și
+  confirmarea; botul propriu rămâne rezervă când serviciul nu răspunde sau nu cunoaște tipul.
+  Intrușii confirmați (om) și persoanele necunoscute primesc o copie (`nvr_intrus` cu modul
+  plecat/noapte, `nvr_intrus_acasa` altfel). Card nou în Setări → Notificări, cu test. Vezi
+  `docs/alerte.md`.
+- **Camera căzută nu mai e uitată:** prima alertă la cădere, apoi mementouri la 4, 8, 16, 32 de
+  minute, 1, 2, 4, 8, 16 ore, 1 zi și apoi zilnic, până revine; la revenire „după cât timp”.
+  Programul ține peste reporniri (`data/camere_cazute.json`), iar o cameră deja căzută la
+  pornirea serverului e anunțată (înainte era trecută tăcut în starea offline).
 - **Triaj pe grupuri:** 3+ incidente de pe aceeași cameră, de același tip, la cel mult 30 de
   minute unul de altul, devin un card cu „✓ confirmă toate”, „✕ fals toate” și „Arată toate”
   (`POST /api/incidents/stare-bloc`, aceeași regulă de vizibilitate pe camere ca la un incident;
@@ -80,6 +98,10 @@ semantic search index.
   pentru controalele native și contur de focus în modul „contrast ridicat” din Windows.
 
 ### Reparat
+- Problemele de continuitate a înregistrării se anunță o singură dată, când apar (jurnal +
+  alertă), și se închid când dispar; înainte, o cameră moartă scria un „gol de înregistrare” la
+  fiecare 2 minute (peste 18 000 de evenimente în trei săptămâni). Golurile unei camere care nu
+  mai scrie deloc nu se mai anunță separat.
 - **Căutarea semantică:** intervalele și camerele se aplică înainte de limitarea rezultatelor;
   întrebările merg și din bara globală (prima apariție, ore exacte, numele camerei); indexarea
   nu mai pierde zile și nu mai face dubluri (fișiere atomice, reconciliere periodică); eticheta

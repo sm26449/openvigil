@@ -299,6 +299,31 @@ readings, active rules, labelled frames), so you can see at a glance what each o
   @BotFather, send the bot any message, and the chat appears by itself; one click saves it and
   sends a test. The manual fields (token, chat ID) remain for advanced cases.
 
+## External alert service and reminders for cameras that are down (2026-11-15)
+
+- **Settings → Notifications → "Alert service"** (optional): the address (`…/v1/fire`) and an
+  API key with the `fire` right. With an empty key everything works as before, on the built-in
+  bot only. "Test the alert service" sends a test alert and shows what the service answered.
+- With the service configured, **system alerts** go there as `nvr_*` types: camera or NVR
+  down/back, disk full, recording stopped/resumed, continuity problems, failed cleanup and
+  backup, missing streams, noise, the "notification" action of rules, the daily summary. The
+  service decides the channels (SMS, Telegram, email), pauses and acknowledgement.
+- **Detections with a photo** (YOLO, Face ID, plates, "Learn the scene") stay on the built-in
+  bot, with the ✓/✕ buttons. Confirmed intruders (people) and unknown persons get a copy in the
+  service: `nvr_intrus` in away/night mode (usually with SMS), `nvr_intrus_acasa` at night, at home.
+- **Fallback**: if the service does not answer, returns an error, does not know the type or all
+  its channels failed, the message goes out on the built-in bot. A deliberate suppression
+  (pause, quiet hours) does not.
+- **A camera that is down is not forgotten**: the first alert when it drops, then reminders at
+  4, 8, 16, 32 minutes, 1, 2, 4, 8, 16 hours, 1 day and then daily, until it comes back; the
+  recovery message says how long it was down. The schedule survives restarts, and a camera
+  already down at startup is announced. It also works without the external service, on the
+  built-in bot.
+- **Recording problems** are announced once, when they appear, and closed when they go away
+  ("writing again"); the gaps of a camera that writes nothing at all are no longer announced
+  separately.
+- Types, contract and a template example: `docs/alerte.md`.
+
 ## Person recognition (Face ID)
 When YOLO detection confirms a person, `app/faces.py` asks the camera for a high-resolution
 frame (ISAPI picture — on the 640px substream faces are unusable) and looks for faces
