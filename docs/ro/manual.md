@@ -739,7 +739,13 @@ Toate din tabul Inregistrari (`app/analiza.py`, `app/routes_analiza.py`), pe cam
   (substream si regiune HD), `intrus` si `obiect` (ultimul chenar al track-ului) — deci
   cautarea acopera evenimentele de dupa 2026-10-23, nu si istoricul vechi.
 - **Harta de caldura**: traseele oamenilor (`traseu` din episoade) adunate pe o grila 64x36
-  peste cadru, pe ziua aleasa, 7 sau 30 de zile.
+  peste cadru, pe ziua aleasa, 7 sau 30 de zile. **Pe planul hartii** (selectorul „Fara
+  caldura / Azi / 7 zile / 30 zile" din bara hartii, cand planul are camere calibrate):
+  picioarele oamenilor din episoadele camerelor calibrate, proiectate pe plan si adunate
+  intr-o singura harta pentru toata proprietatea (`GET /api/harta/<plan>/heatmap?zile=`).
+  Fiecare punct de traseu are, pe langa centrul chenarului, jumatatea inaltimii lui
+  (`[x, y, jumatate]`); traseele mai vechi n-o au, deci nu au punct de sol si sunt doar
+  numarate („puncte vechi fara punct de sol"), nu ghicite.
 - **Time-lapse**: ziua intreaga intr-un minut (un cadru pe minut, 720p, MP4 descarcat), ca
   job in coada (o zi intreaga dureaza cateva minute: ~0,5 s per cadru, 4 in paralel).
   Cadrele se extrag prin seek din fiecare segment, in paralel — NU prin

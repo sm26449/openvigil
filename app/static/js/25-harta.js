@@ -31,7 +31,9 @@ async function loadHarta() {
   hartaPid = p ? p.id : '';
   if (p) sel.value = p.id;
   $('#harta-edit').classList.toggle('hidden', !ADMIN);
+  for (const x of $('#harta-heat-ctl').querySelectorAll('button')) x.classList.toggle('on', +x.dataset.zile === hartaHeatZile);
   renderHarta();
+  if (hartaHeatZile && !hartaEdit) hartaHeatLoad();
 }
 function renderHarta() {
   const p = hartaPlan();
@@ -42,6 +44,9 @@ function renderHarta() {
   wrap.classList.toggle('edit', hartaEdit);
   $('#harta-tools').classList.toggle('hidden', !hartaEdit);
   if (!hartaEdit) hartaMasoara = null;
+  const calibrate = !!(p && Object.values(p.camere || {}).some((x) => x.calibrare));
+  $('#harta-heat-ctl').classList.toggle('hidden', hartaEdit || !calibrate);
+  if (hartaEdit || !calibrate) hartaHeatData = null;
   wrap.classList.toggle('masoara', !!hartaMasoara);
   $('#harta-scara').textContent = hartaMasoara ? t('Anulează scara') : t('Scara');
   $('#harta-scara-del').classList.toggle('hidden', !hartaEdit || !(p && p.scara));
@@ -74,6 +79,7 @@ function renderHarta() {
   $('#harta-info').textContent = hartaMasoara
     ? (hartaMasoara.length ? t('Acum clic pe al doilea punct.') : t('Clic pe primul punct al unei distanțe pe care o știi (gard, latura casei).'))
     : hartaEdit ? t('{n} camere pe plan — trage camerele; click pe una o selectează', { n })
+    : hartaHeatData ? hartaHeatText()
     : t('{n} camere pe plan', { n });
   if (hartaEdit) renderHartaSide();
 }
@@ -123,9 +129,84 @@ function drawHarta() {
     hartaMk[c.id] = g;
   }
   hartaScaraDesen(p, W, H, k, mpp);
+  hartaHeatDesen();
   hartaLiveDesen();
   hartaStare();
 }
+/* ---------- harta de caldura pe plan ----------
+   Picioarele oamenilor din episoadele camerelor calibrate, proiectate pe plan de server
+   (analiza.heatmap_plan, grila de fractii). Aici: pete estompate, colorate pe o rampa
+   albastru -> galben -> rosu; radacina patrata, ca si drumurile rare sa se vada. */
+let hartaHeatZile = 0, hartaHeatData = null, hartaHeatNr = 0;
+try { hartaHeatZile = +(localStorage.getItem('hartaCaldura') || 0); } catch {}
+const RAMPA = [[0, [40, 90, 255]], [0.35, [0, 220, 255]], [0.6, [255, 230, 0]], [1, [255, 40, 0]]];
+function rampa(v) {
+  for (let i = 1; i < RAMPA.length; i++) {
+    const [a, ca] = RAMPA[i - 1], [b, cb] = RAMPA[i];
+    if (v <= b) { const f = (v - a) / (b - a); return ca.map((c, j) => Math.round(c + (cb[j] - c) * f)); }
+  }
+  return RAMPA.at(-1)[1];
+}
+function hartaHeatText() {
+  const d = hartaHeatData;
+  if (d.error) return t('Eroare: {err}', { err: d.error });
+  const perioada = d.zile === 1 ? t('azi') : t('ultimele {n} zile', { n: d.zile });
+  let s = t('Căldură {perioada}: {n} episoade, {p} puncte pe plan', { perioada, n: d.episoade, p: d.puncte });
+  if (d.fara_sol) s += ' · ' + t('{n} puncte vechi fără punct de sol, neincluse', { n: d.fara_sol });
+  return s;
+}
+async function hartaHeatLoad() {
+  const p = hartaPlan(), nr = ++hartaHeatNr;
+  if (!hartaHeatZile || !p || hartaEdit || !Object.values(p.camere || {}).some((x) => x.calibrare)) {
+    if (hartaHeatData) { hartaHeatData = null; renderHarta(); }
+    return;
+  }
+  $('#harta-info').textContent = t('Calculez...');
+  let d;
+  try { d = await (await fetch(`/api/harta/${p.id}/heatmap?zile=${hartaHeatZile}`)).json(); }
+  catch (e) { d = { error: String(e) }; }
+  if (nr !== hartaHeatNr) return;
+  hartaHeatData = d;
+  renderHarta();
+}
+function hartaHeatDesen() {
+  const cv = $('#harta-heat'), d = hartaHeatData, wrap = $('#harta-wrap'), img = $('#harta-img');
+  const on = !!(d && !d.error && d.max && !hartaEdit && img.naturalWidth);
+  cv.classList.toggle('hidden', !on);
+  if (!on) return;
+  const dpr = window.devicePixelRatio || 1, W = Math.round(img.clientWidth * dpr), H = Math.round(img.clientHeight * dpr);
+  cv.width = W; cv.height = H;
+  cv.style.height = `${img.clientHeight}px`;
+  const g = cv.getContext('2d');
+  // 1. intensitatea, ca alfa: pete radiale adunate
+  const cw = W / d.grid, ch = H / d.grid, r = Math.max(cw, ch, 6 * dpr) * 2.2;
+  for (const [x, y, n] of d.celule) {
+    const cx = (x + 0.5) * cw, cy = (y + 0.5) * ch, a = 0.2 + 0.8 * Math.sqrt(n / d.max);
+    const gr = g.createRadialGradient(cx, cy, 0, cx, cy, r);
+    gr.addColorStop(0, `rgba(0,0,0,${a.toFixed(3)})`); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = gr; g.fillRect(cx - r, cy - r, 2 * r, 2 * r);
+  }
+  // 2. alfa -> culoare pe rampa
+  const im = g.getImageData(0, 0, W, H), px = im.data;
+  for (let i = 3; i < px.length; i += 4) {
+    const a = px[i] / 255;
+    if (!a) continue;
+    const [cr, cg, cb] = rampa(Math.min(1, a));
+    px[i - 3] = cr; px[i - 2] = cg; px[i - 1] = cb; px[i] = Math.round(Math.min(1, a * 1.4) * 190);
+  }
+  g.putImageData(im, 0, 0);
+  wrap.dataset.caldura = String(d.puncte);
+}
+$('#harta-heat-ctl').onclick = (e) => {
+  const b = e.target.closest('button[data-zile]'); if (!b) return;
+  hartaHeatZile = +b.dataset.zile;
+  try { localStorage.setItem('hartaCaldura', String(hartaHeatZile)); } catch {}
+  for (const x of $('#harta-heat-ctl').querySelectorAll('button')) x.classList.toggle('on', x === b);
+  hartaHeatLoad();
+};
+let hartaRedim = 0;
+window.addEventListener('resize', () => { clearTimeout(hartaRedim); hartaRedim = setTimeout(() => { if (hartaHeatData) hartaHeatDesen(); }, 150); });
+
 /* ---------- detectiile live ca puncte pe plan ----------
    Doar camerele calibrate; serverul proiecteaza (omografie.py) punctul de pe sol al fiecarui
    chenar. Cerem la 2 s, doar cat se vede harta (nu in editare). */
@@ -391,7 +472,7 @@ setInterval(() => {
 }, 5000);
 $('#harta-unplace').onclick = () => { if (hartaSel !== null) { const id = hartaSel; hartaSel = null; hartaSave({ [id]: null }); } };
 $('#harta-edit').onclick = () => { hartaEdit = !hartaEdit; $('#harta-edit').textContent = hartaEdit ? t('Gata') : t('Editează'); hartaSel = null; loadHarta(); };
-$('#harta-plan').onchange = () => { hartaPid = $('#harta-plan').value; localStorage.setItem('hartaPlan', hartaPid); hartaSel = null; renderHarta(); };
+$('#harta-plan').onchange = () => { hartaPid = $('#harta-plan').value; localStorage.setItem('hartaPlan', hartaPid); hartaSel = null; hartaHeatData = null; renderHarta(); hartaHeatLoad(); };
 $('#harta-new').onclick = async () => {
   const nume = prompt(t('Numele planului (ex. Curtea, Parter, Etaj):'), t('Curtea'));
   if (!nume) return;

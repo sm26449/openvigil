@@ -10,7 +10,7 @@ import analiza
 import jobs
 import masca
 from i18n import t
-from server import HW, _cam_entry, _run_ffmpeg, current_user
+from server import HW, _cam_entry, _run_ffmpeg, _visible_ids, current_user
 
 bp = Blueprint("analiza", __name__)
 DAY = r"^\d{4}-\d{2}-\d{2}$"
@@ -57,6 +57,19 @@ def api_heatmap():
     except (KeyError, ValueError):
         return jsonify({"error": t("parametri invalizi")}), 400
     return jsonify(analiza.heatmap(cam, day, zile))
+
+
+@bp.route("/api/harta/<pid>/heatmap")
+def api_harta_heatmap(pid):
+    """?zile=1|7|30&day= -> harta de caldura pe planul hartii (camerele calibrate)."""
+    try:
+        zile = int(request.args.get("zile") or 1)
+        day = _zi(request.args.get("day"))
+        if request.args.get("day") and not day:
+            raise ValueError
+        return jsonify(analiza.heatmap_plan(pid, day, zile, _visible_ids()))
+    except ValueError as e:
+        return jsonify({"error": str(e) or t("parametri invalizi")}), 400
 
 
 @bp.route("/api/timelapse")

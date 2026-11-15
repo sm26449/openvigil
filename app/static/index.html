@@ -140,11 +140,15 @@
       <button id="harta-scara-del" class="hidden">Șterge scara</button>
       <button id="harta-del">Șterge planul</button>
     </span>
+    <span id="harta-heat-ctl" class="seg hidden" role="group" aria-label="Harta de căldură pe plan">
+      <button data-zile="0" class="on">Fără căldură</button><button data-zile="1">Azi</button><button data-zile="7">7 zile</button><button data-zile="30">30 zile</button>
+    </span>
     <span id="harta-info" class="hint"></span>
   </div>
   <div class="harta-body">
     <div id="harta-wrap" class="harta-wrap">
       <img id="harta-img" alt="Planul proprietății">
+      <canvas id="harta-heat" class="hidden" aria-hidden="true"></canvas>
       <svg id="harta-svg" aria-label="Camerele pe plan"></svg>
       <p id="harta-empty" class="hint hidden"></p>
     </div>

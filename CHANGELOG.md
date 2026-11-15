@@ -25,6 +25,15 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   (`app/omografie.py`, DLT normalizat, validare: puncte răsfirate, niciun trio coliniar). Harta
   arată apoi omul / vehiculul în locul unde atinge solul (`GET /api/harta/<plan>/live`, la 2 s,
   doar cât e deschisă). Calibrarea rămâne la mutarea marcajului și se șterge la o imagine nouă.
+- **Harta: harta de căldură pe plan.** Selectorul „Fără căldură / Azi / 7 zile / 30 zile” din bara
+  hărții adună picioarele oamenilor din episoadele tuturor camerelor calibrate într-o singură
+  hartă a proprietății (`GET /api/harta/<plan>/heatmap`). Punctele de traseu ale episoadelor
+  noi rețin și jumătatea înălțimii chenarului (`[x, y, jumătate]`, compatibil cu cititorii
+  vechi), de unde se calculează punctul de sol; traseele vechi doar se numără.
+
+### Corectat
+- **Harta pe telefon:** rezumatul și uneltele de editare se rup pe rânduri în loc să iasă din
+  ecran.
 
 ## [2.2.0] — în pregătire (candidat: 2.2.0-rc6)
 

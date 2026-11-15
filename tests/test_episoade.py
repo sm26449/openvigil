@@ -112,6 +112,27 @@ def test_traseul_si_dwell_intra_in_eveniment(emise, monkeypatch):
     assert d["comportament"] in d["text"]
 
 
+def test_traseul_cu_punct_de_sol(emise, monkeypatch):
+    # punctele noi au si jumatatea inaltimii chenarului; dwell-ul (pe centru) merge mai departe
+    monkeypatch.setattr(episoade.ai_analytics, "zones",
+                        lambda cid: [{"name": "usa",
+                                      "poly": [[0.4, 0.4], [0.6, 0.4], [0.6, 0.6], [0.4, 0.6]]}])
+    episoade.cadru(8, [(0.5, 0.5)], 1000.0)
+    episoade.track_inchis(8, "stationar", 1040.0, trail=[(0.5, 0.5, 0.123)] * 5, durata=40.0)
+    episoade.tick(8, 1040.0 + episoade.GAP + 1)
+    d = emise[0][2]
+    assert d["traseu"][0] == [0.5, 0.5, 0.123] and "usa" in d["comportament"]
+
+
+def test_track_retine_jumatatea_chenarului():
+    import track
+    tr, t = track.Tracker(3), {}
+    tr._traseu(t, (0.5, 0.4), 100.0, 0.1)
+    tr._traseu(t, (0.6, 0.4), 100.5)              # prea devreme: ignorat
+    tr._traseu(t, (0.6, 0.4), 103.0)              # fara chenar: doar centrul
+    assert t["trail"] == [(0.5, 0.4, 0.1), (0.6, 0.4)]
+
+
 def test_subesantionarea_pastreaza_capetele():
     trail = [(i / 99, 0.5) for i in range(100)]
     mic = episoade._subesantion(trail, 10)

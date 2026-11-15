@@ -742,7 +742,13 @@ All from the Recordings tab (`app/analiza.py`, `app/routes_analiza.py`), on the 
   (substream and HD region), `intrus` and `obiect` (the track's last box) — so the
   search covers events after 2026-10-23, not the old history.
 - **Heat map**: people's paths (`traseu` from episodes) accumulated on a 64x36 grid
-  over the frame, for the chosen day, 7 or 30 days.
+  over the frame, for the chosen day, 7 or 30 days. **On the map's plan** (the "No heat /
+  Today / 7 days / 30 days" selector in the map bar, when the plan has calibrated cameras):
+  people's feet from the calibrated cameras' episodes, projected onto the plan and combined
+  into a single map of the whole property (`GET /api/harta/<plan>/heatmap?zile=`). Each path
+  point now carries, besides the box centre, half the box height (`[x, y, half]`); older
+  paths lack it, so they have no ground point and are only counted ("old points without a
+  ground point"), not guessed.
 - **Time-lapse**: the whole day in a minute (one frame per minute, 720p, downloaded MP4), as a
   job in the queue (a whole day takes a few minutes: ~0.5 s per frame, 4 in parallel).
   Frames are extracted by seeking in each segment, in parallel — NOT by

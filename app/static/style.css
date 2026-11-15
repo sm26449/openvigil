@@ -1597,6 +1597,8 @@ body.viewer .act-only { display: none !important; }
 .harta-wrap img:not([src]) { display: none; }
 .harta-wrap svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .harta-wrap.gol svg { display: none; }
+#harta-heat { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#harta-heat.hidden, .harta-wrap.gol #harta-heat, #harta-heat-ctl.hidden { display: none; }
 #harta-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; margin: 0; padding: var(--s5); text-align: center; }
 #harta-empty.hidden { display: none; }   /* id-ul bate .hidden; altfel paragraful ascuns acopera SVG-ul si inghite clickurile */
 #harta-side { width: 240px; flex: none; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r2); padding: var(--s3); font-size: var(--fs-sm); }
@@ -2184,3 +2186,10 @@ select.bife-sursa { display: none !important; }
 .tg-asistent { background: var(--surface-2); border-radius: var(--r1); padding: var(--s3); margin: var(--s2) 0 var(--s3); }
 .tg-pasi { margin: 0; padding-left: 1.2em; display: grid; gap: var(--s3); }
 .tg-pasi code { background: var(--line); padding: 0 4px; border-radius: 4px; }
+/* harta pe ecran ingust: bara se rupe pe randuri, iar rezumatul (caldura, ghidul scarii) are randul lui, nu se pierde in derulare */
+@media (max-width: 800px) {
+  #harta .live-bar { flex-wrap: wrap; overflow-x: visible; }
+  #harta .live-bar > #harta-info { flex: 1 1 100%; }
+  /* uneltele de editare: si ele pe randuri, altfel grupul (mai lat decat ecranul) le-ar scoate din vedere */
+  #harta .live-bar > #harta-tools:not(.hidden) { display: flex; flex-wrap: wrap; gap: var(--s2); flex: 1 1 100%; }
+}

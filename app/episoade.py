@@ -66,7 +66,8 @@ def _subesantion(trail, n=TRASEU_PUNCTE):
     if len(trail) > n:
         pas = (len(trail) - 1) / (n - 1)
         trail = [trail[round(i * pas)] for i in range(n)]
-    return [[round(p[0], 2), round(p[1], 2)] for p in trail]
+    # al treilea numar (jumatatea inaltimii chenarului, cand exista) da punctul de pe sol
+    return [[round(p[0], 2), round(p[1], 2)] + ([round(p[2], 3)] if len(p) > 2 else []) for p in trail]
 
 
 def cadru(cam, centre, now):
@@ -110,7 +111,7 @@ def track_inchis(cam, directie, now, trail=None, durata=0.0, cine=None):
         poly = [p for p in z.get("poly", []) if len(p) == 2]
         if len(poly) < 3:
             continue
-        inauntru = sum(1 for p in trail if ai_analytics._point_in_poly(p, poly))
+        inauntru = sum(1 for p in trail if ai_analytics._point_in_poly(p[:2], poly))
         if inauntru:
             nume_z = z.get("name", "zona")
             e.setdefault("dwell", {})

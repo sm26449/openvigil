@@ -2709,5 +2709,10 @@
   "Proba calibrării nu a răspuns": "The calibration preview did not respond",
   "Maximum {n} perechi": "Maximum {n} pairs",
   "Întâi alege punctul în cadrul camerei": "First pick the point in the camera frame",
-  "Calibrarea a fost salvată.": "Calibration saved."
+  "Calibrarea a fost salvată.": "Calibration saved.",
+  "Harta de căldură pe plan": "Heat map on the plan",
+  "Fără căldură": "No heat",
+  "Azi": "Today",
+  "Căldură {perioada}: {n} episoade, {p} puncte pe plan": "Heat {perioada}: {n} episodes, {p} points on the plan",
+  "{n} puncte vechi fără punct de sol, neincluse": "{n} old points without a ground point, not included"
 }
