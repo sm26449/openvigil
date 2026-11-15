@@ -174,6 +174,8 @@ works from the top bar.
   the model scored them low; wrong ones no longer appear for that description. Details:
   [docs/semantic-feedback.md](../semantic-feedback.md).
 
+![Teach search: two confirmed examples for "colourful circle"](../img/2.2.0/en/invata-cautarea-1366.png)
+
 - **Index in PostgreSQL (optional, admin).** The search index can move from per-day files to
   PostgreSQL (pgvector), with an indexing queue that does not lose days on a restart and with the
   vectors included in the backup. The move is explicit, from the command line, and reversible:

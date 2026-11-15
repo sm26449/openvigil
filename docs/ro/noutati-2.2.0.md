@@ -175,6 +175,8 @@ merge și din bara de sus.
   chiar dacă modelul le dădea un scor mic; cele greșite nu mai apar pentru acea descriere.
   Detalii: [docs/semantic-feedback.md](../semantic-feedback.md).
 
+![„Învață căutarea”: două exemple confirmate pentru „cerc colorat”](../img/2.2.0/ro/invata-cautarea-1366.png)
+
 - **Index în PostgreSQL (opțional, admin).** Indexul căutării se poate muta din fișierele pe zile
   în PostgreSQL (pgvector), cu o coadă de indexare care nu pierde zile la repornire și cu copia
   vectorilor în backup. Mutarea se face explicit, din linia de comandă, și se poate întoarce:
