@@ -96,10 +96,24 @@ the plan, so you can check that what it films matches its place. From the card: 
 
    ![Editing: camera picture, mounting, scale](../img/2.2.0/en/harta-editare-1366.png)
 
-4. **Scale (optional).** **Scale** in the edit bar → click two points of a distance you know
-   (the fence, a side of the house) → type how many metres it is. A scale bar appears in the
-   corner, and cameras with a height and tilt draw **the ground area they actually see**, with
-   the blind spot under them, instead of the symbolic cone.
+4. **Property boundary and scale (optional, recommended).** **Boundary** in the edit bar →
+   click the property corners in order; close on the first corner (or press Enter). Backspace
+   removes the last corner, Esc cancels. In the right-hand panel, enter the real length of the
+   sides you know (at least one, ideally two or more); corners can be dragged afterwards.
+   From them OpenVigil computes:
+   - **the plan scale**: from one side, a single scale; from several, also a check (next to each
+     side you see its length on the plan and the deviation; above 10% a warning appears). If the
+     plan is a sketch stretched in one direction and the lengths clearly show it (at least 3 sides
+     in different directions), the scale is **corrected per direction** and the panel tells you
+     how much the plan is stretched;
+   - **the corner angles**, **the perimeter** and **the area**, correct even on a distorted sketch.
+
+   ![Property boundary: sides, angles, area](../img/2.2.0/en/harta-limita-1366.png)
+
+   With a scale set, a scale bar appears in the corner, and cameras with a height and tilt draw
+   **the ground area they actually see**, with the blind spot under them, instead of the symbolic
+   cone. The quick option, without a boundary: **Scale** → click two points of a distance you
+   know → how many metres it is.
 5. **Calibration on the plan (optional, for live dots and the heat map).** With the camera
    selected → **Calibrate on the plan**. The camera frame and the plan open side by side:
    - click a point **on the ground** in the frame (a path corner, the base of a gate post, the
@@ -114,8 +128,8 @@ the plan, so you can check that what it films matches its place. From the card: 
 
    ![Calibration: point pairs and the projected grid](../img/2.2.0/en/harta-calibrare-1366.png)
 
-The calibration survives moving the camera's marker. A new plan image clears the scale and the
-calibrations, because a different plan means different measurements.
+The calibration survives moving the camera's marker. A new plan image clears the scale, the
+boundary and the calibrations, because a different plan means different measurements.
 
 ### What you get after calibrating
 

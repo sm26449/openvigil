@@ -714,6 +714,16 @@ Telegram ramane canalul de rezerva, nu depinde de niciun telefon.
   camerele cu inaltime si inclinare nu mai au conul simbolic, ci zona de sol pe care o vad
   efectiv (conturul cadrului proiectat pe sol, cu pata oarba de sub camera, taiat la 60 m
   sau la orizont). O imagine noua de plan sterge scara; „Sterge scara" revine la conuri.
+  **Limita proprietatii** („Limita"): colturile proprietatii, in ordine, si lungimile reale ale
+  laturilor cunoscute (`limita` pe plan in `data/harta.json`). `app/plan_metrica.py` calculeaza
+  din ele masura planului (`metrica` in `GET /api/harta`, derivata, nu stocata): intre doua
+  puncte la (dx, dy) pixeli, d² = a·dx² + 2b·dx·dy + c·dy². Din 1–2 laturi rezulta o scara unica
+  (izotrop); cu 3+ laturi pe directii diferite si abateri care nu sunt zgomot de masurare (RMS
+  peste 3%, sau 5% cu exact 3 laturi, iar modelul pe directii le explica), scara se corecteaza pe
+  directii (anizotrop; peste 3:1 se considera o lungime gresita). Unghiurile, perimetrul si
+  suprafata se calculeaza in metri, deci sunt corecte si pe o schita deformata. Limita are
+  prioritate fata de scara din doua clicuri; zona de sol, bara de scara si eroarea calibrarii
+  folosesc aceeasi masura. `POST /api/harta {id, limita: {puncte, laturi} | null}`.
   **Calibrarea pe plan** („Calibreaza pe plan" in panoul camerei selectate): cadrul camerei
   si planul, alaturi; clic pe un punct de pe SOL in cadru (coltul aleii, baza stalpului de
   la poarta), apoi pe acelasi loc pe plan — 4..12 perechi, rasfirate, nu pe o linie.

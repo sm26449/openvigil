@@ -32,7 +32,9 @@ where things happen. **Where to find each feature and how to use it, with screen
   it comes back, and recording problems are announced once instead of every two minutes.
 - **A property map that knows where things are.** Click a camera on the plan to see its live
   image next to its view cone; set the mounting height and tilt, measure the plan's scale with
-  two clicks, and each camera draws the ground area it really sees. Calibrate a camera with 4+
+  two clicks or trace the property boundary with the side lengths you know (the scale is checked,
+  and corrected per direction for a stretched sketch; angles and area come with it), and each
+  camera draws the ground area it really sees. Calibrate a camera with 4+
   matching ground points and its detections appear live as dots on the plan, plus a heat map of
   where people walk across the whole property.
 
@@ -67,6 +69,13 @@ where things happen. **Where to find each feature and how to use it, with screen
   (`app/omografie.py`, DLT normalizat, validare: puncte răsfirate, niciun trio coliniar). Harta
   arată apoi omul / vehiculul în locul unde atinge solul (`GET /api/harta/<plan>/live`, la 2 s,
   doar cât e deschisă). Calibrarea rămâne la mutarea marcajului și se șterge la o imagine nouă.
+- **Harta: limita proprietății și scara din laturile cunoscute.** „Limita” din editare: colțurile
+  proprietății, în ordine, și lungimea reală a laturilor pe care le știi. `app/plan_metrica.py`
+  calculează din ele măsura planului: o scară unică din 1–2 laturi, iar cu 3+ laturi pe direcții
+  diferite, corectată pe direcții când planul e o schiță întinsă (doar când abaterile nu sunt
+  zgomot de măsurare). Panoul arată fiecare latură pe plan, cu abaterea, unghiurile colțurilor,
+  perimetrul, suprafața și avertismente. Zona de sol, bara de scară și eroarea calibrării folosesc
+  aceeași măsură. Colțurile se trag; limita stă deasupra camerelor, ca să rămână apucabilă.
 - **Harta: harta de căldură pe plan.** Selectorul „Fără căldură / Azi / 7 zile / 30 zile” din bara
   hărții adună picioarele oamenilor din episoadele tuturor camerelor calibrate într-o singură
   hartă a proprietății (`GET /api/harta/<plan>/heatmap`). Punctele de traseu ale episoadelor
@@ -134,8 +143,9 @@ where things happen. **Where to find each feature and how to use it, with screen
   pentru controalele native și contur de focus în modul „contrast ridicat” din Windows.
 
 ### Reparat
-- **Harta pe telefon:** rezumatul și uneltele de editare se rup pe rânduri în loc să iasă din
-  ecran.
+- **Harta:** rezumatul și uneltele de editare se rup pe rânduri în loc să iasă din ecran (pe
+  telefon), iar rezumatul stă pe rândul lui la orice lățime, ca planul să nu sară când textul se
+  schimbă (de exemplu în timp ce trasezi limita).
 - Problemele de continuitate a înregistrării se anunță o singură dată, când apar (jurnal +
   alertă), și se închid când dispar; înainte, o cameră moartă scria un „gol de înregistrare” la
   fiecare 2 minute (peste 18 000 de evenimente în trei săptămâni). Golurile unei camere care nu

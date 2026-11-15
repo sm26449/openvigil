@@ -718,6 +718,17 @@ Telegram remains the fallback channel, it does not depend on any phone.
   ground area they actually see (the frame outline projected onto the ground, with the
   blind spot under the camera, cut at 60 m or at the horizon). A new plan image clears the
   scale; "Delete scale" goes back to the cones.
+  **Property boundary** ("Boundary"): the property corners in order and the real lengths of the
+  sides you know (`limita` on the plan in `data/harta.json`). `app/plan_metrica.py` derives the
+  plan's measure from them (`metrica` in `GET /api/harta`, computed, never stored): between two
+  points (dx, dy) pixels apart, d² = a·dx² + 2b·dx·dy + c·dy². One or two sides give a single
+  scale (isotropic); with 3+ sides in different directions and deviations that are not
+  measurement noise (RMS above 3%, or 5% with exactly 3 sides, and the per-direction model
+  explains them), the scale is corrected per direction (anisotropic; above 3:1 a length is
+  assumed wrong). Angles, perimeter and area are computed in metres, so they are right even on a
+  distorted sketch. The boundary takes precedence over the two-click scale; the ground area, the
+  scale bar and the calibration error all use the same measure.
+  `POST /api/harta {id, limita: {puncte, laturi} | null}`.
   **Calibration on the plan** ("Calibrate on the plan" in the selected camera's panel): the
   camera frame and the plan side by side; click a point on the GROUND in the frame (a path
   corner, the base of a gate post), then the same spot on the plan — 4..12 pairs, spread

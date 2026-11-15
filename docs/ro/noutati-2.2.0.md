@@ -97,10 +97,24 @@ sau **Înregistrări**. Esc sau un clic în afară îl închide. Pe telefon, car
 
    ![Editarea: imaginea camerei, montajul, scara](../img/2.2.0/ro/harta-editare-1366.png)
 
-4. **Scara (opțional).** **Scara** din bara de editare → clic pe două puncte ale unei distanțe
-   pe care o știi (gardul, latura casei) → scrii câți metri sunt. Apare o bară de scară în colț,
-   iar camerele cu înălțime și înclinare își desenează **zona de sol pe care o văd efectiv**,
-   cu pata oarbă de sub ele, în locul conului simbolic.
+4. **Limita proprietății și scara (opțional, recomandat).** **Limita** din bara de editare →
+   clic pe colțurile proprietății, în ordine; închizi pe primul colț (sau Enter). Backspace
+   șterge ultimul colț, Esc renunță. În panoul din dreapta scrii lungimea reală a laturilor pe
+   care le știi (măcar una, ideal două sau mai multe); colțurile se pot trage după aceea.
+   Din ele se calculează:
+   - **scara planului**: dintr-o singură latură, o scară unică; din mai multe, și o verificare
+     (lângă fiecare latură vezi lungimea pe plan și abaterea, iar peste 10% apare un
+     avertisment). Dacă planul e o schiță întinsă pe o direcție, iar lungimile o arată limpede
+     (cel puțin 3 laturi pe direcții diferite), scara se **corectează pe direcții**, iar panoul
+     spune cu cât e întins planul;
+   - **unghiurile colțurilor**, **perimetrul** și **suprafața**, corecte și pe o schiță deformată.
+
+   ![Limita proprietății: laturile, unghiurile, suprafața](../img/2.2.0/ro/harta-limita-1366.png)
+
+   Cu scara pusă apare o bară de scară în colț, iar camerele cu înălțime și înclinare își
+   desenează **zona de sol pe care o văd efectiv**, cu pata oarbă de sub ele, în locul conului
+   simbolic. Varianta rapidă, fără limită: **Scara** → clic pe două puncte ale unei distanțe pe
+   care o știi → câți metri sunt.
 5. **Calibrarea pe plan (opțional, pentru punctele live și harta de căldură).** Cu camera
    selectată → **Calibrează pe plan**. Se deschid alăturat cadrul camerei și planul:
    - dai clic pe un punct **de pe sol** în cadru (colțul aleii, baza stâlpului de la poartă,
@@ -115,7 +129,7 @@ sau **Înregistrări**. Esc sau un clic în afară îl închide. Pe telefon, car
 
    ![Calibrarea: perechi de puncte și grila proiectată](../img/2.2.0/ro/harta-calibrare-1366.png)
 
-Calibrarea rămâne dacă muți marcajul camerei. O imagine nouă de plan șterge scara și calibrările,
+Calibrarea rămâne dacă muți marcajul camerei. O imagine nouă de plan șterge scara, limita și calibrările,
 pentru că alt plan înseamnă alte măsuri.
 
 ### Ce primești după calibrare
