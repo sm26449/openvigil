@@ -77,3 +77,24 @@ def test_imagine_validare_si_stergere(tmp_path):
     assert harta.lista() == [] and harta.imagine(p["id"]) is None
     with pytest.raises(ValueError):
         harta.sterge(p["id"])
+
+
+def test_scara_planului():
+    p = harta.plan_nou("A")
+    assert harta.lista()[0]["scara"] is None
+    harta.seteaza_scara(p["id"], {"x1": 0.1, "y1": 0.5, "x2": "0.6", "y2": 0.5, "m": "20"})
+    assert harta.lista()[0]["scara"] == {"x1": 0.1, "y1": 0.5, "x2": 0.6, "y2": 0.5, "m": 20.0}
+    for rau in ({"x1": 0.1, "y1": 0.5, "x2": 0.6, "y2": 0.5, "m": 0},            # fara distanta
+                {"x1": 0.1, "y1": 0.5, "x2": 0.1, "y2": 0.5, "m": 5},            # acelasi punct
+                {"x1": -1, "y1": 0.5, "x2": 0.6, "y2": 0.5, "m": 5},             # in afara
+                {"x1": 0.1, "y1": 0.5, "x2": 0.6, "m": 5}):                      # lipseste y2
+        with pytest.raises(ValueError):
+            harta.seteaza_scara(p["id"], rau)
+    with pytest.raises(ValueError):
+        harta.seteaza_scara("nuexista", None)
+    # o imagine noua sterge scara (alt plan, alta scara)
+    harta.salveaza_imagine(p["id"], PNG, "image/png")
+    assert harta.lista()[0]["scara"] is None
+    harta.seteaza_scara(p["id"], {"x1": 0, "y1": 0, "x2": 1, "y2": 1, "m": 30})
+    harta.seteaza_scara(p["id"], None)
+    assert harta.lista()[0]["scara"] is None

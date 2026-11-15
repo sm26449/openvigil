@@ -2665,5 +2665,19 @@
   "Valoare între 0 și {max}": "Value between 0 and {max}",
   "înălțime {h} m": "height {h} m",
   "înclinare {u}°": "tilt {u}°",
-  "direcție {d}°, con {f}°": "direction {d}°, cone {f}°"
+  "direcție {d}°, con {f}°": "direction {d}°, cone {f}°",
+  "scară invalidă": "invalid scale",
+  "distanța trebuie să fie între 0,1 și 10000 m": "the distance must be between 0.1 and 10000 m",
+  "punctele scării sunt prea apropiate": "the scale points are too close together",
+  "Clic pe două puncte ale unei distanțe cunoscute (gard, latura casei), apoi spui câți metri sunt": "Click two points of a known distance (a fence, a side of the house), then say how many metres it is",
+  "Scara": "Scale",
+  "Șterge scara": "Delete scale",
+  "Anulează scara": "Cancel scale",
+  "Acum clic pe al doilea punct.": "Now click the second point.",
+  "Clic pe primul punct al unei distanțe pe care o știi (gard, latura casei).": "Click the first point of a distance you know (a fence, a side of the house).",
+  "Câți metri sunt, în realitate, între cele două puncte?": "How many metres are there, in reality, between the two points?",
+  "Distanța trebuie să fie un număr de metri.": "The distance must be a number of metres.",
+  "Scara a fost salvată.": "Scale saved.",
+  "Încarcă întâi imaginea planului": "Upload the plan image first",
+  "Ștergi scara planului? Camerele revin la conul simplu.": "Delete the plan's scale? Cameras go back to the simple cone."
 }

@@ -7,10 +7,13 @@ fractii din imagine (0..1), deci planul se poate reincarca la alta rezolutie far
 se piarda nimic; `dir` = directia privirii in grade (0 = sus, in sensul ceasului),
 `fov` = deschiderea conului in grade. Optional, geometria montajului: `inaltime` = metri
 deasupra solului, `inclinare` = grade sub orizontala (0 = priveste drept inainte, 90 = drept
-in jos); lipsesc cand nu sunt cunoscute.
+in jos); lipsesc cand nu sunt cunoscute. `scara` (optionala, pe plan) = doua puncte (fractii)
+si distanta reala dintre ele in metri; din ea interfata deseneaza zona de sol vazuta.
+O imagine noua sterge scara (alt plan, alta scara).
 
   data/harta.json         {"planuri": [{"id", "nume", "imagine": true/false,
-                                        "camere": {"<cam>": {"x","y","dir","fov"[,"inaltime","inclinare"]}}}]}
+                                        "camere": {"<cam>": {"x","y","dir","fov"[,"inaltime","inclinare"]}},
+                                        "scara": {"x1","y1","x2","y2","m"}}]}
   data/harta/<id>.<ext>   imaginea planului (png/jpg/webp), incarcata din interfata
 """
 import os
@@ -58,8 +61,41 @@ def lista(visible=None):
         cams = {k: v for k, v in (p.get("camere") or {}).items()
                 if visible is None or int(k) in visible}
         out.append({"id": p["id"], "nume": p.get("nume") or "Plan",
-                    "imagine": _imagine(p["id"]) is not None, "camere": cams})
+                    "imagine": _imagine(p["id"]) is not None, "camere": cams,
+                    "scara": p.get("scara")})
     return out
+
+
+def _plan(d, pid):
+    p = next((x for x in d["planuri"] if x["id"] == pid), None)
+    if not p:
+        raise ValueError(t("planul nu există"))
+    return p
+
+
+def seteaza_scara(pid, v):
+    """Scara planului: {x1,y1,x2,y2 (fractii 0..1), m (metri)}; None o sterge."""
+    if v is not None:
+        try:
+            v = {k: float(v[k]) for k in ("x1", "y1", "x2", "y2", "m")}
+        except (KeyError, TypeError, ValueError):
+            raise ValueError(t("scară invalidă"))
+        if not all(0 <= v[k] <= 1 for k in ("x1", "y1", "x2", "y2")):
+            raise ValueError(t("scară invalidă"))
+        if not (0.1 <= v["m"] <= 10000):
+            raise ValueError(t("distanța trebuie să fie între 0,1 și 10000 m"))
+        if abs(v["x1"] - v["x2"]) + abs(v["y1"] - v["y2"]) < 0.01:
+            raise ValueError(t("punctele scării sunt prea apropiate"))
+        v = {k: round(x, 4 if k != "m" else 2) for k, x in v.items()}
+    with _lock:
+        d = _load()
+        p = _plan(d, pid)
+        if v is None:
+            p.pop("scara", None)
+        else:
+            p["scara"] = v
+        _save(d)
+    return p
 
 
 def plan_nou(nume):
@@ -176,6 +212,11 @@ def salveaza_imagine(pid, date, mime):
         f.write(date)
     os.chmod(tmp, 0o600)
     os.replace(tmp, cale)
+    with _lock:                                # alta imagine = alta scara: o masori din nou
+        d = _load()
+        p = _plan(d, pid)
+        if p.pop("scara", None) is not None:
+            _save(d)
     return cale
 
 

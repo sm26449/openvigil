@@ -708,7 +708,13 @@ Telegram remains the fallback channel, it does not depend on any phone.
   of the cone and, optionally, the mounting height (m) and tilt (degrees below horizontal;
   0 = looking straight ahead, 90 = straight down). From these the panel estimates which
   stretch of ground the camera sees (the vertical angle is derived from the horizontal one
-  for a 16:9 frame — an approximation for checking the mount). An empty field = unknown. Multiple plans (yard, ground floor, upper floor) — the selector appears
+  for a 16:9 frame — an approximation for checking the mount). An empty field = unknown.
+  **Plan scale** ("Scale" in the edit bar): click two points of a known distance (a fence,
+  a side of the house), then say how many metres it is; a scale bar appears in the corner.
+  With a scale set, cameras with a height and tilt no longer get the symbolic cone but the
+  ground area they actually see (the frame outline projected onto the ground, with the
+  blind spot under the camera, cut at 60 m or at the horizon). A new plan image clears the
+  scale; "Delete scale" goes back to the cones. Multiple plans (yard, ground floor, upper floor) — the selector appears
   when there are at least two. A restricted account sees only its own cameras on the map.
 - **Critical pop-up** (Live bar): on a new critical incident, the camera's tile enlarges for
   8 seconds and is brought into view (like "layout switch on event").

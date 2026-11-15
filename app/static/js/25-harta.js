@@ -14,6 +14,7 @@ import { openHD } from './20-hd.js';
    incident critic face marcajul sa pulseze. Click = HD. Adminul editeaza: trage camerele,
    roteste directia si deschiderea conului din panoul lateral. */
 let hartaPlanuri = [], hartaPid = localStorage.getItem('hartaPlan') || '', hartaEdit = false, hartaSel = null, hartaEroare = false;
+let hartaMasoara = null;   // masurarea scarii: null | [] | [{x,y}] (primul punct ales)
 const hartaMk = {};
 const hartaPlan = () => hartaPlanuri.find((p) => p.id === hartaPid) || hartaPlanuri[0];
 async function loadHarta() {
@@ -39,6 +40,10 @@ function renderHarta() {
   hartaCardInchide();
   wrap.classList.toggle('edit', hartaEdit);
   $('#harta-tools').classList.toggle('hidden', !hartaEdit);
+  if (!hartaEdit) hartaMasoara = null;
+  wrap.classList.toggle('masoara', !!hartaMasoara);
+  $('#harta-scara').textContent = hartaMasoara ? t('Anulează scara') : t('Scara');
+  $('#harta-scara-del').classList.toggle('hidden', !hartaEdit || !(p && p.scara));
   $('#harta-side').classList.toggle('hidden', !hartaEdit || !p);
   if (!p) {
     img.removeAttribute('src'); wrap.classList.add('gol');
@@ -65,8 +70,10 @@ function renderHarta() {
     else drawHarta();
   }
   const n = Object.keys(p.camere || {}).length;
-  $('#harta-info').textContent = hartaEdit ? t('{n} camere pe plan — trage camerele; click pe una o selectează', { n })
-                                           : t('{n} camere pe plan', { n });
+  $('#harta-info').textContent = hartaMasoara
+    ? (hartaMasoara.length ? t('Acum clic pe al doilea punct.') : t('Clic pe primul punct al unei distanțe pe care o știi (gard, latura casei).'))
+    : hartaEdit ? t('{n} camere pe plan — trage camerele; click pe una o selectează', { n })
+    : t('{n} camere pe plan', { n });
   if (hartaEdit) renderHartaSide();
 }
 function drawHarta() {
@@ -80,6 +87,7 @@ function drawHarta() {
   // arata aceleasi puncte si litere; k = cati pixeli de imagine incap intr-un pixel de ecran
   const k = W / Math.max(1, svg.clientWidth || img.clientWidth || W);
   const names = Object.fromEntries(S.cameras.map((c) => [c.id, c]));
+  const mpp = hartaMpp(p, W, H);
   for (const [cid, pos] of Object.entries(p.camere || {})) {
     const c = names[+cid];
     if (!c) continue;
@@ -89,7 +97,12 @@ function drawHarta() {
     const cx = pos.x * W, cy = pos.y * H;
     const a1 = (pos.dir - pos.fov / 2) * Math.PI / 180, a2 = (pos.dir + pos.fov / 2) * Math.PI / 180;
     const pt = (a) => `${(cx + R * Math.sin(a)).toFixed(1)},${(cy - R * Math.cos(a)).toFixed(1)}`;
-    g.innerHTML = `<path class="con" style="stroke-width:${k}" d="M${cx.toFixed(1)},${cy.toFixed(1)} L${pt(a1)} A${R},${R} 0 ${pos.fov > 180 ? 1 : 0} 1 ${pt(a2)} Z"/>`
+    // cu scara + inaltime + inclinare: zona de sol vazuta (cu pata oarba de sub camera);
+    // altfel conul simbolic de raza fixa, ca pana acum
+    const sol = mpp ? hartaAmprenta(pos, mpp, cx, cy) : null;
+    const dCon = sol ? 'M' + sol.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' L') + ' Z'
+      : `M${cx.toFixed(1)},${cy.toFixed(1)} L${pt(a1)} A${R},${R} 0 ${pos.fov > 180 ? 1 : 0} 1 ${pt(a2)} Z`;
+    g.innerHTML = `<path class="con${sol ? ' sol' : ''}" style="stroke-width:${k}" d="${dCon}"/>`
       + `<circle class="pct" style="stroke-width:${(2.5 * k).toFixed(2)}" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${(9 * k).toFixed(2)}"/>`
       + `<text class="lbl" style="stroke-width:${(3 * k).toFixed(2)}" x="${(cx + 13 * k).toFixed(1)}" y="${(cy + 4 * k).toFixed(1)}"></text>`;
     g.querySelector('text').textContent = `${c.id}. ${c.name}`;
@@ -108,8 +121,97 @@ function drawHarta() {
     svg.appendChild(g);
     hartaMk[c.id] = g;
   }
+  hartaScaraDesen(p, W, H, k, mpp);
   hartaStare();
 }
+/* ---------- scara planului ----------
+   p.scara = doua puncte (fractii) + distanta reala in metri -> metri pe pixel de imagine. */
+function hartaMpp(p, W, H) {
+  const s = p && p.scara;
+  if (!s) return 0;
+  const d = Math.hypot((s.x2 - s.x1) * W, (s.y2 - s.y1) * H);
+  return d > 0 ? s.m / d : 0;
+}
+const SOL_MAX_M = 60;   // dincolo de atat (sau peste orizont) desenul se opreste
+/* Zona de sol vazuta, pentru o camera pinhole: razele de pe conturul cadrului (16:9,
+   unghiul orizontal = deschiderea conului) intersectate cu solul, de la inaltimea data,
+   inclinata in jos cu `inclinare`. Razele care nu ating solul (peste orizont) sau il ating
+   prea departe se taie la SOL_MAX_M. Intoarce puncte in pixeli de imagine sau null. */
+function hartaAmprenta(pos, mpp, cx, cy) {
+  if (!(pos.inaltime > 0) || pos.inclinare == null) return null;
+  const rad = Math.PI / 180, h = pos.inaltime, th = pos.inclinare * rad;
+  const tu = Math.tan(Math.min(pos.fov, 170) / 2 * rad), tv = tu * 9 / 16;
+  const fw = [Math.sin(pos.dir * rad), -Math.cos(pos.dir * rad)], dr = [-fw[1], fw[0]];
+  const N = 12, raze = [];
+  for (let i = 0; i <= N; i++) raze.push([-tu + 2 * tu * i / N, -tv]);   // marginea de jos
+  for (let i = 1; i <= N; i++) raze.push([tu, -tv + 2 * tv * i / N]);    // dreapta
+  for (let i = 1; i <= N; i++) raze.push([tu - 2 * tu * i / N, tv]);     // sus
+  for (let i = 1; i < N; i++) raze.push([-tu, tv - 2 * tv * i / N]);     // stanga
+  return raze.map(([u, w]) => {
+    const fx = Math.cos(th) + w * Math.sin(th), fz = -Math.sin(th) + w * Math.cos(th);
+    let F, L;
+    if (fz < -1e-6) { const tt = h / -fz; F = tt * fx; L = tt * u; } else { F = fx * 1e6; L = u * 1e6; }
+    const d = Math.hypot(F, L);
+    if (d > SOL_MAX_M) { F *= SOL_MAX_M / d; L *= SOL_MAX_M / d; }
+    return [cx + (F * fw[0] + L * dr[0]) / mpp, cy + (F * fw[1] + L * dr[1]) / mpp];
+  });
+}
+// bara de scara (stanga jos) pe orice plan cu scara; in editare si linia masurata
+function hartaScaraDesen(p, W, H, k, mpp) {
+  const svg = $('#harta-svg'), NS = 'http://www.w3.org/2000/svg';
+  const el = (tag, attrs, text) => {
+    const e = document.createElementNS(NS, tag);
+    for (const [a, v] of Object.entries(attrs)) e.setAttribute(a, v);
+    if (text != null) e.textContent = text;
+    svg.appendChild(e); return e;
+  };
+  const pct = (x, y) => el('circle', { class: 'hs-pct', cx: x, cy: y, r: 4 * k, 'stroke-width': k });
+  if (hartaEdit && p.scara && !hartaMasoara) {
+    const s = p.scara, x1 = s.x1 * W, y1 = s.y1 * H, x2 = s.x2 * W, y2 = s.y2 * H;
+    el('line', { class: 'hs-linie', x1, y1, x2, y2, 'stroke-width': 2 * k, 'stroke-dasharray': `${6 * k} ${4 * k}` });
+    pct(x1, y1); pct(x2, y2);
+    el('text', { class: 'hs-txt', x: (x1 + x2) / 2 + 6 * k, y: (y1 + y2) / 2 - 6 * k, 'font-size': 12 * k, 'stroke-width': 3 * k },
+      `${String(s.m).replace('.', ',')} m`);
+  }
+  if (hartaMasoara && hartaMasoara.length) pct(hartaMasoara[0].x * W, hartaMasoara[0].y * H);
+  if (!mpp) return;
+  const tinta = 120 * k * mpp;   // ~120 px de ecran, in metri
+  const m = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000].filter((x) => x <= tinta).pop() || 1;
+  const L = m / mpp, x0 = 16 * k, y0 = H - 16 * k, tic = 6 * k;
+  const d = `M${x0},${y0 - tic} V${y0} H${x0 + L} V${y0 - tic}`;
+  el('path', { class: 'hbara-umbra', d, 'stroke-width': 4 * k });
+  el('path', { class: 'hbara', d, 'stroke-width': 2 * k });
+  el('text', { class: 'hbara-txt', x: x0 + L + 6 * k, y: y0, 'font-size': 12 * k, 'stroke-width': 3 * k }, `${m} m`);
+}
+// masurarea: doua clicuri pe plan, apoi distanta. Prinsa in faza de captura pe SVG, ca sa nu
+// ajunga la marcaje (tragere / card) cat timp masori.
+$('#harta-svg').addEventListener('pointerdown', async (e) => {
+  if (!hartaMasoara) return;
+  e.preventDefault(); e.stopPropagation();
+  const r = $('#harta-svg').getBoundingClientRect();
+  const f = { x: Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), y: Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)) };
+  if (!hartaMasoara.length) { hartaMasoara = [f]; renderHarta(); return; }
+  const a = hartaMasoara[0];
+  hartaMasoara = null;
+  const txt = prompt(t('Câți metri sunt, în realitate, între cele două puncte?'), '');
+  const m = txt == null ? NaN : Number(txt.trim().replace(',', '.'));
+  if (!(m > 0)) { if (txt != null) toast(t('Distanța trebuie să fie un număr de metri.'), true); renderHarta(); return; }
+  const p = hartaPlan();
+  const d = await post('/api/harta', { id: p.id, scara: { x1: a.x, y1: a.y, x2: f.x, y2: f.y, m } });
+  if (d && !d.error) { p.scara = d.plan.scara; toast(t('Scara a fost salvată.')); }
+  renderHarta();
+}, true);
+$('#harta-scara').onclick = () => {
+  if (!hartaPlan() || !hartaPlan().imagine) { toast(t('Încarcă întâi imaginea planului'), true); return; }
+  hartaMasoara = hartaMasoara ? null : [];
+  renderHarta();
+};
+$('#harta-scara-del').onclick = async () => {
+  const p = hartaPlan(); if (!p || !p.scara) return;
+  if (!confirm(t('Ștergi scara planului? Camerele revin la conul simplu.'))) return;
+  const d = await post('/api/harta', { id: p.id, scara: null });
+  if (d && !d.error) { p.scara = null; renderHarta(); }
+};
 function hartaDrag(g, c, pos) {
   const svg = $('#harta-svg'), img = $('#harta-img');
   const toFrac = (e) => {
@@ -286,15 +388,16 @@ function hartaCard(c) {
     x = (body.width - w) / 2; y = wr.bottom - body.top + 8;
   } else {
     const mx = wr.left - body.left + pos.x * wr.width, my = wr.top - body.top + pos.y * wr.height;
-    // raza conului pe ecran (drawHarta: R = 12% din latura mica a planului)
-    const a = pos.dir * Math.PI / 180, rs = 0.12 * Math.min(wr.width, wr.height), sn = Math.sin(a);
-    const dreapta = mx + gap + (sn > 0.2 ? rs : 0), stanga = mx - gap - w - (sn < -0.2 ? rs : 0);
-    const incape = (v) => v >= 8 && v + w <= body.width - 8;
-    x = sn > 0.2 ? (incape(stanga) ? stanga : dreapta) : (incape(dreapta) ? dreapta : stanga);
-    y = Math.cos(a) < 0 ? my - h - 8 : my + 8;                 // conul in jos -> cardul deasupra
-    if (y < 8) y = my + 8;
-    x = Math.max(8, Math.min(x, body.width - w - 8));
-    y = Math.max(8, y);
+    // ce e desenat pentru camera (con sau zona de sol + eticheta), taiat la zona hartii
+    const gb = hartaMk[c.id].getBoundingClientRect();
+    const U = { l: Math.max(gb.left, wr.left) - body.left, r: Math.min(gb.right, wr.right) - body.left,
+                t: Math.max(gb.top, wr.top) - body.top, b: Math.min(gb.bottom, wr.bottom) - body.top };
+    const bh = Math.max(body.height, wr.bottom - body.top);
+    const cy0 = Math.max(8, Math.min(my - h / 2, bh - h - 8)), cx0 = Math.max(8, Math.min(mx - w / 2, body.width - w - 8));
+    const variante = [[U.r + gap, cy0], [U.l - gap - w, cy0], [cx0, U.b + gap], [cx0, U.t - gap - h]];
+    const incape = ([vx, vy]) => vx >= 8 && vx + w <= body.width - 8 && vy >= 8 && vy + h <= bh - 8;
+    // nimic nu incape langa desen (zona de sol foarte mare): macar nu peste camera
+    [x, y] = variante.find(incape) || [Math.max(8, Math.min(mx + gap, body.width - w - 8)), Math.max(8, my + gap)];
   }
   card.style.left = `${x}px`; card.style.top = `${y}px`;
   $('#harta-card-x').focus({ preventScroll: true });

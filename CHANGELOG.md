@@ -14,6 +14,11 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   selectate, valorile glisoarelor și două câmpuri opționale: înălțimea (m) și înclinarea
   (° sub orizontală), salvate în `data/harta.json` (`inaltime`, `inclinare`; validate 0–50 m,
   0–90°). Din ele panoul estimează porțiunea de sol văzută.
+- **Harta: scara planului și zona de sol văzută.** „Scara” din editare: două clicuri pe o
+  distanță cunoscută + metrii reali (`scara` pe plan în `data/harta.json`, validată; o imagine
+  nouă o șterge). Cu scara pusă, apare o bară de scară, iar camerele cu înălțime și înclinare
+  își desenează zona de sol reală (conturul cadrului proiectat pe sol, cu pata oarbă de sub
+  cameră, tăiat la 60 m / orizont) în locul conului simbolic. Cardul camerei ocolește desenul.
 
 ## [2.2.0] — în pregătire (candidat: 2.2.0-rc6)
 

@@ -57,7 +57,8 @@ def api_harta():
 
 @bp.route("/api/harta", methods=["POST"])
 def api_harta_save():
-    """{plan_nou: nume} | {id, nume} | {id, camere: {cam: {x,y,dir,fov} | null}}"""
+    """{plan_nou: nume} | {id, nume} | {id, camere: {cam: {x,y,dir,fov,...} | null}}
+    | {id, scara: {x1,y1,x2,y2,m} | null}"""
     b = request.get_json(silent=True) or {}
     try:
         if b.get("plan_nou") is not None:
@@ -66,6 +67,10 @@ def api_harta_save():
         elif b.get("id") and b.get("camere") is not None:
             p = harta.aseaza(str(b["id"]), b["camere"])
             audit.log("camere asezate pe harta", p["nume"], {"camere": list(b["camere"].keys())})
+        elif b.get("id") and "scara" in b:
+            p = harta.seteaza_scara(str(b["id"]), b["scara"])
+            audit.log("scara planului " + ("stearsa" if b["scara"] is None else "setata"), p["nume"],
+                      {"m": (b["scara"] or {}).get("m")})
         elif b.get("id") and b.get("nume") is not None:
             p = harta.redenumeste(str(b["id"]), str(b["nume"]))
             audit.log("plan de harta redenumit", p["nume"])
@@ -74,7 +79,7 @@ def api_harta_save():
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     return jsonify({"ok": True, "plan": {"id": p["id"], "nume": p.get("nume"),
-                                         "camere": p.get("camere") or {},
+                                         "camere": p.get("camere") or {}, "scara": p.get("scara"),
                                          "imagine": harta.imagine(p["id"]) is not None}})
 
 

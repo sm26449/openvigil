@@ -705,7 +705,13 @@ Telegram ramane canalul de rezerva, nu depinde de niciun telefon.
   conului si, optional, inaltimea montajului (m) si inclinarea (grade sub orizontala; 0 =
   priveste drept inainte, 90 = drept in jos). Din ele panoul estimeaza ce portiune de sol
   vede camera (unghiul vertical e dedus din cel orizontal pentru un cadru 16:9 — o
-  aproximare pentru verificarea montajului). Camp gol = necunoscut. Mai multe planuri (curte, parter, etaj) — selectorul apare
+  aproximare pentru verificarea montajului). Camp gol = necunoscut. **Scara planului**
+  („Scara" in bara de editare): clic pe doua puncte ale unei distante cunoscute (gard,
+  latura casei), apoi spui cati metri sunt; apare o bara de scara in colt. Cu scara pusa,
+  camerele cu inaltime si inclinare nu mai au conul simbolic, ci zona de sol pe care o vad
+  efectiv (conturul cadrului proiectat pe sol, cu pata oarba de sub camera, taiat la 60 m
+  sau la orizont). O imagine noua de plan sterge scara; „Sterge scara" revine la conuri.
+  Mai multe planuri (curte, parter, etaj) — selectorul apare
   cand sunt cel putin doua. Un cont restrans vede pe harta doar camerele lui.
 - **Pop-up la critic** (bara Live): la un incident critic nou, dala camerei se mareste
   8 secunde si se aduce in ecran (ca „layout switch on event").

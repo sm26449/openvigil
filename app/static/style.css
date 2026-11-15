@@ -1622,6 +1622,13 @@ body.viewer .act-only { display: none !important; }
 .hm.alarm .con { fill: rgba(248, 81, 73, .3); stroke: var(--alarm-hi); }
 .hm.critic .pct { stroke: var(--alarm-hi); stroke-width: 4; animation: hmpulse .6s ease-in-out 12; }
 .hm.sel .pct { stroke: #fff; stroke-width: 3.5; }
+.hm .con.sol { fill: rgba(88, 166, 255, .18); stroke-dasharray: none; }
+.hs-linie { stroke: #ffd33d; stroke-dasharray: 6 4; fill: none; pointer-events: none; }
+.hs-pct { fill: #ffd33d; stroke: #000; pointer-events: none; }
+.hs-txt, .hbara-txt { fill: #fff; font: 600 11px system-ui, sans-serif; paint-order: stroke; stroke: rgba(0, 0, 0, .85); pointer-events: none; }
+.hbara { stroke: #fff; fill: none; pointer-events: none; paint-order: stroke; }
+.hbara-umbra { stroke: rgba(0, 0, 0, .7); fill: none; pointer-events: none; }
+.harta-wrap.masoara, .harta-wrap.edit.masoara .hm { cursor: crosshair; }
 .harta-wrap.edit .hm { cursor: grab; }
 .harta-wrap.edit .hm.drag { cursor: grabbing; }
 .hm .pct { transform-box: fill-box; transform-origin: center; }
