@@ -7,7 +7,16 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app"))
 import harta  # noqa: E402
 
-PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
+def _img(fmt="PNG", w=64, h=48):
+    import io
+    from PIL import Image
+    b = io.BytesIO()
+    Image.new("RGB", (w, h), (40, 90, 40)).save(b, fmt)
+    return b.getvalue()
+
+
+PNG = _img()
+JPG = _img("JPEG")
 
 
 @pytest.fixture(autouse=True)
@@ -71,7 +80,7 @@ def test_imagine_validare_si_stergere(tmp_path):
     assert cale.endswith(".png") and harta.lista()[0]["imagine"] is True
     assert oct(os.stat(cale).st_mode)[-3:] == "600"
     # jpeg peste png: ramane un singur fisier
-    harta.salveaza_imagine(p["id"], b"\xff\xd8\xff" + b"\x00" * 10, "image/jpeg")
+    harta.salveaza_imagine(p["id"], JPG, "image/jpeg")
     assert harta.imagine(p["id"]).endswith(".jpg") and not os.path.exists(cale)
     harta.sterge(p["id"])
     assert harta.lista() == [] and harta.imagine(p["id"]) is None
@@ -125,3 +134,21 @@ def test_limita_si_masura_planului():
     harta.seteaza_limita(p["id"], {"puncte": [[0.1, 0.1], [0.7, 0.1], [0.4, 0.7]], "laturi": {}})
     harta.seteaza_limita(p["id"], None)
     assert harta.lista()[0]["limita"] is None
+
+
+
+def test_o_imagine_stricata_nu_strica_planul_existent():
+    """audit F3: un PNG trunchiat (semnatura buna, continut incomplet), un fisier imens in
+    pixeli sau un alt format deghizat sunt refuzate, iar imaginea veche ramane intacta."""
+    p = harta.plan_nou("A")
+    cale = harta.salveaza_imagine(p["id"], PNG, "image/png")
+    inainte = open(cale, "rb").read()
+    for rau in (PNG[:len(PNG) // 2],                          # trunchiat
+                b"\x89PNG\r\n\x1a\n" + b"\x00" * 64,          # doar semnatura
+                _img("PNG", 8, 8)):                           # prea mica pentru un plan
+        with pytest.raises(ValueError):
+            harta.salveaza_imagine(p["id"], rau, "image/png")
+    with pytest.raises(ValueError):                           # JPEG declarat PNG
+        harta.salveaza_imagine(p["id"], JPG, "image/png")
+    assert open(harta.imagine(p["id"]), "rb").read() == inainte
+    assert not [f for f in os.listdir(harta.DIR) if f.endswith(".tmp")]

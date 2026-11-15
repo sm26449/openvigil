@@ -165,6 +165,7 @@ function hartaHeatText() {
   const perioada = d.zile === 1 ? t('azi') : t('ultimele {n} zile', { n: d.zile });
   let s = t('Căldură {perioada}: {n} episoade, {p} puncte pe plan', { perioada, n: d.episoade, p: d.puncte });
   if (d.fara_sol) s += ' · ' + t('{n} puncte vechi fără punct de sol, neincluse', { n: d.fara_sol });
+  if (d.partial) s += ' · ' + t('rezultat parțial: prea multe episoade, cele mai vechi lipsesc — alege o perioadă mai scurtă');
   return s;
 }
 async function hartaHeatLoad() {

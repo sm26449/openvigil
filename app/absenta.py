@@ -70,6 +70,15 @@ def rezumat(de_la, visible=None, acum=None):
     for e in sorted(rules.journal(limit=500, tip="camera_offline", since=de_la, cams=visible)
                     + rules.journal(limit=500, tip="camera_online", since=de_la, cams=visible), key=_sec):
         cazute[e.get("cam")] = e.get("tip") == "camera_offline"
+    # starea de ACUM a watchdog-ului are ultimul cuvant: o camera cazuta INAINTE de ultima
+    # vizita si inca jos n-are tranzitie in interval, dar trebuie sa apara (audit F5)
+    try:
+        import notify
+        for cid, ok in dict(notify._states).items():
+            if isinstance(cid, int) and ok is not None and (visible is None or cid in visible):
+                cazute[cid] = not ok
+    except Exception:
+        pass
     return {
         "de_la": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(de_la)),
         "ore": round((acum - de_la) / 3600, 1),

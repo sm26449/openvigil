@@ -379,13 +379,14 @@ $('#tfa-on').onclick = async () => {
   $('#tfa-qr').src = d.qr || '';
   $('#tfa-qr').classList.toggle('hidden', !d.qr);
   $('#tfa-secret').textContent = d.secret.replace(/(.{4})/g, '$1 ').trim();
-  $('#tfa-cod').value = '';
+  $('#tfa-cod').value = ''; $('#tfa-parola-on').value = '';
   $('#tfa-btns').classList.add('hidden'); $('#tfa-pas1').classList.remove('hidden');
   $('#tfa-cod').focus();
 };
 $('#tfa-cancel').onclick = () => { $('#tfa-pas1').classList.add('hidden'); $('#tfa-btns').classList.remove('hidden'); };
 $('#tfa-confirm').onclick = async () => {
-  const d = await post('/api/me/2fa/activeaza', { cod: $('#tfa-cod').value.trim() });
+  const d = await post('/api/me/2fa/activeaza', { cod: $('#tfa-cod').value.trim(), parola: $('#tfa-parola-on').value });
+  $('#tfa-parola-on').value = '';
   if (!d || d.error) return;
   $('#tfa-rec').textContent = (d.recuperare || []).join('\n');
   $('#tfa-pas1').classList.add('hidden'); $('#tfa-pas2').classList.remove('hidden');

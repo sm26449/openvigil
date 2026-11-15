@@ -43,8 +43,10 @@ ce a răspuns serviciul.
 ```
 
 La revenire, același `idempotency_key` cu `"status": "resolved"`. OpenVigil citește din răspuns
-`status` (`sent`, `partial`, `pending`, `failed`, `suppressed`), `suppressed_reason` și `episode`
-(`opened`, `repeat`, `resolved`, `not_found`); `test: true` vine doar de la butonul de test.
+`status` (`sent`, `partial`, `pending`, `failed`, `suppressed`; când nicio notificare nu descrie
+apelul, chiar valoarea episodului), `suppressed_reason` și `episode` (`opened`, `repeat`,
+`resolved`, `not_found`); `test: true` vine doar de la butonul de test. Un răspuns care nu e un
+obiect JSON sau are altă stare e tratat ca eșec: alerta pleacă și pe botul propriu.
 
 ## Contextul
 

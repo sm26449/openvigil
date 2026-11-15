@@ -256,7 +256,7 @@ def _job_dosar(job):
                 "fisier": fn, "cam": ch, "camera": cam.get("name"),
                 "start": p["start"], "end": p["end"], "nota": p.get("nota"),
                 "sha256": sha, "octeti": os.path.getsize(out)})
-            fisiere.append((out, fn))
+            fisiere.append((out, fn, ch))
         # Integritatea dosarului: nu livram un ZIP „gata" fara niciun clip. Daca omul avea
         # probe de redat (nu doar sarite din lipsa de acces) dar niciuna n-a iesit, esuam explicit
         # in loc sa dam un ZIP numai cu manifestul (audit #7). Daca unele au iesit si altele nu,
@@ -273,15 +273,17 @@ def _job_dosar(job):
         zpath = job.cale("zip")
         with zipfile.ZipFile(zpath, "w", zipfile.ZIP_STORED) as z:
             z.write(man_path, "manifest.json")
-            for out, fn in fisiere:
+            for out, fn, _ch in fisiere:
                 z.write(out, fn)
     finally:
         shutil.rmtree(tmpdir, ignore_errors=True)
     audit.log("caz exportat", c["titlu"], who=job.creat_de)
     slug = re.sub(r"[^\w-]", "_", c["titlu"])[:40]
     job.fisier(zpath, f"caz_{slug}.zip", "application/zip")
+    # camerele care chiar sunt in ZIP: descarcarea le reverifica pe toate (audit S5) — lista
+    # descrie artefactul produs, nu dosarul, care se poate schimba intre timp
     return {"probe": reusite, "din": incercate, "partial": reusite < incercate,
-            "octeti": os.path.getsize(zpath)}
+            "octeti": os.path.getsize(zpath), "camere": sorted({ch for _o, _f, ch in fisiere})}
 
 
 jobs.register("dosar", _job_dosar)

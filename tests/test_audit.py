@@ -82,3 +82,20 @@ def test_cautarea_vede_si_ipul_si_taierea():
         audit.log(f"a{i}", who="u")
     assert [r["action"] for r in audit.tail(2)] == ["a4", "a3"]
     assert audit.tail(10, q="a2")[0]["action"] == "a2"
+
+
+def test_secretele_noi_si_imbricate_nu_intra_in_jurnal(tmp_path):
+    """audit S3: jetonul Telegram, cheia serviciului de alerte si a modelului de limbaj (si
+    orice camp care arata a secret, la orice nivel) nu ajung in changes.jsonl."""
+    secrete = {"jeton": "123456789:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "alert_service_key": "cheie-alerte-1",
+               "llm_key": "sk-test-2", "alert_service_url": "http://127.0.0.1:5090/v1/fire",
+               "imbricat": {"telegram": {"bot_token": "t-3"}, "lista": [{"api_key": "k-4"}]}}
+    audit.log("setari salvate", "x", secrete)
+    app = _app()
+    app.test_client().post("/api/setari", json=secrete)
+    text = open(audit.FILE).read()
+    for v in ("AAAAAAAAAA", "cheie-alerte-1", "sk-test-2", "t-3", "k-4"):
+        assert v not in text, v
+    assert "http://127.0.0.1:5090/v1/fire" in text                 # ce nu e secret ramane vizibil
+    assert '"jeton"' not in text and "llm_key" not in text
+    assert oct(os.stat(audit.FILE).st_mode)[-3:] == "600"

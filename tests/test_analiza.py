@@ -121,3 +121,16 @@ def test_job_timelapse(tmp_path, monkeypatch):
     with pytest.raises(RuntimeError):
         Job.parametri = {"channel": 5, "day": "2026-01-01"}
         analiza.job_timelapse(Job(), ffmpeg_fals, hw=False, run=run_fals)
+
+
+def test_harta_de_caldura_spune_cand_e_partiala(monkeypatch):
+    """audit F7: peste MAX_EPISOADE pe o camera, rezultatul e marcat partial (nu pretinde ca
+    acopera toata perioada)."""
+    monkeypatch.setattr(analiza, "MAX_EPISOADE", 3)
+    zi = time.strftime("%Y-%m-%d")
+    t0 = time.mktime(time.strptime(zi + " 09:00:00", "%Y-%m-%d %H:%M:%S"))
+    for i in range(3):
+        _ev("episod", 11, t0 + i, traseu=[[0.5, 0.5]])
+    assert analiza.heatmap(11, zi, 1)["partial"] is True
+    _ev("episod", 12, t0, traseu=[[0.5, 0.5]])
+    assert analiza.heatmap(12, zi, 1)["partial"] is False

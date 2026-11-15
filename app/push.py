@@ -120,6 +120,27 @@ def _rand(r):
             "creat": r[5], "ultima": r[6], "erori": r[7]}
 
 
+# Serviciile de push ale browserelor (doar la ele trimite serverul): Chrome/Edge/Opera/Samsung
+# -> FCM, Firefox -> Mozilla autopush, Safari -> Apple, Edge vechi/Windows -> WNS. Orice alta
+# adresa ar transforma abonarea intr-o cerere a serverului catre o tinta aleasa de oricine are
+# cont (SSRF, audit S6) — inclusiv adrese din reteaua interna.
+PUSH_GAZDE = ("fcm.googleapis.com", "android.googleapis.com", "push.services.mozilla.com",
+              "push.apple.com", "notify.windows.com")
+
+
+def endpoint_permis(ep):
+    """Adresa unui abonament e a unui serviciu de push cunoscut (https, port implicit)?"""
+    import urllib.parse
+    try:
+        u = urllib.parse.urlsplit(str(ep))
+        port = u.port
+    except ValueError:
+        return False
+    gazda = (u.hostname or "").lower().rstrip(".")
+    return (u.scheme == "https" and port in (None, 443) and not u.username and not u.password
+            and any(gazda == g or gazda.endswith("." + g) for g in PUSH_GAZDE))
+
+
 def aboneaza(user, abonament, nivel="critic", agent=""):
     """Salveaza (sau reinnoieste) abonamentul unui browser. Acelasi endpoint trece la
     utilizatorul curent (telefonul a schimbat contul)."""
@@ -129,8 +150,8 @@ def aboneaza(user, abonament, nivel="critic", agent=""):
     if not keys.get("p256dh") or not keys.get("auth"):
         raise ValueError(t("abonamentului îi lipsesc cheile"))
     ep = str(abonament["endpoint"])[:2000]
-    if not ep.startswith("https://"):
-        raise ValueError(t("adresa trebuie să fie https"))
+    if not endpoint_permis(ep):
+        raise ValueError(t("adresa nu e a unui serviciu de notificări al browserului"))
     nivel = nivel if nivel in NIVELURI else "critic"
     _init()
     with db.conn() as c:
@@ -180,7 +201,7 @@ def _toate():
 def _trimite_unul(rid, endpoint, p256dh, auth, payload, ttl):
     """True daca a plecat; sterge abonamentul daca serviciul spune ca nu mai exista."""
     v = _incarca_vapid()
-    if not v:
+    if not v or not endpoint_permis(endpoint):   # si abonamentele vechi, salvate inainte de verificare
         return False
     fn = _webpush
     if fn is None:

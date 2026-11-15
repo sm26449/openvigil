@@ -19,10 +19,31 @@ import logare
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FILE = os.path.join(ROOT, "data", "changes.jsonl")
 MAX_LINES = 20000
-# campuri care nu au voie in jurnal (parole, jetoane, coduri, chei de push)
+# campuri care nu au voie in jurnal (parole, jetoane, coduri, chei de push): numele exacte de
+# mai jos plus ORICE nume care contine un fragment din FRAGMENTE_SECRETE (alert_service_key,
+# llm_key, jeton, …) — o lista doar de nume exacte rata fiecare camp secret nou (audit S3)
 SECRETE = ("pass", "pass2", "parola", "password", "password2", "web_password",
            "web_password_new", "telegram_token", "email_pass", "api_token", "webhook_secret",
            "mqtt_pass", "secret", "cod", "totp", "token", "keys", "abonament", "hash")
+FRAGMENTE_SECRETE = ("pass", "parol", "token", "jeton", "secret", "key", "cheie", "totp",
+                     "hash", "auth", "cookie", "credential", "abonament")
+
+
+def e_secret(cheie):
+    """Numele unui camp arata a secret? (exact din SECRETE sau contine un fragment)"""
+    k = str(cheie).lower()
+    return k in SECRETE or any(f in k for f in FRAGMENTE_SECRETE)
+
+
+def fara_secrete(v, adancime=0):
+    """Copia lui v fara campurile secrete, la orice nivel (dict/list)."""
+    if adancime > 6:
+        return v
+    if isinstance(v, dict):
+        return {k: fara_secrete(x, adancime + 1) for k, x in v.items() if not e_secret(k)}
+    if isinstance(v, (list, tuple)):
+        return [fara_secrete(x, adancime + 1) for x in v]
+    return v
 # ce nu auditam generic: au jurnalul lor (login, API-ul cu jeton, canalul nvr-ai) sau nu
 # sunt modificari (operatorul apasa PTZ de zeci de ori pe minut; audit.log explicit ramane)
 NEAUDITAT = ("/login", "/setup", "/logout", "/api/internal/", "/api/v1/")
@@ -50,11 +71,14 @@ def log(action, target="", detail=None, who=""):
     if ip:
         rec["ip"] = ip
     if detail:
-        rec["detail"] = {k: v for k, v in detail.items() if k not in SECRETE}
+        rec["detail"] = fara_secrete(detail)
     try:
         with _lock:
             os.makedirs(os.path.dirname(FILE), exist_ok=True)
-            with open(FILE, "a") as f:
+            # jurnalul spune cine si ce a schimbat: doar proprietarul il citeste (0600)
+            fd = os.open(FILE, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
+            os.fchmod(fd, 0o600)          # si un jurnal mai vechi, creat cu 0644
+            with os.fdopen(fd, "a") as f:
                 f.write(json.dumps(rec, ensure_ascii=False) + "\n")
     except OSError as e:
         # jurnalul de modificari nu se poate scrie (disc plin?) — macar in stdout
@@ -67,10 +91,10 @@ def _rezumat(body):
         return None
     out = {}
     for k, v in list(body.items())[:30]:
-        if k in SECRETE:
+        if e_secret(k):
             continue
         if isinstance(v, (dict, list)):
-            v = json.dumps(v, ensure_ascii=False)
+            v = json.dumps(fara_secrete(v), ensure_ascii=False)
         s = str(v)
         out[k] = s if len(s) <= 80 else s[:77] + "…"
     return out or None

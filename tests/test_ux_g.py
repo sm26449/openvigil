@@ -114,3 +114,25 @@ def test_stare_bloc_doar_incidentele_vizibile(monkeypatch):
     monkeypatch.setattr(ri.audit, "log", lambda *a, **k: None)
     r = app.test_client().post("/api/incidents/stare-bloc", json={"ids": ["a", "b"], "stare": "fals"})
     assert r.status_code == 200 and r.json["n"] == 1 and r.json["ignorate"] == 1 and puse["ids"] == ["a"]
+
+
+
+def test_rezumatul_absentei_trece_de_garda_pentru_operator_si_viewer():
+    """audit F1: interfata il cere si pentru operator; garda il refuza (403) daca lipseste din
+    VIEWER_GET. Ruta filtreaza singura pe camerele contului (visible=_visible_ids())."""
+    import server
+    assert any("/api/rezumat/absenta" == w or "/api/rezumat/absenta".startswith(w) for w in server.VIEWER_GET)
+
+
+
+def test_rezumatul_include_camera_cazuta_inainte_de_vizita(monkeypatch):
+    """audit F5: camera cazuta inainte de ultima vizita (fara tranzitie in interval) si inca jos
+    apare; cea revenita intre timp nu; camerele nepermise contului nu."""
+    import notify
+    monkeypatch.setattr(rules, "journal", lambda **kw: [])
+    monkeypatch.setattr(incidents, "annotate", lambda evs: None)
+    monkeypatch.setattr(incidents, "adauga_poze", lambda evs: evs)
+    monkeypatch.setattr(notify, "_states", {3: False, 4: True, 8: False, "nvr": False})
+    acum = 2_000_000_000
+    assert absenta.rezumat(acum - 3600, acum=acum)["camere_cazute"] == [3, 8]
+    assert absenta.rezumat(acum - 3600, visible={3, 4}, acum=acum)["camere_cazute"] == [3]

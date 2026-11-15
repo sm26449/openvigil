@@ -89,7 +89,8 @@ def _marime(cale):
     if cheie not in _marimi:
         from PIL import Image
         try:
-            with Image.open(cale) as im:
+            ext = cale.rsplit(".", 1)[-1].lower()
+            with Image.open(cale, formats=[FORMATE_PIL[ext]] if ext in FORMATE_PIL else None) as im:
                 _marimi[cheie] = im.size
         except Exception:
             return 0, 0
@@ -284,8 +285,32 @@ def detectii_pe_plan(pid, stare, visible=None):
     return out
 
 
+# formatele pe care le deschidem din fisierele planului (si NUMAI ele: Pillow ar incerca
+# altfel orice format pe care il cunoaste, inclusiv FlashPix, cu avize de securitate)
+FORMATE_PIL = {"png": "PNG", "jpg": "JPEG", "webp": "WEBP"}
+MAX_PIXELI = 60_000_000      # ~ 7700 x 7700: un plan real e mult sub; peste = bomba de decompresie
+
+
+def _decodeaza(date, ext):
+    """Imaginea chiar se decodeaza integral, in formatul declarat, cu dimensiuni rezonabile?
+    (o semnatura buna pe un fisier trunchiat sau stricat nu ajunge — audit F3)"""
+    import io
+    from PIL import Image
+    try:
+        with Image.open(io.BytesIO(date), formats=[FORMATE_PIL[ext]]) as im:
+            w, h = im.size
+            if w < 16 or h < 16 or w * h > MAX_PIXELI:
+                raise ValueError(t("imaginea are dimensiuni nepotrivite pentru un plan"))
+            im.load()                                    # decodarea completa, nu doar antetul
+    except ValueError:
+        raise
+    except Exception:
+        raise ValueError(t("imaginea nu se poate citi (stricată sau incompletă)"))
+
+
 def salveaza_imagine(pid, date, mime):
-    """Imaginea planului, din corpul cererii (png/jpg/webp, max 8 MB)."""
+    """Imaginea planului, din corpul cererii (png/jpg/webp, max 8 MB). Imaginea veche ramane
+    pana cand cea noua e validata si scrisa complet: orice esec o lasa neatinsa (audit F3)."""
     if not _ID_RE.match(pid) or not any(x["id"] == pid for x in _load()["planuri"]):
         raise ValueError(t("planul nu există"))
     ext = TIPURI.get((mime or "").split(";")[0].strip().lower())
@@ -297,17 +322,31 @@ def salveaza_imagine(pid, date, mime):
     if not (date[:8] == b"\x89PNG\r\n\x1a\n" or date[:3] == b"\xff\xd8\xff"
             or (date[:4] == b"RIFF" and date[8:12] == b"WEBP")):
         raise ValueError(t("continutul nu arată a imagine"))
+    _decodeaza(date, ext)
     os.makedirs(DIR, exist_ok=True)
-    vechi = _imagine(pid)
-    if vechi:
-        os.remove(vechi)
     cale = os.path.join(DIR, f"{pid}.{ext}")
-    tmp = cale + ".tmp"
-    with open(tmp, "wb") as f:
-        f.write(date)
-    os.chmod(tmp, 0o600)
-    os.replace(tmp, cale)
-    with _lock:                                # alta imagine = alta scara, alta limita, alte calibrari: le refaci
+    with _lock:                                # doua incarcari simultane nu se calca
+        tmp = f"{cale}.{uuid.uuid4().hex[:8]}.tmp"
+        try:
+            with open(tmp, "wb") as f:
+                f.write(date)
+                f.flush()
+                os.fsync(f.fileno())
+            os.chmod(tmp, 0o600)
+            os.replace(tmp, cale)                  # atomic: cititorii vad vechea sau noua
+        except OSError:
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+            raise
+        for alt in TIPURI.values():            # abia acum: imaginea veche, cu alta extensie
+            if alt != ext:
+                try:
+                    os.remove(os.path.join(DIR, f"{pid}.{alt}"))
+                except FileNotFoundError:
+                    pass
+        # alta imagine = alta scara, alta limita, alte calibrari: le refaci
         d = _load()
         p = _plan(d, pid)
         schimbat = p.pop("scara", None) is not None

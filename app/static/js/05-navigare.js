@@ -382,11 +382,10 @@ async function loadLinks() {
     const mk = (txt, url, title) =>
       html`<a href="${url}" target="_blank" title="${title || url}">${txt}</a>`;
     // l.nvr lipseste cand NVR-ul e retras (Setari -> Sistem): nu-l mai aratam nicaieri
+    // statusul fluxurilor e in Sanatate; interfata go2rtc nu mai e publicata prin releu (audit S2)
     $('#quick-links').innerHTML = html`${
-      mk(html`${icon('tools')} go2rtc`, l.go2rtc, t('Motorul de streaming (statusul fluxurilor)'))} ${
       l.nvr ? mk(html`${icon('server')} NVR`, l.nvr, t('Interfata NVR-ului Hikvision')) : ''}`;
     const rows = [
-      [html`${icon('tools')} ${t('go2rtc — statusul fluxurilor video')}`, l.go2rtc],
       ...(l.nvr ? [[html`${icon('server')} ${t('NVR Hikvision (16 camere)')}`, l.nvr]] : []),
       ...l.cameras.map((c) => [html`${icon('camera')} ${t('{name} — interfața camerei', { name: c.name })}`, c.url]),
     ];

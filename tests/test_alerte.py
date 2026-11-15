@@ -21,6 +21,8 @@ import rules  # noqa: E402
     ({"status": "suppressed", "suppressed_reason": "gated"}, False),
     ({"status": "repeat", "episode": "repeat"}, False),
     ({"status": "not_found", "episode": "not_found"}, True),         # episodul s-a deschis pe bot
+    # audit F4: un raspuns care nu e al contractului nu e o confirmare de livrare
+    ([], True), ("ok", True), ({}, True), ({"status": "ok"}, True), ({"status": None}, True),
 ])
 def test_cand_pleaca_pe_rezerva(raspuns, rezerva):
     assert escaladare.are_nevoie_de_rezerva(raspuns) is rezerva

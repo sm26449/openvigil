@@ -157,7 +157,9 @@ def login():
             # parola e buna, dar sesiunea porneste abia dupa cod: cookie-ul tine doar un
             # pre-bilet cu termen, fara `user` (current_user ramane None pana atunci)
             session.clear()
-            session["pre2fa"] = {"user": name, "t": time.time()}
+            # versiunea contului intra in bilet: o parola schimbata sau o revocare intre parola
+            # si cod il anuleaza (audit S9)
+            session["pre2fa"] = {"user": name, "t": time.time(), "v": users.sess_ver(u)}
             audit.log("login: parola corectă, se așteaptă codul", name)
             return _pagina(TOTP_HTML, err="")
         if u:
@@ -186,7 +188,7 @@ def login_2fa():
         return _pagina(TOTP_HTML, err=t("Prea multe încercări — așteaptă 15 minute")), 429
     u = users.get(name)
     tp = (u or {}).get("totp")
-    if not u or not tp:
+    if not u or not tp or pre.get("v") != users.sess_ver(u):
         session.pop("pre2fa", None)
         return redirect("/login")
     cod = (request.form.get("cod") or "").strip()
@@ -363,10 +365,15 @@ def api_me_deconectare():
 
 @bp.route("/api/me/2fa/pregateste", methods=["POST"])
 def api_2fa_pregateste():
-    """Pasul 1: un secret nou (tinut doar in sesiune pana la confirmare) + QR-ul lui."""
+    """Pasul 1: un secret nou (tinut pe server, legat de SESIUNEA care l-a cerut, pana la
+    confirmare) + QR-ul lui. Un 2FA activ nu se inlocuieste pe aici: intai se dezactiveaza,
+    cu parola (audit S4)."""
     u = current_user()
+    if u.get("totp"):
+        return jsonify({"error": t("autentificarea în doi pași e deja activă; dezactiveaz-o întâi (cu parola)")}), 400
     secret = totp.secret_nou()
-    _totp_nou[u["user"]] = (secret, time.time())
+    session["tfa_nonce"] = secrets.token_hex(16)
+    _totp_nou[u["user"]] = (secret, time.time(), session["tfa_nonce"])
     uri = totp.uri(secret, u["user"])
     svg = totp.qr_svg(uri)
     return jsonify({"secret": secret, "uri": uri,
@@ -376,20 +383,28 @@ def api_2fa_pregateste():
 
 @bp.route("/api/me/2fa/activeaza", methods=["POST"])
 def api_2fa_activeaza():
-    """Pasul 2: codul din aplicatie dovedeste ca secretul a fost scanat; abia atunci se
-    salveaza. Raspunsul aduce codurile de recuperare — singura data cand se vad."""
+    """Pasul 2: parola contului + codul din aplicatie (care dovedeste ca secretul a fost
+    scanat); abia atunci se salveaza. O sesiune furata nu ajunge: fara parola nu se poate
+    pune un factor al atacatorului (audit S4). Celelalte sesiuni ale contului se deconecteaza.
+    Raspunsul aduce codurile de recuperare — singura data cand se vad."""
     u = current_user()
-    secret, ts = _totp_nou.get(u["user"]) or (None, 0)
+    secret, ts, nonce = _totp_nou.get(u["user"]) or (None, 0, None)
     b = request.get_json(silent=True) or {}
-    if not secret or time.time() - ts > TOTP_NOU_SEC:
+    if not secret or time.time() - ts > TOTP_NOU_SEC or not nonce or nonce != session.get("tfa_nonce"):
         _totp_nou.pop(u["user"], None)
         return jsonify({"error": t("întâi generează codul QR (e valabil 10 minute)")}), 400
+    if u.get("totp"):
+        return jsonify({"error": t("autentificarea în doi pași e deja activă; dezactiveaz-o întâi (cu parola)")}), 400
+    if not users.verify(u["user"], str(b.get("parola") or "")):
+        return jsonify({"error": t("parola greșită")}), 400
     if totp.verifica(secret, str(b.get("cod") or "")) is None:
         return jsonify({"error": t("cod greșit — verifică ora telefonului și încearcă iar")}), 400
     coduri = totp.coduri_recuperare()
     users.set_totp(u["user"], secret, coduri)
     _totp_nou.pop(u["user"], None)
-    audit.log("2FA activat", u["user"])
+    session.pop("tfa_nonce", None)
+    session["v"] = users.revoke(u["user"])       # celelalte dispozitive se reconecteaza cu 2FA
+    audit.log("2FA activat (celelalte sesiuni deconectate)", u["user"])
     return jsonify({"ok": True, "recuperare": coduri})
 
 

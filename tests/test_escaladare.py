@@ -67,3 +67,15 @@ def test_http_ne_ok_nu_ridica(monkeypatch):
     monkeypatch.setattr(E.requests, "post",
                         lambda *a, **k: _Resp(ok=False, status=401, text="bad key"))
     assert E.escaladeaza({"cam": 6}, sync=True) is True
+
+
+
+def test_json_care_nu_e_obiect_e_esec_nu_exceptie(monkeypatch):
+    """audit F4: HTTP 200 cu o lista / null -> fire() intoarce None (alerta merge pe rezerva),
+    nu o exceptie care oprea si rezerva."""
+    _cfg(monkeypatch)
+    for corp in ([], None, 5, "text"):
+        r = _Resp()
+        r.json = lambda corp=corp: corp
+        monkeypatch.setattr(E.requests, "post", lambda *a, r=r, **k: r)
+        assert E.fire({"type": "nvr_x", "context": {}}) is None

@@ -134,6 +134,9 @@ def api_harta_imagine(pid):
             return jsonify({"error": t("planul nu are imagine")}), 404
         return send_file(cale, max_age=0, conditional=True)
     try:
+        # limita de 8 MB INAINTE de citirea corpului (altfel se citea tot, pana la limita globala)
+        if (request.content_length or 0) > harta.MAX_IMG:
+            raise ValueError(t("imaginea lipsește sau depaseste 8 MB"))
         harta.salveaza_imagine(pid, request.get_data(), request.content_type)
     except ValueError as e:
         return jsonify({"error": str(e)}), 400

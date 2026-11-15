@@ -1621,6 +1621,9 @@
         <p class="hint">Sau introdu manual secretul: <code id="tfa-secret"></code></p>
         <input id="tfa-cod" inputmode="numeric" autocomplete="one-time-code" maxlength="7"
                placeholder="codul de 6 cifre">
+        <input id="tfa-parola-on" type="password" autocomplete="current-password"
+               placeholder="parola contului" aria-label="Parola contului (confirmare)">
+        <p class="hint">Celelalte dispozitive ale contului se deconectează și cer apoi și codul.</p>
         <div class="s-btns row">
           <button type="button" id="tfa-confirm">Activează</button>
           <button type="button" id="tfa-cancel">Renunță</button>

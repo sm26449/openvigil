@@ -936,7 +936,8 @@ async function loadHeat() {
     heatData = await (await fetch(`/api/heatmap?channel=${heatCh}&day=${$('#pb-date').value || localDay()}&zile=${heatZile}`)).json();
     const perioada = heatZile === 1 ? t('ziua aleasă') : t('ultimele {n} zile', { n: heatZile });
     $('#heat-info').textContent = heatData.error ? t('Eroare: {err}', { err: heatData.error })
-      : t('{n} episoade de prezență umană în {perioada}', { n: heatData.episoade, perioada }) + (heatData.max ? '' : ' ' + t('— nimic de desenat'));
+      : t('{n} episoade de prezență umană în {perioada}', { n: heatData.episoade, perioada }) + (heatData.max ? '' : ' ' + t('— nimic de desenat'))
+        + (heatData.partial ? ' · ' + t('rezultat parțial: prea multe episoade, cele mai vechi lipsesc — alege o perioadă mai scurtă') : '');
   } catch (e) { $('#heat-info').textContent = t('Eroare: {err}', { err: e }); }
   drawHeat();
 }

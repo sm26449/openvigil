@@ -117,6 +117,30 @@ where things happen. **Where to find each feature and how to use it, with screen
 - **„Învață căutarea”** din interfață: verdicte pe concept și imagine, exemple păstrate în
   PostgreSQL și în backup, navigare prin arhivă, recuperarea exemplelor confirmate sub prag.
 
+### Securitate
+Din auditul de cod și securitate al candidatului 2.2.0, pentru expunerea publică:
+- **Releul de flux** dă browserului doar fluxurile publicate (live, HD, redare), după numele
+  întreg: fluxul intern `cam<id>_main` (mainstream-ul brut, fără mască) nu mai e accesibil.
+  Cine nu are voie să vorbească prin cameră (vizualizare) primește live-ul fără canal de vorbire.
+- **Prin releu, nici administratorul nu mai ajunge la API-ul de administrare go2rtc**
+  (configurația cu parolele camerelor, rescrierea ei, repornirea, lista surselor): doar fluxuri și
+  cadre. Legătura „go2rtc” a dispărut din interfață; starea fluxurilor e în Sănătate.
+- **Fluxurile deschise se închid** la revocarea sesiunii, ștergerea contului sau retragerea camerei
+  (reverificare la 20 s), nu mai curg până le închide browserul.
+- **2FA:** activarea cere parola contului, nu înlocuiește un factor deja activ și deconectează
+  celelalte sesiuni; biletul dintre parolă și cod nu supraviețuiește unei revocări.
+- **Jurnalul de audit** nu mai păstrează jetoane și chei (Telegram, serviciul de alerte, modelul de
+  limbaj — orice câmp care arată a secret, la orice nivel) și e citibil doar de proprietar (0600).
+- **Dosarele exportate** se descarcă doar dacă toate camerele din ZIP sunt încă permise contului.
+- **Notificările push** pleacă doar spre serviciile de push ale browserelor (Google, Mozilla, Apple,
+  Microsoft), nu spre o adresă oarecare (SSRF).
+- **Instalarea nouă** generează o parolă aleatorie pentru PostgreSQL; `changeme` e semnalat la
+  instalare și la pornire.
+- **Imaginea planului** se deschide doar ca PNG/JPEG/WebP și se decodează integral înainte de
+  salvare; un test se asigură că modulul FlashPix al Pillow rămâne inaccesibil (aviz
+  GHSA-5x8w-8jj5-q52h, care cere `olefile`, absent din imagine).
+- Acțiunile GitHub din CI și release sunt fixate pe SHA.
+
 ### Schimbat
 - **Navigare:** pe tabletă (≤ 1100 px) și pe telefonul culcat (≤ 500 px înălțime) navigarea e în
   bara de jos cu „Mai mult”; un ecran nou se deschide de sus; nimic nu mai lărgește pagina pe
@@ -147,6 +171,14 @@ where things happen. **Where to find each feature and how to use it, with screen
   pentru controalele native și contur de focus în modul „contrast ridicat” din Windows.
 
 ### Reparat
+- **Triaj:** incidentele camerelor unui operator nu mai sunt ascunse de traficul altor camere
+  (restricția se aplică înainte de limită), iar un incident afișat rămâne tratabil oricâte
+  evenimente informative vin după el; „Cât ai lipsit” merge și pentru operator și arată și camerele
+  căzute înainte de ultima vizită; miniatura unui episod de peste miezul nopții se găsește.
+- **Serviciul de alerte:** un răspuns care nu e al contractului (listă, `null`, stare necunoscută)
+  trimite alerta pe botul propriu, în loc să o piardă.
+- **Harta:** o imagine de plan stricată sau o încărcare eșuată nu mai șterge planul existent;
+  harta de căldură spune când rezultatul e parțial.
 - **Harta:** rezumatul și uneltele de editare se rup pe rânduri în loc să iasă din ecran (pe
   telefon), iar rezumatul stă pe rândul lui la orice lățime, ca planul să nu sară când textul se
   schimbă (de exemplu în timp ce trasezi limita).

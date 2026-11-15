@@ -19,6 +19,7 @@ import logare
 from i18n import t
 
 GRID_W, GRID_H = 64, 36
+MAX_EPISOADE = 20000   # pe camera si cerere; peste, rezultatul e marcat `partial` (audit F7)
 TIPURI_CHENAR = ("detectie", "intrus", "obiect")
 
 
@@ -68,7 +69,8 @@ def heatmap(cam, day_end=None, zile=1):
     zile, end_day, t_start, t_end = _interval(day_end, zile)
     grid = [[0] * GRID_W for _ in range(GRID_H)]
     episoade = 0
-    for e in jurnal.query(limit=20000, cam=cam, tip="episod", since=t_start, until=t_end):
+    evs = jurnal.query(limit=MAX_EPISOADE, cam=cam, tip="episod", since=t_start, until=t_end)
+    for e in evs:
         tr = e.get("traseu")
         if not isinstance(tr, list):
             continue
@@ -81,7 +83,8 @@ def heatmap(cam, day_end=None, zile=1):
                 continue
             grid[gy][gx] += 1
     return {"w": GRID_W, "h": GRID_H, "grid": grid, "max": max(max(r) for r in grid),
-            "episoade": episoade, "zile": zile, "pana_la": end_day}
+            "episoade": episoade, "zile": zile, "pana_la": end_day,
+            "partial": len(evs) >= MAX_EPISOADE}
 
 
 PLAN_GRID = 128   # celule pe latura planului (fractii), pentru harta de caldura pe plan
@@ -98,13 +101,15 @@ def heatmap_plan(pid, day_end=None, zile=1, visible=None):
     plan = next((p for p in harta.lista(visible) if p["id"] == pid), None)
     if plan is None:
         raise ValueError(t("planul nu există"))
-    celule, episoade, fara_sol, camere = {}, 0, 0, []
+    celule, episoade, fara_sol, camere, partial = {}, 0, 0, [], False
     for cid, poz in plan["camere"].items():
         cal = poz.get("calibrare")
         if not cal:
             continue
         camere.append(int(cid))
-        for e in jurnal.query(limit=20000, cam=int(cid), tip="episod", since=t_start, until=t_end):
+        evs = jurnal.query(limit=MAX_EPISOADE, cam=int(cid), tip="episod", since=t_start, until=t_end)
+        partial = partial or len(evs) >= MAX_EPISOADE   # cele mai vechi episoade au ramas pe dinafara
+        for e in evs:
             tr = e.get("traseu")
             if not isinstance(tr, list):
                 continue
@@ -124,7 +129,7 @@ def heatmap_plan(pid, day_end=None, zile=1, visible=None):
     return {"grid": PLAN_GRID, "celule": [[x, y, n] for (x, y), n in celule.items()],
             "max": max(celule.values(), default=0), "puncte": sum(celule.values()),
             "episoade": episoade, "fara_sol": fara_sol, "camere": sorted(camere),
-            "zile": zile, "pana_la": end_day}
+            "zile": zile, "pana_la": end_day, "partial": partial}
 
 
 # ---- time-lapse ----

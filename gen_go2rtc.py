@@ -60,6 +60,10 @@ def _asculta(url, port_implicit):
     return f"{gazda}:{u.port or port_implicit}"
 
 
+# RTSP-ul local al go2rtc (pentru fluxurile-copie, ex. cam<id>_v fara canal de vorbire)
+RTSP_LOCAL = "rtsp://" + _asculta(C.GO2RTC_RTSP, 8554)
+
+
 def generate():
     lines = [
         # API-ul si RTSP-ul doar pe localhost: browserul vine prin releul autentificat din
@@ -193,6 +197,11 @@ def generate():
         # HD-ul live, ca sa fie o singura conexiune main per camera.
         lines.append(f'  cam{cam["id"]}_main: "{ext_mainstream_url(cam)}'
                      f'{"#backchannel=0" if talk else ""}"')
+        # copia live FARA canal de vorbire, pentru cine n-are voie sa vorbeasca prin camera
+        # (viewer): releul (stream_proxy.py) ii da cam<id>_v in loc de cam<id>. Consuma fluxul
+        # cam<id> prin RTSP-ul local al go2rtc (deci si masca), cu backchannel oprit.
+        if talk:
+            lines.append(f'  cam{cam["id"]}_v: "{RTSP_LOCAL}/cam{cam["id"]}#backchannel=0"')
 
     # in data/: fisierul are parolele camerelor in URL-uri (0600); go2rtc il citeste de acolo
     out = OUT

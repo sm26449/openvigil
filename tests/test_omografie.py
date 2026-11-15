@@ -91,7 +91,11 @@ def test_calibrarea_pe_harta(plan):
     assert abs(pts[0]["x"] - ex[0]) < 1e-3 and abs(pts[0]["y"] - ex[1]) < 1e-3
     assert harta.detectii_pe_plan(plan, stare, visible={6}) == []    # contul nu vede camera 5
     # o imagine noua de plan sterge calibrarile
-    harta.salveaza_imagine(plan, b"\x89PNG\r\n\x1a\n" + b"\x00" * 64, "image/png")
+    import io
+    from PIL import Image
+    b = io.BytesIO()
+    Image.new("RGB", (64, 48)).save(b, "PNG")
+    harta.salveaza_imagine(plan, b.getvalue(), "image/png")
     assert "calibrare" not in harta.lista()[0]["camere"]["5"]
     harta.seteaza_calibrare(plan, 5, _perechi(COLTURI))
     harta.seteaza_calibrare(plan, 5, None)

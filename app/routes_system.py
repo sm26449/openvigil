@@ -90,7 +90,8 @@ def api_links():
     """Legaturi rapide pentru UI: unelte locale + interfetele echipamentelor."""
     host = request.host.split(":")[0]
     return jsonify({
-        "go2rtc": f"http://{host}:{getattr(C, 'STREAM_PORT', 8076)}",   # prin releu
+        # fara legatura spre interfata go2rtc: releul nu mai publica API-ul de administrare
+        # (configuratia cu parolele camerelor, repornirea) nici adminului — audit S2
         "nvr": None if settings.nvr_retras() else f"http://{C.NVR_IP}",
         "cameras": [{"id": c["id"], "name": c.get("name"), "url": f"http://{c['ip']}"}
                     for c in load_ext()],

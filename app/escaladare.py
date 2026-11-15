@@ -59,6 +59,9 @@ def escaladeaza(context, tip=None, sync=False):
 
 # suprimari voite (decizia serviciului) -> fara rezerva; restul (unknown_type, eroare) -> rezerva
 REZERVA_LA = {"unknown_type"}
+# starile din contract (docs/alerte.md); cand nicio notificare nu descrie apelul, `status` e
+# chiar valoarea episodului (repeat / resolved / not_found)
+STARI = {"sent", "partial", "pending", "failed", "suppressed", "opened", "repeat", "resolved", "not_found"}
 _EPISOD_OK = re.compile(r"[^A-Za-z0-9._:@/-]")
 ultima = {}       # ultimul raspuns, pentru Setari (tip, stare, motiv, t)
 
@@ -71,10 +74,12 @@ def are_nevoie_de_rezerva(r):
     """Pur si testabil: raspunsul serviciului (dict) sau None (n-a raspuns) -> pleaca si pe
     botul propriu? `pending` = livrare in curs (nu e esec); `not_found` la o rezolvare = episodul
     s-a deschis pe rezerva, deci si revenirea merge tot acolo."""
-    if r is None:
+    if not isinstance(r, dict):
         return True
     stare = r.get("status")
-    if stare == "failed":
+    # o stare necunoscuta (serviciu incompatibil, proxy care raspunde 200 cu altceva) nu e
+    # o confirmare de livrare: alerta pleaca si pe rezerva (audit F4)
+    if stare == "failed" or stare not in STARI:
         return True
     if stare == "suppressed":
         return r.get("suppressed_reason") in REZERVA_LA
@@ -92,6 +97,9 @@ def fire(payload, timeout=8):
         d = r.json()
     except Exception as e:
         logare.info(f"[alerte] {payload['type']}: {str(e)[:80]}")
+        return None
+    if not isinstance(d, dict):                 # 200 cu o lista / null / un numar: nu e raspunsul contractului
+        logare.info(f"[alerte] {payload['type']}: raspuns neasteptat ({type(d).__name__})")
         return None
     ultima.update(tip=payload["type"], stare=d.get("status"), motiv=d.get("suppressed_reason"),
                   episod=d.get("episode"), t=time.time())

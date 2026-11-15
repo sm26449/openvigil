@@ -48,6 +48,11 @@ def api_job_fisier(jid):
     vis = _visible_ids()
     if vis is not None and j.get("cam") is not None and int(j["cam"]) not in vis:
         return jsonify({"error": t("nu există")}), 404
+    # joburile pe mai multe camere (dosarul) isi trec in rezultat camerele din fisier: toate
+    # trebuie sa fie inca permise la descarcare (audit S5)
+    camere = (j.get("rezultat") or {}).get("camere") if isinstance(j.get("rezultat"), dict) else None
+    if vis is not None and camere and not set(int(c) for c in camere) <= vis:
+        return jsonify({"error": t("nu există")}), 404
     f = jobs.cale_fisier(jid)
     if not f:
         return jsonify({"error": t("fișierul nu (mai) există — joburile se păstrează o oră")}), 404

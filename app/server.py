@@ -155,7 +155,8 @@ VIEWER_GET = ("/api/me", "/api/cameras", "/api/events", "/api/pulse", "/api/reco
               "/api/incidents", "/api/cases", "/api/digest", "/api/speedtest", "/snapshots/",
               "/api/marcaje", "/api/probe", "/api/jobs", "/api/push", "/api/mod", "/api/harta",
               "/api/regiune", "/api/heatmap", "/api/timelapse", "/api/segmente",
-              "/api/flux", "/api/journal", "/api/plates", "/api/faces/history", "/api/reid/")
+              "/api/flux", "/api/journal", "/api/plates", "/api/faces/history", "/api/reid/",
+              "/api/rezumat/absenta")   # „Cât ai lipsit”: ruta filtreaza pe camerele contului
 # Actiunile live permise OPERATORULUI (paznicului): POST pe camera lui, fara nimic
 # de configurare (config/stream/zone/reboot/detect raman doar pentru admin).
 OPERATOR_ACTIONS = ("siren", "strobe", "output", "say", "volume", "ptz", "presets",
@@ -1258,7 +1259,11 @@ def main():
     # go2rtc asculta doar pe localhost; browserul ajunge la el prin releul autentificat
     g = urllib.parse.urlsplit(C.GO2RTC_API)
     stream_proxy.start(app, current_user, _visible_ids, (g.hostname, g.port or 1984),
-                       C.WEB_HOST, getattr(C, "STREAM_PORT", 8076))
+                       C.WEB_HOST, getattr(C, "STREAM_PORT", 8076),
+                       # copia fara canal de vorbire exista doar dupa ce go2rtc si-a regenerat
+                       # configuratia; pana atunci viewerul primeste fluxul normal (nu ecran negru)
+                       are_vorbire=lambda cid: bool(((_cam_entry(cid) or {}).get("features") or {}).get("talk"))
+                       and _go2rtc_are(f"cam{cid}_v"))
     # waitress sterge implicit antetele X-Forwarded-* de la surse „neincredere" (toate);
     # le lasam sa treaca: _DinSpateleProxyului le crede doar de la proxy-ul de incredere
     # systemd: READY cand pornim sa servim; WATCHDOG=1 la 30 s cat timp go2rtc si jurnalul

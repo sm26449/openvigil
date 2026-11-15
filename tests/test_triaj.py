@@ -33,6 +33,26 @@ def test_poza_episodului_din_intervalul_lui(tmp_path, monkeypatch):
     assert ev["poza"] == "/api/flux/thumb/2026-11-14/234430_cam6_person.jpg"
 
 
+def test_poza_episodului_peste_miezul_noptii(tmp_path, monkeypatch):
+    """audit F6: episod 23:59:50 – 00:00:20, inchis in ziua urmatoare: poza se cauta si in
+    ziua inceputului (inainte se cauta ora 23:59 in ziua inchiderii, unde nu exista)."""
+    (tmp_path / "2026-11-14").mkdir()
+    (tmp_path / "2026-11-14" / "235955_cam6_person.jpg").write_bytes(b"x")
+    monkeypatch.setattr(snaps, "SNAP_DIR", str(tmp_path))
+    snaps._index.clear()
+    ev = {"cam": 6, "t": "2026-11-15 00:00:20", "tip": "episod", "inceput": "23:59:50", "durata_sec": 30}
+    incidents.adauga_poze([ev])
+    assert ev["poza"] == "/api/flux/thumb/2026-11-14/235955_cam6_person.jpg"
+    # cand singurul cadru e dupa miezul noptii, il gaseste in ziua inchiderii
+    (tmp_path / "2026-11-14" / "235955_cam6_person.jpg").unlink()
+    (tmp_path / "2026-11-15").mkdir()
+    (tmp_path / "2026-11-15" / "000010_cam6_person.jpg").write_bytes(b"x")
+    snaps._index.clear()
+    ev = {"cam": 6, "t": "2026-11-15 00:00:20", "tip": "episod", "inceput": "23:59:50", "durata_sec": 30}
+    incidents.adauga_poze([ev])
+    assert ev["poza"] == "/api/flux/thumb/2026-11-15/000010_cam6_person.jpg"
+
+
 def test_stare_pe_bloc(tmp_path, monkeypatch):
     monkeypatch.setattr(incidents, "ACK_FILE", str(tmp_path / "ack.json"))
     assert incidents.set_state_bloc(["a", "b", "c"], "fals", who="op") == 3

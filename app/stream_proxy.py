@@ -10,10 +10,19 @@ Decizia foloseste exact sesiunea nvr-web (acelasi cookie, acelasi secret, aceeas
 functie current_user), deci conturile si restrictiile pe camere din interfata se aplica
 si fluxurilor video — pana acum go2rtc le ocolea pe toate:
   - fara sesiune -> 401;
-  - administratorul trece oriunde (inclusiv interfata go2rtc, de la Legaturi);
-  - viewer/operator: doar handshake-ul WebSocket pe /api/ws?src=cam|hd|pb<id>, pe
-    camerele permise, si doar daca go2rtc raspunde 101 — altfel conexiunea se inchide,
-    ca o a doua cerere pe acelasi socket sa nu ajunga nefiltrata la API-ul go2rtc.
+  - toti, inclusiv administratorul, ajung DOAR la ce foloseste interfata: handshake-ul
+    WebSocket pe /api/ws cu un flux publicat (numele INTREG: cam<id>, hd<id>[_h<treapta>],
+    pb<id>_<moment>[_<viteza>][_h<treapta>]) pe camerele permise, iar adminul si la cadrele
+    JPEG (/api/frame.jpeg). Fluxurile interne (cam<id>_main = mainstream-ul brut, fara masca)
+    si API-ul de administrare go2rtc (/api/config cu parolele camerelor si surse `exec:`,
+    /api/restart, /api/streams, /api/log...) raman doar pe localhost (audit S1, S2);
+  - cine nu are voie sa vorbeasca prin camera (viewer) primeste, pe camerele cu difuzor,
+    copia fara canal de vorbire a fluxului live (cam<id>_v), ca o oferta WebRTC cu audio de
+    trimis sa nu ajunga la difuzor (audit S1);
+  - handshake-ul trece doar daca go2rtc raspunde 101 — altfel conexiunea se inchide, ca o a
+    doua cerere pe acelasi socket sa nu ajunga nefiltrata la API-ul go2rtc;
+  - un flux deschis isi reverifica accesul la REVERIFICA secunde si se inchide cand sesiunea
+    e revocata, contul sters sau camera retrasa (audit S7).
 Origin-ul (cand exista) trebuie sa fie acelasi host ca al cererii: o pagina straina nu
 poate deschide fluxuri cu sesiunea utilizatorului.
 """
@@ -25,7 +34,12 @@ import logare
 
 MAX_HDR = 16 * 1024          # antetele unei cereri de browser incap lejer
 HDR_TIMEOUT = 15             # secunde pana la antete complete, altfel inchidem
-SRC_RE = re.compile(r"^(?:cam|hd|pb)(\d+)")   # numele fluxurilor: cam1, hd1_h720, pb1_...
+REVERIFICA = 20             # secunde intre reverificarile unui flux deschis
+# numele INTREG al fluxurilor publicate browserului (vezi /api/play si 10-live.js)
+SRC_RE = re.compile(r"^(?:cam(?P<c>\d+)|hd(?P<h>\d+)(?:_h(?:0|720|1080))?"
+                    r"|pb(?P<p>\d+)_\d{8}T\d{6}Z(?:_(?:1|05|2|4|8))?(?:_h(?:0|720|1080))?)$")
+ADMIN_GET = ("/api/frame.jpeg",)   # pe langa fluxuri, adminul vede si cadre JPEG
+VORBESC = ("admin", "operator")    # rolurile care pot vorbi prin difuzorul camerei
 
 
 def _hostname(hostport):
@@ -86,9 +100,10 @@ def _pump(src, dst):
 
 
 class StreamProxy:
-    def __init__(self, app, current_user, visible_ids, upstream, host, port):
+    def __init__(self, app, current_user, visible_ids, upstream, host, port, are_vorbire=None):
         self.app, self.current_user, self.visible_ids = app, current_user, visible_ids
         self.upstream, self.host, self.port = upstream, host, port
+        self.are_vorbire = are_vorbire or (lambda cid: False)   # camera are difuzor (cam<id>_v exista)?
 
     # ---- decizia ----
     def _user(self, hdr):
@@ -99,6 +114,11 @@ class StreamProxy:
 
     def _allowed(self, method, path, hdr):
         """None daca cererea trece, altfel (cod, mesaj)."""
+        r = self._decide(method, path, hdr)
+        return r if isinstance(r, tuple) else None
+
+    def _decide(self, method, path, hdr):
+        """(cod, mesaj) daca se refuza; altfel calea de trimis la go2rtc (poate fi rescrisa)."""
         origin = hdr.get("origin")
         if origin and _hostname(urllib.parse.urlsplit(origin).netloc) != _hostname(hdr.get("host", "")):
             return 403, "origine straina"
@@ -109,17 +129,26 @@ class StreamProxy:
             return 401, "neautentificat"
         if not u:
             return 401, "neautentificat"
-        if u.get("role") == "admin":
-            return None
+        admin = u.get("role") == "admin"
         url = urllib.parse.urlsplit(path)
-        if (method != "GET" or url.path != "/api/ws"
-                or hdr.get("upgrade", "").lower() != "websocket"):
+        if method != "GET":
             return 403, "doar fluxurile video"
-        src = urllib.parse.parse_qs(url.query).get("src", [""])[0]
+        if admin and url.path in ADMIN_GET:
+            return path
+        if url.path != "/api/ws" or hdr.get("upgrade", "").lower() != "websocket":
+            return 403, "doar fluxurile video"
+        q = urllib.parse.parse_qs(url.query)
+        src = q.get("src", [""])[0]
         m = SRC_RE.match(src)
-        if not m or (vis is not None and int(m[1]) not in vis):
+        if not m or len(q.get("src", [])) != 1:
+            return 403, "flux necunoscut"
+        cid = int(m["c"] or m["h"] or m["p"])
+        if vis is not None and cid not in vis:
             return 403, "nu ai acces la aceasta camera"
-        return None
+        if m["c"] and u.get("role") not in VORBESC and self.are_vorbire(cid):
+            q["src"] = [f"cam{cid}_v"]                 # live fara canal de vorbire
+            return urllib.parse.urlunsplit(url._replace(query=urllib.parse.urlencode(q, doseq=True)))
+        return path
 
     # ---- o conexiune ----
     def _handle(self, client):
@@ -131,10 +160,13 @@ class StreamProxy:
             if not req:
                 return client.close()
             method, path, hdr = req
-            deny = self._allowed(method, path, hdr)
-            if deny:
-                _reply(client, *deny)
+            dec = self._decide(method, path, hdr)
+            if isinstance(dec, tuple):
+                _reply(client, *dec)
                 return client.close()
+            if dec != path:                   # sursa rescrisa (ex. live fara canal de vorbire)
+                linie = head.split(b"\r\n", 1)
+                head = f"{method} {dec} HTTP/1.1".encode("latin-1") + b"\r\n" + linie[1]
             up = socket.create_connection(self.upstream, timeout=10)
             # cookie-ul sesiunii nu are ce cauta in go2rtc
             fwd = b"\r\n".join(ln for ln in head.split(b"\r\n")
@@ -164,12 +196,29 @@ class StreamProxy:
             for s in (client, up):
                 s.settimeout(None)
                 s.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+            gata = threading.Event()
+            threading.Thread(target=self._paznic, args=(gata, client, up, method, path, hdr),
+                             daemon=True).start()
             threading.Thread(target=_pump, args=(up, client), daemon=True).start()
             _pump(client, up)
+            gata.set()
         except (OSError, ValueError) as e:
             if not isinstance(e, (ConnectionResetError, BrokenPipeError, socket.timeout)):
                 logare.info(f"[stream_proxy] {str(e)[:80]}")
             self._close(client, up)
+
+    def _paznic(self, gata, client, up, method, path, hdr):
+        """Reverifica periodic accesul unui flux deschis: sesiunea revocata, contul sters sau
+        camera retrasa inchid conexiunea (altfel fluxul curgea pana il inchidea browserul)."""
+        while not gata.wait(REVERIFICA):
+            try:
+                refuz = self._allowed(method, path, hdr)
+            except Exception:
+                refuz = (500, "eroare")
+            if refuz:
+                logare.info(f"[stream_proxy] flux inchis: {refuz[1]}")
+                self._close(client, up)
+                return
 
     @staticmethod
     def _close(*socks):
@@ -210,8 +259,8 @@ class StreamProxy:
             threading.Thread(target=self._handle, args=(c,), daemon=True).start()
 
 
-def start(app, current_user, visible_ids, upstream, host, port):
+def start(app, current_user, visible_ids, upstream, host, port, are_vorbire=None):
     """Porneste releul intr-un fir daemon; intoarce obiectul (pentru teste)."""
-    p = StreamProxy(app, current_user, visible_ids, upstream, host, port)
+    p = StreamProxy(app, current_user, visible_ids, upstream, host, port, are_vorbire)
     threading.Thread(target=p.serve_forever, daemon=True, name="stream-proxy").start()
     return p

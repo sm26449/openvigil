@@ -80,6 +80,10 @@ def pool():
                     open=True,
                 )
                 logare.info("[db] pool PostgreSQL deschis")
+                if os.environ.get("PG_PASS") in ("", "changeme"):
+                    # parola din .env.example e publica in depozit (audit S8)
+                    logare.error("[db] PG_PASS e goala sau cea din exemplu (changeme): schimb-o "
+                                 "in PostgreSQL (ALTER USER) si in .env — vezi install.sh")
     return _POOL
 
 
