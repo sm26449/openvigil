@@ -129,6 +129,11 @@ sau **Înregistrări**. Esc sau un clic în afară îl închide. Pe telefon, car
 
    ![Calibrarea: perechi de puncte și grila proiectată](../img/2.2.0/ro/harta-calibrare-1366.png)
 
+După calibrare, **zona de pe hartă a camerei vine din calibrare** (marginile imaginii proiectate
+pe plan), nu din înălțimea și înclinarea introduse; panoul camerei îți spune ce înclinare reiese din
+calibrare, ca să poți corecta o înălțime estimată greșit. În ecranul de calibrare, conturul
+portocaliu punctat de pe plan e zona estimată din montaj, doar ca reper.
+
 Calibrarea rămâne dacă muți marcajul camerei. O imagine nouă de plan șterge scara, limita și calibrările,
 pentru că alt plan înseamnă alte măsuri.
 

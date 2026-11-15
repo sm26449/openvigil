@@ -128,6 +128,12 @@ the plan, so you can check that what it films matches its place. From the card: 
 
    ![Calibration: point pairs and the projected grid](../img/2.2.0/en/harta-calibrare-1366.png)
 
+After calibrating, **the camera's area on the map comes from the calibration** (the image edges
+projected onto the plan), not from the height and tilt you entered; the camera panel tells you
+which tilt the calibration implies, so you can fix a height you guessed wrong. In the calibration
+screen, the dashed orange outline on the plan is the area estimated from the mounting, only as a
+guide.
+
 The calibration survives moving the camera's marker. A new plan image clears the scale, the
 boundary and the calibrations, because a different plan means different measurements.
 

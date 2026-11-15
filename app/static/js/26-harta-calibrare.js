@@ -5,7 +5,7 @@
    ==================================================================== */
 import { $, t, toast } from './00-core.js';
 import { post } from './10-live.js';
-import { eroriCalibrare, proiect } from './24-harta-metrica.js';
+import { amprentaMontaj, eroriCalibrare, proiect } from './24-harta-metrica.js';
 /* Perechi de puncte cadru <-> plan (fractii 0..1). Clic in cadru, apoi pe acelasi loc pe plan;
    punctele se pot trage dupa aceea. De la 4 perechi, serverul calculeaza omografia (proba,
    fara salvare: POST /api/harta/omografie) si planul arata grila solului din cadru proiectata,
@@ -18,7 +18,7 @@ let cal = null;   // {plan, cam, perechi: [[cx,cy,px,py]], astept: [cx,cy] | nul
 function openCalibrare(plan, cam, onSalvat) {
   const poz = (plan.camere || {})[cam.id] || {};
   cal = { plan, cam, perechi: ((poz.calibrare || {}).perechi || []).map((p) => [...p]), astept: null,
-          h: null, eroare: null, erori: [], eroriM: [], met: plan.metrica, onSalvat };
+          h: null, eroare: null, erori: [], eroriM: [], met: plan.metrica, poz, onSalvat };
   $('#harta-cal-title').textContent = t('Calibrează {nume} pe „{plan}”', { nume: `${cam.id}. ${cam.name}`, plan: plan.nume });
   const ci = $('#harta-cal-cam-img'), pi = $('#harta-cal-plan-img');
   ci.onload = pi.onload = desen;
@@ -48,6 +48,7 @@ function desen() {
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
     svg.innerHTML = '';
     const k = W / Math.max(1, svg.clientWidth || W);
+    if (off === 2) reperMontaj(svg, W, H, k);
     if (off === 2 && cal.h) grila(svg, W, H, k);
     cal.perechi.forEach((p, i) => {
       const x = p[off] * W, y = p[off + 1] * H, rau = cal.erori[i] > 0.02;
@@ -67,6 +68,19 @@ function desen() {
   stare();
 }
 
+/* Pe plan, ca reper cand alegi punctele: unde e camera si zona pe care ar vedea-o dupa montaj
+   (inaltime, inclinare, deschidere, directie). Montajul e estimat din ochi, deci e doar un
+   ajutor: un punct pus mult in afara zonei merita privit de doua ori; calibrarea ramane cea care
+   conteaza (dupa salvare, harta deseneaza zona din ea). */
+function reperMontaj(svg, W, H, k) {
+  const poz = cal.poz;
+  if (poz.x == null) return;
+  const cx = poz.x * W, cy = poz.y * H;
+  const z = amprentaMontaj(poz, cal.met, cx, cy);
+  if (z) el(svg, 'path', { class: 'hc-montaj', d: 'M' + z.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' L') + ' Z',
+                           'stroke-width': 1.5 * k, 'stroke-dasharray': `${6 * k} ${4 * k}` });
+  el(svg, 'circle', { class: 'hc-cam', cx, cy, r: 7 * k, 'stroke-width': 2 * k });
+}
 // grila solului din cadru (linii la fiecare 10%), proiectata pe plan; segmentele care trec
 // de orizont sau ies mult din plan se rup
 function grila(svg, W, H, k) {

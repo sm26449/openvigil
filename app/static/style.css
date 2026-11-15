@@ -1675,6 +1675,8 @@ body.viewer .act-only { display: none !important; }
 .hc-nr { fill: #000; font: 700 11px system-ui, sans-serif; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
 .hc-grila { fill: none; stroke: rgba(88, 166, 255, .85); pointer-events: none; }
 .hc-err { stroke: var(--alarm-hi); pointer-events: none; }
+.hc-montaj { fill: rgba(255, 166, 87, .12); stroke: #ffa657; pointer-events: none; }
+.hc-cam { fill: #1c2128; stroke: #ffa657; pointer-events: none; }
 @media (max-width: 800px) { .ov-body.harta-cal-body { grid-template-columns: 1fr; } .harta-cal-ajutor { max-height: 5.5em; overflow: auto; } }
 .harta-wrap.edit .hm { cursor: grab; }
 .harta-wrap.edit .hm.drag { cursor: grabbing; }

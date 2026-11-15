@@ -2690,7 +2690,6 @@
   "Șterge calibrarea": "Delete calibration",
   "Anulează ultimul punct": "Undo last point",
   "Cadru nou": "New frame",
-  "Alege 4–12 puncte de pe sol care se văd și în cadru, și pe plan (colțuri de alee sau de terasă, baza stâlpilor de la poartă, colțul casei la pământ): clic în cadru, apoi pe același loc pe plan. Răsfiră-le pe toată zona văzută, nu pe o linie. Punctele se pot trage după aceea; grila de pe plan arată cum se proiectează solul din cadru.": "Pick 4–12 points on the ground that are visible both in the frame and on the plan (corners of a path or terrace, the base of the gate posts, the corner of the house at ground level): click in the frame, then on the same spot on the plan. Spread them over the whole visible area, not along a line. Points can be dragged afterwards; the grid on the plan shows how the ground in the frame is projected.",
   "Cadrul camerei": "Camera frame",
   "Punctele din cadru": "Points in the frame",
   "Punctele de pe plan": "Points on the plan",
@@ -2750,5 +2749,9 @@
   "Scara vine din {n} laturi; planul pare desenat la scară.": "The scale comes from {n} sides; the plan looks drawn to scale.",
   "Perimetru {p} m · suprafață {s} m² ({ha} ha).": "Perimeter {p} m · area {s} m² ({ha} ha).",
   "Lungimea unei laturi: un număr de metri, între 0,1 și 100000": "Side length: a number of metres, between 0.1 and 100000",
-  "Gol = lungime necunoscută": "Empty = unknown length"
+  "Gol = lungime necunoscută": "Empty = unknown length",
+  "Alege 4–12 puncte de pe sol care se văd și în cadru, și pe plan (colțuri de alee sau de terasă, baza stâlpilor de la poartă, colțul casei la pământ): clic în cadru, apoi pe același loc pe plan. Răsfiră-le pe toată zona văzută, nu pe o linie. Punctele se pot trage după aceea; grila de pe plan arată cum se proiectează solul din cadru. Conturul portocaliu punctat e zona estimată din montaj (înălțime, înclinare), doar ca reper: calibrarea ta are prioritate.": "Pick 4–12 points on the ground that are visible both in the frame and on the plan (corners of a path or terrace, the base of the gate posts, the corner of the house at ground level): click in the frame, then on the same spot on the plan. Spread them over the whole visible area, not along a line. Points can be dragged afterwards; the grid on the plan shows how the ground in the frame is projected. The dashed orange outline is the area estimated from the mounting (height, tilt), only as a guide: your calibration takes precedence.",
+  "Zona de pe hartă vine din calibrare.": "The area on the map comes from the calibration.",
+  "Centrul imaginii cade pe plan la ~{d} m de cameră.": "The image centre falls ~{d} m from the camera on the plan.",
+  "Centrul imaginii cade pe plan la ~{d} m; cu înălțimea de {h} m, înclinarea ar fi ~{u}° (introdusă: {i}°).": "The image centre falls ~{d} m away on the plan; with a height of {h} m, the tilt would be ~{u}° (entered: {i}°)."
 }

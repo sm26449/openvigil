@@ -76,6 +76,10 @@ where things happen. **Where to find each feature and how to use it, with screen
   zgomot de măsurare). Panoul arată fiecare latură pe plan, cu abaterea, unghiurile colțurilor,
   perimetrul, suprafața și avertismente. Zona de sol, bara de scară și eroarea calibrării folosesc
   aceeași măsură. Colțurile se trag; limita stă deasupra camerelor, ca să rămână apucabilă.
+- **Harta: zona de sol a unei camere calibrate vine din calibrare** (conturul imaginii proiectat
+  pe plan, tăiat la orizont / 60 m), nu din înălțimea și înclinarea estimate din ochi; panoul spune
+  ce înclinare reiese din calibrare la înălțimea introdusă. În ecranul de calibrare, poziția
+  camerei și zona estimată din montaj apar pe plan ca reper când alegi punctele.
 - **Harta: harta de căldură pe plan.** Selectorul „Fără căldură / Azi / 7 zile / 30 zile” din bara
   hărții adună picioarele oamenilor din episoadele tuturor camerelor calibrate într-o singură
   hartă a proprietății (`GET /api/harta/<plan>/heatmap`). Punctele de traseu ale episoadelor

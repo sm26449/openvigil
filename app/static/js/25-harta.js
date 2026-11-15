@@ -7,7 +7,7 @@ import { S } from './state.js';
 import { $, ADMIN, html, lista, t, toast } from './00-core.js';
 import { post } from './10-live.js';
 import { openHD } from './20-hd.js';
-import { eroriCalibrare, metriLaPx, metriPePxX, pxLaMetri } from './24-harta-metrica.js';
+import { amprentaCalibrare, amprentaMontaj, eroriCalibrare, lungime, metriPePxX, proiect } from './24-harta-metrica.js';
 import { openCalibrare } from './26-harta-calibrare.js';
 import { limitaDesen, limitaInfo, limitaInit, limitaOpreste, limitaPanou, limitaTraseaza } from './27-harta-limita.js';
 /* ---------- Etapa 4: harta proprietatii ----------
@@ -113,9 +113,11 @@ function drawHarta() {
     const cx = pos.x * W, cy = pos.y * H;
     const a1 = (pos.dir - pos.fov / 2) * Math.PI / 180, a2 = (pos.dir + pos.fov / 2) * Math.PI / 180;
     const pt = (a) => `${(cx + R * Math.sin(a)).toFixed(1)},${(cy - R * Math.cos(a)).toFixed(1)}`;
-    // cu scara + inaltime + inclinare: zona de sol vazuta (cu pata oarba de sub camera);
-    // altfel conul simbolic de raza fixa, ca pana acum
-    const sol = met ? hartaAmprenta(pos, met, cx, cy) : null;
+    // zona de sol vazuta: din CALIBRARE cand camera e calibrata (masuratoarea omului), altfel
+    // din montaj (scara + inaltime + inclinare, cu pata oarba de sub camera); fara ele, conul
+    // simbolic de raza fixa, ca pana acum
+    const sol = pos.calibrare ? amprentaCalibrare(pos.calibrare.h, met, [pos.x, pos.y], W, H)
+      : met ? amprentaMontaj(pos, met, cx, cy) : null;
     const dCon = sol ? 'M' + sol.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' L') + ' Z'
       : `M${cx.toFixed(1)},${cy.toFixed(1)} L${pt(a1)} A${R},${R} 0 ${pos.fov > 180 ? 1 : 0} 1 ${pt(a2)} Z`;
     g.innerHTML = `<path class="con${sol ? ' sol' : ''}" style="stroke-width:${k}" d="${dCon}"/>`
@@ -256,34 +258,6 @@ setInterval(hartaLive, 2000);
 /* ---------- scara planului ----------
    p.scara = doua puncte (fractii) + distanta reala in metri. Masura folosita la desen vine
    insa din p.metrica (limita proprietatii, daca are laturi cunoscute; altfel scara). */
-const SOL_MAX_M = 60;   // dincolo de atat (sau peste orizont) desenul se opreste
-/* Zona de sol vazuta, pentru o camera pinhole: razele de pe conturul cadrului (16:9,
-   unghiul orizontal = deschiderea conului) intersectate cu solul, de la inaltimea data,
-   inclinata in jos cu `inclinare`. Razele care nu ating solul (peste orizont) sau il ating
-   prea departe se taie la SOL_MAX_M. Intoarce puncte in pixeli de imagine sau null.
-   Directia camerei e desenata pe plan (pixeli); pe teren o ducem prin masura planului (A),
-   ca zona sa fie corecta si pe o schita intinsa pe o directie. */
-function hartaAmprenta(pos, met, cx, cy) {
-  if (!(pos.inaltime > 0) || pos.inclinare == null) return null;
-  const rad = Math.PI / 180, h = pos.inaltime, th = pos.inclinare * rad;
-  const tu = Math.tan(Math.min(pos.fov, 170) / 2 * rad), tv = tu * 9 / 16;
-  const fp = pxLaMetri(met, Math.sin(pos.dir * rad), -Math.cos(pos.dir * rad)), nf = Math.hypot(...fp) || 1;
-  const fw = [fp[0] / nf, fp[1] / nf], dr = [-fw[1], fw[0]];   // inainte / dreapta, in metri pe teren
-  const N = 12, raze = [];
-  for (let i = 0; i <= N; i++) raze.push([-tu + 2 * tu * i / N, -tv]);   // marginea de jos
-  for (let i = 1; i <= N; i++) raze.push([tu, -tv + 2 * tv * i / N]);    // dreapta
-  for (let i = 1; i <= N; i++) raze.push([tu - 2 * tu * i / N, tv]);     // sus
-  for (let i = 1; i < N; i++) raze.push([-tu, tv - 2 * tv * i / N]);     // stanga
-  return raze.map(([u, w]) => {
-    const fx = Math.cos(th) + w * Math.sin(th), fz = -Math.sin(th) + w * Math.cos(th);
-    let F, L;
-    if (fz < -1e-6) { const tt = h / -fz; F = tt * fx; L = tt * u; } else { F = fx * 1e6; L = u * 1e6; }
-    const d = Math.hypot(F, L);
-    if (d > SOL_MAX_M) { F *= SOL_MAX_M / d; L *= SOL_MAX_M / d; }
-    const [dx, dy] = metriLaPx(met, F * fw[0] + L * dr[0], F * fw[1] + L * dr[1]);
-    return [cx + dx, cy + dy];
-  });
-}
 // bara de scara (stanga jos) pe orice plan cu scara; in editare si linia masurata
 function hartaScaraDesen(p, W, H, k, met) {
   const svg = $('#harta-svg'), NS = 'http://www.w3.org/2000/svg';
@@ -406,7 +380,9 @@ function renderHartaSide() {
   const calib = pos.calibrare;
   $('#harta-cal-del').classList.toggle('hidden', !calib);
   $('#harta-cal-open').textContent = calib ? t('Refă calibrarea') : t('Calibrează pe plan');
-  $('#harta-cal-stare').textContent = calib ? t('Calibrată: {n} puncte, {err}.', { n: calib.perechi.length, err: hartaEroareText(calib, p.metrica) })
+  $('#harta-cal-stare').textContent = calib
+    ? [t('Calibrată: {n} puncte, {err}.', { n: calib.perechi.length, err: hartaEroareText(calib, p.metrica) }),
+       t('Zona de pe hartă vine din calibrare.'), hartaMontajDinCalibrare(pos, p.metrica)].filter(Boolean).join(' ')
     : t('Necalibrată: detecțiile ei nu apar ca puncte pe hartă.');
   const th = $('#harta-thumb');
   if (th.dataset.cam !== String(hartaSel)) { th.dataset.cam = hartaSel; th.src = `/api/thumb/${hartaSel}?t=${Date.now()}`; }
@@ -430,6 +406,19 @@ function hartaSol(pos) {
   return sus <= 0
     ? t('Vede solul de la ~{a} m până la orizont (unghi vertical ~{v}°).', { a: m(aproape), v: Math.round(v) })
     : t('Vede solul de la ~{a} m până la ~{b} m (unghi vertical ~{v}°).', { a: m(aproape), b: m(pos.inaltime / Math.tan(sus * rad)), v: Math.round(v) });
+}
+/* Ce spune calibrarea despre montaj: centrul imaginii cade pe plan la o anumita distanta de
+   camera; cu inaltimea introdusa, asta inseamna o anumita inclinare. Daca difera mult de cea
+   introdusa, una dintre ele (de obicei inaltimea estimata din ochi) nu e buna. */
+function hartaMontajDinCalibrare(pos, met) {
+  const q = met && pos.calibrare && proiect(pos.calibrare.h, 0.5, 0.5);
+  if (!q) return '';
+  const d = lungime(met, (q[0] - pos.x) * met.w, (q[1] - pos.y) * met.h);
+  if (!(d > 0.5)) return '';
+  const fmt1 = (x) => x.toFixed(x < 10 ? 1 : 0).replace('.', ',');
+  if (!(pos.inaltime > 0)) return t('Centrul imaginii cade pe plan la ~{d} m de cameră.', { d: fmt1(d) });
+  return t('Centrul imaginii cade pe plan la ~{d} m; cu înălțimea de {h} m, înclinarea ar fi ~{u}° (introdusă: {i}°).',
+    { d: fmt1(d), h: fmt1(pos.inaltime), u: Math.round(Math.atan2(pos.inaltime, d) * 180 / Math.PI), i: pos.inclinare ?? '—' });
 }
 // cea mai mare abatere a perechilor calibrarii: in metri cu masura planului, altfel % din plan
 function hartaEroareText(calib, met) {
