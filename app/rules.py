@@ -374,7 +374,40 @@ def _journal(tip, cam_id, date):
                                     "link": (legatura or "").strip()})
         except Exception as e:
             logare.info(f"[rules] cadere: {str(e)[:80]}")
+    copie = tip_intrus(entry)
+    if copie:
+        # copie in serviciul de alerte (istoric, confirmare, SMS cand casa e goala); poza si
+        # butoanele raman pe botul propriu, deci fara rezerva — n-ar face decat dubluri
+        try:
+            import escaladare
+            import notify
+            nume = notify._cam_name(cam_id)
+            ce = entry.get("eticheta_ro") or entry.get("nume") or t("persoană necunoscută")
+            escaladare.alerta(copie, t("🚨 {cam}: {ce} ({ora})", cam=nume, ce=ce, ora=ora)
+                              + notify.link(cam_id, now), rezerva=False, cam=nume, ora=ora)
+        except Exception as e:
+            logare.info(f"[rules] intrus: {str(e)[:80]}")
     return True
+
+
+def tip_intrus(entry, mod_curent=None):
+    """Pur si testabil: un intrus confirmat (om la perimetru) sau o persoana necunoscuta merita
+    copie in serviciul de alerte? Cu casa goala (plecat/noapte) -> nvr_intrus (SMS); acasa doar
+    daca e critic (noaptea) -> nvr_intrus_acasa (istoric, fara SMS). Altfel None."""
+    if entry.get("tip") == "intrus":
+        if entry.get("eticheta") != "person":
+            return None                  # vehiculele la perimetru sunt trafic, nu SMS
+    elif entry.get("tip") != "persoana_necunoscuta":
+        return None
+    if mod_curent is None:
+        try:
+            import mod
+            mod_curent = mod.curent()
+        except Exception:
+            mod_curent = "acasa"
+    if mod_curent in ("plecat", "noapte"):
+        return "nvr_intrus"
+    return "nvr_intrus_acasa" if entry.get("sev") == "critic" else None
 
 
 def journal(limit=200, tip=None, cam=None, day=None, min_sev=None, text=None, since=None, cams=None):
@@ -612,8 +645,10 @@ def _run_actions(rule, tip, cam_id, date):
             elif at == "notificare":
                 nume_cam = (cam or {}).get("name") or (f"cam {cam_id}" if cam_id else t("sistem"))
                 text = (a.get("text") or "").strip() or t("Regula „{nume}”: {context}", nume=rule['nume'], context=context)
-                notify.send(f"⚡ {nume_cam}: {text}" + notify.link(cam_id),
-                            key=("regula", rule["id"]))
+                import escaladare
+                legatura = notify.link(cam_id)
+                escaladare.alerta("nvr_regula", f"⚡ {nume_cam}: {text}" + legatura,
+                                  key=("regula", rule["id"]), cam=nume_cam)
             elif at == "webhook":
                 import hooks
                 hooks.emit("regula", cam_id, regula=rule["nume"], declansator=tip,

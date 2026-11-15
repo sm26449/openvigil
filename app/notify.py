@@ -206,6 +206,16 @@ def _cam_name(cam_id):
 # ---- watchdog: camere standalone + NVR (offline/online) + spatiu pe disc ----
 _states = {}  # cam_id / "nvr" -> True (online) / False
 _disk_alerted = 0
+_disk_vazut = False
+
+
+def _inchide_episod(tip, episod, **context):
+    """La prima verificare dupa pornire, cu starea buna: inchide in serviciul de alerte un episod
+    ramas deschis de dinainte de repornire (altfel urmatoarea cadere ar fi doar „repeat”, fara
+    mesaj). Nimic deschis = no-op la serviciu; fara rezerva pe bot."""
+    import escaladare
+    escaladare.alerta(tip, t("✅ Revenit (verificat după repornirea serverului)"), episod=episod,
+                      rezolvat=True, rezerva=False, **context)
 
 
 def offline_ids():
@@ -214,15 +224,25 @@ def offline_ids():
 
 def _check_disk():
     """Alerta cand spatiul liber se apropie de pragul de stergere (max 1 mesaj / 12h)."""
-    global _disk_alerted
+    global _disk_alerted, _disk_vazut
     import shutil as sh
     import config as C
+    import escaladare
     free_gb = sh.disk_usage(os.path.join(ROOT, "data")).free / 2**30
     limit = C.RECORD_MIN_FREE_GB * 2
+    if not _disk_vazut:
+        _disk_vazut = True
+        if free_gb >= limit:
+            _inchide_episod("nvr_disc_plin", "disc", liber=f"{free_gb:.0f}")
     if free_gb < limit and time.time() - _disk_alerted > 12 * 3600:
         _disk_alerted = time.time()
-        send(t("💾 Atenție: doar {liber} GB liberi pe disc (sub {prag} GB încep să se șteargă înregistrările vechi)",
-               liber=f"{free_gb:.0f}", prag=C.RECORD_MIN_FREE_GB))
+        escaladare.alerta("nvr_disc_plin", t("💾 Atenție: doar {liber} GB liberi pe disc (sub {prag} GB încep să se șteargă înregistrările vechi)",
+                          liber=f"{free_gb:.0f}", prag=C.RECORD_MIN_FREE_GB),
+                          episod="disc", revenire="nvr_disc_ok", liber=f"{free_gb:.0f}")
+    elif _disk_alerted and free_gb >= limit * 1.1:    # histerezis: nu oscila la prag
+        _disk_alerted = 0
+        escaladare.alerta("nvr_disc_plin", t("💾 Spațiu pe disc din nou suficient: {liber} GB liberi",
+                          liber=f"{free_gb:.0f}"), episod="disc", rezolvat=True, liber=f"{free_gb:.0f}")
 
 
 def _check_nvr():
@@ -245,14 +265,22 @@ def _check_nvr():
         # altfel un NVR oprit inainte de repornirea serverului n-ar fi semnalat niciodata
         if ok:
             _states["nvr"] = True
+            _inchide_episod("nvr_nvr_cazut", "nvr", ip=C.NVR_IP)
         elif _fails["nvr"] >= OFFLINE_DUPA:
             _states["nvr"] = False
-            send(t("⚠️ NVR OFFLINE (de la pornirea serverului): {ip}", ip=C.NVR_IP))
+            _alerta_nvr(False, t("⚠️ NVR OFFLINE (de la pornirea serverului): {ip}", ip=C.NVR_IP))
         return
     nou = _stare_noua(prev, ok, _fails["nvr"])   # acelasi debounce ca la camere
     if nou != prev:
         _states["nvr"] = nou
-        send(t("✅ NVR revenit: {ip}", ip=C.NVR_IP) if nou else t("⚠️ NVR OFFLINE: {ip}", ip=C.NVR_IP))
+        _alerta_nvr(nou, t("✅ NVR revenit: {ip}", ip=C.NVR_IP) if nou else t("⚠️ NVR OFFLINE: {ip}", ip=C.NVR_IP))
+
+
+def _alerta_nvr(ok, text):
+    import config as C
+    import escaladare
+    escaladare.alerta("nvr_nvr_cazut", text, episod="nvr", rezolvat=ok, revenire="nvr_nvr_revenit",
+                      ip=C.NVR_IP)
 
 
 def stare_nvr():
@@ -286,7 +314,9 @@ def _check_streams():
     lipsa = [i for i in ids if f"cam{i}" not in have]
     if lipsa and time.time() - _stream_alerted > 6 * 3600:
         _stream_alerted = time.time()
-        send(t("⚠️ Camerele {lista} nu au flux video configurat — nu se văd în interfață", lista=lipsa))
+        import escaladare
+        escaladare.alerta("nvr_fluxuri_lipsa",
+                          t("⚠️ Camerele {lista} nu au flux video configurat — nu se văd în interfață", lista=lipsa))
         logare.info(f"[notify] camere fara stream: {lipsa}")
 
 
@@ -306,6 +336,161 @@ def _stare_noua(prev, ok, esecuri):
     if ok:
         return True
     return False if esecuri >= OFFLINE_DUPA else prev
+
+
+# ---- camera cazuta: prima alerta, apoi mementouri exponentiale, apoi zilnic, pana revine ----
+# Starea sta pe disc (data/camere_cazute.json: {cid: {de_la, n}}), ca programul sa continue peste
+# o repornire si sa stim la pornire ca o camera era deja cazuta (sau a revenit intre timp).
+CAZUTE_FILE = os.path.join(ROOT, "data", "camere_cazute.json")
+# dupa a n-a alerta (n >= 1), urmatoarea vine cand camera e cazuta de MEMENTO[n-1] secunde;
+# dupa ultima treapta (1 zi), cate una pe zi — o camera moarta nu are voie sa fie uitata
+MEMENTO = (240, 480, 960, 1920, 3600, 7200, 14400, 28800, 57600, 86400)
+
+
+def memento_scadent(de_la, n, acum):
+    """Pur si testabil: dupa n alerte trimise, e vremea urmatoarei?"""
+    i = max(0, n - 1)
+    prag = MEMENTO[i] if i < len(MEMENTO) else 86400 * (i - len(MEMENTO) + 2)
+    return acum - de_la >= prag
+
+
+def durata(sec):
+    """„7 min”, „3 h 10 min”, „13 zile 4 h” — cat a stat camera cazuta."""
+    m = int(sec // 60)
+    if m < 60:
+        return t("{n} min", n=max(1, m))
+    h, m = divmod(m, 60)
+    if h < 24:
+        return t("{h} h {m} min", h=h, m=m) if m else t("{h} h", h=h)
+    z, h = divmod(h, 24)
+    return t("{z} zile {h} h", z=z, h=h) if z > 1 else t("1 zi {h} h", h=h)
+
+
+def _cazute():
+    import store
+    return store.load_json(CAZUTE_FILE, None) or {}
+
+
+def _scrie_cazute(d):
+    import store
+    try:
+        store.atomic_write_json(CAZUTE_FILE, d)
+    except OSError as e:
+        logare.info(f"[notify] camere cazute: {e}")
+
+
+def _de_cand_cazuta(cid):
+    """Pentru o camera gasita cazuta la pornire, fara stare salvata: ultimul camera_offline din
+    jurnal, daca nu e urmat de un camera_online. Altfel None (cazuta „de acum”)."""
+    try:
+        import jurnal
+        jos = jurnal.query(limit=1, tip="camera_offline", cam=cid)
+        sus = jurnal.query(limit=1, tip="camera_online", cam=cid)
+        if jos and (not sus or sus[0]["t"] < jos[0]["t"]):
+            return time.mktime(time.strptime(jos[0]["t"], "%Y-%m-%d %H:%M:%S"))
+    except Exception:
+        pass
+    return None
+
+
+def _cam_cazuta(cam, acum, la_pornire=False):
+    import escaladare
+    cid, nume = cam["id"], cam.get("name") or f"cam {cam['id']}"
+    de_la = _de_cand_cazuta(cid) if la_pornire else None
+    if de_la is None:
+        de_la = acum
+    n = 1
+    while memento_scadent(de_la, n, acum):     # cazuta de mult: sarim treptele trecute
+        n += 1
+    d = _cazute()
+    d[str(cid)] = {"de_la": de_la, "n": n}
+    _scrie_cazute(d)
+    if acum - de_la >= 120:
+        text = t("⚠️ Camera OFFLINE de {durata}: {cam} ({ip})", durata=durata(acum - de_la), cam=nume, ip=cam.get("ip"))
+    elif la_pornire:
+        text = t("⚠️ Camera OFFLINE (de la pornirea serverului): {cam} ({ip})", cam=nume, ip=cam.get("ip"))
+    else:
+        text = t("⚠️ Camera OFFLINE: {cam} ({ip})", cam=nume, ip=cam.get("ip"))
+    escaladare.alerta("nvr_camera_cazuta", text, episod=f"cam-{cid}", revenire="nvr_camera_revenita",
+                      cam=nume, ip=cam.get("ip"))
+
+
+def _cam_memento(cam, acum):
+    """Camera e tot cazuta: memento dupa program (fara episod — episodul deschis ar inghiti
+    mesajul ca „repeat”; acelasi sablon, deci aceleasi canale)."""
+    import escaladare
+    d = _cazute()
+    e = d.get(str(cam["id"]))
+    if not e:
+        return _cam_cazuta(cam, acum)
+    if not memento_scadent(e["de_la"], e["n"], acum):
+        return
+    e["n"] += 1
+    _scrie_cazute(d)
+    nume = cam.get("name") or f"cam {cam['id']}"
+    escaladare.alerta("nvr_camera_cazuta", t("⏰ Camera {cam} ({ip}) e tot OFFLINE, de {durata}",
+                                             cam=nume, ip=cam.get("ip"), durata=durata(acum - e["de_la"])),
+                      cam=nume, ip=cam.get("ip"))
+
+
+def _cam_revenita(cam, acum):
+    import escaladare
+    d = _cazute()
+    e = d.pop(str(cam["id"]), None)
+    _scrie_cazute(d)
+    nume = cam.get("name") or f"cam {cam['id']}"
+    dupa = t(" după {durata}", durata=durata(acum - e["de_la"])) if e else ""
+    escaladare.alerta("nvr_camera_cazuta", t("✅ Camera revenita: {cam} ({ip})", cam=nume, ip=cam.get("ip")) + dupa,
+                      episod=f"cam-{cam['id']}", rezolvat=True, cam=nume, ip=cam.get("ip"))
+
+
+def _schimbare_cam(cid, nou):
+    """Jurnal + incident pentru o camera cazuta/revenita (reguli, webhook, triaj)."""
+    try:
+        import hooks
+        hooks.emit("camera_online" if nou else "camera_offline", cid)
+    except Exception:
+        pass
+    if nou:
+        # camera a revenit -> incidentul de offline nu mai e relevant
+        try:
+            import incidents
+            incidents.resolve_recent(cid, "camera_offline")
+        except Exception:
+            pass
+
+
+def _verifica_cam(cam, ok, acum):
+    """O verificare a unei camere: starea (cu debounce) + alertele. Separat de bucla, testabil."""
+    cid = cam["id"]
+    _fails[cid] = 0 if ok else _fails.get(cid, 0) + 1
+    prev = _states.get(cid)
+    if prev is None:
+        # prima verificare de la pornire: comparam cu ce stiam inainte de repornire
+        salvata = str(cid) in _cazute()
+        if ok:
+            _states[cid] = True
+            if salvata:
+                _cam_revenita(cam, acum)          # a revenit cat serverul era oprit
+                _schimbare_cam(cid, True)
+            else:
+                _inchide_episod("nvr_camera_cazuta", f"cam-{cid}",
+                                cam=cam.get("name") or f"cam {cid}", ip=cam.get("ip"))
+        elif _fails[cid] >= OFFLINE_DUPA:
+            _states[cid] = False
+            if salvata:
+                _cam_memento(cam, acum)           # programul continua de unde a ramas
+            else:
+                _cam_cazuta(cam, acum, la_pornire=True)
+                _schimbare_cam(cid, False)
+        return
+    nou = _stare_noua(prev, ok, _fails[cid])
+    if nou != prev:
+        _states[cid] = nou
+        (_cam_revenita if nou else _cam_cazuta)(cam, acum)
+        _schimbare_cam(cid, nou)
+    elif not nou:
+        _cam_memento(cam, acum)
 
 
 def _watchdog():
@@ -329,38 +514,21 @@ def _watchdog():
                          for ch, e in json.load(f).items()]
         except (FileNotFoundError, ValueError):
             pass
+        import drivers
         for cam in cams:
-            import drivers
-            ok = drivers.ping(cam)          # ISAPI deviceInfo sau ONVIF GetDeviceInformation
-            cid = cam["id"]
-            _fails[cid] = 0 if ok else _fails.get(cid, 0) + 1
-            prev = _states.get(cid)
-            if prev is None:
-                _states[cid] = ok
-                continue
-            nou = _stare_noua(prev, ok, _fails[cid])
-            if nou != prev:
-                _states[cid] = nou
-                nume = cam.get("name") or f"cam {cid}"
-                send(t("✅ Camera revenita: {cam} ({ip})", cam=nume, ip=cam['ip']) if nou
-                     else t("⚠️ Camera OFFLINE: {cam} ({ip})", cam=nume, ip=cam['ip']))
-                try:
-                    import hooks
-                    hooks.emit("camera_online" if nou else "camera_offline", cid)
-                except Exception:
-                    pass
-                if nou:
-                    # camera a revenit -> incidentul de offline nu mai e relevant
-                    try:
-                        import incidents
-                        incidents.resolve_recent(cid, "camera_offline")
-                    except Exception:
-                        pass
+            try:
+                # ISAPI deviceInfo sau ONVIF GetDeviceInformation
+                _verifica_cam(cam, drivers.ping(cam), time.time())
+            except Exception as e:
+                logare.info(f"[notify] watchdog cam{cam.get('id')}: {str(e)[:80]}")
         ids = {c["id"] for c in cams}
         for cid in list(_states):
             if cid != "nvr" and cid not in ids:
                 del _states[cid]
                 _fails.pop(cid, None)
+        d = _cazute()
+        if any(int(k) not in ids for k in d):    # camera stearsa din configurare: uitam de ea
+            _scrie_cazute({k: v for k, v in d.items() if int(k) in ids})
         time.sleep(60)
 
 

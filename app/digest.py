@@ -167,9 +167,9 @@ def text(day=None, visible=None):
 
 def trimite(day=None, sync=False):
     """Trimite rezumatul pe canalele configurate (Telegram/email). sync=True ridica erorile."""
-    import notify
+    import escaladare
     msg = text(day)
-    notify.send(msg, sync=sync)
+    escaladare.alerta("nvr_rezumat", msg, sync=sync)
     return msg
 
 
@@ -195,8 +195,8 @@ def start():
                         logare.info("[digest] rezumatul zilei trimis")
                     elif time.localtime().tm_wday == 0:
                         # rezumatul e oprit: lunea, o proba ca drumul alertelor e deschis
-                        import notify
-                        notify.send(t("✅ NVR: canalul de notificări funcționează (probă săptămânală). Rezumatul zilnic e oprit; îl pornești din Setări → Notificări."))
+                        import escaladare
+                        escaladare.alerta("nvr_rezumat", t("✅ NVR: canalul de notificări funcționează (probă săptămânală). Rezumatul zilnic e oprit; îl pornești din Setări → Notificări."))
                         logare.info("[digest] proba saptamanala de canal trimisa")
             except Exception as e:
                 logare.error(f"[digest] {str(e)[:120]}")

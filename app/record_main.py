@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import continuity
+import escaladare
 import lant
 import notify
 import record
@@ -77,10 +78,15 @@ def motion_cleanup():
 
 
 def _problema(p):
-    """O problema de continuitate: in jurnal mereu, pe Telegram doar o data pe ora."""
+    """O problema de continuitate NOUA (continuity o anunta o singura data): jurnal + alerta.
+    „Nu mai scrie” e un episod: se inchide cand camera scrie din nou (_rezolvat)."""
     logare.info(f"[continuitate] {p['text']}")
     if p.get("grav"):
-        notify.send("⚠️ " + p["text"], key=p["cheie"])
+        mut = p["cheie"].startswith("mut-")
+        escaladare.alerta("nvr_inregistrare_problema", "⚠️ " + p["text"], key=p["cheie"],
+                          episod=p["cheie"] if mut else None,
+                          revenire="nvr_inregistrare_reluata" if mut else None,
+                          cam=f"cam{p['cam_id']}" if p.get("cam_id") else None)
     try:
         import hooks
         hooks.emit("gol_inregistrare", p.get("cam_id"), text=p["text"], cheie=p["cheie"])
@@ -88,21 +94,39 @@ def _problema(p):
         pass
 
 
+def _rezolvat(p):
+    """O problema anuntata a disparut. Doar „nu mai scrie” merita un mesaj (golurile se inchid
+    singure la miezul noptii, cand ziua se schimba — acolo nu e nicio vestire)."""
+    logare.info(f"[continuitate] rezolvat: {p.get('text')}")
+    if p["cheie"].startswith("mut-"):
+        nume = (p.get("text") or "").split(":")[0] or f"cam{p.get('cam_id')}"
+        escaladare.alerta("nvr_inregistrare_problema",
+                          t("✅ {cam}: înregistrarea scrie din nou", cam=nume),
+                          episod=p["cheie"], rezolvat=True, cam=f"cam{p.get('cam_id')}")
+
+
 def asteapta_cheia():
     """In directorul de inregistrari nu se poate scrie (volum nemontat sau read-only, permisiuni,
     director criptat pe gazda fara cheie). Nu crapam: anuntam (jurnal + notificare), spunem READY
     si asteptam pana devine scriibil."""
     if not record.blocat():
+        # episodul „inregistrare oprita” ramas deschis de dinainte de o repornire se inchide
+        # (nimic deschis = no-op la serviciu; fara rezerva pe bot)
+        escaladare.alerta("nvr_inregistrare_oprita", t("✅ Înregistrarea a fost reluată: directorul de înregistrări se poate scrie din nou."),
+                          episod="rec-blocat", rezolvat=True, rezerva=False)
         return False
     logare.warning("[record] in directorul de inregistrari nu se poate scrie — astept sa devina scriibil")
-    notify.send(t("🔒 Înregistrarea așteaptă: în directorul de înregistrări nu se poate scrie ({dir}): verifică volumul, permisiunile sau cheia de criptare.",
-                  dir=record.REC_DIR),
-                key="rec_blocat")
+    escaladare.alerta("nvr_inregistrare_oprita",
+                      t("🔒 Înregistrarea așteaptă: în directorul de înregistrări nu se poate scrie ({dir}): verifică volumul, permisiunile sau cheia de criptare.",
+                        dir=record.REC_DIR),
+                      key="rec_blocat", episod="rec-blocat", revenire="nvr_inregistrare_reluata")
     sdnotify.ready()
     while record.blocat():
         sdnotify.watchdog()
         time.sleep(10)
     logare.info("[record] directorul e scriibil, pornesc inregistrarea")
+    escaladare.alerta("nvr_inregistrare_oprita", t("✅ Înregistrarea a fost reluată: directorul de înregistrări se poate scrie din nou."),
+                      episod="rec-blocat", rezolvat=True)
     return True
 
 
@@ -111,7 +135,7 @@ def main():
     gata = asteapta_cheia()
     record.prune()
     motion_cleanup()
-    continuity.start(_problema)
+    continuity.start(_problema, on_rezolvat=_rezolvat)
     # lantul de custodie: SHA-256 pe fiecare segment inchis (PostgreSQL, tabelul `segmente`, lant.py)
     lant.start(lambda cam: [(t, p, fn) for t, p, fn in record._files(cam)],
                lambda: [c["id"] for c in all_cams()], record.SEGMENT)

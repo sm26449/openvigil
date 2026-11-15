@@ -190,10 +190,11 @@ class Recorder(threading.Thread):
                 self.rec_fails += 1
                 if self.rec_fails == 5:
                     try:
-                        import notify
-                        notify.send(t("⚠️ Înregistrarea cam{id} pică în buclă (5 căderi sub 60 s) — verifică camera/rețeaua",
-                                      id=self.cam['id']),
-                                    key=f"rec-fail-{self.cam['id']}")
+                        import escaladare
+                        escaladare.alerta("nvr_inregistrare_bucla",
+                                          t("⚠️ Înregistrarea cam{id} pică în buclă (5 căderi sub 60 s) — verifică camera/rețeaua",
+                                            id=self.cam['id']),
+                                          key=f"rec-fail-{self.cam['id']}", cam=f"cam{self.cam['id']}")
                     except Exception as e:
                         logare.info(f"[record] cam{self.cam['id']} alerta fail: {str(e)[:60]}")
             else:
@@ -584,9 +585,10 @@ def prune():
     except Exception as e:
         logare.error(f"[record] CURATAREA A ESUAT: {e}")
         try:
-            import notify
-            notify.send(t("⚠️ Curățarea înregistrărilor a eșuat ({e}) — reîncerc peste o oră", e=str(e)[:80]),
-                        key="prune-esuat")
+            import escaladare
+            escaladare.alerta("nvr_curatare_esuata",
+                              t("⚠️ Curățarea înregistrărilor a eșuat ({e}) — reîncerc peste o oră", e=str(e)[:80]),
+                              key="prune-esuat")
         except Exception:
             pass
     finally:
@@ -706,9 +708,10 @@ def _prune_body():
         logare.info(f"[record] Spatiu insuficient: am sters {fortat} segmente care nu expirasera. "
                     f"Retentia configurata nu se poate respecta.")
         try:
-            import notify
-            notify.send("⚠️ " + t("Spațiu insuficient: am șters {n} segmente care nu expiraseră. Retenția configurată nu se poate respecta.", n=fortat),
-                        key="retentie-fortata")
+            import escaladare
+            escaladare.alerta("nvr_spatiu_insuficient",
+                              "⚠️ " + t("Spațiu insuficient: am șters {n} segmente care nu expiraseră. Retenția configurată nu se poate respecta.", n=fortat),
+                              key="retentie-fortata")
         except Exception:
             pass
     # curata listele concat vechi

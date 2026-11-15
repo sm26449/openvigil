@@ -20,7 +20,7 @@ def test_rezumat_absenta_grupeaza_si_numara(monkeypatch):
     acum = time.mktime(time.strptime("2026-11-14 08:00:00", "%Y-%m-%d %H:%M:%S"))
     inc = [_ev(1, "2026-11-14 01:10:00"), _ev(2, "2026-11-14 01:00:00"), _ev(3, "2026-11-14 00:50:00"),
            _ev(4, "2026-11-14 03:00:00", tip="intrus", cam=7, eticheta="person")]
-    pers = [{"t": "2026-11-14 02:00:00", "tip": "persoana", "cam": 1, "nume": "maria"}] * 2
+    pers = [{"t": "2026-11-14 02:00:00", "tip": "persoana", "cam": 1, "nume": "ana"}] * 2
     jos = [{"t": "2026-11-14 04:00:00", "tip": "camera_offline", "cam": 9}]
 
     def journal(limit=200, tip=None, since=None, cams=None, min_sev=None, **kw):
@@ -38,7 +38,7 @@ def test_rezumat_absenta_grupeaza_si_numara(monkeypatch):
     r = absenta.rezumat(acum - 10 * 3600, acum=acum)
     assert r["incidente"] == 4 and r["critice"] == 4 and r["netratate"] == 4
     assert [(g["tip"], g["n"]) for g in r["grupuri"]] == [("episod", 3), ("intrus", 1)]
-    assert r["persoane"] == [{"nume": "maria", "n": 2}]
+    assert r["persoane"] == [{"nume": "ana", "n": 2}]
     assert r["camere_cazute"] == [9]
 
 

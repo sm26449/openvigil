@@ -487,7 +487,9 @@ def reload_streams():
             logare.warning(f"[server] ATENTIE: camerele {lipsa} lipsesc din configuratia de streaming "
                   f"— regenerez")
             gen_go2rtc.generate()
-            notify.send(f"⚠️ Configurația de streaming a fost regenerata: lipseau camerele {lipsa}")
+            import escaladare
+            escaladare.alerta("nvr_flux_regenerat",
+                              f"⚠️ Configurația de streaming a fost regenerată: lipseau camerele {lipsa}")
     except OSError as e:
         logare.info(f"[server] verificare configuratie: {e}")
     if written == inainte and _go2rtc_are(f"cam{load_ext()[0]['id']}_main" if load_ext() else None):
@@ -682,7 +684,8 @@ def _noise_event(cam_id, motiv, db):
     logare.info(f"[audio] {nume}: {motiv}")
     snaps.capture(cam_id, "zgomot")
     audit.log("alarma de zgomot", nume, {"nivel_db": db, "motiv": motiv})
-    notify.send(f"🔊 {nume}: {motiv}", key=(cam_id, "zgomot"))
+    import escaladare
+    escaladare.alerta("nvr_zgomot", f"🔊 {nume}: {motiv}", key=(cam_id, "zgomot"), cam=nume)
     try:
         hooks.emit("zgomot", cam_id, motiv=motiv, nivel_db=db)
     except Exception:

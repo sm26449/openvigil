@@ -58,6 +58,8 @@ async function loadSettings(force = false) {
   $('#s-em-pass').value = s.email_pass;
   $('#s-em-to').value = s.email_to;
   $('#s-cooldown').value = s.notify_cooldown;
+  $('#s-alert-url').value = s.alert_service_url || '';
+  $('#s-alert-key').value = s.alert_service_key || '';
   checksHtml('#s-notify-labels', s.notify_labels);
   checksHtml('#s-siren-labels', s.auto_siren_labels);
   $('#s-reencode').checked = s.reencode_enabled;
@@ -577,6 +579,8 @@ function settingsBody() {
     email_pass: $('#s-em-pass').value,
     email_to: $('#s-em-to').value.trim(),
     notify_cooldown: +$('#s-cooldown').value || 300,
+    alert_service_url: $('#s-alert-url').value.trim(),
+    alert_service_key: $('#s-alert-key').value.trim(),
     notify_labels: checkedOf('#s-notify-labels'),
     auto_siren_labels: checkedOf('#s-siren-labels'),
     reencode_enabled: $('#s-reencode').checked,
@@ -1309,9 +1313,9 @@ for (const btn of document.querySelectorAll('.s-test')) {
         body: JSON.stringify(settingsBody()),
       });
       const d = await r.json();
-      flash('#s-msg-' + ch,
-        d.ok ? (ch === 'telegram' ? t('Trimis ✓ verifică Telegram') : t('Trimis ✓ verifică inboxul'))
-             : t('Eroare: {e}', { e: d.error }), !d.ok);
+      const ok = { telegram: t('Trimis ✓ verifică Telegram'), email: t('Trimis ✓ verifică inboxul'),
+        alerte: t('Primit de serviciu ✓ ({stare})', { stare: d.stare || '' }) }[ch];
+      flash('#s-msg-' + ch, d.ok ? ok : t('Eroare: {e}', { e: d.error }), !d.ok);
     } catch (e) {
       flash('#s-msg-' + ch, t('Eroare: {e}', { e }), true);
     } finally {

@@ -584,11 +584,30 @@ def api_settings_test(channel):
     b = request.get_json(silent=True) or {}
     if b:
         settings.update(b)
+    if channel == "alerte":
+        return _test_alerte()
     try:
         notify.test_channel(channel)
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 502
+
+
+def _test_alerte():
+    """O alerta de test (test=true: trece de pauze si ore de liniste) prin serviciul extern,
+    fara rezerva — vrem sa vedem serviciul, nu botul. Raspunsul spune ce a facut cu ea."""
+    import escaladare
+    if not escaladare.activ():
+        return jsonify({"error": t("completează adresa și cheia serviciului de alerte")}), 400
+    r = escaladare.alerta("nvr_rezumat", t("✅ Test OpenVigil → serviciul de alerte ({ora})",
+                                           ora=time.strftime("%H:%M:%S")),
+                          test=True, rezerva=False, sync=True)
+    if r is None:
+        return jsonify({"error": t("serviciul nu răspunde sau a refuzat cheia (vezi jurnalul)")}), 502
+    if escaladare.are_nevoie_de_rezerva(r) or r.get("status") == "suppressed":
+        return jsonify({"error": t("serviciul a răspuns {stare} ({motiv})", stare=r.get("status"),
+                                   motiv=r.get("suppressed_reason") or "-")}), 502
+    return jsonify({"ok": True, "stare": r.get("status"), "canale": r.get("channels") or []})
 
 
 # ---- asistentul „Conectează Telegram” (audit UX-G): jeton -> chat gasit singur -> salvat ----

@@ -936,6 +936,19 @@
     </div>
 
     <div class="set-card">
+      <h2 data-ic="alarm">Serviciul de alerte</h2>
+      <p class="hint">Opțional: un serviciu extern de alerte (contractul POST /v1/fire) primește alertele de
+        sistem — cameră sau NVR căzut, disc plin, înregistrare oprită, copie de siguranță,
+        rezumatul zilei — și decide canalele (Telegram, SMS, email), pauzele și confirmarea.
+        Detecțiile cu poză rămân pe botul de mai sus; intrușii confirmați primesc și o copie
+        acolo. Dacă serviciul nu răspunde, alertele pleacă pe botul propriu.</p>
+      <label>Adresa serviciului <input id="s-alert-url" autocomplete="off" placeholder="http://127.0.0.1:5090/v1/fire"></label>
+      <label>Cheia API (doar „fire”) <input id="s-alert-key" type="password" autocomplete="off" placeholder="gol = oprit"></label>
+      <button class="s-test" data-ch="alerte">Testează serviciul de alerte</button>
+      <span class="s-msg" id="s-msg-alerte" role="status"></span>
+    </div>
+
+    <div class="set-card">
       <h2 data-ic="lock">Modul acasă / plecat / noapte</h2>
       <p class="hint">Comutatorul din antet. Regulile pot fi valabile doar în anumite moduri
         (pasul 3 al regulii), iar schimbarea modului e ea însăși un declanșator. Se comută

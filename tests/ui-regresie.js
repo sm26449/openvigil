@@ -448,7 +448,7 @@ async function scenUG(browser) {
   const rez = { de_la: '2026-11-14 01:00:00', ore: 7.5, incidente: 4, critice: 3, netratate: 4, grupuri_total: 1,
     grupuri: [{ tip: 'episod', cam: 1, n: 3, netratate: 3, sev: 'critic', de_la: '2026-11-14 01:00:00', pana_la: '2026-11-14 01:30:00',
       id: 'ep0', text: 'o persoană necunoscută', poza: '/api/flux/thumb/2026-11-14/013000_cam1_person.jpg' }],
-    persoane: [{ nume: 'maria', n: 2 }], vehicule: [], camere_cazute: [2] };
+    persoane: [{ nume: 'ana', n: 2 }], vehicule: [], camere_cazute: [2] };
   const ep = (i, ora) => ({ id: 'ep' + i, tip: 'episod', cam: 1, sev: 'critic', stare: 'nou', t: `2026-11-14 ${ora}`, text: 'x' });
   const app = await openApp(browser, { viewport: { width: 390, height: 844 }, mobile: true,
     init: () => { try { localStorage.setItem('ov.vazutLa.admin', String(Math.round(Date.now() / 1000) - 5 * 3600)); } catch (e) {} },
@@ -460,8 +460,8 @@ async function scenUG(browser) {
     await page.waitForSelector('#absenta:not(.hidden)', { timeout: 6000 });
     const a = await page.evaluate(() => ({ titlu: document.querySelector('#absenta h2')?.textContent, n: document.querySelectorAll('#absenta .abs-item').length,
       rez: document.querySelector('#absenta .abs-rez')?.textContent || '', fisa: !!document.querySelector('#absenta [data-fisa]') }));
-    (a.titlu === 'Cât ai lipsit' && a.n === 1 && /maria de 2 ori/.test(a.rez) && /nu răspund: Terasă/.test(a.rez) && a.fisa)
-      ? ok('dupa 5 ore, „Cât ai lipsit” arata grupul, pe maria si camera cazuta (cu nume), cu fisa') : bad('UG', JSON.stringify(a));
+    (a.titlu === 'Cât ai lipsit' && a.n === 1 && /ana de 2 ori/.test(a.rez) && /nu răspund: Terasă/.test(a.rez) && a.fisa)
+      ? ok('dupa 5 ore, „Cât ai lipsit” arata grupul, pe ana si camera cazuta (cu nume), cu fisa') : bad('UG', JSON.stringify(a));
     await page.click('#absenta .abs-ok');
     const dupa = await page.evaluate(() => ({ ascuns: document.querySelector('#absenta').classList.contains('hidden'),
       vazut: +localStorage.getItem('ov.vazutLa.admin') }));

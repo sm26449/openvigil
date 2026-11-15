@@ -409,9 +409,10 @@ def ruleaza(progres=None, cine="program"):
                 pass
             if ok_ext is False:
                 try:
-                    import notify
-                    notify.send(t("⚠️ Copia de siguranță s-a scris local, dar NU a plecat în afara: {motiv}", motiv=msg_ext),
-                                key="backup-extern")
+                    import escaladare
+                    escaladare.alerta("nvr_backup_esuat",
+                                      t("⚠️ Copia de siguranță s-a scris local, dar NU a plecat în afara: {motiv}", motiv=msg_ext),
+                                      key="backup-extern")
                 except Exception:
                     pass
             if progres:
@@ -420,8 +421,9 @@ def ruleaza(progres=None, cine="program"):
         except Exception as e:
             _stare({"ok": False, "eroare": str(e)[:200], "la": time.time()})
             try:
-                import notify
-                notify.send(t("⚠️ Copia de siguranță a EȘUAT: {e}", e=str(e)[:120]), key="backup-esuat")
+                import escaladare
+                escaladare.alerta("nvr_backup_esuat", t("⚠️ Copia de siguranță a EȘUAT: {e}", e=str(e)[:120]),
+                                  key="backup-esuat")
             except Exception:
                 pass
             raise
