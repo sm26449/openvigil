@@ -5,6 +5,46 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 
 ## [Unreleased]
 
+## [2.2.0] — în pregătire (candidat: 2.2.0-rc6)
+
+**Highlights (English)** — Faster triage, a calmer and more accessible interface, a persistent
+semantic search index, system alerts that are not forgotten, and a property map that shows
+where things happen.
+- **Triage that scales.** Repeated incidents from the same camera are grouped into one card with
+  "confirm all / all false"; every incident shows the nearest saved frame; on a phone you swipe
+  right to confirm or left for a false alarm, with Undo. A "While you were away" card on Live
+  summarises what happened since you last looked.
+- **Choose the stream in HD**, like a commercial NVR: Auto, the camera's small stream (fast, little
+  data), or HD 720p / native — only one stream on screen at a time.
+- **Accessible and usable on every screen.** WCAG AA contrast, real tabs and landmarks, keyboard
+  focus that never gets lost, 24 px minimum targets; the bottom navigation now also covers tablets
+  and phones in landscape; multi-selects became checkboxes that work on touch screens.
+- **Connect Telegram in three steps** — paste the bot token, send the bot a message, done; the chat
+  ID is found automatically.
+- **Semantic search in PostgreSQL (optional).** The index can move from per-day files to pgvector,
+  with a persistent indexing queue, a "teach the search" workflow and binary backup of vectors.
+- **System alerts through an external alert service (optional).** Camera/NVR down, disk full,
+  recording stopped, failed backups and the daily summary can go to a service speaking
+  `POST /v1/fire`, which owns SMS, rate limits and acknowledgement; the built-in bot stays as the
+  fallback. A camera that is down now gets reminders (4, 8, 16, 32 min, 1–16 h, then daily) until
+  it comes back, and recording problems are announced once instead of every two minutes.
+- **A property map that knows where things are.** Click a camera on the plan to see its live
+  image next to its view cone; set the mounting height and tilt, measure the plan's scale with
+  two clicks, and each camera draws the ground area it really sees. Calibrate a camera with 4+
+  matching ground points and its detections appear live as dots on the plan, plus a heat map of
+  where people walk across the whole property.
+
+### Notă de actualizare (instalări existente)
+- Nu e nevoie de schimbări în Compose: baza folosește deja imaginea `pgvector/pgvector:pg16`, iar
+  extensia `vector` se creează singură la pornire.
+- Căutarea semantică rămâne pe fișierele pe zile (`data/semantic/*.npz`) până o muți explicit:
+  `scripts/semantic_migrate.py` (prepare → import → verify → activate). Importul se reia la
+  întrerupere, verifică fiecare vector, iar `export`/`rollback` te întorc la fișiere fără
+  recalculare pe GPU. Detalii: `docs/semantic-search.md`.
+- Dacă interfața e instalată ca aplicație pe telefon, închide-o complet o dată după actualizare.
+- Harta de căldură pe plan folosește doar episoadele de după actualizare (traseele vechi nu au
+  punctul de sol) și doar camerele calibrate pe plan: la început e goală, se umple în câteva zile.
+
 ### Adăugat
 - **Harta: imaginea camerei pe plan.** Clic pe o cameră deschide un card lângă ea (sub hartă
   pe telefon), cu imaginea ei reîmprospătată la 5 s, montajul și butoanele „Deschide HD” /
@@ -30,44 +70,6 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   hartă a proprietății (`GET /api/harta/<plan>/heatmap`). Punctele de traseu ale episoadelor
   noi rețin și jumătatea înălțimii chenarului (`[x, y, jumătate]`, compatibil cu cititorii
   vechi), de unde se calculează punctul de sol; traseele vechi doar se numără.
-
-### Corectat
-- **Harta pe telefon:** rezumatul și uneltele de editare se rup pe rânduri în loc să iasă din
-  ecran.
-
-## [2.2.0] — în pregătire (candidat: 2.2.0-rc6)
-
-**Highlights (English)** — Faster triage, a calmer and more accessible interface, a persistent
-semantic search index, and system alerts that are not forgotten.
-- **Triage that scales.** Repeated incidents from the same camera are grouped into one card with
-  "confirm all / all false"; every incident shows the nearest saved frame; on a phone you swipe
-  right to confirm or left for a false alarm, with Undo. A "While you were away" card on Live
-  summarises what happened since you last looked.
-- **Choose the stream in HD**, like a commercial NVR: Auto, the camera's small stream (fast, little
-  data), or HD 720p / native — only one stream on screen at a time.
-- **Accessible and usable on every screen.** WCAG AA contrast, real tabs and landmarks, keyboard
-  focus that never gets lost, 24 px minimum targets; the bottom navigation now also covers tablets
-  and phones in landscape; multi-selects became checkboxes that work on touch screens.
-- **Connect Telegram in three steps** — paste the bot token, send the bot a message, done; the chat
-  ID is found automatically.
-- **Semantic search in PostgreSQL (optional).** The index can move from per-day files to pgvector,
-  with a persistent indexing queue, a "teach the search" workflow and binary backup of vectors.
-- **System alerts through an external alert service (optional).** Camera/NVR down, disk full,
-  recording stopped, failed backups and the daily summary can go to a service speaking
-  `POST /v1/fire`, which owns SMS, rate limits and acknowledgement; the built-in bot stays as the
-  fallback. A camera that is down now gets reminders (4, 8, 16, 32 min, 1–16 h, then daily) until
-  it comes back, and recording problems are announced once instead of every two minutes.
-
-### Notă de actualizare (instalări existente)
-- Nu e nevoie de schimbări în Compose: baza folosește deja imaginea `pgvector/pgvector:pg16`, iar
-  extensia `vector` se creează singură la pornire.
-- Căutarea semantică rămâne pe fișierele pe zile (`data/semantic/*.npz`) până o muți explicit:
-  `scripts/semantic_migrate.py` (prepare → import → verify → activate). Importul se reia la
-  întrerupere, verifică fiecare vector, iar `export`/`rollback` te întorc la fișiere fără
-  recalculare pe GPU. Detalii: `docs/semantic-search.md`.
-- Dacă interfața e instalată ca aplicație pe telefon, închide-o complet o dată după actualizare.
-
-### Adăugat
 - **Alertele de sistem prin serviciul extern de alerte** (opțional, contractul `POST /v1/fire`): cameră sau
   NVR căzut/revenit, disc plin, înregistrare oprită/reluată, goluri și bucle de înregistrare,
   curățare și copie de siguranță eșuate, fluxuri lipsă, zgomot, acțiunea „notificare” a regulilor
@@ -128,6 +130,8 @@ semantic search index, and system alerts that are not forgotten.
   pentru controalele native și contur de focus în modul „contrast ridicat” din Windows.
 
 ### Reparat
+- **Harta pe telefon:** rezumatul și uneltele de editare se rup pe rânduri în loc să iasă din
+  ecran.
 - Problemele de continuitate a înregistrării se anunță o singură dată, când apar (jurnal +
   alertă), și se închid când dispar; înainte, o cameră moartă scria un „gol de înregistrare” la
   fiecare 2 minute (peste 18 000 de evenimente în trei săptămâni). Golurile unei camere care nu
