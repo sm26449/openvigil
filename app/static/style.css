@@ -1622,6 +1622,11 @@ body.viewer .act-only { display: none !important; }
 .hm.alarm .con { fill: rgba(248, 81, 73, .3); stroke: var(--alarm-hi); }
 .hm.critic .pct { stroke: var(--alarm-hi); stroke-width: 4; animation: hmpulse .6s ease-in-out 12; }
 .hm.sel .pct { stroke: #fff; stroke-width: 3.5; }
+.hlive { stroke: #000; pointer-events: none; }
+.hlive.om { fill: #ff9f1c; }
+.hlive.vehicul { fill: #58a6ff; }
+.hlive.altceva { fill: #c9d1d9; }
+.hlive.vechi { opacity: .45; }
 .hm .con.sol { fill: rgba(88, 166, 255, .18); stroke-dasharray: none; }
 .hs-linie { stroke: #ffd33d; stroke-dasharray: 6 4; fill: none; pointer-events: none; }
 .hs-pct { fill: #ffd33d; stroke: #000; pointer-events: none; }
@@ -1629,6 +1634,23 @@ body.viewer .act-only { display: none !important; }
 .hbara { stroke: #fff; fill: none; pointer-events: none; paint-order: stroke; }
 .hbara-umbra { stroke: rgba(0, 0, 0, .7); fill: none; pointer-events: none; }
 .harta-wrap.masoara, .harta-wrap.edit.masoara .hm { cursor: crosshair; }
+.harta-cal-rand { display: flex; gap: var(--s2); flex-wrap: wrap; }
+#harta-cal-stare { margin: var(--s1) 0 0; font-size: var(--fs-xs); }
+#harta-cal-stare:empty { display: none; }
+#harta-cal { background: var(--bg); }
+.harta-cal-ajutor { margin: 0; padding: var(--s2) var(--s4); background: var(--surface); border-bottom: 1px solid var(--line); font-size: var(--fs-xs); color: var(--text-2); }
+.ov-body.harta-cal-body { display: grid; grid-template-columns: 1fr 1fr; align-items: start; }
+.harta-cal-lbl { color: var(--text-2); font-size: var(--fs-xs); margin-bottom: var(--s1); }
+.harta-cal-st { position: relative; border-radius: var(--r1); overflow: hidden; background: var(--surface-2); touch-action: none; }
+.harta-cal-st img { display: block; width: 100%; height: auto; user-select: none; -webkit-user-drag: none; }
+.harta-cal-st svg { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; }
+.hc-pct { fill: #ffd33d; stroke: #000; cursor: grab; }
+.hc-pct.astept { fill: #fff; }
+.hc-pct.rau { fill: var(--alarm-hi); }
+.hc-nr { fill: #000; font: 700 11px system-ui, sans-serif; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.hc-grila { fill: none; stroke: rgba(88, 166, 255, .85); pointer-events: none; }
+.hc-err { stroke: var(--alarm-hi); pointer-events: none; }
+@media (max-width: 800px) { .ov-body.harta-cal-body { grid-template-columns: 1fr; } .harta-cal-ajutor { max-height: 5.5em; overflow: auto; } }
 .harta-wrap.edit .hm { cursor: grab; }
 .harta-wrap.edit .hm.drag { cursor: grabbing; }
 .hm .pct { transform-box: fill-box; transform-origin: center; }

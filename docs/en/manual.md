@@ -714,7 +714,19 @@ Telegram remains the fallback channel, it does not depend on any phone.
   With a scale set, cameras with a height and tilt no longer get the symbolic cone but the
   ground area they actually see (the frame outline projected onto the ground, with the
   blind spot under the camera, cut at 60 m or at the horizon). A new plan image clears the
-  scale; "Delete scale" goes back to the cones. Multiple plans (yard, ground floor, upper floor) — the selector appears
+  scale; "Delete scale" goes back to the cones.
+  **Calibration on the plan** ("Calibrate on the plan" in the selected camera's panel): the
+  camera frame and the plan side by side; click a point on the GROUND in the frame (a path
+  corner, the base of a gate post), then the same spot on the plan — 4..12 pairs, spread
+  out, not along a line. Points can be dragged; from 4 pairs the server computes the
+  homography (`app/omografie.py`, normalised DLT, least squares above 4 pairs) and the plan
+  shows the frame's ground grid projected plus each pair's error (in metres with a scale;
+  bad pairs turn red). Once saved, the map shows **live detections as points** (person =
+  orange, vehicle = blue, faded when the box is older than 4 s), projected through the
+  middle of the box's bottom edge — where the object touches the ground. Moving the marker
+  keeps the calibration; a new plan image clears it. API: `POST /api/harta {id, cam,
+  calibrare: {perechi} | null}`, dry run `POST /api/harta/omografie`, the points
+  `GET /api/harta/<plan>/live` (filtered to the account's cameras). Multiple plans (yard, ground floor, upper floor) — the selector appears
   when there are at least two. A restricted account sees only its own cameras on the map.
 - **Critical pop-up** (Live bar): on a new critical incident, the camera's tile enlarges for
   8 seconds and is brought into view (like "layout switch on event").

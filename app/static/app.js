@@ -7,6 +7,7 @@ import './js/10-live.js';
 import './js/15-flux.js';
 import './js/20-hd.js';
 import './js/25-harta.js';
+import './js/26-harta-calibrare.js';
 import './js/30-redare.js';
 import './js/40-evenimente.js';
 import './js/45-fisa.js';

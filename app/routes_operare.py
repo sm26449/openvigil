@@ -58,7 +58,7 @@ def api_harta():
 @bp.route("/api/harta", methods=["POST"])
 def api_harta_save():
     """{plan_nou: nume} | {id, nume} | {id, camere: {cam: {x,y,dir,fov,...} | null}}
-    | {id, scara: {x1,y1,x2,y2,m} | null}"""
+    | {id, scara: {x1,y1,x2,y2,m} | null} | {id, cam, calibrare: {perechi: [[cx,cy,px,py]..]} | null}"""
     b = request.get_json(silent=True) or {}
     try:
         if b.get("plan_nou") is not None:
@@ -67,6 +67,11 @@ def api_harta_save():
         elif b.get("id") and b.get("camere") is not None:
             p = harta.aseaza(str(b["id"]), b["camere"])
             audit.log("camere asezate pe harta", p["nume"], {"camere": list(b["camere"].keys())})
+        elif b.get("id") and b.get("cam") is not None and "calibrare" in b:
+            perechi = (b["calibrare"] or {}).get("perechi") if b["calibrare"] is not None else None
+            p = harta.seteaza_calibrare(str(b["id"]), b["cam"], perechi)
+            audit.log("calibrare pe plan " + ("stearsa" if perechi is None else "setata"), p["nume"],
+                      {"cam": b["cam"], "perechi": len(perechi or [])})
         elif b.get("id") and "scara" in b:
             p = harta.seteaza_scara(str(b["id"]), b["scara"])
             audit.log("scara planului " + ("stearsa" if b["scara"] is None else "setata"), p["nume"],
@@ -81,6 +86,28 @@ def api_harta_save():
     return jsonify({"ok": True, "plan": {"id": p["id"], "nume": p.get("nume"),
                                          "camere": p.get("camere") or {}, "scara": p.get("scara"),
                                          "imagine": harta.imagine(p["id"]) is not None}})
+
+
+@bp.route("/api/harta/omografie", methods=["POST"])
+def api_harta_omografie():
+    """Proba de calibrare, fara salvare: {perechi} -> {h, eroare} (previzualizarea din UI)."""
+    import omografie
+    try:
+        return jsonify({"ok": True, **omografie.calculeaza((request.get_json(silent=True) or {}).get("perechi"))})
+    except (ValueError, TypeError) as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@bp.route("/api/harta/<pid>/live")
+def api_harta_live(pid):
+    """Detectiile de acum ale camerelor calibrate, ca puncte pe plan (harta le cere la cateva
+    secunde doar cat e deschisa si doar daca planul are camere calibrate)."""
+    from routes_system import _detect_state
+    try:
+        pts = harta.detectii_pe_plan(pid, _detect_state().get("detect") or {}, _visible_ids())
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 404
+    return jsonify({"puncte": pts})
 
 
 @bp.route("/api/harta/<pid>", methods=["DELETE"])

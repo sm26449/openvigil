@@ -168,6 +168,11 @@
           <label>Înclinarea (° sub orizontală) <input id="harta-tilt" type="text" inputmode="decimal" maxlength="4" placeholder="necunoscută"></label>
         </div>
         <p id="harta-sol" class="hint"></p>
+        <div class="harta-cal-rand">
+          <button id="harta-cal-open">Calibrează pe plan</button>
+          <button id="harta-cal-del" class="hidden">Șterge calibrarea</button>
+        </div>
+        <p id="harta-cal-stare" class="hint"></p>
         <button id="harta-unplace">Scoate de pe plan</button>
       </div>
     </aside>
@@ -1350,6 +1355,25 @@
     <button id="heat-close" class="ov-close">Închide</button>
   </div>
   <div class="ov-body"><canvas id="heat-canvas" class="ov-canvas"></canvas></div>
+</div>
+
+<!-- Harta: calibrarea unei camere pe plan (omografie cadru -> plan din perechi de puncte) -->
+<div id="harta-cal" class="ov-full hidden" role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="harta-cal-title">
+  <div class="ov-bar">
+    <span class="ov-title" id="harta-cal-title"></span>
+    <span id="harta-cal-pas" class="hint" aria-live="polite"></span>
+    <button id="harta-cal-undo">Anulează ultimul punct</button>
+    <button id="harta-cal-cadru">Cadru nou</button>
+    <button id="harta-cal-save" class="ov-ok">Salvează</button>
+    <button id="harta-cal-close" class="ov-close">Închide</button>
+  </div>
+  <p class="hint harta-cal-ajutor">Alege 4–12 puncte de pe sol care se văd și în cadru, și pe plan (colțuri de alee sau de terasă, baza stâlpilor de la poartă, colțul casei la pământ): clic în cadru, apoi pe același loc pe plan. Răsfiră-le pe toată zona văzută, nu pe o linie. Punctele se pot trage după aceea; grila de pe plan arată cum se proiectează solul din cadru.</p>
+  <div class="ov-body harta-cal-body">
+    <div class="harta-cal-pane"><div class="harta-cal-lbl">Camera</div>
+      <div class="harta-cal-st" id="harta-cal-cam"><img id="harta-cal-cam-img" alt="Cadrul camerei"><svg id="harta-cal-cam-svg" aria-label="Punctele din cadru"></svg></div></div>
+    <div class="harta-cal-pane"><div class="harta-cal-lbl">Planul</div>
+      <div class="harta-cal-st" id="harta-cal-plan"><img id="harta-cal-plan-img" alt="Planul proprietății"><svg id="harta-cal-plan-svg" aria-label="Punctele de pe plan"></svg></div></div>
+  </div>
 </div>
 
 <!-- Etapa 5: masca de confidentialitate (dreptunghiuri innegrite pe live, redare, exporturi) -->

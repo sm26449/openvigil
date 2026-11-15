@@ -7,6 +7,7 @@ import { S } from './state.js';
 import { $, ADMIN, html, lista, t, toast } from './00-core.js';
 import { post } from './10-live.js';
 import { openHD } from './20-hd.js';
+import { openCalibrare } from './26-harta-calibrare.js';
 /* ---------- Etapa 4: harta proprietatii ----------
    Un plan (imagine) cu camerele asezate si conurile lor de vedere. Pozitiile sunt fractii
    din imagine, deci SVG-ul de deasupra foloseste viewBox-ul imaginii si scaleaza singur.
@@ -122,8 +123,45 @@ function drawHarta() {
     hartaMk[c.id] = g;
   }
   hartaScaraDesen(p, W, H, k, mpp);
+  hartaLiveDesen();
   hartaStare();
 }
+/* ---------- detectiile live ca puncte pe plan ----------
+   Doar camerele calibrate; serverul proiecteaza (omografie.py) punctul de pe sol al fiecarui
+   chenar. Cerem la 2 s, doar cat se vede harta (nu in editare). */
+let hartaLivePts = [];
+const VEHICULE = new Set(['car', 'truck', 'bus', 'motorcycle', 'bicycle']);
+function hartaLiveDesen() {
+  const svg = $('#harta-svg'), img = $('#harta-img');
+  svg.querySelector('#harta-live')?.remove();
+  if (hartaEdit || !hartaLivePts.length || !img.naturalWidth) return;
+  const W = img.naturalWidth, H = img.naturalHeight, k = W / Math.max(1, svg.clientWidth || W);
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  g.id = 'harta-live';
+  for (const pt of hartaLivePts) {
+    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    const fel = pt.lbl === 'person' ? 'om' : VEHICULE.has(pt.lbl) ? 'vehicul' : 'altceva';
+    c.setAttribute('class', `hlive ${fel}${(pt.varsta || 0) > 4 ? ' vechi' : ''}`);
+    c.setAttribute('cx', (pt.x * W).toFixed(1)); c.setAttribute('cy', (pt.y * H).toFixed(1));
+    c.setAttribute('r', (6 * k).toFixed(2)); c.setAttribute('stroke-width', (1.5 * k).toFixed(2));
+    g.appendChild(c);
+  }
+  svg.appendChild(g);
+}
+async function hartaLive() {
+  const p = hartaPlan();
+  if (document.hidden || hartaEdit || !p || $('#harta').classList.contains('hidden')
+      || !Object.values(p.camere || {}).some((x) => x.calibrare)) {
+    if (hartaLivePts.length) { hartaLivePts = []; hartaLiveDesen(); }
+    return;
+  }
+  try {
+    const d = await (await fetch(`/api/harta/${p.id}/live`)).json();
+    hartaLivePts = d.puncte || [];
+  } catch { hartaLivePts = []; }
+  hartaLiveDesen();
+}
+setInterval(hartaLive, 2000);
 /* ---------- scara planului ----------
    p.scara = doua puncte (fractii) + distanta reala in metri -> metri pe pixel de imagine. */
 function hartaMpp(p, W, H) {
@@ -273,6 +311,11 @@ function renderHartaSide() {
   const pune = (id, v) => { const el = $(id); if (el !== document.activeElement) el.value = v; };
   pune('#harta-dir', pos.dir); pune('#harta-fov', pos.fov);
   pune('#harta-h', pos.inaltime ?? ''); pune('#harta-tilt', pos.inclinare ?? '');
+  const calib = pos.calibrare;
+  $('#harta-cal-del').classList.toggle('hidden', !calib);
+  $('#harta-cal-open').textContent = calib ? t('Refă calibrarea') : t('Calibrează pe plan');
+  $('#harta-cal-stare').textContent = calib ? t('Calibrată: {n} puncte, {err}.', { n: calib.perechi.length, err: hartaEroareText(calib.eroare) })
+    : t('Necalibrată: detecțiile ei nu apar ca puncte pe hartă.');
   const th = $('#harta-thumb');
   if (th.dataset.cam !== String(hartaSel)) { th.dataset.cam = hartaSel; th.src = `/api/thumb/${hartaSel}?t=${Date.now()}`; }
   hartaValori(pos);
@@ -296,6 +339,28 @@ function hartaSol(pos) {
     ? t('Vede solul de la ~{a} m până la orizont (unghi vertical ~{v}°).', { a: m(aproape), v: Math.round(v) })
     : t('Vede solul de la ~{a} m până la ~{b} m (unghi vertical ~{v}°).', { a: m(aproape), b: m(pos.inaltime / Math.tan(sus * rad)), v: Math.round(v) });
 }
+const hartaMppAcum = () => { const img = $('#harta-img'); return hartaMpp(hartaPlan(), img.naturalWidth || 1, img.naturalHeight || 1); };
+function hartaEroareText(e) {
+  const mpp = hartaMppAcum(), img = $('#harta-img');
+  // eroarea e in fractii din plan: cu scara o dam in metri (pe latura lunga a planului)
+  return mpp ? t('eroare maximă ~{m} m', { m: (e * mpp * Math.max(img.naturalWidth, img.naturalHeight)).toFixed(1).replace('.', ',') })
+             : t('eroare maximă {p}% din plan', { p: (e * 100).toFixed(1).replace('.', ',') });
+}
+$('#harta-cal-open').onclick = () => {
+  const p = hartaPlan(), c = S.cameras.find((x) => x.id === hartaSel);
+  if (!p || !c) return;
+  if (!p.imagine) { toast(t('Încarcă întâi imaginea planului'), true); return; }
+  const img = $('#harta-img');
+  openCalibrare(p, c, hartaMppAcum() * Math.max(img.naturalWidth, img.naturalHeight), (plan) => {
+    p.camere = plan.camere; drawHarta(); renderHartaSide();
+  });
+};
+$('#harta-cal-del').onclick = async () => {
+  const p = hartaPlan(); if (!p || hartaSel === null) return;
+  if (!confirm(t('Ștergi calibrarea camerei? Detecțiile ei nu vor mai apărea pe hartă.'))) return;
+  const d = await post('/api/harta', { id: p.id, cam: hartaSel, calibrare: null });
+  if (d && !d.error) { p.camere = d.plan.camere; drawHarta(); renderHartaSide(); }
+};
 const hartaPos = () => { const p = hartaPlan(); return p && hartaSel !== null ? (p.camere || {})[hartaSel] : null; };
 $('#harta-dir').oninput = () => { const pos = hartaPos(); if (pos) { pos.dir = +$('#harta-dir').value; hartaValori(pos); drawHarta(); } };
 $('#harta-fov').oninput = () => { const pos = hartaPos(); if (pos) { pos.fov = +$('#harta-fov').value; hartaValori(pos); drawHarta(); } };
@@ -375,6 +440,7 @@ function hartaCard(c) {
     pos.inaltime != null ? t('înălțime {h} m', { h: pos.inaltime }) : '',
     pos.inclinare != null ? t('înclinare {u}°', { u: pos.inclinare }) : '',
     t('direcție {d}°, con {f}°', { d: Math.round(pos.dir), f: Math.round(pos.fov) }),
+    pos.calibrare ? t('calibrată pe plan') : '',
   ].filter(Boolean).join(' · ');
   $('#harta-card-info').textContent = [mont, hartaSol(pos)].filter(Boolean).join('. ');
   card.classList.remove('hidden');

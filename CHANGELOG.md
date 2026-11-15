@@ -19,6 +19,12 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
   nouă o șterge). Cu scara pusă, apare o bară de scară, iar camerele cu înălțime și înclinare
   își desenează zona de sol reală (conturul cadrului proiectat pe sol, cu pata oarbă de sub
   cameră, tăiat la 60 m / orizont) în locul conului simbolic. Cardul camerei ocolește desenul.
+- **Harta: calibrarea camerelor pe plan (omografie) și detecțiile live ca puncte.** „Calibrează
+  pe plan”: perechi de puncte de pe sol în cadru și pe plan (4–12), cu grila solului proiectată
+  și eroarea fiecărei perechi în previzualizare; omografia o calculează serverul
+  (`app/omografie.py`, DLT normalizat, validare: puncte răsfirate, niciun trio coliniar). Harta
+  arată apoi omul / vehiculul în locul unde atinge solul (`GET /api/harta/<plan>/live`, la 2 s,
+  doar cât e deschisă). Calibrarea rămâne la mutarea marcajului și se șterge la o imagine nouă.
 
 ## [2.2.0] — în pregătire (candidat: 2.2.0-rc6)
 

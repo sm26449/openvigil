@@ -711,6 +711,18 @@ Telegram ramane canalul de rezerva, nu depinde de niciun telefon.
   camerele cu inaltime si inclinare nu mai au conul simbolic, ci zona de sol pe care o vad
   efectiv (conturul cadrului proiectat pe sol, cu pata oarba de sub camera, taiat la 60 m
   sau la orizont). O imagine noua de plan sterge scara; „Sterge scara" revine la conuri.
+  **Calibrarea pe plan** („Calibreaza pe plan" in panoul camerei selectate): cadrul camerei
+  si planul, alaturi; clic pe un punct de pe SOL in cadru (coltul aleii, baza stalpului de
+  la poarta), apoi pe acelasi loc pe plan — 4..12 perechi, rasfirate, nu pe o linie.
+  Punctele se pot trage; de la 4 perechi serverul calculeaza omografia (`app/omografie.py`,
+  DLT normalizat, cele mai mici patrate peste 4 perechi), iar planul arata grila solului
+  din cadru proiectata si eroarea fiecarei perechi (in metri cu scara; perechile proaste
+  ies in rosu). Dupa salvare, harta arata **detectiile live ca puncte** (om = portocaliu,
+  vehicul = albastru, estompat cand chenarul e mai vechi de 4 s), proiectate prin mijlocul
+  laturii de jos a chenarului — locul unde obiectul atinge solul. Mutarea marcajului
+  pastreaza calibrarea; o imagine noua de plan o sterge. API: `POST /api/harta {id, cam,
+  calibrare: {perechi} | null}`, proba fara salvare `POST /api/harta/omografie`, punctele
+  `GET /api/harta/<plan>/live` (filtrate pe camerele permise contului).
   Mai multe planuri (curte, parter, etaj) — selectorul apare
   cand sunt cel putin doua. Un cont restrans vede pe harta doar camerele lui.
 - **Pop-up la critic** (bara Live): la un incident critic nou, dala camerei se mareste

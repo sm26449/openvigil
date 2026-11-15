@@ -9,7 +9,9 @@ se piarda nimic; `dir` = directia privirii in grade (0 = sus, in sensul ceasului
 deasupra solului, `inclinare` = grade sub orizontala (0 = priveste drept inainte, 90 = drept
 in jos); lipsesc cand nu sunt cunoscute. `scara` (optionala, pe plan) = doua puncte (fractii)
 si distanta reala dintre ele in metri; din ea interfata deseneaza zona de sol vazuta.
-O imagine noua sterge scara (alt plan, alta scara).
+O imagine noua sterge scara (alt plan, alta scara). `calibrare` (optionala, pe camera) =
+perechile de puncte cadru <-> plan si omografia calculata din ele (omografie.py); o pune
+doar seteaza_calibrare, iar mutarea marcajului pe acelasi plan o pastreaza.
 
   data/harta.json         {"planuri": [{"id", "nume", "imagine": true/false,
                                         "camere": {"<cam>": {"x","y","dir","fov"[,"inaltime","inclinare"]}},
@@ -21,6 +23,7 @@ import re
 import threading
 import uuid
 
+import omografie
 import store
 from i18n import t
 
@@ -181,12 +184,63 @@ def aseaza(pid, camere):
             if poz is None:
                 p["camere"].pop(cid, None)
             else:
+                # calibrarea leaga cadrul de PLAN, nu de marcaj: mutarea marcajului o pastreaza;
+                # clientul nu o poate scrie pe aici (doar seteaza_calibrare)
+                vechi = p["camere"].get(cid) or {}
+                if vechi.get("calibrare"):
+                    poz["calibrare"] = vechi["calibrare"]
                 p["camere"][cid] = poz
                 for alt in d["planuri"]:
                     if alt is not p:
                         (alt.get("camere") or {}).pop(cid, None)
         _save(d)
     return p
+
+
+def seteaza_calibrare(pid, cam, perechi):
+    """Omografia cadru -> plan pentru o camera deja asezata pe plan; None o sterge."""
+    cid = str(int(cam))
+    cal = None if perechi is None else omografie.calculeaza(perechi)
+    with _lock:
+        d = _load()
+        p = _plan(d, pid)
+        poz = (p.get("camere") or {}).get(cid)
+        if not poz:
+            raise ValueError(t("camera nu e pe acest plan"))
+        if cal is None:
+            poz.pop("calibrare", None)
+        else:
+            poz["calibrare"] = cal
+        _save(d)
+    return p
+
+
+def detectii_pe_plan(pid, stare, visible=None):
+    """Detectiile live (chenarele trecute de filtre) ale camerelor calibrate, proiectate pe
+    plan prin mijlocul laturii de jos a chenarului (punctul de pe sol). `stare` = snapshot-ul
+    detectiei {cam: {boxes: [{x,y,w,h,lbl,conf,filtru?}], boxes_age}}."""
+    p = next((x for x in _load()["planuri"] if x["id"] == pid), None)
+    if not p:
+        raise ValueError(t("planul nu există"))
+    out = []
+    for cid, poz in (p.get("camere") or {}).items():
+        cal = poz.get("calibrare")
+        if not cal or (visible is not None and int(cid) not in visible):
+            continue
+        st = stare.get(cid) or stare.get(int(cid)) or {}
+        for b in st.get("boxes") or []:
+            if b.get("filtru"):
+                continue
+            try:
+                r = omografie.proiecteaza(cal["h"], float(b["x"]) + float(b["w"]) / 2, float(b["y"]) + float(b["h"]))
+            except (KeyError, TypeError, ValueError):
+                continue
+            # putina toleranta la margini; ce cade departe de plan (aproape de orizont) nu desenam
+            if r is None or not (-0.05 <= r[0] <= 1.05 and -0.05 <= r[1] <= 1.05):
+                continue
+            out.append({"cam": int(cid), "lbl": b.get("lbl"), "conf": round(float(b.get("conf") or 0), 2),
+                        "x": round(r[0], 4), "y": round(r[1], 4), "varsta": st.get("boxes_age")})
+    return out
 
 
 def salveaza_imagine(pid, date, mime):
@@ -212,10 +266,13 @@ def salveaza_imagine(pid, date, mime):
         f.write(date)
     os.chmod(tmp, 0o600)
     os.replace(tmp, cale)
-    with _lock:                                # alta imagine = alta scara: o masori din nou
+    with _lock:                                # alta imagine = alta scara si alte calibrari: le refaci
         d = _load()
         p = _plan(d, pid)
-        if p.pop("scara", None) is not None:
+        schimbat = p.pop("scara", None) is not None
+        for poz in (p.get("camere") or {}).values():
+            schimbat = poz.pop("calibrare", None) is not None or schimbat
+        if schimbat:
             _save(d)
     return cale
 
