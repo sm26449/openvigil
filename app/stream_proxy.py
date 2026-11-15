@@ -39,6 +39,10 @@ REVERIFICA = 20             # secunde intre reverificarile unui flux deschis
 SRC_RE = re.compile(r"^(?:cam(?P<c>\d+)|hd(?P<h>\d+)(?:_h(?:0|720|1080))?"
                     r"|pb(?P<p>\d+)_\d{8}T\d{6}Z(?:_(?:1|05|2|4|8))?(?:_h(?:0|720|1080))?)$")
 ADMIN_GET = ("/api/frame.jpeg",)   # pe langa fluxuri, adminul vede si cadre JPEG
+# rezerva HLS (Safari/iOS): dupa ce fluxul s-a deschis prin WebSocket (verificat mai sus), playerul
+# cere playlist-ul si segmentele prin GET simplu, cu un `id` aleator al sesiunii HLS create atunci;
+# fara id nu se ajunge la niciun flux, deci le lasam oricarui cont autentificat
+HLS_RE = re.compile(r"^/api/hls/(?:playlist\.m3u8|segment\.(?:ts|m4s)|init\.mp4)$")
 VORBESC = ("admin", "operator")    # rolurile care pot vorbi prin difuzorul camerei
 
 
@@ -134,6 +138,8 @@ class StreamProxy:
         if method != "GET":
             return 403, "doar fluxurile video"
         if admin and url.path in ADMIN_GET:
+            return path
+        if HLS_RE.match(url.path) and urllib.parse.parse_qs(url.query).get("id"):
             return path
         if url.path != "/api/ws" or hdr.get("upgrade", "").lower() != "websocket":
             return 403, "doar fluxurile video"

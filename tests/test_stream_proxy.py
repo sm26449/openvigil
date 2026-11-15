@@ -91,3 +91,15 @@ def test_fluxul_deschis_se_inchide_la_revocare(px, monkeypatch):
     assert not t.is_alive() and a.fileno() == -1 and c.fileno() == -1
     for s in (b, d):
         s.close()
+
+
+
+def test_rezerva_hls_merge_pentru_orice_cont(px):
+    """Safari/iOS: dupa WebSocket, playerul cere playlist-ul si segmentele HLS prin GET simplu."""
+    h = {"cookie": "u=v", "host": "nvr:8076"}
+    for cale in ("/api/hls/playlist.m3u8?id=ab12", "/api/hls/segment.ts?id=ab12&n=3",
+                 "/api/hls/init.mp4?id=ab12", "/api/hls/segment.m4s?id=ab12&n=1"):
+        assert px._decide("GET", cale, h) == cale
+    assert px._decide("GET", "/api/hls/playlist.m3u8", h)[0] == 403           # fara id
+    assert px._decide("GET", "/api/hls/../config?id=x", h)[0] == 403
+    assert px._decide("GET", "/api/hls/playlist.m3u8?id=x", {"cookie": "", "host": "x"})[0] == 401
