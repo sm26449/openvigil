@@ -1,5 +1,8 @@
 # Interfata OpenVigil — un singur sistem pentru toate camerele
 
+**Ce e nou în 2.2.0, unde găsești fiecare lucru și cum îl folosești, cu capturi:
+[noutati-2.2.0.md](noutati-2.2.0.md).**
+
 > **Document istoric.** Scris pe parcurs, in timp ce sistemul a fost construit pentru instalatia
 > de origine (18 camere Hikvision, un NVR Hikvision, servicii systemd, criptare fscrypt pe
 > gazda). Varianta publica ruleaza in Docker: vezi [README](../../README.ro.md) si

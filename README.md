@@ -28,7 +28,22 @@ Taken on the built-in demo mode (synthetic cameras), so no real footage.
 |---|---|
 | ![HD](docs/img/hd-1366.png) | ![Status](docs/img/stare-1366.png) |
 
+| Triage (grouped incidents) | Property map with the heat map |
+|---|---|
+| ![Triage](docs/img/2.2.0/en/triaj-1366.png) | ![Map](docs/img/2.2.0/en/harta-caldura-1366.png) |
+
 <p align="center"><img src="docs/img/live-telefon.png" width="200" alt="Live on a phone"> <img src="docs/img/inregistrari-telefon.png" width="200" alt="Playback on a phone"> <img src="docs/img/meniu-telefon.png" width="200" alt="More menu on a phone"></p>
+
+## What's new in 2.2.0
+
+Faster triage (grouped incidents with thumbnails, swipe on phones, a "While you were away"
+summary), a property map that knows where things happen (camera picture on the plan, mounting
+height and tilt, plan scale and real ground coverage, per-camera calibration with live dots and
+a heat map of the whole property), stream choice in HD, an accessible interface on every screen,
+Telegram set up in three steps, system alerts that are not forgotten and an optional persistent
+semantic search index. **Where to find each feature and how to use it:
+[docs/en/whats-new-2.2.0.md](docs/en/whats-new-2.2.0.md)**; the full list is in
+[CHANGELOG.md](CHANGELOG.md).
 
 ## What it does
 
@@ -276,6 +291,8 @@ Day-to-day operations (logs, updates, backups, ports, uninstall): [docs/operare.
 
 ## Documentation
 
+- [docs/en/whats-new-2.2.0.md](docs/en/whats-new-2.2.0.md): what 2.2.0 brings, where to find
+  each feature and how to use it, with screenshots.
 - [docs/en/manual.md](docs/en/manual.md): the full manual in English — every feature, how it
   works and why. (The original is the Romanian decision log below; the English manual is a
   translation of it.)

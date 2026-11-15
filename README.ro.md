@@ -20,13 +20,28 @@ Făcute în modul demo (camere sintetice), deci fără imagini reale.
 
 | Live | Înregistrări cu timeline |
 |---|---|
-| ![Live](docs/img/live-1366.png) | ![Înregistrări](docs/img/inregistrari-1366.png) |
+| ![Live](docs/img/ro/live-1366.png) | ![Înregistrări](docs/img/ro/inregistrari-1366.png) |
 
 | HD | Setări → Stare |
 |---|---|
-| ![HD](docs/img/hd-1366.png) | ![Stare](docs/img/stare-1366.png) |
+| ![HD](docs/img/ro/hd-1366.png) | ![Stare](docs/img/ro/stare-1366.png) |
 
-<p align="center"><img src="docs/img/live-telefon.png" width="200" alt="Live pe telefon"> <img src="docs/img/inregistrari-telefon.png" width="200" alt="Înregistrări pe telefon"> <img src="docs/img/meniu-telefon.png" width="200" alt="Meniul pe telefon"></p>
+| Triaj (incidente grupate) | Harta proprietății cu harta de căldură |
+|---|---|
+| ![Triaj](docs/img/2.2.0/ro/triaj-1366.png) | ![Harta](docs/img/2.2.0/ro/harta-caldura-1366.png) |
+
+<p align="center"><img src="docs/img/ro/live-telefon.png" width="200" alt="Live pe telefon"> <img src="docs/img/ro/inregistrari-telefon.png" width="200" alt="Înregistrări pe telefon"> <img src="docs/img/ro/meniu-telefon.png" width="200" alt="Meniul pe telefon"></p>
+
+## Ce e nou în 2.2.0
+
+Triaj mai rapid (incidente grupate, cu poze, glisare pe telefon, rezumatul „Cât ai lipsit”), o
+hartă a proprietății care știe unde se întâmplă lucrurile (imaginea camerei pe plan, înălțimea și
+înclinarea montajului, scara planului și zona de sol văzută, calibrarea fiecărei camere cu puncte
+live și harta de căldură a întregii proprietăți), alegerea fluxului în HD, o interfață accesibilă
+pe orice ecran, Telegram configurat în trei pași, alerte de sistem care nu se uită și, opțional,
+căutare semantică persistentă. **Unde găsești fiecare lucru și cum îl folosești:
+[docs/ro/noutati-2.2.0.md](docs/ro/noutati-2.2.0.md)**; lista completă e în
+[CHANGELOG.md](CHANGELOG.md).
 
 ## Ce face
 
@@ -196,6 +211,9 @@ nivelul de arhivă și copiile pot sta fiecare pe alt disc (`RECORDINGS_DIR`, `A
 Operarea de zi cu zi (jurnale, actualizare, copii, porturi, dezinstalare): [docs/operare.md](docs/operare.md).
 
 ## Documentație
+
+[docs/ro/noutati-2.2.0.md](docs/ro/noutati-2.2.0.md): ce aduce 2.2.0, unde găsești fiecare lucru
+și cum îl folosești, cu capturi.
 
 [docs/ro/manual.md](docs/ro/manual.md) este jurnalul deciziilor, scris pe măsură ce sistemul a
 fost construit pentru instalația de origine; unele secțiuni descriu varianta de dinainte de

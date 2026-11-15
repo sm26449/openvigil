@@ -1,5 +1,8 @@
 # OpenVigil interface — one system for all your cameras
 
+**What's new in 2.2.0, where to find each feature and how to use it, with screenshots:
+[whats-new-2.2.0.md](whats-new-2.2.0.md).**
+
 > **Historic document.** Written along the way, while the system was being built for the
 > original installation (18 Hikvision cameras, a Hikvision NVR, systemd services, fscrypt
 > encryption on the host). The public version runs in Docker: see [README](../../README.md) and

@@ -9,7 +9,9 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 
 **Highlights (English)** — Faster triage, a calmer and more accessible interface, a persistent
 semantic search index, system alerts that are not forgotten, and a property map that shows
-where things happen.
+where things happen. **Where to find each feature and how to use it, with screenshots:**
+[What's new in 2.2.0](https://github.com/sm26449/openvigil/blob/main/docs/en/whats-new-2.2.0.md)
+· [Ce e nou în 2.2.0](https://github.com/sm26449/openvigil/blob/main/docs/ro/noutati-2.2.0.md).
 - **Triage that scales.** Repeated incidents from the same camera are grouped into one card with
   "confirm all / all false"; every incident shows the nearest saved frame; on a phone you swipe
   right to confirm or left for a false alarm, with Undo. A "While you were away" card on Live
