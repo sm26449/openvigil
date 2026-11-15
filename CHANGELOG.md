@@ -123,6 +123,8 @@ where things happen.
 - Contrast WCAG AA peste tot (`--link`, `--alarm-text`, insigna de incidente, nicio legătură pe
   albastrul implicit).
 - Reper `<main>`, „Sari la conținut”, titlul ferestrei spune ecranul curent.
+- Titlurile de pe carduri, bare și ferestre (HD, Setări, overlay-uri, contul meu, adăugarea unei
+  camere) folosesc culoarea textului din temă, nu alb fix (UX-01).
 - Roluri ARIA corecte: tab-uri reale cu săgeți și Home/End; linia de timp nu mai e un „slider” cu
   butoane în el; etichete pe zonele derulabile, căutare și bifele de cameră.
 - Panoul camerei primește focusul, se închide cu Esc și întoarce focusul pe rând.
