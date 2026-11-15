@@ -98,3 +98,30 @@ def test_scara_planului():
     harta.seteaza_scara(p["id"], {"x1": 0, "y1": 0, "x2": 1, "y2": 1, "m": 30})
     harta.seteaza_scara(p["id"], None)
     assert harta.lista()[0]["scara"] is None
+
+
+def test_limita_si_masura_planului():
+    import io
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.new("RGB", (1000, 500)).save(buf, "PNG")
+    p = harta.plan_nou("A")
+    assert harta.lista()[0]["metrica"] is None                      # fara imagine, fara masura
+    harta.salveaza_imagine(p["id"], buf.getvalue(), "image/png")
+    assert harta.lista()[0]["metrica"] is None                      # imagine, dar nicio lungime
+    harta.seteaza_scara(p["id"], {"x1": 0.1, "y1": 0.5, "x2": 0.6, "y2": 0.5, "m": 25})
+    assert harta.lista()[0]["metrica"]["sursa"] == "scara"
+    # limita: dreptunghi 600x300 px; latura de sus = 60 m -> 0,1 m/px, deci 60 x 30 m
+    harta.seteaza_limita(p["id"], {"puncte": [[0.1, 0.1], [0.7, 0.1], [0.7, 0.7], [0.1, 0.7]],
+                                   "laturi": {"0": 60}})
+    m = harta.lista()[0]["metrica"]
+    assert m["sursa"] == "limita" and m["w"] == 1000 and m["h"] == 500
+    assert [x["m_plan"] for x in m["laturi"]] == [60, 30, 60, 30] and m["suprafata"] == pytest.approx(1800)
+    with pytest.raises(ValueError):
+        harta.seteaza_limita(p["id"], {"puncte": [[0.1, 0.1], [0.9, 0.9], [0.1, 0.9], [0.9, 0.1]]})
+    # o imagine noua sterge si limita (alt plan, alte masuri)
+    harta.salveaza_imagine(p["id"], buf.getvalue(), "image/png")
+    assert harta.lista()[0]["limita"] is None and harta.lista()[0]["metrica"] is None
+    harta.seteaza_limita(p["id"], {"puncte": [[0.1, 0.1], [0.7, 0.1], [0.4, 0.7]], "laturi": {}})
+    harta.seteaza_limita(p["id"], None)
+    assert harta.lista()[0]["limita"] is None

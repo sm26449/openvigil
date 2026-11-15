@@ -9,13 +9,17 @@ se piarda nimic; `dir` = directia privirii in grade (0 = sus, in sensul ceasului
 deasupra solului, `inclinare` = grade sub orizontala (0 = priveste drept inainte, 90 = drept
 in jos); lipsesc cand nu sunt cunoscute. `scara` (optionala, pe plan) = doua puncte (fractii)
 si distanta reala dintre ele in metri; din ea interfata deseneaza zona de sol vazuta.
-O imagine noua sterge scara (alt plan, alta scara). `calibrare` (optionala, pe camera) =
+O imagine noua sterge scara (alt plan, alta scara). `limita` (optionala, pe plan) = colturile
+proprietatii (fractii) + lungimile laturilor cunoscute; din ea (sau din scara) plan_metrica.py
+calculeaza MASURA planului (`metrica` in lista(): pixeli -> metri, unghiuri, suprafata), care nu
+se stocheaza — se deriva mereu din limita/scara + marimea imaginii. `calibrare` (optionala, pe camera) =
 perechile de puncte cadru <-> plan si omografia calculata din ele (omografie.py); o pune
 doar seteaza_calibrare, iar mutarea marcajului pe acelasi plan o pastreaza.
 
   data/harta.json         {"planuri": [{"id", "nume", "imagine": true/false,
                                         "camere": {"<cam>": {"x","y","dir","fov"[,"inaltime","inclinare"]}},
-                                        "scara": {"x1","y1","x2","y2","m"}}]}
+                                        "scara": {"x1","y1","x2","y2","m"},
+                                        "limita": {"puncte": [[x,y]...], "laturi": {"<i>": m}}}]}
   data/harta/<id>.<ext>   imaginea planului (png/jpg/webp), incarcata din interfata
 """
 import os
@@ -24,6 +28,7 @@ import threading
 import uuid
 
 import omografie
+import plan_metrica
 import store
 from i18n import t
 
@@ -63,10 +68,46 @@ def lista(visible=None):
     for p in _load()["planuri"]:
         cams = {k: v for k, v in (p.get("camere") or {}).items()
                 if visible is None or int(k) in visible}
+        img = _imagine(p["id"])
+        w, h = _marime(img) if img else (0, 0)
         out.append({"id": p["id"], "nume": p.get("nume") or "Plan",
-                    "imagine": _imagine(p["id"]) is not None, "camere": cams,
-                    "scara": p.get("scara")})
+                    "imagine": img is not None, "camere": cams,
+                    "scara": p.get("scara"), "limita": p.get("limita"),
+                    "metrica": plan_metrica.calculeaza(w, h, p.get("limita"), p.get("scara"))})
     return out
+
+
+_marimi = {}
+
+
+def _marime(cale):
+    """(latime, inaltime) imaginii planului, tinuta minte cat timp fisierul nu se schimba."""
+    try:
+        cheie = (cale, os.stat(cale).st_mtime_ns)
+    except OSError:
+        return 0, 0
+    if cheie not in _marimi:
+        from PIL import Image
+        try:
+            with Image.open(cale) as im:
+                _marimi[cheie] = im.size
+        except Exception:
+            return 0, 0
+    return _marimi[cheie]
+
+
+def seteaza_limita(pid, v):
+    """Limita proprietatii: {puncte, laturi} (vezi plan_metrica.valideaza_limita); None o sterge."""
+    v = None if v is None else plan_metrica.valideaza_limita(v)
+    with _lock:
+        d = _load()
+        p = _plan(d, pid)
+        if v is None:
+            p.pop("limita", None)
+        else:
+            p["limita"] = v
+        _save(d)
+    return p
 
 
 def _plan(d, pid):
@@ -266,10 +307,11 @@ def salveaza_imagine(pid, date, mime):
         f.write(date)
     os.chmod(tmp, 0o600)
     os.replace(tmp, cale)
-    with _lock:                                # alta imagine = alta scara si alte calibrari: le refaci
+    with _lock:                                # alta imagine = alta scara, alta limita, alte calibrari: le refaci
         d = _load()
         p = _plan(d, pid)
         schimbat = p.pop("scara", None) is not None
+        schimbat = p.pop("limita", None) is not None or schimbat
         for poz in (p.get("camere") or {}).values():
             schimbat = poz.pop("calibrare", None) is not None or schimbat
         if schimbat:

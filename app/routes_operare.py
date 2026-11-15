@@ -58,7 +58,8 @@ def api_harta():
 @bp.route("/api/harta", methods=["POST"])
 def api_harta_save():
     """{plan_nou: nume} | {id, nume} | {id, camere: {cam: {x,y,dir,fov,...} | null}}
-    | {id, scara: {x1,y1,x2,y2,m} | null} | {id, cam, calibrare: {perechi: [[cx,cy,px,py]..]} | null}"""
+    | {id, scara: {x1,y1,x2,y2,m} | null} | {id, cam, calibrare: {perechi: [[cx,cy,px,py]..]} | null}
+    | {id, limita: {puncte: [[x,y]..], laturi: {i: m}} | null}"""
     b = request.get_json(silent=True) or {}
     try:
         if b.get("plan_nou") is not None:
@@ -72,6 +73,11 @@ def api_harta_save():
             p = harta.seteaza_calibrare(str(b["id"]), b["cam"], perechi)
             audit.log("calibrare pe plan " + ("stearsa" if perechi is None else "setata"), p["nume"],
                       {"cam": b["cam"], "perechi": len(perechi or [])})
+        elif b.get("id") and "limita" in b:
+            p = harta.seteaza_limita(str(b["id"]), b["limita"])
+            audit.log("limita proprietății " + ("ștearsă" if b["limita"] is None else "setată"), p["nume"],
+                      {"colturi": len((b["limita"] or {}).get("puncte") or []),
+                       "laturi": len((b["limita"] or {}).get("laturi") or {})})
         elif b.get("id") and "scara" in b:
             p = harta.seteaza_scara(str(b["id"]), b["scara"])
             audit.log("scara planului " + ("stearsa" if b["scara"] is None else "setata"), p["nume"],
@@ -83,9 +89,9 @@ def api_harta_save():
             return jsonify({"error": t("nimic de făcut")}), 400
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
-    return jsonify({"ok": True, "plan": {"id": p["id"], "nume": p.get("nume"),
-                                         "camere": p.get("camere") or {}, "scara": p.get("scara"),
-                                         "imagine": harta.imagine(p["id"]) is not None}})
+    # planul intreg, ca la GET (cu masura recalculata): interfata il inlocuieste direct
+    plan = next((x for x in harta.lista() if x["id"] == p["id"]), None)
+    return jsonify({"ok": True, "plan": plan or {"id": p["id"], "nume": p.get("nume"), "camere": p.get("camere") or {}}})
 
 
 @bp.route("/api/harta/omografie", methods=["POST"])

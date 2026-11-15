@@ -5,18 +5,20 @@
    ==================================================================== */
 import { $, t, toast } from './00-core.js';
 import { post } from './10-live.js';
+import { eroriCalibrare, proiect } from './24-harta-metrica.js';
 /* Perechi de puncte cadru <-> plan (fractii 0..1). Clic in cadru, apoi pe acelasi loc pe plan;
    punctele se pot trage dupa aceea. De la 4 perechi, serverul calculeaza omografia (proba,
    fara salvare: POST /api/harta/omografie) si planul arata grila solului din cadru proiectata,
    plus eroarea fiecarei perechi. Salvarea: POST /api/harta {id, cam, calibrare: {perechi}}. */
 const NS = 'http://www.w3.org/2000/svg';
 const MAX = 12;
-let cal = null;   // {plan, cam, perechi: [[cx,cy,px,py]], astept: [cx,cy] | null, h, eroare, mpp, onSalvat}
+let cal = null;   // {plan, cam, perechi: [[cx,cy,px,py]], astept: [cx,cy] | null, h, eroare, erori, eroriM, met, onSalvat}
 
-function openCalibrare(plan, cam, mpp, onSalvat) {
+// onSalvat(plan): planul intreg intors de server (cu masura), pe care harta il preia
+function openCalibrare(plan, cam, onSalvat) {
   const poz = (plan.camere || {})[cam.id] || {};
   cal = { plan, cam, perechi: ((poz.calibrare || {}).perechi || []).map((p) => [...p]), astept: null,
-          h: null, eroare: null, erori: [], mpp, onSalvat };
+          h: null, eroare: null, erori: [], eroriM: [], met: plan.metrica, onSalvat };
   $('#harta-cal-title').textContent = t('Calibrează {nume} pe „{plan}”', { nume: `${cam.id}. ${cam.name}`, plan: plan.nume });
   const ci = $('#harta-cal-cam-img'), pi = $('#harta-cal-plan-img');
   ci.onload = pi.onload = desen;
@@ -65,11 +67,6 @@ function desen() {
   stare();
 }
 
-function proiect(h, x, y) {
-  const w = h[6] * x + h[7] * y + h[8];
-  if (w <= 1e-9) return null;
-  return [(h[0] * x + h[1] * y + h[2]) / w, (h[3] * x + h[4] * y + h[5]) / w];
-}
 // grila solului din cadru (linii la fiecare 10%), proiectata pe plan; segmentele care trec
 // de orizont sau ies mult din plan se rup
 function grila(svg, W, H, k) {
@@ -92,8 +89,9 @@ function grila(svg, W, H, k) {
 
 function stare() {
   const n = cal.perechi.length;
-  const err = cal.eroare == null ? '' : cal.mpp
-    ? t('eroare maximă ~{m} m', { m: (cal.eroare * cal.mpp).toFixed(1).replace('.', ',') })
+  // cu masura planului, eroarea in metri pe teren (corecta si pe o schita deformata)
+  const err = cal.eroare == null ? '' : cal.met
+    ? t('eroare maximă ~{m} m', { m: Math.max(...cal.eroriM).toFixed(1).replace('.', ',') })
     : t('eroare maximă {p}% din plan', { p: (cal.eroare * 100).toFixed(1).replace('.', ',') });
   $('#harta-cal-pas').textContent = cal.astept ? t('Punctul {n}: acum clic pe același loc pe plan.', { n: n + 1 })
     : n >= MAX ? t('{n} perechi (maximul). {err}', { n, err })
@@ -105,7 +103,7 @@ function stare() {
 
 let probaNr = 0;
 async function proba() {
-  cal.h = null; cal.eroare = null; cal.erori = [];
+  cal.h = null; cal.eroare = null; cal.erori = []; cal.eroriM = [];
   if (cal.perechi.length < 4) { desen(); return; }
   const nr = ++probaNr;
   try {
@@ -115,7 +113,8 @@ async function proba() {
     if (nr !== probaNr || !cal) return;
     if (d.error) { toast(d.error, true); desen(); return; }
     cal.h = d.h; cal.eroare = d.eroare;
-    cal.erori = cal.perechi.map((p) => { const q = proiect(d.h, p[0], p[1]); return q ? Math.hypot(q[0] - p[2], q[1] - p[3]) : 1; });
+    cal.erori = eroriCalibrare(cal.perechi, d.h, null);          // fractii din plan (perechea rosie)
+    cal.eroriM = cal.met ? eroriCalibrare(cal.perechi, d.h, cal.met) : [];
   } catch { if (nr === probaNr) toast(t('Proba calibrării nu a răspuns'), true); }
   desen();
 }

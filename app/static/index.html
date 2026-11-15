@@ -136,6 +136,7 @@
       <button id="harta-rename">Redenumește</button>
       <button id="harta-upload">Încarcă imaginea</button>
       <input id="harta-file" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+      <button id="harta-limita-btn" title="Trasează conturul proprietății și scrie lungimile laturilor pe care le știi: din ele vin scara, unghiurile și suprafața">Limita</button>
       <button id="harta-scara" title="Clic pe două puncte ale unei distanțe cunoscute (gard, latura casei), apoi spui câți metri sunt">Scara</button>
       <button id="harta-scara-del" class="hidden">Șterge scara</button>
       <button id="harta-del">Șterge planul</button>
@@ -159,6 +160,10 @@
       <div class="harta-card-act"><button id="harta-card-hd">Deschide HD</button><button id="harta-card-pb">Înregistrări</button></div>
     </div>
     <aside id="harta-side" class="hidden">
+      <details id="harta-limita" class="harta-limita" open>
+        <summary>Limita proprietății</summary>
+        <div class="hl-corp"></div>
+      </details>
       <h3>Camere neașezate</h3>
       <p class="hint">Clic pe o cameră o pune în mijlocul planului; apoi trage-o la loc.</p>
       <div id="harta-unplaced"></div>

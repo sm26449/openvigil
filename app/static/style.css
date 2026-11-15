@@ -1630,6 +1630,29 @@ body.viewer .act-only { display: none !important; }
 .hlive.altceva { fill: #c9d1d9; }
 .hlive.vechi { opacity: .45; }
 .hm .con.sol { fill: rgba(88, 166, 255, .18); stroke-dasharray: none; }
+.hl-linie { fill: none; stroke: #f0f6fc; opacity: .85; pointer-events: none; }
+.hl.edit .hl-linie { stroke: #ffd33d; opacity: 1; }
+.hl-pct { fill: #ffd33d; stroke: #000; cursor: grab; }
+.hl-pct.inceput { fill: #fff; cursor: pointer; }
+.hl-txt, .hl-litera, .hl-unghi, .hl-lung { fill: #fff; font: 600 11px system-ui, sans-serif; paint-order: stroke; stroke: rgba(0, 0, 0, .85); pointer-events: none; }
+.hl-litera { fill: #ffd33d; font-weight: 700; }
+.hl-unghi { fill: #c9d1d9; }
+.hl-lung.stiuta { fill: #7ee787; }
+.hl-lung.rau { fill: #ff7b72; }
+.harta-wrap.edit.masoara .hl-pct { cursor: crosshair; }
+.harta-limita { margin-bottom: var(--s3); padding-bottom: var(--s3); border-bottom: 1px solid var(--line); }
+.harta-limita summary { cursor: pointer; font-weight: 600; margin-bottom: var(--s2); }
+.hl-laturi { width: 100%; border-collapse: collapse; font-size: var(--fs-xs); }
+.hl-laturi th, .hl-laturi td { text-align: left; padding: 2px 4px 2px 0; font-weight: normal; }
+.hl-laturi thead th { color: var(--text-3); }
+.hl-laturi tbody th { color: #ffd33d; font-weight: 700; white-space: nowrap; }
+.hl-laturi input { width: 4.5em; box-sizing: border-box; }
+.hl-plan { color: var(--text-2); white-space: nowrap; }
+.hl-plan.rau { color: var(--alarm-text, #ff7b72); }
+.hl-rezumat { margin: var(--s2) 0 0; font-size: var(--fs-xs); }
+.hl-avert { margin: var(--s1) 0 0; padding-left: 1.1em; color: var(--alarm-text, #ff7b72); font-size: var(--fs-xs); }
+.hl-avert:empty { display: none; }
+.hl-btns { display: flex; gap: var(--s2); flex-wrap: wrap; }
 .hs-linie { stroke: #ffd33d; stroke-dasharray: 6 4; fill: none; pointer-events: none; }
 .hs-pct { fill: #ffd33d; stroke: #000; pointer-events: none; }
 .hs-txt, .hbara-txt { fill: #fff; font: 600 11px system-ui, sans-serif; paint-order: stroke; stroke: rgba(0, 0, 0, .85); pointer-events: none; }
@@ -2186,10 +2209,14 @@ select.bife-sursa { display: none !important; }
 .tg-asistent { background: var(--surface-2); border-radius: var(--r1); padding: var(--s3); margin: var(--s2) 0 var(--s3); }
 .tg-pasi { margin: 0; padding-left: 1.2em; display: grid; gap: var(--s3); }
 .tg-pasi code { background: var(--line); padding: 0 4px; border-radius: 4px; }
-/* harta pe ecran ingust: bara se rupe pe randuri, iar rezumatul (caldura, ghidul scarii) are randul lui, nu se pierde in derulare */
+/* harta: rezumatul (caldura, ghidul scarii si al limitei) sta pe randul lui la ORICE latime —
+   altfel, cat trasezi limita, textul care se schimba la fiecare clic trecea pe doua randuri si
+   impingea planul in jos, iar clicul urmator cadea altundeva decat tintise omul */
+#harta .live-bar { flex-wrap: wrap; }
+#harta .live-bar > #harta-info { flex: 1 1 100%; min-height: 1.4em; }
+/* harta pe ecran ingust: bara se rupe pe randuri in loc sa se deruleze din vedere */
 @media (max-width: 800px) {
-  #harta .live-bar { flex-wrap: wrap; overflow-x: visible; }
-  #harta .live-bar > #harta-info { flex: 1 1 100%; }
+  #harta .live-bar { overflow-x: visible; }
   /* uneltele de editare: si ele pe randuri, altfel grupul (mai lat decat ecranul) le-ar scoate din vedere */
   #harta .live-bar > #harta-tools:not(.hidden) { display: flex; flex-wrap: wrap; gap: var(--s2); flex: 1 1 100%; }
 }

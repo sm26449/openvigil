@@ -7,7 +7,9 @@ import { S } from './state.js';
 import { $, ADMIN, html, lista, t, toast } from './00-core.js';
 import { post } from './10-live.js';
 import { openHD } from './20-hd.js';
+import { eroriCalibrare, metriLaPx, metriPePxX, pxLaMetri } from './24-harta-metrica.js';
 import { openCalibrare } from './26-harta-calibrare.js';
+import { limitaDesen, limitaInfo, limitaInit, limitaOpreste, limitaPanou, limitaTraseaza } from './27-harta-limita.js';
 /* ---------- Etapa 4: harta proprietatii ----------
    Un plan (imagine) cu camerele asezate si conurile lor de vedere. Pozitiile sunt fractii
    din imagine, deci SVG-ul de deasupra foloseste viewBox-ul imaginii si scaleaza singur.
@@ -18,6 +20,13 @@ let hartaPlanuri = [], hartaPid = localStorage.getItem('hartaPlan') || '', harta
 let hartaMasoara = null;   // masurarea scarii: null | [] | [{x,y}] (primul punct ales)
 const hartaMk = {};
 const hartaPlan = () => hartaPlanuri.find((p) => p.id === hartaPid) || hartaPlanuri[0];
+// raspunsul oricarei salvari aduce planul intreg (cu masura recalculata): il punem peste cel
+// tinut aici, pastrand _v (versiunea imaginii) si referintele celorlalte module
+function hartaActualizeaza(plan) {
+  const p = hartaPlanuri.find((x) => x.id === plan.id);
+  if (p) Object.assign(p, plan); else hartaPlanuri.push(plan);
+  renderHarta();
+}
 async function loadHarta() {
   try {
     const d = await (await fetch('/api/harta')).json();
@@ -43,11 +52,11 @@ function renderHarta() {
   hartaCardInchide();
   wrap.classList.toggle('edit', hartaEdit);
   $('#harta-tools').classList.toggle('hidden', !hartaEdit);
-  if (!hartaEdit) hartaMasoara = null;
+  if (!hartaEdit) { hartaMasoara = null; limitaOpreste(); }
   const calibrate = !!(p && Object.values(p.camere || {}).some((x) => x.calibrare));
   $('#harta-heat-ctl').classList.toggle('hidden', hartaEdit || !calibrate);
   if (hartaEdit || !calibrate) hartaHeatData = null;
-  wrap.classList.toggle('masoara', !!hartaMasoara);
+  wrap.classList.toggle('masoara', !!hartaMasoara || limitaTraseaza());
   $('#harta-scara').textContent = hartaMasoara ? t('Anulează scara') : t('Scara');
   $('#harta-scara-del').classList.toggle('hidden', !hartaEdit || !(p && p.scara));
   $('#harta-side').classList.toggle('hidden', !hartaEdit || !p);
@@ -76,11 +85,11 @@ function renderHarta() {
     else drawHarta();
   }
   const n = Object.keys(p.camere || {}).length;
-  $('#harta-info').textContent = hartaMasoara
+  $('#harta-info').textContent = limitaInfo() || (hartaMasoara
     ? (hartaMasoara.length ? t('Acum clic pe al doilea punct.') : t('Clic pe primul punct al unei distanțe pe care o știi (gard, latura casei).'))
     : hartaEdit ? t('{n} camere pe plan — trage camerele; click pe una o selectează', { n })
     : hartaHeatData ? hartaHeatText()
-    : t('{n} camere pe plan', { n });
+    : t('{n} camere pe plan', { n }));
   if (hartaEdit) renderHartaSide();
 }
 function drawHarta() {
@@ -94,7 +103,7 @@ function drawHarta() {
   // arata aceleasi puncte si litere; k = cati pixeli de imagine incap intr-un pixel de ecran
   const k = W / Math.max(1, svg.clientWidth || img.clientWidth || W);
   const names = Object.fromEntries(S.cameras.map((c) => [c.id, c]));
-  const mpp = hartaMpp(p, W, H);
+  const met = p.metrica;   // masura planului (server: plan_metrica.py), din limita sau din scara
   for (const [cid, pos] of Object.entries(p.camere || {})) {
     const c = names[+cid];
     if (!c) continue;
@@ -106,7 +115,7 @@ function drawHarta() {
     const pt = (a) => `${(cx + R * Math.sin(a)).toFixed(1)},${(cy - R * Math.cos(a)).toFixed(1)}`;
     // cu scara + inaltime + inclinare: zona de sol vazuta (cu pata oarba de sub camera);
     // altfel conul simbolic de raza fixa, ca pana acum
-    const sol = mpp ? hartaAmprenta(pos, mpp, cx, cy) : null;
+    const sol = met ? hartaAmprenta(pos, met, cx, cy) : null;
     const dCon = sol ? 'M' + sol.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' L') + ' Z'
       : `M${cx.toFixed(1)},${cy.toFixed(1)} L${pt(a1)} A${R},${R} 0 ${pos.fov > 180 ? 1 : 0} 1 ${pt(a2)} Z`;
     g.innerHTML = `<path class="con${sol ? ' sol' : ''}" style="stroke-width:${k}" d="${dCon}"/>`
@@ -128,7 +137,8 @@ function drawHarta() {
     svg.appendChild(g);
     hartaMk[c.id] = g;
   }
-  hartaScaraDesen(p, W, H, k, mpp);
+  hartaScaraDesen(p, W, H, k, met);
+  limitaDesen(svg, p, W, H, k);   // dupa camere: colturile limitei raman apucabile
   hartaHeatDesen();
   hartaLiveDesen();
   hartaStare();
@@ -244,23 +254,21 @@ async function hartaLive() {
 }
 setInterval(hartaLive, 2000);
 /* ---------- scara planului ----------
-   p.scara = doua puncte (fractii) + distanta reala in metri -> metri pe pixel de imagine. */
-function hartaMpp(p, W, H) {
-  const s = p && p.scara;
-  if (!s) return 0;
-  const d = Math.hypot((s.x2 - s.x1) * W, (s.y2 - s.y1) * H);
-  return d > 0 ? s.m / d : 0;
-}
+   p.scara = doua puncte (fractii) + distanta reala in metri. Masura folosita la desen vine
+   insa din p.metrica (limita proprietatii, daca are laturi cunoscute; altfel scara). */
 const SOL_MAX_M = 60;   // dincolo de atat (sau peste orizont) desenul se opreste
 /* Zona de sol vazuta, pentru o camera pinhole: razele de pe conturul cadrului (16:9,
    unghiul orizontal = deschiderea conului) intersectate cu solul, de la inaltimea data,
    inclinata in jos cu `inclinare`. Razele care nu ating solul (peste orizont) sau il ating
-   prea departe se taie la SOL_MAX_M. Intoarce puncte in pixeli de imagine sau null. */
-function hartaAmprenta(pos, mpp, cx, cy) {
+   prea departe se taie la SOL_MAX_M. Intoarce puncte in pixeli de imagine sau null.
+   Directia camerei e desenata pe plan (pixeli); pe teren o ducem prin masura planului (A),
+   ca zona sa fie corecta si pe o schita intinsa pe o directie. */
+function hartaAmprenta(pos, met, cx, cy) {
   if (!(pos.inaltime > 0) || pos.inclinare == null) return null;
   const rad = Math.PI / 180, h = pos.inaltime, th = pos.inclinare * rad;
   const tu = Math.tan(Math.min(pos.fov, 170) / 2 * rad), tv = tu * 9 / 16;
-  const fw = [Math.sin(pos.dir * rad), -Math.cos(pos.dir * rad)], dr = [-fw[1], fw[0]];
+  const fp = pxLaMetri(met, Math.sin(pos.dir * rad), -Math.cos(pos.dir * rad)), nf = Math.hypot(...fp) || 1;
+  const fw = [fp[0] / nf, fp[1] / nf], dr = [-fw[1], fw[0]];   // inainte / dreapta, in metri pe teren
   const N = 12, raze = [];
   for (let i = 0; i <= N; i++) raze.push([-tu + 2 * tu * i / N, -tv]);   // marginea de jos
   for (let i = 1; i <= N; i++) raze.push([tu, -tv + 2 * tv * i / N]);    // dreapta
@@ -272,11 +280,12 @@ function hartaAmprenta(pos, mpp, cx, cy) {
     if (fz < -1e-6) { const tt = h / -fz; F = tt * fx; L = tt * u; } else { F = fx * 1e6; L = u * 1e6; }
     const d = Math.hypot(F, L);
     if (d > SOL_MAX_M) { F *= SOL_MAX_M / d; L *= SOL_MAX_M / d; }
-    return [cx + (F * fw[0] + L * dr[0]) / mpp, cy + (F * fw[1] + L * dr[1]) / mpp];
+    const [dx, dy] = metriLaPx(met, F * fw[0] + L * dr[0], F * fw[1] + L * dr[1]);
+    return [cx + dx, cy + dy];
   });
 }
 // bara de scara (stanga jos) pe orice plan cu scara; in editare si linia masurata
-function hartaScaraDesen(p, W, H, k, mpp) {
+function hartaScaraDesen(p, W, H, k, met) {
   const svg = $('#harta-svg'), NS = 'http://www.w3.org/2000/svg';
   const el = (tag, attrs, text) => {
     const e = document.createElementNS(NS, tag);
@@ -285,7 +294,7 @@ function hartaScaraDesen(p, W, H, k, mpp) {
     svg.appendChild(e); return e;
   };
   const pct = (x, y) => el('circle', { class: 'hs-pct', cx: x, cy: y, r: 4 * k, 'stroke-width': k });
-  if (hartaEdit && p.scara && !hartaMasoara) {
+  if (hartaEdit && p.scara && !hartaMasoara && (!met || met.sursa === 'scara')) {
     const s = p.scara, x1 = s.x1 * W, y1 = s.y1 * H, x2 = s.x2 * W, y2 = s.y2 * H;
     el('line', { class: 'hs-linie', x1, y1, x2, y2, 'stroke-width': 2 * k, 'stroke-dasharray': `${6 * k} ${4 * k}` });
     pct(x1, y1); pct(x2, y2);
@@ -293,7 +302,8 @@ function hartaScaraDesen(p, W, H, k, mpp) {
       `${String(s.m).replace('.', ',')} m`);
   }
   if (hartaMasoara && hartaMasoara.length) pct(hartaMasoara[0].x * W, hartaMasoara[0].y * H);
-  if (!mpp) return;
+  if (!met) return;
+  const mpp = metriPePxX(met);   // bara e orizontala: metri pe pixel pe orizontala
   const tinta = 120 * k * mpp;   // ~120 px de ecran, in metri
   const m = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000].filter((x) => x <= tinta).pop() || 1;
   const L = m / mpp, x0 = 16 * k, y0 = H - 16 * k, tic = 6 * k;
@@ -317,11 +327,11 @@ $('#harta-svg').addEventListener('pointerdown', async (e) => {
   if (!(m > 0)) { if (txt != null) toast(t('Distanța trebuie să fie un număr de metri.'), true); renderHarta(); return; }
   const p = hartaPlan();
   const d = await post('/api/harta', { id: p.id, scara: { x1: a.x, y1: a.y, x2: f.x, y2: f.y, m } });
-  if (d && !d.error) { p.scara = d.plan.scara; toast(t('Scara a fost salvată.')); }
-  renderHarta();
+  if (d && !d.error) { toast(t('Scara a fost salvată.')); hartaActualizeaza(d.plan); } else renderHarta();
 }, true);
 $('#harta-scara').onclick = () => {
   if (!hartaPlan() || !hartaPlan().imagine) { toast(t('Încarcă întâi imaginea planului'), true); return; }
+  limitaOpreste();
   hartaMasoara = hartaMasoara ? null : [];
   renderHarta();
 };
@@ -329,7 +339,7 @@ $('#harta-scara-del').onclick = async () => {
   const p = hartaPlan(); if (!p || !p.scara) return;
   if (!confirm(t('Ștergi scara planului? Camerele revin la conul simplu.'))) return;
   const d = await post('/api/harta', { id: p.id, scara: null });
-  if (d && !d.error) { p.scara = null; renderHarta(); }
+  if (d && !d.error) hartaActualizeaza(d.plan);
 };
 function hartaDrag(g, c, pos) {
   const svg = $('#harta-svg'), img = $('#harta-img');
@@ -367,11 +377,12 @@ async function hartaSave(camere) {
   const p = hartaPlan();
   if (!p) return;
   const d = await post('/api/harta', { id: p.id, camere });
-  if (d && !d.error) { p.camere = d.plan.camere; drawHarta(); renderHartaSide(); $('#harta-info').textContent = t('{n} camere pe plan — salvat ✓', { n: Object.keys(p.camere).length }); }
+  if (d && !d.error) { hartaActualizeaza(d.plan); $('#harta-info').textContent = t('{n} camere pe plan — salvat ✓', { n: Object.keys(p.camere).length }); }
 }
 function renderHartaSide() {
   const p = hartaPlan();
   if (!p) return;
+  limitaPanou(p);
   const placed = new Set(Object.keys(p.camere || {}).map(Number));
   const libere = S.cameras.filter((c) => !placed.has(c.id));
   $('#harta-unplaced').innerHTML = lista(libere, (c) => html`<div class="u-row" data-id="${c.id}"><b>${c.id}.</b> ${c.name}</div>`,
@@ -395,7 +406,7 @@ function renderHartaSide() {
   const calib = pos.calibrare;
   $('#harta-cal-del').classList.toggle('hidden', !calib);
   $('#harta-cal-open').textContent = calib ? t('Refă calibrarea') : t('Calibrează pe plan');
-  $('#harta-cal-stare').textContent = calib ? t('Calibrată: {n} puncte, {err}.', { n: calib.perechi.length, err: hartaEroareText(calib.eroare) })
+  $('#harta-cal-stare').textContent = calib ? t('Calibrată: {n} puncte, {err}.', { n: calib.perechi.length, err: hartaEroareText(calib, p.metrica) })
     : t('Necalibrată: detecțiile ei nu apar ca puncte pe hartă.');
   const th = $('#harta-thumb');
   if (th.dataset.cam !== String(hartaSel)) { th.dataset.cam = hartaSel; th.src = `/api/thumb/${hartaSel}?t=${Date.now()}`; }
@@ -420,27 +431,23 @@ function hartaSol(pos) {
     ? t('Vede solul de la ~{a} m până la orizont (unghi vertical ~{v}°).', { a: m(aproape), v: Math.round(v) })
     : t('Vede solul de la ~{a} m până la ~{b} m (unghi vertical ~{v}°).', { a: m(aproape), b: m(pos.inaltime / Math.tan(sus * rad)), v: Math.round(v) });
 }
-const hartaMppAcum = () => { const img = $('#harta-img'); return hartaMpp(hartaPlan(), img.naturalWidth || 1, img.naturalHeight || 1); };
-function hartaEroareText(e) {
-  const mpp = hartaMppAcum(), img = $('#harta-img');
-  // eroarea e in fractii din plan: cu scara o dam in metri (pe latura lunga a planului)
-  return mpp ? t('eroare maximă ~{m} m', { m: (e * mpp * Math.max(img.naturalWidth, img.naturalHeight)).toFixed(1).replace('.', ',') })
+// cea mai mare abatere a perechilor calibrarii: in metri cu masura planului, altfel % din plan
+function hartaEroareText(calib, met) {
+  const e = Math.max(...eroriCalibrare(calib.perechi, calib.h, met));
+  return met ? t('eroare maximă ~{m} m', { m: e.toFixed(1).replace('.', ',') })
              : t('eroare maximă {p}% din plan', { p: (e * 100).toFixed(1).replace('.', ',') });
 }
 $('#harta-cal-open').onclick = () => {
   const p = hartaPlan(), c = S.cameras.find((x) => x.id === hartaSel);
   if (!p || !c) return;
   if (!p.imagine) { toast(t('Încarcă întâi imaginea planului'), true); return; }
-  const img = $('#harta-img');
-  openCalibrare(p, c, hartaMppAcum() * Math.max(img.naturalWidth, img.naturalHeight), (plan) => {
-    p.camere = plan.camere; drawHarta(); renderHartaSide();
-  });
+  openCalibrare(p, c, hartaActualizeaza);
 };
 $('#harta-cal-del').onclick = async () => {
   const p = hartaPlan(); if (!p || hartaSel === null) return;
   if (!confirm(t('Ștergi calibrarea camerei? Detecțiile ei nu vor mai apărea pe hartă.'))) return;
   const d = await post('/api/harta', { id: p.id, cam: hartaSel, calibrare: null });
-  if (d && !d.error) { p.camere = d.plan.camere; drawHarta(); renderHartaSide(); }
+  if (d && !d.error) hartaActualizeaza(d.plan);
 };
 const hartaPos = () => { const p = hartaPlan(); return p && hartaSel !== null ? (p.camere || {})[hartaSel] : null; };
 $('#harta-dir').oninput = () => { const pos = hartaPos(); if (pos) { pos.dir = +$('#harta-dir').value; hartaValori(pos); drawHarta(); } };
@@ -592,5 +599,8 @@ function hartaCritic(camId) {
   g.classList.add('critic');
   setTimeout(() => g.classList.remove('critic'), 8000);
 }
+
+limitaInit({ plan: hartaPlan, edit: () => hartaEdit, reda: renderHarta, actualizeaza: hartaActualizeaza,
+             alteModuri: () => { hartaMasoara = null; } });
 
 export { hartaCritic, hartaEvents, loadHarta };
