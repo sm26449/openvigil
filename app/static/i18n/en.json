@@ -298,7 +298,7 @@
   "Alarma falsă": "False alarm",
   "Alarma I/O": "I/O alarm",
   "Alarmă raportată de cameră (mișcare, linie trecută, intrare în zonă)": "Alarm reported by the camera (motion, line crossed, zone entry)",
-  "Alarma sonora": "Audible alarm",
+  "Alarmă sonoră": "Audible alarm",
   "Alarme": "Alarms",
   "Alarmele nu se mai afișează cadru cu cadru: cele apropiate de pe aceeași camera devin o singură întâmplare, cu interval și număr de cadre. Cu 300 de secunde, o zi de 5800 de cadre devine circa 600 de întâmplări. Prea mic și revii la lista interminabilă; prea mare și întâmplări diferite ajung lipite. O întâmplare se taie oricum la 30 de minute.": "Alarms are no longer shown frame by frame: nearby ones from the same camera become a single occurrence, with a time span and frame count. With 300 seconds, a day of 5800 frames becomes about 600 occurrences. Too small and you are back to the endless list; too large and different occurrences get glued together. An occurrence is cut at 30 minutes anyway.",
   "Alarmă": "Alarm",
