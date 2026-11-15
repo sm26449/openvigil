@@ -5,7 +5,7 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 
 ## [Unreleased]
 
-## [2.2.0] — în pregătire (candidat: 2.2.0-rc6)
+## [2.2.0] — în pregătire (candidat: 2.2.0-rc7)
 
 **Highlights (English)** — Faster triage, a calmer and more accessible interface, a persistent
 semantic search index, system alerts that are not forgotten, and a property map that shows
@@ -160,6 +160,8 @@ where things happen. **Where to find each feature and how to use it, with screen
   își înregistrează tipul la următoarea folosire (vectorii nu mai vin ca octeți bruți).
 
 ### Intern
+- **Release candidați publici:** un tag `vX.Y.Z-rcN` construiește și publică imaginea
+  `:X.Y.Z-rcN` (fără să mute `:latest`) și un pre-release pe GitHub, cu notele secțiunii `[X.Y.Z]`.
 - Teste noi: accesibilitate automată cu axe-core pe desktop, telefon și telefon culcat (inclusiv
   controale strivite), triaj și glisare, rezumatul de absență, asistentul Telegram, alegerea
   fluxului HD, bifele, contractul stării partajate (`state.js`), diacriticele

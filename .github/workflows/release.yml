@@ -1,13 +1,16 @@
 # Release: la un tag `vX.Y.Z` construieste imaginea cu versiunea in ea, o testeaza, o publica
 # in GitHub Container Registry (ghcr.io/sm26449/openvigil:X.Y.Z si :latest) si creeaza
 # release-ul pe GitHub cu notele din CHANGELOG.md. Doar amd64 (CUDA).
+# Un tag `vX.Y.Z-rcN` face un release CANDIDAT: imaginea doar ca :X.Y.Z-rcN (fara :latest),
+# release-ul marcat pre-release, cu notele sectiunii [X.Y.Z] din CHANGELOG.md.
 #
 #   git tag -a v1.0.0 -m "1.0.0" && git push origin v1.0.0
+#   git tag -a v1.1.0-rc1 -m "1.1.0-rc1" && git push origin v1.1.0-rc1
 name: Release
 
 on:
   push:
-    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+    tags: ["v[0-9]+.[0-9]+.[0-9]+", "v[0-9]+.[0-9]+.[0-9]+-rc[0-9]+"]
 
 permissions:
   contents: write
@@ -43,8 +46,11 @@ jobs:
       - name: Versiunea din tag
         id: v
         run: |
-          echo "versiune=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-          grep -q "^## \[${GITHUB_REF_NAME#v}\]" CHANGELOG.md || { echo "CHANGELOG.md nu are sectiunea [${GITHUB_REF_NAME#v}]"; exit 1; }
+          versiune="${GITHUB_REF_NAME#v}"
+          baza="${versiune%%-rc*}"                       # 2.2.0-rc7 -> 2.2.0 (sectiunea din CHANGELOG)
+          rc=$([ "$baza" != "$versiune" ] && echo true || echo false)
+          { echo "versiune=$versiune"; echo "baza=$baza"; echo "rc=$rc"; } >> "$GITHUB_OUTPUT"
+          grep -q "^## \[$baza\]" CHANGELOG.md || { echo "CHANGELOG.md nu are sectiunea [$baza]"; exit 1; }
 
       - name: Loc pe disc (imaginea are ~11 GB)
         run: |
@@ -70,16 +76,24 @@ jobs:
       - name: Publicare in GHCR
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-          docker tag "$IMAGINE:${{ steps.v.outputs.versiune }}" "$IMAGINE:latest"
           docker push "$IMAGINE:${{ steps.v.outputs.versiune }}"
-          docker push "$IMAGINE:latest"
+          # un candidat NU muta :latest — cine instaleaza fara versiune ramane pe ultima stabila
+          if [ "${{ steps.v.outputs.rc }}" != "true" ]; then
+            docker tag "$IMAGINE:${{ steps.v.outputs.versiune }}" "$IMAGINE:latest"
+            docker push "$IMAGINE:latest"
+          fi
 
       - name: Notele din CHANGELOG
         run: |
-          awk -v v="${{ steps.v.outputs.versiune }}" '
+          if [ "${{ steps.v.outputs.rc }}" = "true" ]; then
+            printf '> **Release candidate** for %s — for testing; the stable `:latest` image is not changed.\n\n' "${{ steps.v.outputs.baza }}" > note.md
+          else
+            : > note.md
+          fi
+          awk -v v="${{ steps.v.outputs.baza }}" '
             $0 ~ "^## \\[" v "\\]" {p=1; next}
             p && /^## \[/ {exit}
-            p {print}' CHANGELOG.md > note.md
+            p {print}' CHANGELOG.md >> note.md
           printf '\n---\nImagine: `docker pull %s:%s` · instalare: `git clone https://github.com/%s.git && cd openvigil && sudo ./install.sh`\n' \
             "$IMAGINE" "${{ steps.v.outputs.versiune }}" "${{ github.repository }}" >> note.md
           cat note.md
@@ -87,4 +101,6 @@ jobs:
       - name: Release pe GitHub
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "$GITHUB_REF_NAME" --title "OpenVigil ${{ steps.v.outputs.versiune }}" --notes-file note.md
+        run: |
+          pre=$([ "${{ steps.v.outputs.rc }}" = "true" ] && echo "--prerelease" || echo "")
+          gh release create "$GITHUB_REF_NAME" --title "OpenVigil ${{ steps.v.outputs.versiune }}" --notes-file note.md $pre
