@@ -1584,7 +1584,14 @@ body.viewer .act-only { display: none !important; }
 .io-row button:hover { background: var(--accent); color: #fff; }
 .io-row button.on { background: var(--alarm); color: #fff; }
 .io-row button:disabled { opacity: .5; }
-.harta-body { display: flex; gap: var(--s3); align-items: flex-start; }
+.harta-body { display: flex; gap: var(--s3); align-items: flex-start; position: relative; }
+.harta-card { position: absolute; z-index: 5; width: min(300px, calc(100% - 16px)); box-sizing: border-box; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r2); padding: var(--s3); box-shadow: 0 8px 24px rgba(0, 0, 0, .45); font-size: var(--fs-sm); }
+.harta-card.hidden { display: none; }
+.harta-card-cap { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); margin-bottom: var(--s2); }
+.harta-card-cap h3 { margin: 0; font-size: var(--fs-sm); }
+#harta-card-info { margin: 0 0 var(--s2); font-size: var(--fs-xs); }
+.harta-card-act { display: flex; gap: var(--s2); }
+.harta-card-act button { flex: 1; }
 .harta-wrap { position: relative; flex: 1; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r2); overflow: hidden; min-height: 240px; }
 .harta-wrap img { display: block; width: 100%; height: auto; user-select: none; -webkit-user-drag: none; }
 .harta-wrap img:not([src]) { display: none; }
@@ -1598,6 +1605,13 @@ body.viewer .act-only { display: none !important; }
 #harta-side input[type=range] { width: 100%; }
 #harta-side button { background: var(--line); color: var(--text); border: 0; border-radius: var(--r1); padding: var(--s1) var(--s3); cursor: pointer; font-size: var(--fs-xs); margin-top: var(--s2); }
 #harta-unplaced .u-row { cursor: pointer; }
+.harta-thumb { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: var(--surface-2); border-radius: var(--r1); margin-bottom: var(--s2); }
+#harta-side output { float: right; color: var(--text); font-variant-numeric: tabular-nums; }
+.harta-geo { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2); }
+.harta-geo label { margin: var(--s2) 0 0; }
+.harta-geo input { width: 100%; box-sizing: border-box; margin-top: 2px; }
+#harta-sol { margin: var(--s2) 0 0; font-size: var(--fs-xs); }
+#harta-sol:empty { display: none; }
 .hm { cursor: pointer; }
 .hm .con { fill: rgba(88, 166, 255, .22); stroke: rgba(88, 166, 255, .6); stroke-width: 1; }
 .hm .pct { fill: var(--surface-2); stroke: var(--ok-hi); stroke-width: 2.5; }

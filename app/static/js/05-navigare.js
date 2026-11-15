@@ -194,7 +194,7 @@ const OVERLAY_CLOSE = [['#mask-overlay', '#mask-close'], ['#heat-overlay', '#hea
   ['#program-overlay', '#program-close']];
 // se inchid cu Esc, dar NU sunt modale (MODALE de mai jos ar ineria fundalul): panoul camerei e un
 // sertar lateral — din lista se poate trece direct la alta camera cat timp e deschis
-const ESC_INCHIDE = [['#cam-panel', '#cam-panel-close']];
+const ESC_INCHIDE = [['#cam-panel', '#cam-panel-close'], ['#harta-card', '#harta-card-x']];
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;           // si din campurile formularului (focusul e in overlay)
   if (meDlg && meDlg.open) return;                      // dialogul nativ se inchide singur

@@ -38,6 +38,18 @@ def test_planuri_si_pozitii():
     assert harta.lista()[0]["nume"] == "Casa"
 
 
+def test_geometria_montajului():
+    p = harta.plan_nou("A")
+    harta.aseaza(p["id"], {"5": {"x": 0.5, "y": 0.5, "inaltime": "3.25", "inclinare": 30},
+                           "6": {"x": 0.5, "y": 0.5, "inaltime": "", "inclinare": None}})
+    cams = harta.lista()[0]["camere"]
+    assert cams["5"]["inaltime"] == 3.2 and cams["5"]["inclinare"] == 30.0
+    assert "inaltime" not in cams["6"] and "inclinare" not in cams["6"]   # necunoscute
+    for rau in ({"inaltime": -1}, {"inaltime": 51}, {"inclinare": 91}, {"inclinare": "abc"}):
+        with pytest.raises(ValueError):
+            harta.aseaza(p["id"], {"5": {"x": 0.5, "y": 0.5, **rau}})
+
+
 def test_o_camera_pe_un_singur_plan():
     a = harta.plan_nou("A")
     b = harta.plan_nou("B")

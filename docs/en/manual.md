@@ -700,9 +700,15 @@ Telegram remains the fallback channel, it does not depend on any phone.
   the property plan (sketch, satellite screenshot; PNG/JPEG/WebP ≤ 8 MB) with the cameras
   placed on it and their view cones. Markers show the state (green = recording, grey =
   not writing, blue = detection, pulsing red = alarm; a critical incident makes the marker
-  pulse), click opens the HD view. Admin → "Edit": new plan, upload the image,
-  click an unplaced camera to put it in the middle, drag it into place, the direction and aperture of
-  the cone from the side panel. Multiple plans (yard, ground floor, upper floor) — the selector appears
+  pulse). Clicking a camera opens a card next to it with its image (refreshed every 5 s),
+  the mounting details and "Open HD" / "Recordings" buttons — so you can check that what it
+  films matches its place and cone on the plan; Esc or a click outside closes it. Admin →
+  "Edit": new plan, upload the image, click an unplaced camera to put it in the middle, drag
+  it into place; the side panel shows the selected camera's image, the direction and aperture
+  of the cone and, optionally, the mounting height (m) and tilt (degrees below horizontal;
+  0 = looking straight ahead, 90 = straight down). From these the panel estimates which
+  stretch of ground the camera sees (the vertical angle is derived from the horizontal one
+  for a 16:9 frame — an approximation for checking the mount). An empty field = unknown. Multiple plans (yard, ground floor, upper floor) — the selector appears
   when there are at least two. A restricted account sees only its own cameras on the map.
 - **Critical pop-up** (Live bar): on a new critical incident, the camera's tile enlarges for
   8 seconds and is brought into view (like "layout switch on event").

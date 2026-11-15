@@ -146,14 +146,26 @@
       <svg id="harta-svg" aria-label="Camerele pe plan"></svg>
       <p id="harta-empty" class="hint hidden"></p>
     </div>
+    <div id="harta-card" class="harta-card hidden" role="dialog" aria-labelledby="harta-card-name">
+      <div class="harta-card-cap"><h3 id="harta-card-name"></h3><button id="harta-card-x" class="link-btn" aria-label="Închide">✕</button></div>
+      <img id="harta-card-img" class="harta-thumb" alt="Imaginea camerei">
+      <p id="harta-card-info" class="hint"></p>
+      <div class="harta-card-act"><button id="harta-card-hd">Deschide HD</button><button id="harta-card-pb">Înregistrări</button></div>
+    </div>
     <aside id="harta-side" class="hidden">
       <h3>Camere neașezate</h3>
       <p class="hint">Clic pe o cameră o pune în mijlocul planului; apoi trage-o la loc.</p>
       <div id="harta-unplaced"></div>
       <div id="harta-sel" class="hidden">
         <h3 id="harta-sel-name"></h3>
-        <label>Direcția privirii <input id="harta-dir" type="range" min="0" max="359" step="1"></label>
-        <label>Deschiderea conului <input id="harta-fov" type="range" min="10" max="180" step="5"></label>
+        <img id="harta-thumb" class="harta-thumb" alt="Imaginea camerei selectate">
+        <label>Direcția privirii <output id="harta-dir-v"></output><input id="harta-dir" type="range" min="0" max="359" step="1"></label>
+        <label>Deschiderea conului <output id="harta-fov-v"></output><input id="harta-fov" type="range" min="10" max="180" step="5"></label>
+        <div class="harta-geo">
+          <label>Înălțimea (m) <input id="harta-h" type="text" inputmode="decimal" maxlength="5" placeholder="necunoscută"></label>
+          <label>Înclinarea (° sub orizontală) <input id="harta-tilt" type="text" inputmode="decimal" maxlength="4" placeholder="necunoscută"></label>
+        </div>
+        <p id="harta-sol" class="hint"></p>
         <button id="harta-unplace">Scoate de pe plan</button>
       </div>
     </aside>

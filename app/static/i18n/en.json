@@ -2649,5 +2649,21 @@
   "⏰ Camera {cam} ({ip}) e tot OFFLINE, de {durata}": "⏰ Camera {cam} ({ip}) is still OFFLINE, for {durata}",
   " după {durata}": " after {durata}",
   "✅ {cam}: înregistrarea scrie din nou": "✅ {cam}: recording is writing again",
-  "Opțional: un serviciu extern de alerte (contractul POST /v1/fire) primește alertele de sistem — cameră sau NVR căzut, disc plin, înregistrare oprită, copie de siguranță, rezumatul zilei — și decide canalele (Telegram, SMS, email), pauzele și confirmarea. Detecțiile cu poză rămân pe botul de mai sus; intrușii confirmați primesc și o copie acolo. Dacă serviciul nu răspunde, alertele pleacă pe botul propriu.": "Optional: an external alert service (the POST /v1/fire contract) receives the system alerts — camera or NVR down, disk full, recording stopped, backup, daily summary — and decides the channels (Telegram, SMS, email), pauses and acknowledgement. Detections with a photo stay on the bot above; confirmed intruders also get a copy there. If the service does not answer, alerts go out on the built-in bot."
+  "Opțional: un serviciu extern de alerte (contractul POST /v1/fire) primește alertele de sistem — cameră sau NVR căzut, disc plin, înregistrare oprită, copie de siguranță, rezumatul zilei — și decide canalele (Telegram, SMS, email), pauzele și confirmarea. Detecțiile cu poză rămân pe botul de mai sus; intrușii confirmați primesc și o copie acolo. Dacă serviciul nu răspunde, alertele pleacă pe botul propriu.": "Optional: an external alert service (the POST /v1/fire contract) receives the system alerts — camera or NVR down, disk full, recording stopped, backup, daily summary — and decides the channels (Telegram, SMS, email), pauses and acknowledgement. Detections with a photo stay on the bot above; confirmed intruders also get a copy there. If the service does not answer, alerts go out on the built-in bot.",
+  "înălțime invalidă (0–50 m)": "invalid height (0–50 m)",
+  "înclinare invalidă (0–90°)": "invalid tilt (0–90°)",
+  "Imaginea camerei": "Camera image",
+  "Deschide HD": "Open HD",
+  "Imaginea camerei selectate": "Image of the selected camera",
+  "Înălțimea (m)": "Height (m)",
+  "necunoscută": "unknown",
+  "Înclinarea (° sub orizontală)": "Tilt (° below horizontal)",
+  "{nume} — arată imaginea camerei": "{nume} — show the camera image",
+  "{nume} — clic pentru imaginea camerei": "{nume} — click for the camera image",
+  "Vede solul de la ~{a} m până la orizont (unghi vertical ~{v}°).": "Sees the ground from ~{a} m up to the horizon (vertical angle ~{v}°).",
+  "Vede solul de la ~{a} m până la ~{b} m (unghi vertical ~{v}°).": "Sees the ground from ~{a} m to ~{b} m (vertical angle ~{v}°).",
+  "Valoare între 0 și {max}": "Value between 0 and {max}",
+  "înălțime {h} m": "height {h} m",
+  "înclinare {u}°": "tilt {u}°",
+  "direcție {d}°, con {f}°": "direction {d}°, cone {f}°"
 }

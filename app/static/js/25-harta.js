@@ -36,6 +36,7 @@ function renderHarta() {
   const img = $('#harta-img'), svg = $('#harta-svg'), wrap = $('#harta-wrap'), empty = $('#harta-empty');
   for (const k in hartaMk) delete hartaMk[k];
   svg.innerHTML = '';
+  hartaCardInchide();
   wrap.classList.toggle('edit', hartaEdit);
   $('#harta-tools').classList.toggle('hidden', !hartaEdit);
   $('#harta-side').classList.toggle('hidden', !hartaEdit || !p);
@@ -94,15 +95,15 @@ function drawHarta() {
     g.querySelector('text').textContent = `${c.id}. ${c.name}`;
     g.querySelector('text').setAttribute('font-size', (12 * k).toFixed(2));
     if (!hartaEdit) {
-      g.onclick = () => openHD(c);
+      g.onclick = () => hartaCard(c);
       // focusabil + nume accesibil + Enter/Space, ca marcajele sa poata fi deschise si de la
       // tastatura, nu doar cu mouse-ul (audit H3)
       g.setAttribute('tabindex', '0');
       g.setAttribute('role', 'button');
-      g.setAttribute('aria-label', t('{nume} — deschide HD', { nume: c.name }));
-      g.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openHD(c); } };
+      g.setAttribute('aria-label', t('{nume} — arată imaginea camerei', { nume: c.name }));
+      g.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); hartaCard(c); } };
       const ttl = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-      ttl.textContent = t('{nume} — click pentru HD', { nume: c.name }); g.appendChild(ttl);
+      ttl.textContent = t('{nume} — clic pentru imaginea camerei', { nume: c.name }); g.appendChild(ttl);
     } else hartaDrag(g, c, pos);
     svg.appendChild(g);
     hartaMk[c.id] = g;
@@ -166,11 +167,61 @@ function renderHartaSide() {
   if (!pos) return;
   const c = S.cameras.find((x) => x.id === hartaSel);
   $('#harta-sel-name').textContent = c ? `${c.id}. ${c.name}` : t('cam {id}', { id: hartaSel });
-  $('#harta-dir').value = pos.dir; $('#harta-fov').value = pos.fov;
+  // raspunsul unei salvari redeseneaza panoul: nu suprascriem campul in care scrii chiar acum
+  const pune = (id, v) => { const el = $(id); if (el !== document.activeElement) el.value = v; };
+  pune('#harta-dir', pos.dir); pune('#harta-fov', pos.fov);
+  pune('#harta-h', pos.inaltime ?? ''); pune('#harta-tilt', pos.inclinare ?? '');
+  const th = $('#harta-thumb');
+  if (th.dataset.cam !== String(hartaSel)) { th.dataset.cam = hartaSel; th.src = `/api/thumb/${hartaSel}?t=${Date.now()}`; }
+  hartaValori(pos);
 }
-$('#harta-dir').oninput = () => { const p = hartaPlan(); const pos = p && p.camere[hartaSel]; if (pos) { pos.dir = +$('#harta-dir').value; drawHarta(); } };
-$('#harta-fov').oninput = () => { const p = hartaPlan(); const pos = p && p.camere[hartaSel]; if (pos) { pos.fov = +$('#harta-fov').value; drawHarta(); } };
-$('#harta-dir').onchange = $('#harta-fov').onchange = () => { const p = hartaPlan(); const pos = p && p.camere[hartaSel]; if (pos) hartaSave({ [hartaSel]: pos }); };
+/* Valorile afisate langa glisoare + cat sol acopera camera, din inaltime, inclinare si
+   deschidere. Unghiul vertical se estimeaza din cel orizontal pentru un cadru 16:9;
+   e o aproximare ca sa verifici montajul, nu o masuratoare. */
+function hartaValori(pos) {
+  $('#harta-dir-v').textContent = `${Math.round(pos.dir)}°`;
+  $('#harta-fov-v').textContent = `${Math.round(pos.fov)}°`;
+  $('#harta-sol').textContent = hartaSol(pos);
+}
+function hartaSol(pos) {
+  if (pos.inaltime == null || pos.inclinare == null || !pos.inaltime) return '';
+  const rad = Math.PI / 180;
+  const v = 2 * Math.atan(Math.tan(pos.fov / 2 * rad) * 9 / 16) / rad;
+  const sus = pos.inclinare - v / 2, jos = pos.inclinare + v / 2;
+  const m = (x) => x < 10 ? x.toFixed(1) : String(Math.round(x));
+  const aproape = jos >= 90 ? 0 : pos.inaltime / Math.tan(jos * rad);
+  return sus <= 0
+    ? t('Vede solul de la ~{a} m până la orizont (unghi vertical ~{v}°).', { a: m(aproape), v: Math.round(v) })
+    : t('Vede solul de la ~{a} m până la ~{b} m (unghi vertical ~{v}°).', { a: m(aproape), b: m(pos.inaltime / Math.tan(sus * rad)), v: Math.round(v) });
+}
+const hartaPos = () => { const p = hartaPlan(); return p && hartaSel !== null ? (p.camere || {})[hartaSel] : null; };
+$('#harta-dir').oninput = () => { const pos = hartaPos(); if (pos) { pos.dir = +$('#harta-dir').value; hartaValori(pos); drawHarta(); } };
+$('#harta-fov').oninput = () => { const pos = hartaPos(); if (pos) { pos.fov = +$('#harta-fov').value; hartaValori(pos); drawHarta(); } };
+$('#harta-dir').onchange = $('#harta-fov').onchange = () => { const pos = hartaPos(); if (pos) hartaSave({ [hartaSel]: pos }); };
+// inaltimea si inclinarea: gol = necunoscuta (cheia dispare); valorile invalide le refuza serverul
+for (const [id, cheie, max] of [['#harta-h', 'inaltime', 50], ['#harta-tilt', 'inclinare', 90]]) {
+  $(id).onchange = () => {
+    const pos = hartaPos(); if (!pos) return;
+    const el = $(id), txt = el.value.trim().replace(',', '.');
+    if (txt === '') delete pos[cheie];
+    else {
+      const val = Number(txt);
+      if (!Number.isFinite(val) || val < 0 || val > max) { toast(t('Valoare între 0 și {max}', { max }), true); el.value = pos[cheie] ?? ''; return; }
+      pos[cheie] = val;
+    }
+    hartaValori(pos);
+    hartaSave({ [hartaSel]: pos });
+  };
+}
+// miniatura camerei selectate se improspateaza cat timp editezi harta (un cadru, nu un flux)
+setInterval(() => {
+  if (document.hidden || hartaSel === null || $('#harta').classList.contains('hidden')) return;
+  const card = !$('#harta-card').classList.contains('hidden');
+  if (!hartaEdit && !card) return;
+  const th = $(hartaEdit ? '#harta-thumb' : '#harta-card-img'), id = hartaSel, nou = new Image();
+  nou.onload = () => { if (hartaSel === id) th.src = nou.src; };
+  nou.src = `/api/thumb/${id}?t=${Date.now()}`;
+}, 5000);
 $('#harta-unplace').onclick = () => { if (hartaSel !== null) { const id = hartaSel; hartaSel = null; hartaSave({ [id]: null }); } };
 $('#harta-edit').onclick = () => { hartaEdit = !hartaEdit; $('#harta-edit').textContent = hartaEdit ? t('Gata') : t('Editează'); hartaSel = null; loadHarta(); };
 $('#harta-plan').onchange = () => { hartaPid = $('#harta-plan').value; localStorage.setItem('hartaPlan', hartaPid); hartaSel = null; renderHarta(); };
@@ -206,6 +257,69 @@ $('#harta-file').onchange = async () => {
   p._v = Date.now();
   loadHarta().then(() => { hartaPlan()._v = p._v; renderHarta(); });
 };
+/* Cardul din modul vizualizare: clic pe o camera -> imaginea ei langa marcaj, ca sa vezi
+   daca ce filmeaza se potriveste cu locul si conul de pe plan. HD / Inregistrari din card. */
+let hartaCardCam = null;
+function hartaCard(c) {
+  const p = hartaPlan(), pos = p && (p.camere || {})[c.id];
+  if (!pos) return;
+  hartaSel = c.id; hartaCardCam = c;
+  for (const [id, m] of Object.entries(hartaMk)) m.classList.toggle('sel', +id === c.id);
+  const card = $('#harta-card'), img = $('#harta-card-img');
+  $('#harta-card-name').textContent = `${c.id}. ${c.name}`;
+  if (img.dataset.cam !== String(c.id)) { img.dataset.cam = c.id; img.removeAttribute('src'); }
+  img.src = `/api/thumb/${c.id}?t=${Date.now()}`;
+  const mont = [
+    pos.inaltime != null ? t('înălțime {h} m', { h: pos.inaltime }) : '',
+    pos.inclinare != null ? t('înclinare {u}°', { u: pos.inclinare }) : '',
+    t('direcție {d}°, con {f}°', { d: Math.round(pos.dir), f: Math.round(pos.fov) }),
+  ].filter(Boolean).join(' · ');
+  $('#harta-card-info').textContent = [mont, hartaSol(pos)].filter(Boolean).join('. ');
+  card.classList.remove('hidden');
+  // Asezarea: cardul nu trebuie sa acopere conul (exact ce compari cu imaginea). Pe ecran
+  // ingust (telefon) sta sub harta; altfel langa marcaj, in partea opusa conului — pe
+  // orizontala dupa sin(dir), pe verticala dupa cos(dir) — si tinut in zona hartii.
+  const body = $('.harta-body').getBoundingClientRect(), wr = $('#harta-wrap').getBoundingClientRect();
+  const w = card.offsetWidth, h = card.offsetHeight, gap = 18;
+  let x, y;
+  if (body.width < 600) {
+    x = (body.width - w) / 2; y = wr.bottom - body.top + 8;
+  } else {
+    const mx = wr.left - body.left + pos.x * wr.width, my = wr.top - body.top + pos.y * wr.height;
+    // raza conului pe ecran (drawHarta: R = 12% din latura mica a planului)
+    const a = pos.dir * Math.PI / 180, rs = 0.12 * Math.min(wr.width, wr.height), sn = Math.sin(a);
+    const dreapta = mx + gap + (sn > 0.2 ? rs : 0), stanga = mx - gap - w - (sn < -0.2 ? rs : 0);
+    const incape = (v) => v >= 8 && v + w <= body.width - 8;
+    x = sn > 0.2 ? (incape(stanga) ? stanga : dreapta) : (incape(dreapta) ? dreapta : stanga);
+    y = Math.cos(a) < 0 ? my - h - 8 : my + 8;                 // conul in jos -> cardul deasupra
+    if (y < 8) y = my + 8;
+    x = Math.max(8, Math.min(x, body.width - w - 8));
+    y = Math.max(8, y);
+  }
+  card.style.left = `${x}px`; card.style.top = `${y}px`;
+  $('#harta-card-x').focus({ preventScroll: true });
+}
+function hartaCardInchide() {
+  const card = $('#harta-card');
+  if (card.classList.contains('hidden')) return;
+  card.classList.add('hidden');
+  const id = hartaCardCam && hartaCardCam.id;
+  hartaCardCam = null;
+  if (!hartaEdit) {
+    hartaSel = null;
+    for (const m of Object.values(hartaMk)) m.classList.remove('sel');
+    if (id != null) hartaMk[id]?.focus({ preventScroll: true });
+  }
+}
+$('#harta-card-x').onclick = hartaCardInchide;
+$('#harta-card-hd').onclick = () => { const c = hartaCardCam; hartaCardInchide(); if (c) openHD(c); };
+$('#harta-card-pb').onclick = () => { const c = hartaCardCam; hartaCardInchide(); if (c) location.hash = `#pb/${c.id}`; };
+// clic in afara cardului si in afara unui marcaj = inchide
+document.addEventListener('pointerdown', (e) => {
+  if ($('#harta-card').classList.contains('hidden')) return;
+  if (e.target.closest('#harta-card') || e.target.closest('#harta-svg .hm')) return;
+  hartaCardInchide();
+});
 function hartaEvents(d) {
   if ($('#harta').classList.contains('hidden')) return;
   for (const [id, g] of Object.entries(hartaMk)) {

@@ -697,9 +697,15 @@ Telegram ramane canalul de rezerva, nu depinde de niciun telefon.
   planul proprietatii (schita, captura din satelit; PNG/JPEG/WebP ≤ 8 MB) cu camerele
   asezate si conurile lor de vedere. Marcajele arata starea (verde = inregistreaza, gri =
   nu scrie, albastru = detectie, rosu pulsand = alarma; un incident critic face marcajul
-  sa pulseze), click deschide HD-ul. Admin → „Editeaza": plan nou, incarca imaginea,
-  click pe o camera neasezata o pune in mijloc, trage-o la loc, directia si deschiderea
-  conului din panoul lateral. Mai multe planuri (curte, parter, etaj) — selectorul apare
+  sa pulseze). Click pe o camera deschide un card langa ea, cu imaginea ei (improspatata la
+  5 s), montajul si butoanele „Deschide HD” / „Inregistrari” — ca sa vezi daca ce filmeaza
+  se potriveste cu locul si conul de pe plan; Esc sau click in afara il inchide. Admin →
+  „Editeaza": plan nou, incarca imaginea, click pe o camera neasezata o pune in mijloc,
+  trage-o la loc; in panoul lateral: imaginea camerei selectate, directia si deschiderea
+  conului si, optional, inaltimea montajului (m) si inclinarea (grade sub orizontala; 0 =
+  priveste drept inainte, 90 = drept in jos). Din ele panoul estimeaza ce portiune de sol
+  vede camera (unghiul vertical e dedus din cel orizontal pentru un cadru 16:9 — o
+  aproximare pentru verificarea montajului). Camp gol = necunoscut. Mai multe planuri (curte, parter, etaj) — selectorul apare
   cand sunt cel putin doua. Un cont restrans vede pe harta doar camerele lui.
 - **Pop-up la critic** (bara Live): la un incident critic nou, dala camerei se mareste
   8 secunde si se aduce in ecran (ca „layout switch on event").

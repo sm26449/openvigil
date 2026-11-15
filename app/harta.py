@@ -5,10 +5,12 @@ Structura permite mai multe planuri (etaje, curte/casa), fiecare cu propria imag
 propriile pozitii; interfata arata selectorul doar cand sunt mai multe. Pozitiile sunt
 fractii din imagine (0..1), deci planul se poate reincarca la alta rezolutie fara sa
 se piarda nimic; `dir` = directia privirii in grade (0 = sus, in sensul ceasului),
-`fov` = deschiderea conului in grade.
+`fov` = deschiderea conului in grade. Optional, geometria montajului: `inaltime` = metri
+deasupra solului, `inclinare` = grade sub orizontala (0 = priveste drept inainte, 90 = drept
+in jos); lipsesc cand nu sunt cunoscute.
 
   data/harta.json         {"planuri": [{"id", "nume", "imagine": true/false,
-                                        "camere": {"<cam>": {"x","y","dir","fov"}}}]}
+                                        "camere": {"<cam>": {"x","y","dir","fov"[,"inaltime","inclinare"]}}}]}
   data/harta/<id>.<ext>   imaginea planului (png/jpg/webp), incarcata din interfata
 """
 import os
@@ -112,7 +114,20 @@ def _pozitie(v):
         fov = max(10.0, min(180.0, float(v.get("fov", 70))))
     except (TypeError, ValueError):
         raise ValueError(t("direcție/unghi invalid"))
-    return {"x": round(x, 4), "y": round(y, 4), "dir": round(d, 1), "fov": round(fov, 1)}
+    poz = {"x": round(x, 4), "y": round(y, 4), "dir": round(d, 1), "fov": round(fov, 1)}
+    for cheie, maxim, msg in (("inaltime", 50.0, t("înălțime invalidă (0–50 m)")),
+                              ("inclinare", 90.0, t("înclinare invalidă (0–90°)"))):
+        val = v.get(cheie)
+        if val is None or val == "":
+            continue                          # necunoscuta: cheia lipseste
+        try:
+            val = float(val)
+        except (TypeError, ValueError):
+            raise ValueError(msg)
+        if not (0 <= val <= maxim):
+            raise ValueError(msg)
+        poz[cheie] = round(val, 1)
+    return poz
 
 
 def aseaza(pid, camere):

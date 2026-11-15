@@ -5,6 +5,16 @@ Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 
 ## [Unreleased]
 
+### Adăugat
+- **Harta: imaginea camerei pe plan.** Clic pe o cameră deschide un card lângă ea (sub hartă
+  pe telefon), cu imaginea ei reîmprospătată la 5 s, montajul și butoanele „Deschide HD” /
+  „Înregistrări”; cardul se așază în partea opusă conului, ca să compari imaginea cu locul de
+  pe plan. Esc sau clic în afară îl închide.
+- **Harta, editare: miniatura și geometria montajului.** Panoul lateral arată imaginea camerei
+  selectate, valorile glisoarelor și două câmpuri opționale: înălțimea (m) și înclinarea
+  (° sub orizontală), salvate în `data/harta.json` (`inaltime`, `inclinare`; validate 0–50 m,
+  0–90°). Din ele panoul estimează porțiunea de sol văzută.
+
 ## [2.2.0] — în pregătire (candidat: 2.2.0-rc6)
 
 **Highlights (English)** — Faster triage, a calmer and more accessible interface, a persistent
