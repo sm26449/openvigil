@@ -5,10 +5,21 @@ Structura permite mai multe planuri (etaje, curte/casa), fiecare cu propria imag
 propriile pozitii; interfata arata selectorul doar cand sunt mai multe. Pozitiile sunt
 fractii din imagine (0..1), deci planul se poate reincarca la alta rezolutie fara sa
 se piarda nimic; `dir` = directia privirii in grade (0 = sus, in sensul ceasului),
-`fov` = deschiderea conului in grade.
+`fov` = deschiderea conului in grade. Optional, geometria montajului: `inaltime` = metri
+deasupra solului, `inclinare` = grade sub orizontala (0 = priveste drept inainte, 90 = drept
+in jos); lipsesc cand nu sunt cunoscute. `scara` (optionala, pe plan) = doua puncte (fractii)
+si distanta reala dintre ele in metri; din ea interfata deseneaza zona de sol vazuta.
+O imagine noua sterge scara (alt plan, alta scara). `limita` (optionala, pe plan) = colturile
+proprietatii (fractii) + lungimile laturilor cunoscute; din ea (sau din scara) plan_metrica.py
+calculeaza MASURA planului (`metrica` in lista(): pixeli -> metri, unghiuri, suprafata), care nu
+se stocheaza — se deriva mereu din limita/scara + marimea imaginii. `calibrare` (optionala, pe camera) =
+perechile de puncte cadru <-> plan si omografia calculata din ele (omografie.py); o pune
+doar seteaza_calibrare, iar mutarea marcajului pe acelasi plan o pastreaza.
 
   data/harta.json         {"planuri": [{"id", "nume", "imagine": true/false,
-                                        "camere": {"<cam>": {"x","y","dir","fov"}}}]}
+                                        "camere": {"<cam>": {"x","y","dir","fov"[,"inaltime","inclinare"]}},
+                                        "scara": {"x1","y1","x2","y2","m"},
+                                        "limita": {"puncte": [[x,y]...], "laturi": {"<i>": m}}}]}
   data/harta/<id>.<ext>   imaginea planului (png/jpg/webp), incarcata din interfata
 """
 import os
@@ -16,6 +27,8 @@ import re
 import threading
 import uuid
 
+import omografie
+import plan_metrica
 import store
 from i18n import t
 
@@ -55,9 +68,79 @@ def lista(visible=None):
     for p in _load()["planuri"]:
         cams = {k: v for k, v in (p.get("camere") or {}).items()
                 if visible is None or int(k) in visible}
+        img = _imagine(p["id"])
+        w, h = _marime(img) if img else (0, 0)
         out.append({"id": p["id"], "nume": p.get("nume") or "Plan",
-                    "imagine": _imagine(p["id"]) is not None, "camere": cams})
+                    "imagine": img is not None, "camere": cams,
+                    "scara": p.get("scara"), "limita": p.get("limita"),
+                    "metrica": plan_metrica.calculeaza(w, h, p.get("limita"), p.get("scara"))})
     return out
+
+
+_marimi = {}
+
+
+def _marime(cale):
+    """(latime, inaltime) imaginii planului, tinuta minte cat timp fisierul nu se schimba."""
+    try:
+        cheie = (cale, os.stat(cale).st_mtime_ns)
+    except OSError:
+        return 0, 0
+    if cheie not in _marimi:
+        from PIL import Image
+        try:
+            ext = cale.rsplit(".", 1)[-1].lower()
+            with Image.open(cale, formats=[FORMATE_PIL[ext]] if ext in FORMATE_PIL else None) as im:
+                _marimi[cheie] = im.size
+        except Exception:
+            return 0, 0
+    return _marimi[cheie]
+
+
+def seteaza_limita(pid, v):
+    """Limita proprietatii: {puncte, laturi} (vezi plan_metrica.valideaza_limita); None o sterge."""
+    v = None if v is None else plan_metrica.valideaza_limita(v)
+    with _lock:
+        d = _load()
+        p = _plan(d, pid)
+        if v is None:
+            p.pop("limita", None)
+        else:
+            p["limita"] = v
+        _save(d)
+    return p
+
+
+def _plan(d, pid):
+    p = next((x for x in d["planuri"] if x["id"] == pid), None)
+    if not p:
+        raise ValueError(t("planul nu există"))
+    return p
+
+
+def seteaza_scara(pid, v):
+    """Scara planului: {x1,y1,x2,y2 (fractii 0..1), m (metri)}; None o sterge."""
+    if v is not None:
+        try:
+            v = {k: float(v[k]) for k in ("x1", "y1", "x2", "y2", "m")}
+        except (KeyError, TypeError, ValueError):
+            raise ValueError(t("scară invalidă"))
+        if not all(0 <= v[k] <= 1 for k in ("x1", "y1", "x2", "y2")):
+            raise ValueError(t("scară invalidă"))
+        if not (0.1 <= v["m"] <= 10000):
+            raise ValueError(t("distanța trebuie să fie între 0,1 și 10000 m"))
+        if abs(v["x1"] - v["x2"]) + abs(v["y1"] - v["y2"]) < 0.01:
+            raise ValueError(t("punctele scării sunt prea apropiate"))
+        v = {k: round(x, 4 if k != "m" else 2) for k, x in v.items()}
+    with _lock:
+        d = _load()
+        p = _plan(d, pid)
+        if v is None:
+            p.pop("scara", None)
+        else:
+            p["scara"] = v
+        _save(d)
+    return p
 
 
 def plan_nou(nume):
@@ -111,8 +194,21 @@ def _pozitie(v):
         d = float(v.get("dir", 0)) % 360
         fov = max(10.0, min(180.0, float(v.get("fov", 70))))
     except (TypeError, ValueError):
-        raise ValueError(t("directie/unghi invalid"))
-    return {"x": round(x, 4), "y": round(y, 4), "dir": round(d, 1), "fov": round(fov, 1)}
+        raise ValueError(t("direcție/unghi invalid"))
+    poz = {"x": round(x, 4), "y": round(y, 4), "dir": round(d, 1), "fov": round(fov, 1)}
+    for cheie, maxim, msg in (("inaltime", 50.0, t("înălțime invalidă (0–50 m)")),
+                              ("inclinare", 90.0, t("înclinare invalidă (0–90°)"))):
+        val = v.get(cheie)
+        if val is None or val == "":
+            continue                          # necunoscuta: cheia lipseste
+        try:
+            val = float(val)
+        except (TypeError, ValueError):
+            raise ValueError(msg)
+        if not (0 <= val <= maxim):
+            raise ValueError(msg)
+        poz[cheie] = round(val, 1)
+    return poz
 
 
 def aseaza(pid, camere):
@@ -130,6 +226,11 @@ def aseaza(pid, camere):
             if poz is None:
                 p["camere"].pop(cid, None)
             else:
+                # calibrarea leaga cadrul de PLAN, nu de marcaj: mutarea marcajului o pastreaza;
+                # clientul nu o poate scrie pe aici (doar seteaza_calibrare)
+                vechi = p["camere"].get(cid) or {}
+                if vechi.get("calibrare"):
+                    poz["calibrare"] = vechi["calibrare"]
                 p["camere"][cid] = poz
                 for alt in d["planuri"]:
                     if alt is not p:
@@ -138,8 +239,78 @@ def aseaza(pid, camere):
     return p
 
 
+def seteaza_calibrare(pid, cam, perechi):
+    """Omografia cadru -> plan pentru o camera deja asezata pe plan; None o sterge."""
+    cid = str(int(cam))
+    cal = None if perechi is None else omografie.calculeaza(perechi)
+    with _lock:
+        d = _load()
+        p = _plan(d, pid)
+        poz = (p.get("camere") or {}).get(cid)
+        if not poz:
+            raise ValueError(t("camera nu e pe acest plan"))
+        if cal is None:
+            poz.pop("calibrare", None)
+        else:
+            poz["calibrare"] = cal
+        _save(d)
+    return p
+
+
+def detectii_pe_plan(pid, stare, visible=None):
+    """Detectiile live (chenarele trecute de filtre) ale camerelor calibrate, proiectate pe
+    plan prin mijlocul laturii de jos a chenarului (punctul de pe sol). `stare` = snapshot-ul
+    detectiei {cam: {boxes: [{x,y,w,h,lbl,conf,filtru?}], boxes_age}}."""
+    p = next((x for x in _load()["planuri"] if x["id"] == pid), None)
+    if not p:
+        raise ValueError(t("planul nu există"))
+    out = []
+    for cid, poz in (p.get("camere") or {}).items():
+        cal = poz.get("calibrare")
+        if not cal or (visible is not None and int(cid) not in visible):
+            continue
+        st = stare.get(cid) or stare.get(int(cid)) or {}
+        for b in st.get("boxes") or []:
+            if b.get("filtru"):
+                continue
+            try:
+                r = omografie.proiecteaza(cal["h"], float(b["x"]) + float(b["w"]) / 2, float(b["y"]) + float(b["h"]))
+            except (KeyError, TypeError, ValueError):
+                continue
+            # putina toleranta la margini; ce cade departe de plan (aproape de orizont) nu desenam
+            if r is None or not (-0.05 <= r[0] <= 1.05 and -0.05 <= r[1] <= 1.05):
+                continue
+            out.append({"cam": int(cid), "lbl": b.get("lbl"), "conf": round(float(b.get("conf") or 0), 2),
+                        "x": round(r[0], 4), "y": round(r[1], 4), "varsta": st.get("boxes_age")})
+    return out
+
+
+# formatele pe care le deschidem din fisierele planului (si NUMAI ele: Pillow ar incerca
+# altfel orice format pe care il cunoaste, inclusiv FlashPix, cu avize de securitate)
+FORMATE_PIL = {"png": "PNG", "jpg": "JPEG", "webp": "WEBP"}
+MAX_PIXELI = 60_000_000      # ~ 7700 x 7700: un plan real e mult sub; peste = bomba de decompresie
+
+
+def _decodeaza(date, ext):
+    """Imaginea chiar se decodeaza integral, in formatul declarat, cu dimensiuni rezonabile?
+    (o semnatura buna pe un fisier trunchiat sau stricat nu ajunge — audit F3)"""
+    import io
+    from PIL import Image
+    try:
+        with Image.open(io.BytesIO(date), formats=[FORMATE_PIL[ext]]) as im:
+            w, h = im.size
+            if w < 16 or h < 16 or w * h > MAX_PIXELI:
+                raise ValueError(t("imaginea are dimensiuni nepotrivite pentru un plan"))
+            im.load()                                    # decodarea completa, nu doar antetul
+    except ValueError:
+        raise
+    except Exception:
+        raise ValueError(t("imaginea nu se poate citi (stricată sau incompletă)"))
+
+
 def salveaza_imagine(pid, date, mime):
-    """Imaginea planului, din corpul cererii (png/jpg/webp, max 8 MB)."""
+    """Imaginea planului, din corpul cererii (png/jpg/webp, max 8 MB). Imaginea veche ramane
+    pana cand cea noua e validata si scrisa complet: orice esec o lasa neatinsa (audit F3)."""
     if not _ID_RE.match(pid) or not any(x["id"] == pid for x in _load()["planuri"]):
         raise ValueError(t("planul nu există"))
     ext = TIPURI.get((mime or "").split(";")[0].strip().lower())
@@ -151,16 +322,39 @@ def salveaza_imagine(pid, date, mime):
     if not (date[:8] == b"\x89PNG\r\n\x1a\n" or date[:3] == b"\xff\xd8\xff"
             or (date[:4] == b"RIFF" and date[8:12] == b"WEBP")):
         raise ValueError(t("continutul nu arată a imagine"))
+    _decodeaza(date, ext)
     os.makedirs(DIR, exist_ok=True)
-    vechi = _imagine(pid)
-    if vechi:
-        os.remove(vechi)
     cale = os.path.join(DIR, f"{pid}.{ext}")
-    tmp = cale + ".tmp"
-    with open(tmp, "wb") as f:
-        f.write(date)
-    os.chmod(tmp, 0o600)
-    os.replace(tmp, cale)
+    with _lock:                                # doua incarcari simultane nu se calca
+        tmp = f"{cale}.{uuid.uuid4().hex[:8]}.tmp"
+        try:
+            with open(tmp, "wb") as f:
+                f.write(date)
+                f.flush()
+                os.fsync(f.fileno())
+            os.chmod(tmp, 0o600)
+            os.replace(tmp, cale)                  # atomic: cititorii vad vechea sau noua
+        except OSError:
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+            raise
+        for alt in TIPURI.values():            # abia acum: imaginea veche, cu alta extensie
+            if alt != ext:
+                try:
+                    os.remove(os.path.join(DIR, f"{pid}.{alt}"))
+                except FileNotFoundError:
+                    pass
+        # alta imagine = alta scara, alta limita, alte calibrari: le refaci
+        d = _load()
+        p = _plan(d, pid)
+        schimbat = p.pop("scara", None) is not None
+        schimbat = p.pop("limita", None) is not None or schimbat
+        for poz in (p.get("camere") or {}).values():
+            schimbat = poz.pop("calibrare", None) is not None or schimbat
+        if schimbat:
+            _save(d)
     return cale
 
 

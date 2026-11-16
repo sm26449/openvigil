@@ -3,7 +3,7 @@
 
 Toate evenimentele sistemului (detectie, persoana recunoscuta/necunoscuta, numar de
 inmatriculare, alarma de camera, zgomot, camera cazuta...) trec printr-un singur punct:
-hooks.emit(). De acolo ajung si aici — intai in jurnalul permanent (data/events.db, SQLite,
+hooks.emit(). De acolo ajung si aici — intai in jurnalul permanent (PostgreSQL, tabelul `events`,
 vezi jurnal.py; istoricul "ce s-a intamplat si cand", descarcabil ca CSV), apoi prin reguli.
 
 O regula = declansator + conditii + actiuni:
@@ -53,42 +53,42 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RULES_FILE = os.path.join(ROOT, "data", "rules.json")
 LAST_FIRE_FILE = os.path.join(ROOT, "data", "rule_last_fire.json")
 
-# Jurnalul de evenimente sta in SQLite (jurnal.py): retentia e pe ZILE
+# Jurnalul de evenimente sta in PostgreSQL (jurnal.py, tabelul `events`): retentia e pe ZILE
 # (`events_keep_days` din Setari, implicit un an), nu pe octeti ca in JSONL-ul vechi.
 # tipurile care pot declansa reguli (evenimentul "regula" lipseste intentionat)
 TRIGGER_TYPES = {
-    "detectie": "Detectie AI (om, caine, masina...)",
+    "detectie": "Detecție AI (om, câine, mașină…)",
     "persoana": "Persoana recunoscuta (Face ID)",
-    "persoana_necunoscuta": "Fata gasita, dar necunoscuta",
-    "fata_falsa": "Fata falsa (poza/ecran aratat camerei)",
-    "descriere": "Semnalmentele contin un cuvant (ex. rucsac)",
-    "obiect": "Obiect urmarit (numarare): eticheta, ex. car",
-    "numar": "Numar de inmatriculare citit",
-    "alarma_camera": "Alarma din camera (miscare, intruziune...)",
-    "trecere": "Linie de numarare trecuta (linia, sensul intra/iese)",
-    "intrare_zona": "Obiect intrat intr-o zona desenata (numele zonei)",
+    "persoana_necunoscuta": "Față găsită, dar necunoscută",
+    "fata_falsa": "Față falsă (poză/ecran arătat camerei)",
+    "descriere": "Semnalmentele conțin un cuvânt (ex. rucsac)",
+    "obiect": "Obiect urmărit (numărare): etichetă, ex. car",
+    "numar": "Număr de înmatriculare citit",
+    "alarma_camera": "Alarmă de la cameră (mișcare, intruziune…)",
+    "trecere": "Linie de numărare trecută (linia, sensul intră/iese)",
+    "intrare_zona": "Obiect intrat într-o zonă desenată (numele zonei)",
     "intrus": "Intrus confirmat de AI la perimetru (om, vehicul)",
-    "obiect_nou": "Obiect nou aparut si ramas in cadru",
-    "obiect_disparut": "Obiect care era in cadru si a disparut",
+    "obiect_nou": "Obiect nou apărut și rămas în cadru",
+    "obiect_disparut": "Obiect care era în cadru și a dispărut",
     "parcare_inceput": "Vehicul parcat (sta pe loc 2+ minute)",
     "zgomot": "Alarma de zgomot",
     "camera_offline": "Camera a cazut",
     "camera_online": "Camera a revenit",
-    "mod": "Modul s-a schimbat (acasa / plecat / noapte)",
+    "mod": "Modul s-a schimbat (acasă / plecat / noapte)",
 }
 ACTION_TYPES = {
     "sirena": "Sirena camerei",
     "strobo": "Stroboscop",
-    "anunt": "Anunt vocal (TTS) in difuzor",
-    "releu": "Releu (iesirea de alarma)",
+    "anunt": "Anunț vocal (TTS) în difuzor",
+    "releu": "Releu (ieșirea de alarmă)",
     "notificare": "Notificare Telegram/email",
-    "webhook": "Eveniment 'regula' catre Node-RED",
+    "webhook": "Eveniment 'regula' către Node-RED",
     "mqtt": "Mesaj MQTT pe un topic (lumini, prize, Home Assistant)",
-    "mod": "Trece sistemul in alt mod (acasa / plecat / noapte)",
+    "mod": "Trece sistemul în alt mod (acasă / plecat / noapte)",
 }
 MODURI = ("acasa", "plecat", "noapte")
 SABOTAJ = ("shelteralarm", "tamperdetection", "scenechangedetection", "defocusdetection")
-ZILE = ["luni", "marti", "miercuri", "joi", "vineri", "sambata", "duminica"]
+ZILE = ["luni", "marți", "miercuri", "joi", "vineri", "sâmbătă", "duminică"]
 
 _lock = threading.Lock()
 # rule_id -> ultimul moment declansat. Persistat pe disc: la restart, un cooldown de
@@ -149,7 +149,7 @@ def validate(rule):
         if a.get("tip") not in ACTION_TYPES:
             raise ValueError(t("acțiune necunoscută: {tip}", tip=a.get('tip')))
         if a["tip"] == "mod" and a.get("mod") not in MODURI:
-            raise ValueError(t("actiunea 'mod' are nevoie de un mod: acasa / plecat / noapte"))
+            raise ValueError(t("acțiunea 'mod' are nevoie de un mod: acasa / plecat / noapte"))
         actiuni.append(a)
     moduri = sorted({str(m) for m in (rule.get("moduri") or []) if m in MODURI})
     if not actiuni:
@@ -374,15 +374,55 @@ def _journal(tip, cam_id, date):
                                     "link": (legatura or "").strip()})
         except Exception as e:
             logare.info(f"[rules] cadere: {str(e)[:80]}")
+    copie = tip_intrus(entry)
+    if copie:
+        # copie in serviciul de alerte (istoric, confirmare, SMS cand casa e goala); poza si
+        # butoanele raman pe botul propriu, deci fara rezerva — n-ar face decat dubluri
+        try:
+            import escaladare
+            import notify
+            nume = notify._cam_name(cam_id)
+            ce = entry.get("eticheta_ro") or entry.get("nume") or t("persoană necunoscută")
+            escaladare.alerta(copie, t("🚨 {cam}: {ce} ({ora})", cam=nume, ce=ce, ora=ora)
+                              + notify.link(cam_id, now), rezerva=False, cam=nume, ora=ora)
+        except Exception as e:
+            logare.info(f"[rules] intrus: {str(e)[:80]}")
     return True
+
+
+def tip_intrus(entry, mod_curent=None):
+    """Pur si testabil: un intrus confirmat (om la perimetru) sau o persoana necunoscuta merita
+    copie in serviciul de alerte? Cu casa goala (plecat/noapte) -> nvr_intrus (SMS); acasa doar
+    daca e critic (noaptea) -> nvr_intrus_acasa (istoric, fara SMS). Altfel None."""
+    if entry.get("tip") == "intrus":
+        if entry.get("eticheta") != "person":
+            return None                  # vehiculele la perimetru sunt trafic, nu SMS
+    elif entry.get("tip") != "persoana_necunoscuta":
+        return None
+    if mod_curent is None:
+        try:
+            import mod
+            mod_curent = mod.curent()
+        except Exception:
+            mod_curent = "acasa"
+    if mod_curent in ("plecat", "noapte"):
+        return "nvr_intrus"
+    return "nvr_intrus_acasa" if entry.get("sev") == "critic" else None
 
 
 def journal(limit=200, tip=None, cam=None, day=None, min_sev=None, text=None, since=None, cams=None):
     """Cele mai noi evenimente, filtrabile dupa tip / camera / zi / severitate
     minima / fragment de text (fara diacritice). `cams` = restrictie de vizibilitate aplicata in
     query, inainte de LIMIT (audit #9). Cele mai noi primele; citire indexata (jurnal.py)."""
-    return jurnal.query(limit=limit, tip=tip, cam=cam, day=day, min_sev=min_sev, text=text,
-                        since=since, cams=cams)
+    evs = jurnal.query(limit=limit, tip=tip, cam=cam, day=day, min_sev=min_sev, text=text,
+                       since=since, cams=cams)
+    # rezumatul episoadelor e compus la creare, in romana: il refacem in limba cererii
+    # (interfata engleza il arata acum tradus, iar cele vechi primesc diacriticele) — audit UX-D
+    import episoade
+    for e in evs:
+        if e.get("tip") == "episod":
+            e["text"] = episoade.text_local(e)
+    return evs
 
 
 # ---- episoade: evenimentele grupate, cu inceput/sfarsit/durata ----
@@ -605,8 +645,10 @@ def _run_actions(rule, tip, cam_id, date):
             elif at == "notificare":
                 nume_cam = (cam or {}).get("name") or (f"cam {cam_id}" if cam_id else t("sistem"))
                 text = (a.get("text") or "").strip() or t("Regula „{nume}”: {context}", nume=rule['nume'], context=context)
-                notify.send(f"⚡ {nume_cam}: {text}" + notify.link(cam_id),
-                            key=("regula", rule["id"]))
+                import escaladare
+                legatura = notify.link(cam_id)
+                escaladare.alerta("nvr_regula", f"⚡ {nume_cam}: {text}" + legatura,
+                                  key=("regula", rule["id"]), cam=nume_cam)
             elif at == "webhook":
                 import hooks
                 hooks.emit("regula", cam_id, regula=rule["nume"], declansator=tip,

@@ -17,8 +17,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="OpenVigil">
 <meta name="theme-color" content="#1c2128">
+<meta name="color-scheme" content="dark">
 </head>
 <body>
+<a class="sari-continut" href="#continut">Sari la conținut</a>
 <header>
   <h1 id="nume-sistem">OpenVigil</h1>
   <nav>
@@ -29,7 +31,7 @@
     <button id="tab-ai"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg><span>AI</span></button>
     <button id="tab-cams"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h12v10H3z"/><path d="M15 10l6-3v10l-6-3z"/></svg><span>Camere</span></button>
     <button id="tab-set"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Setări</span></button>
-    <button id="tab-stare" title="Centru de sănătate: serverul, canalele, AI-ul și fiecare cameră"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg><span>Stare</span></button>
+    <button id="tab-stare" title="Centru de sănătate: serverul, canalele, AI-ul și fiecare cameră"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg><span>Sănătate</span></button>
     <button id="tab-program" class="admin-only" title="Program & automatizare: orarul săptămânal de moduri și starea regulilor"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M8 14l2.5 2.5L15 12"/></svg><span>Program</span></button>
     <button id="nav-more" class="doar-mobil" aria-haspopup="dialog" aria-controls="sheet" aria-expanded="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg><span>Mai mult</span></button>
   </nav>
@@ -64,7 +66,7 @@
     <label>Producator / protocol
       <select name="vendor" id="addcam-vendor">
         <option value="hik">Hikvision (ISAPI: sirena, difuzor, stroboscop, evenimente)</option>
-        <option value="onvif">Alt producator (ONVIF: flux, poza, PTZ, relee)</option>
+        <option value="onvif">Alt producător (ONVIF: flux, poză, PTZ, relee)</option>
       </select></label>
     <label>IP <input name="ip" placeholder="192.168.1.10" required autocomplete="off"></label>
     <label id="addcam-http" class="hidden">Port HTTP ONVIF <input name="http_port" type="number" value="80"></label>
@@ -79,8 +81,10 @@
   </form>
 </div>
 
+<main id="continut" tabindex="-1">
 <!-- LIVE -->
 <section id="live" class="view">
+  <section id="absenta" class="absenta hidden" aria-labelledby="absenta-titlu"></section>
   <div class="live-bar views-bar">
     <span class="bar-label">Vizualizari</span>
     <div id="views" class="chips"></div>
@@ -132,24 +136,52 @@
       <button id="harta-rename">Redenumește</button>
       <button id="harta-upload">Încarcă imaginea</button>
       <input id="harta-file" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+      <button id="harta-limita-btn" title="Trasează conturul proprietății și scrie lungimile laturilor pe care le știi: din ele vin scara, unghiurile și suprafața">Limita</button>
+      <button id="harta-scara" title="Clic pe două puncte ale unei distanțe cunoscute (gard, latura casei), apoi spui câți metri sunt">Scara</button>
+      <button id="harta-scara-del" class="hidden">Șterge scara</button>
       <button id="harta-del">Șterge planul</button>
+    </span>
+    <span id="harta-heat-ctl" class="seg hidden" role="group" aria-label="Harta de căldură pe plan">
+      <button data-zile="0" class="on">Fără căldură</button><button data-zile="1">Azi</button><button data-zile="7">7 zile</button><button data-zile="30">30 zile</button>
     </span>
     <span id="harta-info" class="hint"></span>
   </div>
   <div class="harta-body">
     <div id="harta-wrap" class="harta-wrap">
       <img id="harta-img" alt="Planul proprietății">
+      <canvas id="harta-heat" class="hidden" aria-hidden="true"></canvas>
       <svg id="harta-svg" aria-label="Camerele pe plan"></svg>
       <p id="harta-empty" class="hint hidden"></p>
     </div>
+    <div id="harta-card" class="harta-card hidden" role="dialog" aria-labelledby="harta-card-name">
+      <div class="harta-card-cap"><h3 id="harta-card-name"></h3><button id="harta-card-x" class="link-btn" aria-label="Închide">✕</button></div>
+      <img id="harta-card-img" class="harta-thumb" alt="Imaginea camerei">
+      <p id="harta-card-info" class="hint"></p>
+      <div class="harta-card-act"><button id="harta-card-hd">Deschide HD</button><button id="harta-card-pb">Înregistrări</button></div>
+    </div>
     <aside id="harta-side" class="hidden">
+      <details id="harta-limita" class="harta-limita" open>
+        <summary>Limita proprietății</summary>
+        <div class="hl-corp"></div>
+      </details>
       <h3>Camere neașezate</h3>
-      <p class="hint">Click pe o camera o pune în mijlocul planului; apoi trage-o la loc.</p>
+      <p class="hint">Clic pe o cameră o pune în mijlocul planului; apoi trage-o la loc.</p>
       <div id="harta-unplaced"></div>
       <div id="harta-sel" class="hidden">
         <h3 id="harta-sel-name"></h3>
-        <label>Direcția privirii <input id="harta-dir" type="range" min="0" max="359" step="1"></label>
-        <label>Deschiderea conului <input id="harta-fov" type="range" min="10" max="180" step="5"></label>
+        <img id="harta-thumb" class="harta-thumb" alt="Imaginea camerei selectate">
+        <label>Direcția privirii <output id="harta-dir-v"></output><input id="harta-dir" type="range" min="0" max="359" step="1"></label>
+        <label>Deschiderea conului <output id="harta-fov-v"></output><input id="harta-fov" type="range" min="10" max="180" step="5"></label>
+        <div class="harta-geo">
+          <label>Înălțimea (m) <input id="harta-h" type="text" inputmode="decimal" maxlength="5" placeholder="necunoscută"></label>
+          <label>Înclinarea (° sub orizontală) <input id="harta-tilt" type="text" inputmode="decimal" maxlength="4" placeholder="necunoscută"></label>
+        </div>
+        <p id="harta-sol" class="hint"></p>
+        <div class="harta-cal-rand">
+          <button id="harta-cal-open">Calibrează pe plan</button>
+          <button id="harta-cal-del" class="hidden">Șterge calibrarea</button>
+        </div>
+        <p id="harta-cal-stare" class="hint"></p>
         <button id="harta-unplace">Scoate de pe plan</button>
       </div>
     </aside>
@@ -223,16 +255,16 @@
           <span id="tl-range" class="hint"></span>
           <span class="hint tl-keys">Space pauză · J/L ±10s · , . cadru · [ ] viteza · M marcaj</span>
         </div>
-        <div id="timeline" role="slider" aria-label="Momentul din zi" aria-valuemin="0" aria-valuemax="86399" aria-valuenow="0" tabindex="0"></div>
+        <div id="timeline" role="group" aria-label="Linia de timp a zilei: săgețile derulează ±10 s, Shift ±1 min" tabindex="0"></div>
         <div id="ticks"></div>
       </div>
     </div>
     <div class="pb-right">
-      <h3>Marcaje</h3>
+      <h2>Marcaje</h2>
       <div id="pb-marks"></div>
-      <h3>Probe</h3>
+      <h2>Probe</h2>
       <div id="pb-probe"></div>
-      <h3>Evenimente</h3>
+      <h2>Evenimente</h2>
       <div id="pb-evlist"></div>
     </div>
   </div>
@@ -252,7 +284,7 @@
       <button data-f="atentie">Toate</button>
       <button data-f="critic">Critice</button>
     </div>
-    <label class="inline"><input id="inc-sound" type="checkbox" checked> Alarma sonora</label>
+    <label class="inline"><input id="inc-sound" type="checkbox" checked> Alarmă sonoră</label>
     <!-- pe mobil, Rezumat + Dosare (secundare) se pliaza sub „⋯" ca filtrul + lista sa fie in fata -->
     <button type="button" id="inc-more" class="more-btn" aria-expanded="false" title="Mai multe controale">⋯</button>
     <button id="inc-digest" class="link-btn inc-sec" title="Rezumatul zilei: ce s-a întâmplat, dintr-o privire">📋 Rezumat</button>
@@ -291,10 +323,11 @@
     <input type="date" id="al-date" aria-label="Ziua">
     <select id="al-cam" aria-label="Camera"><option value="">Toate camerele</option></select>
     <button id="al-search">Arată</button>
-    <input id="sem-q" class="search"
+    <input id="sem-q" class="search" type="search" aria-label="Caută în poze sau pune o întrebare"
            placeholder="Caută sau întreabă: mașină albă · când a venit mașină de gunoi?"
            title="Căutare semantică sau întrebare liberă, în română. Întrebările (când.../de câte ori...) primesc răspuns direct, cu pozele-dovada.">
     <button id="sem-go">Caută</button>
+    <button id="sem-learn" class="semantic-learn-button">Învață căutarea</button>
     <span id="al-info"></span>
   </div>
   <div id="al-pills"></div>
@@ -332,10 +365,10 @@
         <label class="btn sm fc-upload">Adaugă poza
           <input type="file" id="fc-file" accept="image/jpeg,image/png" hidden></label>
       </div>
-      <p class="hint">O persoana are nevoie de 3-5 poze din unghiuri diferite ca să fie
-        recunoscută sigur. Cel mai simplu: pornești funcția, treci prin față camerei,
+      <p class="hint">O persoană are nevoie de 3–5 poze din unghiuri diferite ca să fie
+        recunoscută sigur. Cel mai simplu: pornești funcția, treci prin fața camerei,
         apoi etichetezi fețele apărute mai jos — etichetarea e chiar înrolarea.
-        Click pe „istoric” la o persoana = toate aparițiile ei (când a mai venit).</p>
+        Clic pe „istoric” la o persoană = toate aparițiile ei (când a mai venit).</p>
 
       <h3 class="wh-h3">Necunoscuți, grupați pe persoană
         <button id="fc-group" class="link-btn" title="Regrupează acum (altfel se face singur la două minute după o față nouă); tu confirmi cine e fiecare, nimic nu se înrolează singur">↻ regrupează</button>
@@ -370,7 +403,7 @@
         <input id="lp-name" placeholder="nume (ex. duba lui Ion)" autocomplete="off">
         <button id="lp-add" class="btn sm">Adaugă</button>
       </div>
-      <p class="hint">O mașină cunoscută apare cu numele ei în notificari și în webhook-ul
+      <p class="hint">O mașină cunoscută apare cu numele ei în notificări și în webhook-ul
         <code>număr</code> — de acolo poți deschide poarta din Node-RED.</p>
 
       <h3 class="wh-h3">Ultimele citiri <button id="lp-clear" class="link-btn">
@@ -412,7 +445,7 @@
       <span class="hint ad-keys">← → cadrul · trage pe gol = chenar nou · trage chenar/colț = mută/redimensionează · Delete șterge · 1–9 clasa · Ctrl+Z anulează · Enter salvează</span>
     </div>
     <div class="ad-body">
-      <aside id="ad-list" class="ad-list" aria-label="Cadrele datasetului"></aside>
+      <aside id="ad-list" class="ad-list" aria-label="Cadrele datasetului" tabindex="0"></aside>
       <div class="ad-main">
         <canvas id="ad-canvas" aria-label="Cadrul cu chenarele etichetelor"></canvas>
         <div class="ad-foot">
@@ -432,7 +465,7 @@
   <div class="ai-pane hidden" id="aipane-reguli">
     <header class="pane-head">
       <h2>Reguli</h2>
-      <p>Când se întâmplă X, fa Y — sirena, anunț, lumini, notificare.</p>
+      <p>Când se întâmplă X, fă Y — sirenă, anunț, lumini, notificare.</p>
       <p class="hint ai-stare" id="ai-stare-reguli"></p>
     </header>
     <div class="set-cols">
@@ -440,7 +473,7 @@
       <h2 data-ic="bolt">Regulile active</h2>
       <div id="ru-list"></div>
 
-      <h3 class="wh-h3" id="ru-form-title">Adaugă o regula</h3>
+      <h3 class="wh-h3" id="ru-form-title">Adaugă o regulă</h3>
       <input type="hidden" id="ru-id">
       <label>Numele regulii <input id="ru-name" placeholder="ex. sirena noaptea la om necunoscut"
              autocomplete="off"></label>
@@ -561,7 +594,7 @@
       <h2 data-ic="image">Căutare semantică în alarme</h2>
       <label class="inline"><input id="sem-on" type="checkbox"> Activata</label>
       <div id="sem-status" class="hint"></div>
-      <div class="s-btns"><button id="sem-backfill" class="btn sm">Indexeaza istoricul acum</button></div>
+      <div class="s-btns"><button id="sem-backfill" class="btn sm">Indexează istoricul acum</button></div>
       <span class="s-msg" id="sem-msg"></span>
       <p class="hint">Fiecare poza din Alarme primeste o „amprenta" de sens (SigLIP, local),
         iar câmpul de căutare din tabul Alarme găsește poze după descriere liberă: „mașină
@@ -644,27 +677,21 @@
   </div>
 </section>
 
-<!-- panou de detaliu pentru o camera -->
-<div id="cam-panel" class="hidden">
-  <div id="cam-panel-head">
-    <h2 id="cam-panel-title"></h2>
-    <button id="cam-panel-close" aria-label="Închide">✕</button>
-  </div>
-  <div id="cam-panel-body"></div>
-</div>
 
 <!-- SETARI -->
 <section id="set" class="view hidden">
-  <nav class="set-nav" id="set-nav">
+  <nav class="set-nav" id="set-nav" aria-label="Setări">
+    <div class="snav-tabs" role="tablist" aria-label="Secțiunile setărilor">
     <button class="snav-item on" data-pane="stare">Stare</button>
     <button class="snav-item" data-pane="inreg">Înregistrare</button>
     <button class="snav-item" data-pane="detectie">Detecție</button>
-    <button class="snav-item" data-pane="notif">Notificari</button>
+    <button class="snav-item" data-pane="notif">Notificări</button>
     <button class="snav-item" data-pane="utilizatori">Utilizatori</button>
     <button class="snav-item" data-pane="audio">Audio</button>
     <button class="snav-item" data-pane="sistem">Sistem</button>
     <button class="snav-item" data-pane="unelte">Unelte</button>
-    <button class="snav-item" data-pane="jurnal">Jurnal</button>
+    <button class="snav-item" data-pane="jurnal">Audit</button>
+    </div>
     <input id="set-q" class="search" placeholder="Caută în setări…" aria-label="Caută în toate setările">
     <label class="inline set-adv" title="Setările rar atinse: MQTT, ora camerelor, fluiditate, automatizări, jeton, regiuni, legături"><input id="set-adv" type="checkbox"> avansate</label>
   </nav>
@@ -678,14 +705,14 @@
     <div class="set-card wide">
       <h2 data-ic="live">Înregistrăm chiar acum?</h2>
       <div id="cont-live" class="cont-live"><span class="schelet"><i></i><i></i><i></i></span></div>
-      <p class="hint">Dovada nu e ca procesul trăiește sau ca răspunde camera — ci ca fișierul
-        de pe disc crește. Dacă o camera tace mai mult de trei minute, lanțul ei se repornește
-        singur și primesti notificare.</p>
+      <p class="hint">Dovada nu e că procesul trăiește sau că răspunde camera — ci că fișierul
+        de pe disc crește. Dacă o cameră tace mai mult de trei minute, lanțul ei se repornește
+        singur și primești notificare.</p>
     </div>
 
     <div class="set-card wide">
       <h2 data-ic="image">Acoperirea ultimelor zile</h2>
-      <div id="cont-cov" class="cont-cov"></div>
+      <div id="cont-cov" class="cont-cov" role="region" aria-label="Acoperirea înregistrărilor pe zile" tabindex="0"></div>
       <p class="hint">Cât din fiecare zi avem efectiv pe disc. Rămâne în jurnal și după ce
         retenția șterge fișierele, ca să știm mereu dacă ziua aceea a fost întreagă.
         La camerele pe „la mișcare" acoperirea parțială e normală.</p>
@@ -815,7 +842,7 @@
         aprinzi lumina când se mișcă ceva în spate, dai un salut la poarta când vede un om,
         anunți pe alt canal când apare un animal.</p>
 
-      <label>Unde trimitem evenimentele (o adresa pe linie)
+      <label>Unde trimitem evenimentele (o adresă pe linie)
         <textarea id="wh-urls" rows="3" placeholder="http://192.168.1.50:1880/nvr"></textarea></label>
 
       <label>Secret pentru semnătură (optional, dar recomandat)
@@ -860,7 +887,7 @@
     <div class="set-card">
       <h2 data-ic="paw">Ce detecții trimit notificare</h2>
       <div id="s-notify-labels" class="s-checks"></div>
-      <label>Pauză între notificari (secunde/camera/tip)
+      <label>Pauză între notificări (secunde/cameră/tip)
         <input id="s-cooldown" type="number" min="30" step="30"></label>
       <h2 data-ic="siren" style="margin-top:18px">Sirena automată la</h2>
       <p class="hint">Pe camerele cu automatizarea pornită. Nu alege "Pasăre" la găini :)</p>
@@ -883,20 +910,33 @@
   </div>
   <div class="set-pane hidden" id="pane-notif">
     <header class="pane-head">
-      <h2>Notificari</h2>
+      <h2>Notificări</h2>
       <p>Unde ajung anunțările.</p>
     </header>
     <div class="set-cols">
     <div class="set-card">
-      <h2 data-ic="alarm">Notificari Telegram</h2>
+      <h2 data-ic="alarm">Notificări Telegram</h2>
+      <div class="s-btns"><button type="button" id="tg-a-start" aria-expanded="false" aria-controls="tg-asistent">Conectează Telegram (pas cu pas)</button></div>
+      <div id="tg-asistent" class="tg-asistent hidden">
+        <ol class="tg-pasi">
+          <li id="tg-a-p1"><b>Creează botul.</b> În Telegram, deschide <a href="https://t.me/BotFather" target="_blank" rel="noopener">@BotFather</a>,
+            trimite <code>/newbot</code>, alege un nume, apoi copiază jetonul primit aici:
+            <label class="tg-jeton">Jetonul botului <input id="tg-a-jeton" type="password" autocomplete="off" spellcheck="false" placeholder="123456789:AA…"></label>
+            <button type="button" id="tg-a-verif">Verifică jetonul</button></li>
+          <li id="tg-a-p2" class="hidden"><b>Scrie-i botului.</b> Deschide <a id="tg-a-link" target="_blank" rel="noopener"></a> și trimite-i
+            orice mesaj (de exemplu „salut”). Pentru un grup, adaugă botul în grup și scrie ceva acolo.
+            <p class="hint" id="tg-a-astept" role="status">Aștept mesajul…</p>
+            <div id="tg-a-chats" class="s-btns"></div></li>
+        </ol>
+        <span class="s-msg" id="tg-a-msg" role="status"></span>
+      </div>
       <label>Token bot <input id="s-tg-token" type="password" autocomplete="off"
              placeholder="de la @BotFather"></label>
       <label>Chat ID <input id="s-tg-chat" autocomplete="off" placeholder="ex. 123456789"></label>
       <label>Adresa interfeței (legături în mesaje) <input id="s-web-url" autocomplete="off" placeholder="ex. http://192.168.1.2:8079"></label>
-      <p class="hint">Creezi botul cu @BotFather (/newbot), îi trimiți un mesaj, apoi iei
-        chat ID-ul din https://api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</p>
+      <p class="hint">Sau completează de mână jetonul și chat ID-ul (avansat).</p>
       <label class="inline"><input id="s-tg-cmd" type="checkbox"> Acceptă comenzi din acest chat
-        (/acasă, /plecat, /noapte, /stare)</label>
+        (/acasa, /plecat, /noapte, /stare)</label>
       <button class="s-test" data-ch="telegram">Trimite test Telegram</button>
       <span class="s-msg" id="s-msg-telegram"></span>
       <h3 class="wh-h3">Rezumatul zilei</h3>
@@ -909,7 +949,7 @@
     </div>
 
     <div class="set-card">
-      <h2 data-ic="external">Notificari Email</h2>
+      <h2 data-ic="external">Notificări email</h2>
       <label class="inline"><input id="s-em-on" type="checkbox"> Activat</label>
       <label>Server SMTP <input id="s-em-smtp" placeholder="smtp.gmail.com"></label>
       <label>Port <input id="s-em-port" type="number" value="587"></label>
@@ -924,18 +964,31 @@
     </div>
 
     <div class="set-card">
+      <h2 data-ic="alarm">Serviciul de alerte</h2>
+      <p class="hint">Opțional: un serviciu extern de alerte (contractul POST /v1/fire) primește alertele de
+        sistem — cameră sau NVR căzut, disc plin, înregistrare oprită, copie de siguranță,
+        rezumatul zilei — și decide canalele (Telegram, SMS, email), pauzele și confirmarea.
+        Detecțiile cu poză rămân pe botul de mai sus; intrușii confirmați primesc și o copie
+        acolo. Dacă serviciul nu răspunde, alertele pleacă pe botul propriu.</p>
+      <label>Adresa serviciului <input id="s-alert-url" autocomplete="off" placeholder="http://127.0.0.1:5090/v1/fire"></label>
+      <label>Cheia API (doar „fire”) <input id="s-alert-key" type="password" autocomplete="off" placeholder="gol = oprit"></label>
+      <button class="s-test" data-ch="alerte">Testează serviciul de alerte</button>
+      <span class="s-msg" id="s-msg-alerte" role="status"></span>
+    </div>
+
+    <div class="set-card">
       <h2 data-ic="lock">Modul acasă / plecat / noapte</h2>
       <p class="hint">Comutatorul din antet. Regulile pot fi valabile doar în anumite moduri
         (pasul 3 al regulii), iar schimbarea modului e ea însăși un declanșator. Se comută
         din antet, Telegram (/plecat), MQTT (<code>nvr/mod/set</code>), API
-        (<code>POST /api/v1/mod</code>) sau dintr-o regula.</p>
+        (<code>POST /api/v1/mod</code>) sau dintr-o regulă.</p>
       <label class="inline"><input id="s-mod-noapte" type="checkbox"> Noaptea automat:
         acasă → noapte la începutul nopții și înapoi dimineața (orele din Detecție)</label>
     </div>
 
     <div class="set-card">
-      <h2 data-ic="alarm">Notificari push (telefon)</h2>
-      <p class="hint">Incidentele (atenție/critic) ajung ca notificari native pe telefoanele
+      <h2 data-ic="alarm">Notificări push (telefon)</h2>
+      <p class="hint">Incidentele (atenție/critic) ajung ca notificări native pe telefoanele
         abonate, cu legătură direct în redare. Fiecare utilizator își abonează dispozitivul
         din <b>Contul meu</b> (click pe numele lui, sus) și primeste doar camerele pe care le
         vede. Cere HTTPS (adresa de mai sus sau localhost). Telegram rămâne canalul de rezerva.</p>
@@ -962,8 +1015,8 @@
         „deconectează" taie toate sesiunile contului, „scoate 2FA" îl lasă fără al doilea
         pas (telefon pierdut).</p>
       <div class="s-btns row">
-        <button type="button" class="me-open">Contul meu: 2FA, notificari push, dispozitive</button>
-        <a href="/logout"><button type="button">Ieși din cont</button></a>
+        <button type="button" class="me-open">Contul meu: 2FA, notificări push, dispozitive</button>
+        <a href="/logout" class="buton-legatura">Ieși din cont</a>
       </div>
     </div>
 
@@ -981,7 +1034,7 @@
       <div id="u-scope">
         <span class="hint">Ce camere vede (lasă totul gol pentru toate):</span>
         <div id="u-groups" class="s-checks"></div>
-        <label>Camere individuale (Ctrl+click pentru mai multe)
+        <label>Camere individuale
           <select id="u-cams" multiple size="5"></select></label>
       </div>
       <div class="s-btns">
@@ -1022,7 +1075,7 @@
 <div class="set-pane hidden" id="pane-sistem">
     <header class="pane-head">
       <h2>Sistem</h2>
-      <p>Se configurează o data și se uita.</p>
+      <p>Se configurează o dată și se uită.</p>
     </header>
     <div class="set-cols">
     <div class="set-card" data-avansat>
@@ -1064,7 +1117,7 @@
           <option value="500">0,5 secunde — cea mai rapidă pornire</option>
           <option value="1000">1 secunda (recomandat)</option>
           <option value="2000">2 secunde</option>
-          <option value="2500">2,5 secunde (implicit din fabrica)</option>
+          <option value="2500">2,5 secunde (implicit din fabrică)</option>
           <option value="4000">4 secunde — cel mai economic</option>
         </select>
       </label>
@@ -1188,7 +1241,7 @@
       <h2 data-ic="lock">Copie nocturnă criptată</h2>
       <p class="hint">Toată starea care nu se poate reface (configurație, conturi, reguli,
         jurnalul de evenimente, marcaje, dosare, fețe, harta, amprentele segmentelor) într-o
-        arhiva criptată, zilnic. Fără cheie, copia e inutilă: noteaz-o în altă parte.</p>
+        arhivă criptată, zilnic. Fără cheie, copia e inutilă: noteaz-o în altă parte.</p>
       <label>Ora <input id="bn-ora" type="time"></label>
       <label>Director local (gol = data/backup) <input id="bn-dir" autocomplete="off" placeholder="ex. /mnt/arhiva/nvr-backup"></label>
       <label>Destinație în afara casei (rsync <code>user@host:/cale</code> sau director montat)
@@ -1196,7 +1249,7 @@
       <label>Păstrează local <input id="bn-keep" type="number" min="1" max="365"> copii</label>
       <label class="inline"><input id="bn-fete" type="checkbox"> Include biblioteca de fețe (~15 MB)</label>
       <div class="s-btns row">
-        <button type="button" id="bn-acum">Fa o copie acum</button>
+        <button type="button" id="bn-acum">Fă o copie acum</button>
         <button type="button" id="bn-cheie">Arată cheia de criptare</button>
       </div>
       <pre id="bn-cheie-val" class="hidden"></pre>
@@ -1215,14 +1268,14 @@
   </div>
   <div class="set-pane hidden" id="pane-jurnal">
     <header class="pane-head">
-      <h2>Jurnal</h2>
+      <h2>Jurnal de audit</h2>
       <p>Cine și când a schimbat ceva.</p>
     </header>
     <div class="set-cols">
     <div class="set-card wide">
       <h2 data-ic="image">Jurnal de modificări</h2>
       <input id="log-q" class="search" placeholder="Caută în jurnal..." aria-label="Caută în jurnalul de modificări">
-      <div id="log-list"></div>
+      <div id="log-list" role="region" aria-label="Jurnalul de modificări" tabindex="0"></div>
     </div>
     </div>
   </div>
@@ -1234,6 +1287,17 @@
     <span class="s-msg" id="s-msg-save"></span>
   </div>
 </section>
+</main>
+
+<!-- panou de detaliu pentru o camera -->
+<aside id="cam-panel" class="hidden" aria-labelledby="cam-panel-title">
+  <div id="cam-panel-head">
+    <h2 id="cam-panel-title" tabindex="-1"></h2>
+    <button id="cam-panel-close" aria-label="Închide">✕</button>
+  </div>
+  <div id="cam-panel-body"></div>
+</aside>
+
 
 <!-- editor zona de detectie -->
 <div id="zone-overlay" class="hidden" role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="zone-title">
@@ -1258,7 +1322,7 @@
     <button id="health-refresh" class="link-btn" title="Reîmprospătează">↻</button>
     <button id="health-close" class="ov-close">Închide</button>
   </div>
-  <div class="ov-body" id="health-body"></div>
+  <div class="ov-body" id="health-body" tabindex="0"></div>
 </div>
 
 <!-- Program & automatizare (tab „Program", doar admin): orarul săptămânal de moduri (timeline) +
@@ -1300,6 +1364,25 @@
     <button id="heat-close" class="ov-close">Închide</button>
   </div>
   <div class="ov-body"><canvas id="heat-canvas" class="ov-canvas"></canvas></div>
+</div>
+
+<!-- Harta: calibrarea unei camere pe plan (omografie cadru -> plan din perechi de puncte) -->
+<div id="harta-cal" class="ov-full hidden" role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="harta-cal-title">
+  <div class="ov-bar">
+    <span class="ov-title" id="harta-cal-title"></span>
+    <span id="harta-cal-pas" class="hint" aria-live="polite"></span>
+    <button id="harta-cal-undo">Anulează ultimul punct</button>
+    <button id="harta-cal-cadru">Cadru nou</button>
+    <button id="harta-cal-save" class="ov-ok">Salvează</button>
+    <button id="harta-cal-close" class="ov-close">Închide</button>
+  </div>
+  <p class="hint harta-cal-ajutor">Alege 4–12 puncte de pe sol care se văd și în cadru, și pe plan (colțuri de alee sau de terasă, baza stâlpilor de la poartă, colțul casei la pământ): clic în cadru, apoi pe același loc pe plan. Răsfiră-le pe toată zona văzută, nu pe o linie. Punctele se pot trage după aceea; grila de pe plan arată cum se proiectează solul din cadru. Conturul portocaliu punctat e zona estimată din montaj (înălțime, înclinare), doar ca reper: calibrarea ta are prioritate.</p>
+  <div class="ov-body harta-cal-body">
+    <div class="harta-cal-pane"><div class="harta-cal-lbl">Camera</div>
+      <div class="harta-cal-st" id="harta-cal-cam"><img id="harta-cal-cam-img" alt="Cadrul camerei"><svg id="harta-cal-cam-svg" aria-label="Punctele din cadru"></svg></div></div>
+    <div class="harta-cal-pane"><div class="harta-cal-lbl">Planul</div>
+      <div class="harta-cal-st" id="harta-cal-plan"><img id="harta-cal-plan-img" alt="Planul proprietății"><svg id="harta-cal-plan-svg" aria-label="Punctele de pe plan"></svg></div></div>
+  </div>
 </div>
 
 <!-- Etapa 5: masca de confidentialitate (dreptunghiuri innegrite pe live, redare, exporturi) -->
@@ -1378,15 +1461,16 @@
       <button data-back="1800">30min</button>
       <button id="hd-boxes" title="Chenarele detecției AI în timp real: verde = raportat, gri punctat = văzut dar filtrat (cu motivul)">Chenare</button>
       <button id="hd-mark" title="Pune un marcaj la momentul redat (sau acum, pe live) — rămâne pe timeline, cu eticheta ta">Marcaj</button>
-      <select id="hd-quality" title="Rezoluția HD: Auto alege după viteza măsurată a rețelei tale" aria-label="Rezoluția HD">
+      <select id="hd-quality" title="Ce flux vezi: Auto pornește pe fluxul mic al camerei și trece pe HD când e gata; Flux mic = doar fluxul 2 al camerei (rapid, puține date); HD = doar fluxul mare" aria-label="Calitatea imaginii">
         <option value="auto">Auto</option>
-        <option value="eco">Economic (720p)</option>
-        <option value="max">Calitate (nativ)</option>
+        <option value="mic">Flux mic (camera)</option>
+        <option value="eco">HD 720p</option>
+        <option value="max">HD nativ</option>
       </select>
       <span id="hd-when"></span>
       <button id="hd-topb">Deschide în Înregistrări</button>
     </div>
-    <div id="hd-timeline" role="slider" aria-label="Momentul din zi" aria-valuemin="0" aria-valuemax="86399" aria-valuenow="0" tabindex="0"></div>
+    <div id="hd-timeline" role="group" aria-label="Linia de timp a zilei: săgețile derulează ±10 s, Shift ±1 min" tabindex="0"></div>
     <div id="hd-ticks"></div>
   </div>
   <!-- sageti pe marginile imaginii (doar pe telefon): arata ca poti trece intre camere prin
@@ -1449,7 +1533,7 @@
       <button id="exports-refresh" class="link-btn" title="Reîmprospătează">↻</button>
       <button id="exports-close" aria-label="Închide">✕</button>
     </div>
-    <div id="exports-list"></div>
+    <div id="exports-list" role="region" aria-label="Lista exporturilor" tabindex="0"></div>
   </div>
 </div>
 
@@ -1470,6 +1554,7 @@
       <select id="cauta-zile" aria-label="Perioada pentru poze"><option value="7">7 zile</option><option value="30" selected>30 zile</option><option value="90">90 zile</option></select>
       <button id="cauta-close" class="ov-close" aria-label="Închide">✕</button></div>
     <div class="cauta-bar">
+      <button id="cauta-learn" class="semantic-learn-button">Învață căutarea</button>
       <input id="cauta-again" class="search" placeholder="caută altceva… (Enter)" aria-label="Caută altceva">
       <div class="chips" id="cauta-chips" role="group" aria-label="Sursa rezultatelor">
         <button data-cat="" class="on">Toate</button><button data-cat="poze">Poze</button><button data-cat="numere">Numere</button><button data-cat="persoane">Persoane</button><button data-cat="jurnal">Jurnal</button>
@@ -1478,6 +1563,30 @@
     </div>
     <div id="cauta-grid" class="cauta-grid"></div>
   </div>
+</dialog>
+<dialog id="semantic-review" aria-labelledby="semantic-review-title">
+  <div class="semantic-review-box">
+    <div class="fisa-head"><h2 id="semantic-review-title">Învață căutarea</h2><button id="semantic-review-close" class="ov-close" aria-label="Închide">✕</button></div>
+    <details class="semantic-review-help"><summary>Cum funcționează</summary>
+      <p>Confirmă imaginile pentru această descriere. Exemplele corecte sunt recuperate, cele greșite sunt excluse, iar cele neclare nu influențează căutarea.</p>
+      <p class="hint">Exemplele și imaginile marcate se păstrează separat pentru învățare. Poți elimina oricând un exemplu.</p>
+    </details>
+    <div class="semantic-review-controls">
+      <label>Descriere<input id="semantic-review-q" list="semantic-review-concepts" maxlength="200" placeholder="mașină de gunoi"></label>
+      <datalist id="semantic-review-concepts"></datalist>
+      <label>Selecție<select id="semantic-review-mode"><option value="candidates">Candidați de verificat</option><option value="saved">Exemple salvate</option><option value="archive">Din arhivă, după zi</option></select></label>
+      <label>Perioada pentru candidați<select id="semantic-review-days"><option value="7">7 zile</option><option value="30">30 zile</option><option value="90" selected>90 zile</option></select></label>
+      <label>Camera<select id="semantic-review-cam"><option value="">Toate camerele</option></select></label>
+      <input id="semantic-review-day" type="date" aria-label="Ziua" class="hidden">
+      <button id="semantic-review-load">Arată</button>
+    </div>
+    <p id="semantic-review-count" aria-live="polite"></p><p id="semantic-review-info" class="hint" aria-live="polite"></p>
+    <div id="semantic-review-grid" class="semantic-review-grid"></div>
+    <div class="semantic-review-pages"><button id="semantic-review-prev" disabled>Înapoi</button><button id="semantic-review-next" disabled>Următoarele imagini</button></div>
+  </div>
+</dialog>
+<dialog id="semantic-review-photo" aria-labelledby="semantic-review-photo-caption">
+  <button id="semantic-review-photo-close">Închide</button><p id="semantic-review-photo-caption"></p><img id="semantic-review-photo-img" alt="Imagine mărită">
 </dialog>
 <dialog id="fisa" aria-labelledby="fisa-title">
   <div class="fisa-box">
@@ -1512,6 +1621,9 @@
         <p class="hint">Sau introdu manual secretul: <code id="tfa-secret"></code></p>
         <input id="tfa-cod" inputmode="numeric" autocomplete="one-time-code" maxlength="7"
                placeholder="codul de 6 cifre">
+        <input id="tfa-parola-on" type="password" autocomplete="current-password"
+               placeholder="parola contului" aria-label="Parola contului (confirmare)">
+        <p class="hint">Celelalte dispozitive ale contului se deconectează și cer apoi și codul.</p>
         <div class="s-btns row">
           <button type="button" id="tfa-confirm">Activează</button>
           <button type="button" id="tfa-cancel">Renunță</button>
@@ -1538,7 +1650,7 @@
       <span class="s-msg" id="tfa-msg"></span>
     </section>
     <section>
-      <h3>Notificari push pe acest dispozitiv</h3>
+      <h3>Notificări push pe acest dispozitiv</h3>
       <div id="instalare-app" class="hidden instalare-card">
         <p class="hint" id="instalare-text"></p>
         <button type="button" id="instalare-btn" class="hidden">Instalează aplicația</button>
@@ -1550,8 +1662,8 @@
           <option value="atentie">Atenție și critic (toate incidentele)</option>
         </select></label>
       <div class="s-btns row">
-        <button type="button" id="push-on">Pornește notificarile aici</button>
-        <button type="button" id="push-off" class="hidden">Oprește notificarile aici</button>
+        <button type="button" id="push-on">Pornește notificările aici</button>
+        <button type="button" id="push-off" class="hidden">Oprește notificările aici</button>
         <button type="button" id="push-test" class="hidden">Trimite o notificare de proba</button>
       </div>
       <span class="s-msg" id="push-msg"></span>
@@ -1573,7 +1685,7 @@
         tău — cea de aici rămâne.</p>
       <div class="s-btns row">
         <button type="button" id="sess-all">Deconectează toate celelalte dispozitive</button>
-        <a href="/logout"><button type="button">Ieși din cont</button></a>
+        <a href="/logout" class="buton-legatura">Ieși din cont</a>
       </div>
       <span class="s-msg" id="sess-msg"></span>
     </section>

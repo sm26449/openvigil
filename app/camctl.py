@@ -184,7 +184,7 @@ SMART = {
     "motion": ("Miscare", "/ISAPI/System/Video/inputs/channels/1/motionDetection"),
     "line": ("Trecere linie", "/ISAPI/Smart/LineDetection/1"),
     "field": ("Intruziune zona", "/ISAPI/Smart/FieldDetection/1"),
-    "enter": ("Intrare in zona", "/ISAPI/Smart/regionEntrance/1"),
+    "enter": ("Intrare în zonă", "/ISAPI/Smart/regionEntrance/1"),
     "exit": ("Iesire din zona", "/ISAPI/Smart/regionExiting/1"),
     "scene": ("Schimbare scena", "/ISAPI/Smart/SceneChangeDetection/1"),
 }

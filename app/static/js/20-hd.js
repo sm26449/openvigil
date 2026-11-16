@@ -9,7 +9,7 @@ import { show } from './05-navigare.js';
 import { ZOOM_MAX_MS, buildCtrls, post, ptzGata, ptzTine } from './10-live.js';
 import { addMark, attachDigitalZoom, compact, hms, loadMarks, localDay, pad, playFrom, searchRecordings, secOfDay } from './30-redare.js';
 import { AL_RO } from './40-evenimente.js';
-import { hdBufferTarget, hdHeightParam } from './60-setari.js';
+import { hdBufferTarget, hdHeightParam, qualityMode } from './60-setari.js';
 /* ---------- HD on-demand (click pe o camera) ---------- */
 let hdCam = null;
 let hdPos = null;      // secunda din zi redata in HD (null = live)
@@ -244,39 +244,62 @@ async function hdGoLive(gen) {
   $('#hd-when').textContent = '';
   $('#hd-live').classList.add('on');
   hdPos = null;
-  const d = await (await fetch(`/api/play?channel=${hdCam.id}${hdHeightParam()}`)).json();
-  if (gen !== hdGen || !hdCam) return;   // depasit (alta camera / inchis) cat am asteptat
-  if (d.error) { wrap.innerHTML = html`${t('Eroare: {err}', { err: d.error })}`; return; }
-  const sub = streamEl(`cam${hdCam.id}`, 'mse,webrtc');   // substream live: plasa de siguranta
-  sub.style.position = 'absolute'; sub.style.inset = '0';
-  const hd = streamEl(d.stream, HD_MODE, false, hdBufferTarget());  // HD (mainstream) deasupra
-  hd.style.position = 'absolute'; hd.style.inset = '0';
-  hd.style.opacity = '0'; hd.style.transition = 'opacity .25s';
-  wrap.appendChild(sub);   // substream-ul RAMANE mereu dedesubt (nu-l mai scot)
-  wrap.appendChild(hd);
-  // Dezvaluim HD-ul O SINGURA DATA, cand a rulat CONTINUU ~1 s. NU mai comutam inapoi la
-  // substream daca HD mai are un hopa — oscilatia low<->high era mai deranjanta decat un
-  // mic sacadaj. Substream-ul ramane dedesubt ca fundal, dar odata aratat, HD-ul ramane
-  // aratat. Gardianul era 3 s pe vremea cand ffmpeg scotea cadre verzi la pornire
-  // (nobuffer pierdea IDR-ul — reparat in gen_go2rtc.py); acum primul cadru HD e curat.
-  let last = -1, good = 0, ticks = 0;
-  wrap._hdMon = setInterval(() => {
-    const v = hd.video || hd.querySelector('video');
-    if (!v) return;
-    ticks++;
-    if (v.videoWidth > 0 && v.currentTime > last + 0.02) {
-      last = v.currentTime;
-      good++;
+  // Ce flux arata HD-ul, ales in „Calitate” (ca la Synology: fluxul camerei mic sau mare):
+  //   mic  -> DOAR substream-ul camerei (rapid, putine date)
+  //   eco/max -> DOAR fluxul HD (720p / nativ), fara nimic dedesubt
+  //   auto -> substream-ul intai, apoi HD-ul cand ruleaza fluid (comportamentul vechi)
+  // Un singur strat vizibil: doua fluxuri cu proportii diferite (pixeli non-patrati la
+  // substream) se vedeau suprapuse pe telefon, cu data si numele de doua ori (2026-11-14).
+  const mod = qualityMode();
+  const fluxVizibil = (el) => { const v = el.video || el.querySelector('video'); return v && v.videoWidth > 0; };
+  const scoatePoster = (el) => {
+    const id = setInterval(() => {
+      if (gen !== hdGen || !poster.isConnected) { clearInterval(id); return; }
+      if (fluxVizibil(el)) { poster.remove(); clearInterval(id); }
+    }, 250);
+  };
+  if (mod === 'mic') {
+    const sub = streamEl(`cam${hdCam.id}`, 'mse,webrtc');
+    sub.style.position = 'absolute'; sub.style.inset = '0'; sub.style.background = '#000';
+    wrap.appendChild(sub);
+    scoatePoster(sub);
+  } else {
+    const d = await (await fetch(`/api/play?channel=${hdCam.id}${hdHeightParam()}`)).json();
+    if (gen !== hdGen || !hdCam) return;   // depasit (alta camera / inchis) cat am asteptat
+    if (d.error) { wrap.innerHTML = html`${t('Eroare: {err}', { err: d.error })}`; return; }
+    const hd = streamEl(d.stream, HD_MODE, false, hdBufferTarget());
+    hd.style.position = 'absolute'; hd.style.inset = '0'; hd.style.background = '#000';
+    if (mod === 'eco' || mod === 'max') {
+      // doar HD: posterul tine locul pana la primul cadru (cheia HEVC vine in ~2.5 s)
+      wrap.appendChild(hd);
+      scoatePoster(hd);
     } else {
-      good = 0;                                   // resetam seria daca se blocheaza
+      const sub = streamEl(`cam${hdCam.id}`, 'mse,webrtc');   // substream live: pornire rapida
+      sub.style.position = 'absolute'; sub.style.inset = '0'; sub.style.background = '#000';
+      hd.style.opacity = '0'; hd.style.transition = 'opacity .25s';
+      wrap.appendChild(sub);
+      wrap.appendChild(hd);
+      scoatePoster(sub);
+      // HD-ul se dezvaluie O SINGURA DATA, dupa ~1 s de redare continua; atunci substream-ul se
+      // OPRESTE (scos din pagina), nu doar ascuns sub el. Daca HD nu porneste in 20 s, ramane
+      // substream-ul singur.
+      let last = -1, good = 0, ticks = 0;
+      wrap._hdMon = setInterval(() => {
+        const v = hd.video || hd.querySelector('video');
+        if (!v) return;
+        ticks++;
+        if (v.videoWidth > 0 && v.currentTime > last + 0.02) { last = v.currentTime; good++; } else good = 0;
+        if (good >= 2) {
+          hd.style.opacity = '1';
+          clearInterval(wrap._hdMon); wrap._hdMon = null;
+          setTimeout(() => { if (gen === hdGen) sub.remove(); }, 300);
+        } else if (ticks > 40) {
+          clearInterval(wrap._hdMon); wrap._hdMon = null;
+          hd.remove();
+        }
+      }, 500);
     }
-    if (good >= 2) {                              // ~1s de redare CONTINUA -> aratam si gata
-      hd.style.opacity = '1';
-      clearInterval(wrap._hdMon); wrap._hdMon = null;
-    } else if (ticks > 40) {                      // 20s si tot nu s-a stabilizat -> renuntam,
-      clearInterval(wrap._hdMon); wrap._hdMon = null;   // ramane substream-ul (fara oscilatie)
-    }
-  }, 500);
+  }
   attachDigitalZoom(wrap);
   const ov2 = ptzOverlay(hdCam);
   if (ov2) wrap.appendChild(ov2);

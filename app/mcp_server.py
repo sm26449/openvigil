@@ -157,31 +157,31 @@ def _mod(a):
 
 
 UNELTE = {
-    "camere": (_camere, t("Lista camerelor, cu ce stie fiecare sa faca."), {"type": "object", "properties": {}}),
-    "stare": (_stare, t("Starea sistemului: cine inregistreaza, detectii active, spatiu, zgomot, mod."),
+    "camere": (_camere, t("Lista camerelor, cu ce știe fiecare să facă."), {"type": "object", "properties": {}}),
+    "stare": (_stare, t("Starea sistemului: cine înregistrează, detecții active, spațiu, zgomot, mod."),
               {"type": "object", "properties": {}}),
-    "evenimente": (_evenimente, t("Evenimentele din jurnal, cele mai noi primele: detectii, alarme, persoane, episoade, candidati."),
+    "evenimente": (_evenimente, t("Evenimentele din jurnal, cele mai noi primele: detecții, alarme, persoane, episoade, candidați."),
                    {"type": "object", "properties": {
                        "tip": {"type": "string", "description": "detectie | alarma_camera | persoana | episod | scena_candidat | descriere | ..."},
                        "camera": {"type": "integer"}, "zi": {"type": "string", "description": "YYYY-MM-DD"},
                        "text": {"type": "string", "description": "fragment de text cautat in eveniment"},
                        "severitate_minima": {"type": "string", "enum": ["atentie", "critic"]},
                        "limita": {"type": "integer"}}}),
-    "episoade": (_episoade, t("Episoadele de prezenta (cine, cat, incotro), cu descrierea lor."),
+    "episoade": (_episoade, t("Episoadele de prezență (cine, cât, încotro), cu descrierea lor."),
                  {"type": "object", "properties": {"camera": {"type": "integer"}, "zi": {"type": "string"}, "limita": {"type": "integer"}}}),
-    "scena": (_scena, t("Candidatii „ceva nou” ai unei camere, cu eticheta propusa si verdictul omului."),
+    "scena": (_scena, t("Candidații „ceva nou” ai unei camere, cu eticheta propusă și verdictul omului."),
               {"type": "object", "properties": {"camera": {"type": "integer"}, "limita": {"type": "integer"}}, "required": ["camera"]}),
-    "cauta": (_cauta, t("Cautare vizuala in pozele de detectie dupa o descriere libera (ex. „masina de gunoi”)."),
+    "cauta": (_cauta, t("Căutare vizuală în pozele de detecție după o descriere liberă (ex. „mașina de gunoi”)."),
               {"type": "object", "properties": {"intrebare": {"type": "string"}, "zile": {"type": "integer"}, "limita": {"type": "integer"}}, "required": ["intrebare"]}),
-    "intreaba": (_intreaba, t("O intrebare in limbaj natural („cand a venit masina de gunoi?”), cu raspuns si dovezi."),
+    "intreaba": (_intreaba, t("O întrebare în limbaj natural („când a venit mașina de gunoi?”), cu răspuns și dovezi."),
                  {"type": "object", "properties": {"intrebare": {"type": "string"}, "camera": {"type": "integer"}}, "required": ["intrebare"]}),
     "poza": (_poza, t("Cadrul curent al unei camere (JPEG)."),
              {"type": "object", "properties": {"camera": {"type": "integer"}}, "required": ["camera"]}),
-    "vreme": (_vreme, t("Vremea acum (de afara si estimata din camere): stare, vant, noapte, temperatura."),
+    "vreme": (_vreme, t("Vremea acum (de afară și estimată din camere): stare, vânt, noapte, temperatură."),
               {"type": "object", "properties": {}}),
-    "recomandari": (_recomandari, t("Ce ar imbunatati detectia pe o camera, cu actiuni aplicabile din interfata."),
+    "recomandari": (_recomandari, t("Ce ar îmbunătăți detecția pe o cameră, cu acțiuni aplicabile din interfață."),
                     {"type": "object", "properties": {"camera": {"type": "integer"}}, "required": ["camera"]}),
-    "mod": (_mod, t("Modul casei: citeste, sau comuta cu `mod` = acasa | plecat | noapte."),
+    "mod": (_mod, t("Modul casei: citește, sau comută cu `mod` = acasa | plecat | noapte."),
             {"type": "object", "properties": {"mod": {"type": "string", "enum": ["acasa", "plecat", "noapte"]}}}),
 }
 
@@ -225,7 +225,7 @@ def trateaza(mesaj):
             "protocolVersion": p.get("protocolVersion") or PROTOCOL,
             "capabilities": {"tools": {"listChanged": False}},
             "serverInfo": {"name": "openvigil", "version": _versiune()},
-            "instructions": t("Supraveghere video: camere, evenimente, episoade, cautare vizuala, poze, recomandari, modul casei. Orele sunt locale.")}}
+            "instructions": t("Supraveghere video: camere, evenimente, episoade, căutare vizuală, poze, recomandări, modul casei. Orele sunt locale.")}}
     if metoda == "ping":
         return {"jsonrpc": "2.0", "id": id_, "result": {}}
     if metoda == "tools/list":

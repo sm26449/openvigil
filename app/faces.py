@@ -107,7 +107,7 @@ def sanitize_name(name):
     s = unicodedata.normalize("NFKD", str(name or "")).encode("ascii", "ignore").decode()
     s = re.sub(r"[^a-z0-9-]+", "-", s.lower()).strip("-")
     if not re.match(r"^[a-z][a-z0-9-]{1,19}$", s):
-        raise ValueError(t("nume invalid (2-20 caractere, litere/cifre/liniuta, incepe cu litera)"))
+        raise ValueError(t("nume invalid (2–20 caractere, litere/cifre/liniuță, începe cu o literă)"))
     return s
 
 
@@ -237,7 +237,7 @@ def enroll(name, jpeg_bytes):
     name = sanitize_name(name)
     img = cv2.imdecode(np.frombuffer(jpeg_bytes, np.uint8), cv2.IMREAD_COLOR)
     if img is None:
-        raise ValueError(t("imaginea nu poate fi citita"))
+        raise ValueError(t("imaginea nu poate fi citită"))
     faces = _detect(img)
     if not faces:
         raise ValueError(t("nicio față utilizabila în imagine (prea mica sau neclara)"))

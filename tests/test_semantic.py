@@ -5,6 +5,7 @@ sintetici, iar fisierele merg intr-un director temporar.
 """
 import os
 import sys
+from datetime import datetime
 
 import numpy as np
 import pytest
@@ -19,6 +20,11 @@ import semantic  # noqa: E402
 def _semantic_in_tmp(tmp_path, monkeypatch):
     monkeypatch.setattr(semantic, "SEM_DIR", str(tmp_path / "semantic"))
     monkeypatch.setattr(semantic, "SNAP_DIR", str(tmp_path / "snapshots"))
+    monkeypatch.setattr(semantic, 'SCENA_DIR', str(tmp_path / 'scena'))
+    monkeypatch.setattr(semantic, '_scene_assets', lambda: iter(()))
+    bounds = semantic.search_time.bounds
+    monkeypatch.setattr(semantic.search_time, 'bounds', lambda days=30, now=None:
+                        bounds(days, datetime(2026, 8, 14, 23).timestamp()))
 
 
 def _unit(v, dim=8):
@@ -63,7 +69,7 @@ def test_search_ordoneaza_dupa_similaritate(monkeypatch):
     rez = semantic.search("masina", days=7, limit=10)
     assert [r["fn"] if "fn" in r else r["url"].split("/")[-1] for r in rez][:2] == \
            ["a.jpg", "c.jpg"]
-    assert rez[0]["score"] >= rez[1]["score"] >= rez[2]["score"]
+    assert len(rez) == 2 and rez[0]["score"] >= rez[1]["score"]
     assert rez[0]["url"] == "/snapshots/2026-08-14/a.jpg"
 
 
@@ -79,7 +85,7 @@ def test_search_filtreaza_camerele_viewerului(monkeypatch):
 def test_search_pe_mai_multe_zile(monkeypatch):
     semantic.shard_add("2026-08-13", np.stack([_unit([1])]),
                        [{"fn": "vechi.jpg", "cam": 1, "label": "car", "time": "09:00:00"}])
-    semantic.shard_add("2026-08-14", np.stack([_unit([0, 1])]),
+    semantic.shard_add("2026-08-14", np.stack([_unit([0.2, 1])]),
                        [{"fn": "nou.jpg", "cam": 1, "label": "car", "time": "10:00:00"}])
     monkeypatch.setattr(semantic, "embed_text", lambda q: _unit([1]))
     rez = semantic.search("x", days=7)
@@ -97,6 +103,7 @@ def test_prune_sterge_shardurile_orfane(monkeypatch):
     semantic.shard_add("2026-08-10", np.stack([_unit([1])]),
                        [{"fn": "a.jpg", "cam": 1, "label": "x", "time": "10:00:00"}])
     os.makedirs(os.path.join(semantic.SNAP_DIR, "2026-08-11"))
+    open(os.path.join(semantic.SNAP_DIR, '2026-08-11', 'b.jpg'), 'wb').close()
     semantic.shard_add("2026-08-11", np.stack([_unit([1])]),
                        [{"fn": "b.jpg", "cam": 1, "label": "x", "time": "10:00:00"}])
     semantic.prune()
@@ -132,11 +139,12 @@ def test_decupajele_scenei_intra_in_index(monkeypatch):
     semantic.shard_add("2026-11-01", np.stack([_unit([0, 1])]),
                        [{"fn": "a.jpg", "cam": 1, "label": "car", "time": "10:00:00"}])
     monkeypatch.setattr(semantic, "embed_text", lambda q: _unit([1]))
-    rez = semantic.search("mașină albă", days=7, limit=10)
+    since, until = datetime(2026, 11, 1).timestamp(), datetime(2026, 11, 2).timestamp()
+    rez = semantic.search("mașină albă", days=7, limit=10, since=since, until=until)
     assert rez[0]["url"] == "/api/cam/14/scena/fisier/20261101-085942-45.jpg"
     assert (rez[0]["sursa"], rez[0]["label"], rez[0]["time"], rez[0]["cam"]) == ("scena", "mașină", "08:59:42", 14)
-    assert rez[1]["sursa"] == "detectie" and rez[1]["url"] == "/snapshots/2026-11-01/a.jpg"
-    grupuri, top = semantic.appearances("mașină albă", days=7)
+    assert len(rez) == 1  # vectorul ortogonal nu e o potrivire
+    grupuri, top = semantic.appearances("mașină albă", days=7, since=since, until=until)
     assert grupuri[0]["coperta"] == "/api/cam/14/scena/fisier/20261101-085942-45.jpg"
     monkeypatch.setattr(semantic, "IS_HOST", False)
     assert not semantic.adauga_scena(14, "20261101-085942-45.jpg", "mașină", _unit([1]))   # doar gazda indexului

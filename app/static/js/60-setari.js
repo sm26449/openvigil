@@ -4,7 +4,7 @@
    pe toate; importurile/exporturile sunt verificate de scripts/module_check.py (si in pytest).
    ==================================================================== */
 import { S } from './state.js';
-import { $, ADMIN, DET_RO, LIMBA, ME, esc, html, lista, raw, runJob, t, toast, fdia } from './00-core.js';
+import { $, ADMIN, DET_RO, LIMBA, ME, esc, html, lista, numeCam, raw, runJob, t, toast, fdia } from './00-core.js';
 import { loadCameras, post } from './10-live.js';
 import { hdGoLive } from './20-hd.js';
 import { AL_ICO } from './40-evenimente.js';
@@ -58,6 +58,8 @@ async function loadSettings(force = false) {
   $('#s-em-pass').value = s.email_pass;
   $('#s-em-to').value = s.email_to;
   $('#s-cooldown').value = s.notify_cooldown;
+  $('#s-alert-url').value = s.alert_service_url || '';
+  $('#s-alert-key').value = s.alert_service_key || '';
   checksHtml('#s-notify-labels', s.notify_labels);
   checksHtml('#s-siren-labels', s.auto_siren_labels);
   $('#s-reencode').checked = s.reencode_enabled;
@@ -180,6 +182,18 @@ function setAvansat(on, save = true) {
     }
   }
 }
+// un panou cu TOATE cardurile avansate (Sistem) ramanea gol, doar cu titlul, cat timp
+// „avansate" e oprit — parea o pagina stricata (audit UX 2026-11-14, D8)
+for (const pane of document.querySelectorAll('#set .set-pane')) {
+  const carduri = pane.querySelectorAll('.set-card');
+  if (!carduri.length || [...carduri].some((c) => !c.hasAttribute('data-avansat'))) continue;
+  const gol = document.createElement('div');
+  gol.className = 'set-card set-doar-simplu';
+  gol.innerHTML = html`<p>${t('Toate opțiunile de aici sunt avansate (MQTT, ora camerelor, fluiditatea grilei, NVR) și sunt ascunse.')}</p>
+    <button type="button" class="set-arata-avansat">${t('Arată opțiunile avansate')}</button>`;
+  gol.querySelector('button').onclick = () => setAvansat(true);
+  (pane.querySelector('.set-cols') || pane).prepend(gol);
+}
 $('#set-adv') && ($('#set-adv').onchange = () => setAvansat($('#set-adv').checked));
 try { if ($('#set-adv')) setAvansat(localStorage.getItem('setAvansat') === '1', false); } catch {}
 
@@ -203,7 +217,7 @@ $('#mq-test') && ($('#mq-test').onclick = async () => {
     mqtt_topic: $('#mq-topic').value.trim() || 'nvr',
   });
   $('#mq-status').textContent = r && !r.error
-    ? t('Conectat la {broker} ✓ — proba publicata pe „{topic}/proba”', { broker: r.broker, topic: $('#mq-topic').value || 'nvr' })
+    ? t('Conectat la {broker} ✓ — proba publicată pe „{topic}/proba”', { broker: r.broker, topic: $('#mq-topic').value || 'nvr' })
     : (r && r.error) || t('eroare');
 });
 
@@ -216,18 +230,18 @@ async function loadUsers() {
     const scop = (u) => {
       const parti = [];
       if (u.groups && u.groups.length) parti.push(t('grupuri: {lista}', { lista: u.groups.join(', ') }));
-      if (u.cameras && u.cameras.length) parti.push(t('camere: {lista}', { lista: u.cameras.join(', ') }));
+      if (u.cameras && u.cameras.length) parti.push(t('camere: {lista}', { lista: u.cameras.map(numeCam).join(', ') }));
       return parti.length ? parti.join(' · ') : t('toate camerele');
     };
     $('#u-list').innerHTML = lista(list, (u) => html`
       <div class="u-row" data-user="${u.user}">
         <b>${u.user}</b> <span class="u-role">${rol(u)}</span>
-        ${u.totp ? html`<span class="u-flag" title="${t('autentificare in doi pasi activa')}">🔐 2FA</span>` : ''}
+        ${u.totp ? html`<span class="u-flag" title="${t('autentificare în doi pași activă')}">🔐 2FA</span>` : ''}
         <span class="hint">${u.role === 'admin' ? '' : scop(u)}</span>
         <button class="u-edit link-btn" title="${t('Încarcă în formular')}">${t('modifică')}</button>
         <button class="u-revoke link-btn" title="${t('Taie toate sesiunile contului (telefon pierdut, paznic plecat)')}">${t('deconectează')}</button>
-        ${u.totp ? html`<button class="u-tfa link-btn" title="${t('Scoate al doilea pas (telefon pierdut, fara coduri de recuperare)')}">${t('scoate 2FA')}</button>` : ''}
-        ${u.user === ME.user ? '' : html`<button class="u-del link-btn">${t('sterge')}</button>`}
+        ${u.totp ? html`<button class="u-tfa link-btn" title="${t('Scoate al doilea pas (telefon pierdut, fără coduri de recuperare)')}">${t('scoate 2FA')}</button>` : ''}
+        ${u.user === ME.user ? '' : html`<button class="u-del link-btn">${t('șterge')}</button>`}
       </div>`, html`<p class="hint">${t('Niciun utilizator.')}</p>`);
     for (const row of document.querySelectorAll('#u-list .u-row')) {
       const name = row.dataset.user;
@@ -263,7 +277,7 @@ function fillUserForm(u) {
   $('#u-cancel').classList.remove('hidden');
   $('#u-name').value = u.user;
   $('#u-pass').value = '';
-  $('#u-pass').placeholder = t('parola noua (gol = neschimbata)');
+  $('#u-pass').placeholder = t('parolă nouă (gol = neschimbată)');
   $('#u-role').value = u.role;
   buildUserScope(u);
   window.scrollTo({ top: $('#u-form-title').offsetTop - 80 });
@@ -353,8 +367,8 @@ async function loadTfa() {
     const me = await (await fetch('/api/me')).json();
     ME.totp = !!me.totp;
     $('#tfa-stare').textContent = me.totp
-      ? t('Activă: la fiecare login, după parola, ti se cere codul din aplicația de autentificare.')
-      : t('Inactivă: contul e protejat doar de parola. Cu al doilea pas, o parola furată nu ajunge.');
+      ? t('Activă: la fiecare autentificare, după parolă, ți se cere codul din aplicația de autentificare.')
+      : t('Inactivă: contul e protejat doar de parolă. Cu al doilea pas, o parolă furată nu ajunge.');
     $('#tfa-on').classList.toggle('hidden', me.totp);
     $('#tfa-off').classList.toggle('hidden', !me.totp);
   } catch {}
@@ -365,13 +379,14 @@ $('#tfa-on').onclick = async () => {
   $('#tfa-qr').src = d.qr || '';
   $('#tfa-qr').classList.toggle('hidden', !d.qr);
   $('#tfa-secret').textContent = d.secret.replace(/(.{4})/g, '$1 ').trim();
-  $('#tfa-cod').value = '';
+  $('#tfa-cod').value = ''; $('#tfa-parola-on').value = '';
   $('#tfa-btns').classList.add('hidden'); $('#tfa-pas1').classList.remove('hidden');
   $('#tfa-cod').focus();
 };
 $('#tfa-cancel').onclick = () => { $('#tfa-pas1').classList.add('hidden'); $('#tfa-btns').classList.remove('hidden'); };
 $('#tfa-confirm').onclick = async () => {
-  const d = await post('/api/me/2fa/activeaza', { cod: $('#tfa-cod').value.trim() });
+  const d = await post('/api/me/2fa/activeaza', { cod: $('#tfa-cod').value.trim(), parola: $('#tfa-parola-on').value });
+  $('#tfa-parola-on').value = '';
   if (!d || d.error) return;
   $('#tfa-rec').textContent = (d.recuperare || []).join('\n');
   $('#tfa-pas1').classList.add('hidden'); $('#tfa-pas2').classList.remove('hidden');
@@ -424,10 +439,10 @@ function randInstalare() {
   if (eInstalat()) { box.classList.add('hidden'); return; }   // deja aplicatie: nimic de aratat
   box.classList.remove('hidden');
   if (promptInstalare) {
-    txt.textContent = t('Instaleaz-o pe ecranul de start ca sa primesti notificari si sa o deschizi ca pe o aplicatie.');
+    txt.textContent = t('Instaleaz-o pe ecranul de start ca să primești notificări și să o deschizi ca pe o aplicație.');
     btn.classList.remove('hidden');
   } else if (eIOS()) {
-    txt.textContent = t('Pe iPhone/iPad: apasa Partajează, apoi „Adaugă la ecranul de start" — de acolo primesti notificari push.');
+    txt.textContent = t('Pe iPhone/iPad: apasă Partajează, apoi „Adaugă la ecranul de start” — de acolo primești notificări push.');
     btn.classList.add('hidden');
   } else {
     txt.textContent = t('Din meniul browserului alege „Instalează aplicația" / „Adaugă la ecranul de start".');
@@ -463,17 +478,17 @@ async function loadPushState() {
     const d = await (await fetch('/api/push/cheie')).json();
     if (!d.activ) { st.textContent = t('Serverul nu are cheile de push (lipsește pywebpush).'); return; }
     if (!('PushManager' in window) || !('Notification' in window)) {
-      st.textContent = t('Browserul asta nu știe notificari push (pe iPhone: instalează aplicația pe ecranul de start, din Safari).'); return;
+      st.textContent = t('Browserul ăsta nu știe notificări push (pe iPhone: instalează aplicația pe ecranul de start, din Safari).'); return;
     }
     if (!window.isSecureContext) {
-      st.textContent = t('Notificarile push cer HTTPS: deschide interfata prin adresa https (ex. https://nvr.exemplu.ro), nu prin {host}.', { host: location.host }); return;
+      st.textContent = t('Notificările push cer HTTPS: deschide interfața prin adresa https (ex. https://nvr.exemplu.ro), nu prin {host}.', { host: location.host }); return;
     }
     const reg = await pushReg();
     if (!reg) { st.textContent = t('Service worker-ul nu s-a înregistrat (reîncarcă pagina).'); return; }
     pushSub = await reg.pushManager.getSubscription();
     const al = pushSub && (d.abonamente || []).find((a) => a.endpoint === pushSub.endpoint);
     if (Notification.permission === 'denied') {
-      st.textContent = t('Notificarile sunt BLOCATE pentru acest site din setările browserului.'); return;
+      st.textContent = t('Notificările sunt BLOCATE pentru acest site din setările browserului.'); return;
     }
     if (al) {
       st.textContent = t('Pornite pe acest dispozitiv ({nivel}). Alte dispozitive abonate pe contul tău: {altele}.', {
@@ -487,17 +502,17 @@ async function loadPushState() {
         : t('Oprite. Pornește-le ca incidentele să ajungă pe acest dispozitiv.');
       btnOn.classList.remove('hidden');
     }
-  } catch (e) { st.textContent = t('Nu pot citi starea notificarilor: {e}', { e }); }
+  } catch (e) { st.textContent = t('Nu pot citi starea notificărilor: {e}', { e }); }
 }
 $('#push-on').onclick = async () => {
   try {
     const perm = await Notification.requestPermission();
-    if (perm !== 'granted') { flash('#push-msg', t('Nu ai permis notificarile'), true); return; }
+    if (perm !== 'granted') { flash('#push-msg', t('Nu ai permis notificările'), true); return; }
     const d = await (await fetch('/api/push/cheie')).json();
     const reg = await pushReg();
     const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64url(d.cheie) });
     const r = await post('/api/push/abonare', { abonament: sub.toJSON(), nivel: $('#push-nivel').value });
-    if (r && !r.error) flash('#push-msg', t('Notificarile sunt pornite pe acest dispozitiv ✓'));
+    if (r && !r.error) flash('#push-msg', t('Notificările sunt pornite pe acest dispozitiv ✓'));
   } catch (e) { flash('#push-msg', t('Nu am putut porni: {e}', { e: e.message || e }), true); }
   loadPushState();
   if (ADMIN) loadPushAdmin();
@@ -515,7 +530,7 @@ $('#push-off').onclick = async () => {
         body: JSON.stringify({ endpoint: pushSub.endpoint }) });
       await pushSub.unsubscribe();
     }
-    flash('#push-msg', t('Notificarile sunt oprite pe acest dispozitiv'));
+    flash('#push-msg', t('Notificările sunt oprite pe acest dispozitiv'));
   } catch (e) { flash('#push-msg', t('Eroare: {e}', { e }), true); }
   loadPushState();
   if (ADMIN) loadPushAdmin();
@@ -565,6 +580,8 @@ function settingsBody() {
     email_pass: $('#s-em-pass').value,
     email_to: $('#s-em-to').value.trim(),
     notify_cooldown: +$('#s-cooldown').value || 300,
+    alert_service_url: $('#s-alert-url').value.trim(),
+    alert_service_key: $('#s-alert-key').value.trim(),
     notify_labels: checkedOf('#s-notify-labels'),
     auto_siren_labels: checkedOf('#s-siren-labels'),
     reencode_enabled: $('#s-reencode').checked,
@@ -692,14 +709,14 @@ async function loadNoiseProfile() {
     box.innerHTML = html`${d.camere.map((c) => {
       const p = c.propunere;
       if (!p) return html`<div class="prof-cam"><div class="prof-head"><b>${c.name}</b>
-        <span class="prof-cov">${t('se colecteaza…')}</span></div>
-        <p class="hint">${t('Inca nu avem nicio ora completa. Primele cifre apar dupa o ora.')}</p></div>`;
+        <span class="prof-cov">${t('se colectează…')}</span></div>
+        <p class="hint">${t('Încă nu avem nicio oră completă. Primele cifre apar după o oră.')}</p></div>`;
       const ore = c.profil.filter((h) => h.n);
       const lo = Math.floor(Math.min(...ore.map((h) => h.min)) / 5) * 5;
       const hi = Math.ceil(Math.max(...ore.map((h) => h.max)) / 5) * 5;
       const y = (v) => ((v - lo) / (hi - lo)) * 100;
       const cols = c.profil.map((h) => {
-        if (!h.n) return html`<div class="prof-col empty" title="${t('ora {ora}: fara date', { ora: h.ora })}"></div>`;
+        if (!h.n) return html`<div class="prof-col empty" title="${t('ora {ora}: fără date', { ora: h.ora })}"></div>`;
         return html`<div class="prof-col" title="${t('ora {ora}:00 — fond {l90} dB, mediu {leq} dB, se remarca {l10} dB, extreme {min}…{max} dB ({zile} zile)',
           { ora: h.ora, l90: h.l90, leq: h.leq, l10: h.l10, min: h.min, max: h.max, zile: h.zile })}">
           <b style="bottom:${y(h.min)}%;height:${y(h.max) - y(h.min)}%"></b>
@@ -708,8 +725,8 @@ async function loadNoiseProfile() {
       });
       const zn = p.dif_zi_noapte === null ? ''
         : ' ' + (p.dif_zi_noapte >= 0
-          ? t('Ziua e cu {n} dB mai zgomotoasa decat noaptea.', { n: Math.abs(p.dif_zi_noapte) })
-          : t('Ziua e cu {n} dB mai linistita decat noaptea.', { n: Math.abs(p.dif_zi_noapte) }));
+          ? t('Ziua e cu {n} dB mai zgomotoasă decât noaptea.', { n: Math.abs(p.dif_zi_noapte) })
+          : t('Ziua e cu {n} dB mai liniștită decât noaptea.', { n: Math.abs(p.dif_zi_noapte) }));
       return html`<div class="prof-cam">
         <div class="prof-head"><b>${c.name}</b>
           <span class="prof-cov${p.gata ? ' ok' : ''}">${t('{n} din 7 zile', { n: p.zile })}</span></div>
@@ -719,15 +736,15 @@ async function loadNoiseProfile() {
         <div class="prof-x">${c.profil.map((h) => html`<span>${h.ora % 3 ? '' : h.ora}</span>`)}</div>
         <div class="prof-leg"><i class="lg-band"></i> ${t('nivelul obisnuit')}
           <i class="lg-avg"></i> ${t('mediu')} <i class="lg-ext"></i> ${t('extreme')}</div>
-        <p class="hint">${t('Fondul obisnuit e {fond} dBFS, iar cel mai tare zgomot masurat a fost {varf} dBFS.', { fond: p.fond, varf: p.varf_masurat })}${zn}
+        <p class="hint">${t('Fondul obișnuit e {fond} dBFS, iar cel mai tare zgomot măsurat a fost {varf} dBFS.', { fond: p.fond, varf: p.varf_masurat })}${zn}
           ${p.gata ? '' : ' ' + t('Propunerea se schimba pe masura ce se aduna date.')}</p>
         <button class="btn sm" data-thr="${p.prag_db}" data-spike="${p.spike_db}">
-          ${t('Pune pragul la {prag} dB si varful la {varf} dB', { prag: p.prag_db, varf: p.spike_db })}</button>
+          ${t('Pune pragul la {prag} dB și vârful la {varf} dB', { prag: p.prag_db, varf: p.spike_db })}</button>
       </div>`;
     })}`;
     if (d.camere.some((c) => c.propunere)) {
       box.insertAdjacentHTML('beforeend',
-        html`<p class="hint"><a href="/api/noise/export.csv?days=30" download>${t('Descarca masuratorile (CSV)')}</a> — ${t('o linie pe ora, daca vrei sa le analizezi separat.')}</p>`);
+        html`<p class="hint"><a href="/api/noise/export.csv?days=30" download>${t('Descarcă măsurătorile (CSV)')}</a> — ${t('o linie pe oră, dacă vrei să le analizezi separat.')}</p>`);
     }
     box.querySelectorAll('button[data-thr]').forEach((b) => {
       b.onclick = () => {
@@ -804,7 +821,7 @@ async function loadHooks() {
     for (const c of $('#wh-events').querySelectorAll('input')) c.onchange = checkDirty;
     $('#wh-log').innerHTML = lista(w.jurnal, (r) => html`<div class="wh-row ${r.ok ? 'ok' : 'rau'}">
           <span>${r.t.slice(11)}</span><b>${r.ok ? t('trimis') : t('esuat')}</b>
-          <i>${r.detaliu}</i><u>${r.url}</u></div>`, html`<p class="hint">${t('Nicio livrare inca.')}</p>`);
+          <i>${r.detaliu}</i><u>${r.url}</u></div>`, html`<p class="hint">${t('Nicio livrare încă.')}</p>`);
   } catch { incarcareOk = false; }   // audit S1
 }
 $('#wh-test').onclick = async () => {
@@ -838,7 +855,7 @@ async function loadContinuity() {
     // 1. cine scrie chiar acum
     const mute = d.acum.filter((c) => !c.scrie);
     $('#cont-live').innerHTML = html`<div class="cont-sum ${mute.length ? 'rau' : 'bun'}">${
-        mute.length ? t('{n} camere nu scriu pe disc', { n: mute.length }) : t('Toate cele {n} camere scriu pe disc', { n: d.acum.length })
+        mute.length === 1 ? t('O cameră nu scrie pe disc') : mute.length ? t('{n} camere nu scriu pe disc', { n: mute.length }) : t('Toate cele {n} camere scriu pe disc', { n: d.acum.length })
       }</div><div class="cont-cams">${d.acum.map((c) => {
         const v = c.varsta === null ? '—' : c.varsta < 90 ? `${c.varsta}s` : `${Math.round(c.varsta / 60)} min`;
         return html`<div class="cont-cam${c.scrie ? '' : ' mut'}" title="${t('{cam} — ultima scriere acum {v}', { cam: c.name, v })}${
@@ -851,16 +868,16 @@ async function loadContinuity() {
     // 2. acoperirea pe zile: o linie per camera, o celula per zi
     const zile = [...new Set(Object.values(d.jurnal).flat().map((r) => r.zi))].sort();
     const nume = Object.fromEntries(d.acum.map((c) => [c.id, c.name]));
-    $('#cont-cov').innerHTML = !zile.length ? html`<p class="hint">${t('Jurnalul se completeaza pe parcurs.')}</p>`
+    $('#cont-cov').innerHTML = !zile.length ? html`<p class="hint">${t('Jurnalul se completează pe parcurs.')}</p>`
       : html`<div class="cov-grid" style="grid-template-columns:150px repeat(${zile.length}, 1fr)">
           <span></span>${zile.map((z) => html`<i class="cov-zi">${z.slice(8)}</i>`)}
           ${Object.entries(d.jurnal).map(([cid, rows]) => {
             const byDay = Object.fromEntries(rows.map((r) => [r.zi, r]));
             return html`<b class="cov-nume">${nume[cid] || t('cam {id}', { id: cid })}</b>${zile.map((z) => {
               const r = byDay[z];
-              if (!r) return html`<span class="cov-cel gol" title="${t('fara date')}"></span>`;
+              if (!r) return html`<span class="cov-cel gol" title="${t('fără date')}"></span>`;
               if (r.mod !== 'continuous') {
-                return html`<span class="cov-cel misc" title="${t('{zi}: mod la miscare, {p}% pastrat', { zi: z, p: r.procent })}"></span>`;
+                return html`<span class="cov-cel misc" title="${t('{zi}: mod la mișcare, {p}% păstrat', { zi: z, p: r.procent })}"></span>`;
               }
               const cls = r.procent >= 99 ? 'ok' : r.procent >= 90 ? 'part' : 'rau';
               return html`<span class="cov-cel ${cls}" title="${t('{zi}: {p}% acoperit', { zi: z, p: r.procent })}${
@@ -879,8 +896,8 @@ async function loadContinuity() {
     const proc = Math.min(100, s.necesar_gb ? s.disponibil_gb / s.necesar_gb * 100 : 100);
     $('#cont-space').innerHTML = html`
       <div class="cont-sum ${s.incape ? 'bun' : 'rau'}">${s.incape
-        ? t('Retentia configurata incape: cere {necesar} din {disponibil} disponibili.', { necesar: tb(s.necesar_gb), disponibil: tb(s.disponibil_gb) })
-        : t('Retentia configurata nu incape. Cere {necesar}, dar avem loc de {disponibil}.', { necesar: tb(s.necesar_gb), disponibil: tb(s.disponibil_gb) })}</div>
+        ? t('Retenția configurată încape: cere {necesar} din {disponibil} disponibili.', { necesar: tb(s.necesar_gb), disponibil: tb(s.disponibil_gb) })
+        : t('Retenția configurată nu încape. Cere {necesar}, dar avem loc de {disponibil}.', { necesar: tb(s.necesar_gb), disponibil: tb(s.disponibil_gb) })}</div>
       <div class="sp-bar"><u style="width:${proc}%"></u></div>
       <p class="hint">${raw(t('Scriem {gbzi}, iar {p}% din segmente conțin evenimente. Pastrand tot, discul ajunge pentru {zile}.', {
         gbzi: html`<b>${t('{gb} GB pe zi', { gb: s.gb_pe_zi })}</b>`, p: esc(s.cu_evenimente),
@@ -889,7 +906,7 @@ async function loadContinuity() {
         <p>${raw(t('Propunere care chiar se respecta: {zile} pentru tot.', { zile: html`<b>${t('{n} zile', { n: p.zile })}</b>` }))}</p>
         <p class="hint">${p.motiv}</p>
         <button class="btn sm" id="sp-apply" data-z="${p.zile}" data-e="${p.zile_evenimente}">
-          ${t('Pune retentia la {n} zile', { n: p.zile })}</button></div>` : ''}
+          ${t('Pune retenția la {n} zile', { n: p.zile })}</button></div>` : ''}
       <details class="sp-det"><summary>${t('Cât scrie fiecare camera')}</summary>
         <table class="sp-tab"><thead><tr><th>${t('Camera')}</th><th>${t('GB/zi')}</th>
           <th>${t('Cu evenimente')}</th><th>${t('Cere')}</th></tr></thead><tbody>
@@ -947,9 +964,9 @@ async function loadSystem() {
       <small>${txt}</small></div>`;
     const diskUsed = pct(s.disk_total_gb - s.disk_free_gb, s.disk_total_gb);
     $('#sys-stats').innerHTML = html`<div class="sys-fresh">${t('Actualizat acum')}</div>${
-      bar(t('Procesor'), s.cpu, t('{cpu}% din {cores} nuclee · incarcare {load}', { cpu: s.cpu, cores: s.cores, load: s.load[0] }), s.cpu > 85)}${
+      bar(t('Procesor'), s.cpu, t('{cpu}% din {cores} nuclee · încărcare {load}', { cpu: s.cpu, cores: s.cores, load: s.load[0] }), s.cpu > 85)}${
       bar(t('Memorie'), pct(s.ram_used_gb, s.ram_total_gb), `${s.ram_used_gb} / ${s.ram_total_gb} GB`, false)}${
-      bar(t('Disc'), diskUsed, t('{free} GB liberi · inregistrari {rec} GB', { free: s.disk_free_gb, rec: s.rec_gb }), diskUsed > 90)}
+      bar(t('Disc'), diskUsed, t('{free} GB liberi · înregistrări {rec} GB', { free: s.disk_free_gb, rec: s.rec_gb }), diskUsed > 90)}
       <div class="sys-item"><span>${t('Rețea')}</span><div class="sys-net">
       ${raw(t('{in} Mbps intră {out} Mbps ies', { in: html`<b>${s.net.in_mbps}</b>`, out: html`<b>${s.net.out_mbps}</b>` }))}</div>
       <small>${t('pornit de {n} zile', { n: Math.round(s.uptime_h / 24) })}</small></div>
@@ -1023,13 +1040,14 @@ function setQualityMode(m) {
   try { localStorage.setItem('hd_quality', m); } catch {}
   for (const id of ['hd-quality', 'pb-quality']) {
     const el = $('#' + id);
-    if (el) el.value = m;
+    // „Flux mic” exista doar la live (inregistrarile au numai fluxul mare): in Inregistrari = 720p
+    if (el) el.value = (m === 'mic' && id === 'pb-quality') ? 'eco' : m;
   }
 }
 let bwProbe = null;              // o singura masurare in fundal, nu una per redare
 function hdHeightParam() {
   const m = qualityMode();
-  if (m === 'eco') return '&height=720';
+  if (m === 'eco' || m === 'mic') return '&height=720';
   if (m === 'max') return '&height=0';
   const t = window.__bw && window.__bw.treapta;
   if (!t) {
@@ -1064,7 +1082,7 @@ $('#speed-btn') && ($('#speed-btn').onclick = async () => {
 for (const id of ['hd-quality', 'pb-quality']) {
   const el = $('#' + id);
   if (!el) continue;
-  el.value = qualityMode();
+  el.value = (qualityMode() === 'mic' && id === 'pb-quality') ? 'eco' : qualityMode();
   el.onchange = () => {
     setQualityMode(el.value);
     // in HD live noua treapta se aplica pe loc; in playback, la urmatoarea redare
@@ -1086,7 +1104,7 @@ function aiStatusHtml(ai) {
     : html`<i class="ai-warm">${t('neconectat (broker/user/parola?)')}</i>`;
   const mg = ai.motion_gate
     ? (ai.motion_gate.pornit
-        ? html`<b class="ai-on">${t('pornit')}</b> · ${t('{p}% scene statice sarite', { p: Math.round(ai.motion_gate.sarite * 100) })}`
+        ? html`<b class="ai-on">${t('pornit')}</b> · ${t('{p}% scene statice sărite', { p: Math.round(ai.motion_gate.sarite * 100) })}`
         : html`<i class="ai-off">${t('oprit')}</i>`)
     : '';
   // metrici per model (faza 6): cine munceste si cat de repede — doar cele active recent
@@ -1193,7 +1211,7 @@ async function loadLog() {
       <span class="log-g">${r.target || ''}</span>
       <span class="log-d">${r.detail ? JSON.stringify(r.detail) : ''}</span>
       <span class="log-w" title="${r.ip || ''}">${r.who || ''}</span></div>`,
-      html`<p class="hint">${t('Nicio modificare inregistrata inca.')}</p>`);
+      html`<p class="hint">${t('Nicio modificare înregistrată încă.')}</p>`);
   } catch {}
 }
 $('#log-q').oninput = loadLog;
@@ -1207,9 +1225,9 @@ async function loadStorage() {
     $('#s-storage').innerHTML =
       html`${raw(t('Înregistrări pe disc: {used} · spațiu liber: {free}', { used: html`<b>${s.used_gb} GB</b>`, free: html`<b>${s.free_gb} GB</b>` }))}${
       re.available
-        ? (re.running ? html`<br>${t('Re-encodare in curs: {n} fisiere, {mb} MB economisiti', { n: re.done, mb: re.saved_mb })}`
-                      : (re.done ? html`<br>${t('Re-encodate: {n} fisiere, {mb} MB economisiti', { n: re.done, mb: re.saved_mb })}` : ''))
-        : html`<br><span class="warn">${t('Re-encodarea nu e disponibila: placa video actuala (Quadro M6000) nu are encoder HEVC/AV1. Cu un GPU modern (ex. RTX 2000 Ada) optiunea se activeaza singura.')}</span>`}`;
+        ? (re.running ? html`<br>${t('Re-encodare în curs: {n} fișiere, {mb} MB economisiți', { n: re.done, mb: re.saved_mb })}`
+                      : (re.done ? html`<br>${t('Re-encodate: {n} fișiere, {mb} MB economisiți', { n: re.done, mb: re.saved_mb })}` : ''))
+        : html`<br><span class="warn">${t('Re-encodarea nu e disponibilă: placa video actuală (Quadro M6000) nu are encoder HEVC/AV1. Cu un GPU modern (ex. RTX 2000 Ada) opțiunea se activează singura.')}</span>`}`;
   } catch {}
 }
 function flash(id, txt, err) {
@@ -1225,7 +1243,8 @@ $('#s-digest-now') && ($('#s-digest-now').onclick = async () => {
   flash('#s-msg-digest', d && d.ok ? t('Rezumatul a plecat ✓') : (d && d.error) || t('Eroare'), !!(d && d.error));
 });
 
-$('#set-nav')?.setAttribute('role', 'tablist');   // model de taburi ARIA (audit T2)
+// rolul tablist sta pe .snav-tabs (in index.html): #set-nav contine si cautarea si bifa „avansate”,
+// care nu au voie intr-un tablist (audit UX A4)
 for (const p of document.querySelectorAll('.set-pane')) p.setAttribute('role', 'tabpanel');
 for (const b of document.querySelectorAll('.snav-item')) {
   b.setAttribute('role', 'tab');
@@ -1295,9 +1314,9 @@ for (const btn of document.querySelectorAll('.s-test')) {
         body: JSON.stringify(settingsBody()),
       });
       const d = await r.json();
-      flash('#s-msg-' + ch,
-        d.ok ? (ch === 'telegram' ? t('Trimis ✓ verifică Telegram') : t('Trimis ✓ verifică inboxul'))
-             : t('Eroare: {e}', { e: d.error }), !d.ok);
+      const ok = { telegram: t('Trimis ✓ verifică Telegram'), email: t('Trimis ✓ verifică inboxul'),
+        alerte: t('Primit de serviciu ✓ ({stare})', { stare: d.stare || '' }) }[ch];
+      flash('#s-msg-' + ch, d.ok ? ok : t('Eroare: {e}', { e: d.error }), !d.ok);
     } catch (e) {
       flash('#s-msg-' + ch, t('Eroare: {e}', { e }), true);
     } finally {
@@ -1445,7 +1464,64 @@ $('#s-train-apply').onclick = async () => {
   loadTrainStatus();
 };
 
-export { SET_LABELS, flash, hdBufferTarget, hdHeightParam, loadSettings, meDlg };
+/* ---------- asistentul „Conectează Telegram” (audit UX-G) ----------
+   1) jetonul de la @BotFather, verificat; 2) omul ii scrie botului, iar serverul gaseste singur
+   chat-ul; 3) un clic salveaza si trimite o proba. Inainte trebuia cautat chat ID-ul de mana
+   in raspunsul JSON de la api.telegram.org/bot<TOKEN>/getUpdates. */
+let tgTimer = null, tgPana = 0;
+// fara alert() la erori (post() din 10-live.js arata o fereastra la fiecare): mesajul sta in card
+const tgPost = async (url, body) => {
+  try { return await (await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json(); }
+  catch { return { error: t('Serverul nu răspunde.') }; }
+};
+const tgMsg = (txt, err = false) => { const m = $('#tg-a-msg'); m.textContent = txt; m.classList.toggle('err', err); };
+function tgOpreste() { clearTimeout(tgTimer); tgTimer = null; }
+async function tgCautaChat() {
+  tgOpreste();
+  if ($('#tg-asistent').classList.contains('hidden') || Date.now() > tgPana) {
+    if (Date.now() > tgPana) $('#tg-a-astept').textContent = t('N-am primit niciun mesaj în 3 minute. Scrie-i botului și apasă din nou „Verifică jetonul”.');
+    return;
+  }
+  const d = await tgPost('/api/telegram/asistent/chat', { jeton: $('#tg-a-jeton').value.trim() });
+  const chats = (d && d.chats) || [];
+  if (d && d.error) tgMsg(d.error, true);
+  if (chats.length) {
+    $('#tg-a-astept').textContent = t('Am găsit {n}. Alege unde să primești notificările:', { n: chats.length === 1 ? t('o conversație') : t('{n} conversații', { n: chats.length }) });
+    const box = $('#tg-a-chats');
+    box.innerHTML = html`${chats.map((c) => html`<button type="button" class="tg-a-alege" data-chat="${c.id}">${t('Folosește: {nume}', { nume: c.nume || c.id })}${c.tip && c.tip !== 'private' ? ' (' + t('grup') + ')' : ''}</button>`)}`;
+    for (const b of box.querySelectorAll('.tg-a-alege')) b.onclick = () => tgSalveaza(b.dataset.chat, b);
+  }
+  tgTimer = setTimeout(tgCautaChat, 3000);
+}
+async function tgSalveaza(chat, b) {
+  tgOpreste();
+  b.disabled = true;
+  const d = await tgPost('/api/telegram/asistent/salveaza', { jeton: $('#tg-a-jeton').value.trim(), chat });
+  if (!d || !d.ok) { tgMsg((d && d.error) || t('Eroare'), true); b.disabled = false; return; }
+  tgMsg(d.proba ? t('Gata ✓ — Telegram e conectat; ți-am trimis un mesaj de probă.') : t('Salvat, dar mesajul de probă n-a plecat: {e}', { e: d.error || '' }), !d.proba);
+  $('#tg-a-chats').innerHTML = '';
+  loadSettings(true);   // campurile de mai jos arata noile valori (si bara „nesalvat” nu se aprinde)
+}
+$('#tg-a-start') && ($('#tg-a-start').onclick = () => {
+  const box = $('#tg-asistent'), des = box.classList.toggle('hidden');
+  $('#tg-a-start').setAttribute('aria-expanded', des ? 'false' : 'true');
+  if (des) tgOpreste(); else $('#tg-a-jeton').focus();
+});
+$('#tg-a-verif') && ($('#tg-a-verif').onclick = async () => {
+  tgMsg('');
+  const d = await tgPost('/api/telegram/asistent/verifica', { jeton: $('#tg-a-jeton').value.trim() });
+  if (!d || d.error) { tgMsg((d && d.error) || t('Eroare'), true); return; }
+  const link = $('#tg-a-link');
+  link.href = 'https://t.me/' + encodeURIComponent(d.utilizator || '');
+  link.textContent = '@' + (d.utilizator || '');
+  $('#tg-a-p2').classList.remove('hidden');
+  $('#tg-a-astept').textContent = t('Botul „{nume}” e în regulă. Aștept mesajul tău…', { nume: d.nume || d.utilizator });
+  $('#tg-a-chats').innerHTML = '';
+  tgPana = Date.now() + 180000;
+  tgCautaChat();
+});
+
+export { SET_LABELS, flash, hdBufferTarget, hdHeightParam, loadSettings, meDlg, qualityMode };
 
 /* ---------- mod demo: camere sintetice (Setari -> Unelte) ---------- */
 $('#s-demo-add') && ($('#s-demo-add').onclick = async () => {

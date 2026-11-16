@@ -1,0 +1,17 @@
+{
+  "description": "Set de pornire. Marcheaza exemplele in instalatia locala; listele goale NU inseamna ca obiectele lipsesc.",
+  "queries": [
+    {"q": "mașină de gunoi", "reviewed": false, "positive_assets": [], "negative_assets": []},
+    {"q": "camion", "reviewed": false, "positive_assets": [], "negative_assets": []},
+    {"q": "dubă albă", "reviewed": false, "positive_assets": [], "negative_assets": []},
+    {"q": "mașină roșie", "reviewed": false, "positive_assets": [], "negative_assets": []},
+    {"q": "curier cu un colet", "reviewed": false, "positive_assets": [], "negative_assets": []},
+    {"q": "persoană cu umbrelă", "reviewed": false, "positive_assets": [], "negative_assets": []},
+    {"q": "persoană cu rucsac", "reviewed": false, "positive_assets": [], "negative_assets": []},
+    {"q": "biciclist", "reviewed": false, "positive_assets": [], "negative_assets": []},
+    {"q": "câine", "reviewed": false, "positive_assets": [], "negative_assets": []},
+    {"q": "găină", "reviewed": false, "positive_assets": [], "negative_assets": []},
+    {"q": "poartă goală", "reviewed": false, "positive_assets": [], "negative_assets": []},
+    {"q": "girafă cu elicopterul", "reviewed": false, "positive_assets": [], "negative_assets": []}
+  ]
+}

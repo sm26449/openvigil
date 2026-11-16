@@ -23,6 +23,9 @@ from i18n import t
 
 _fir = None
 _offset = 0
+# chat-urile care i-au scris botului (ultimele cateva): asistentul „Conectează Telegram” le arata
+# cand bucla asta asculta deja cu acelasi jeton (altfel getUpdates-ul lui ar ramane gol)
+vazute = {}
 _oprit = threading.Event()
 COMENZI = {"/acasa": "acasa", "/plecat": "plecat", "/noapte": "noapte"}
 
@@ -93,7 +96,7 @@ def raspuns(text, cine="telegram"):
         era = mod.curent()
         mod.set(m, cine=cine, sursa="telegram")
         if era == m:
-            return t("{ico} Deja in modul {mod}.", ico=mod.MOD_ICO[m], mod=t(mod.MOD_RO[m]))
+            return t("{ico} Deja în modul {mod}.", ico=mod.MOD_ICO[m], mod=t(mod.MOD_RO[m]))
         return t("{ico} Mod: {mod} (era {era}).", ico=mod.MOD_ICO[m], mod=t(mod.MOD_RO[m]), era=t(mod.MOD_RO[era]))
     if cmd in ("/mod", "/stare", "/status", "/start", "/help"):
         return (_stare_text() + "\n\n" + t("Comenzi: /acasa, /plecat, /noapte, /stare"))
@@ -121,10 +124,17 @@ def _bucla():
                 if u.get("callback_query"):
                     _buton(u["callback_query"], cfg)
                     continue
+                msg = u.get("message") or {}
+                ch = msg.get("chat") or {}
+                if ch.get("id"):
+                    vazute[str(ch["id"])] = {"id": str(ch["id"]), "tip": ch.get("type"),
+                                             "nume": ch.get("title") or " ".join(x for x in (ch.get("first_name"), ch.get("last_name")) if x) or ch.get("username") or "",
+                                             "t": int(msg.get("date") or time.time())}
+                    while len(vazute) > 10:
+                        vazute.pop(next(iter(vazute)))
+                chat = str(ch.get("id") or "")
                 if not cfg.get("telegram_comenzi"):
                     continue          # doar butoanele sunt pornite; textul nu e comanda
-                msg = u.get("message") or {}
-                chat = str((msg.get("chat") or {}).get("id") or "")
                 text = msg.get("text") or ""
                 if chat != str(cfg["telegram_chat"]):
                     import audit

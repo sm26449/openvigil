@@ -4,7 +4,7 @@
    pe toate; importurile/exporturile sunt verificate de scripts/module_check.py (si in pytest).
    ==================================================================== */
 import { S } from './state.js';
-import { $, DET_RO, EV_RO, html, lista, raw, t } from './00-core.js';
+import { $, DET_RO, EV_RO, html, lista, numeCam, raw, t } from './00-core.js';
 import { MOD_ICO, setHash } from './05-navigare.js';
 import { post } from './10-live.js';
 import { wireClips } from './40-evenimente.js';
@@ -21,7 +21,7 @@ async function loadFaces() {
         <button class="fc-hist link-btn" title="${t('Când a mai apărut')}">${t('istoric')}</button>
         <button class="fc-ren link-btn" title="${t('Schimbă numele')}">${t('redenumește')}</button>
         <button class="fc-del link-btn">${t('șterge')}</button>
-      </div>`, html`<p class="hint">${t('Nicio persoana inca.')}</p>`);
+      </div>`, html`<p class="hint">${t('Nicio persoană încă.')}</p>`);
     for (const row of document.querySelectorAll('#fc-persons .fc-person')) {
       row.querySelector('.fc-ren').onclick = async () => {
         const n = row.dataset.name;
@@ -51,7 +51,7 @@ async function loadFaces() {
               <span class="ev-det">${t('similaritate {p}%', { p: Math.round(h.sim * 100) })}</span>
               <button class="clip-btn link-btn" data-cam="${h.cam}" data-t="${h.t}"
                 data-cap="${n} — ${h.t}">${t('▶ clip')}</button>
-            </div>`, html`<p class="hint">${t('Nicio aparitie inregistrata inca.')}</p>`)}`;
+            </div>`, html`<p class="hint">${t('Nicio apariție înregistrată încă.')}</p>`)}`;
         $('#fc-hist-close').onclick = () => box.classList.add('hidden');
         wireClips(box);
       };
@@ -107,13 +107,13 @@ async function loadFaces() {
     }
     $('#fc-unknown-grid').innerHTML = lista(d.unknown, (u) => html`
       <div class="fc-unk" data-rel="${u.rel}">
-        <img src="${u.url}" alt="" loading="lazy" title="${t('cam {id}', { id: u.cam })} — ${u.time}">
+        <img src="${u.url}" alt="" loading="lazy" title="${numeCam(u.cam)} — ${u.time}">
         <div class="fc-unk-act">
           <input placeholder="${t('cine e?')}" autocomplete="off" aria-label="${t('Numele persoanei din acest crop')}">
           <button class="fc-name-btn" title="${t('Înrolează față cu acest nume')}">✓</button>
           <button class="fc-unk-del" title="${t('Șterge crop-ul')}">✕</button>
         </div>
-      </div>`, html`<p class="hint">${t('Nicio fata neetichetata.')}</p>`);
+      </div>`, html`<p class="hint">${t('Nicio față neetichetată.')}</p>`);
     for (const box of document.querySelectorAll('#fc-unknown-grid .fc-unk')) {
       const rel = box.dataset.rel;
       box.querySelector('.fc-name-btn').onclick = async () => {
@@ -222,7 +222,7 @@ async function loadPlates() {
       <div class="u-row" data-plate="${k.plate}">
         <b>${k.plate}</b> <span class="hint">${k.name}</span>
         <button class="lp-del link-btn">${t('șterge')}</button>
-      </div>`, html`<p class="hint">${t('Nicio masina cunoscuta.')}</p>`);
+      </div>`, html`<p class="hint">${t('Nicio mașină cunoscută.')}</p>`);
     for (const row of document.querySelectorAll('#lp-known .u-row')) {
       row.querySelector('.lp-del').onclick = async () => {
         await fetch(`/api/plates/known/${encodeURIComponent(row.dataset.plate)}`,
@@ -230,16 +230,21 @@ async function loadPlates() {
         loadPlates();
       };
     }
+    // „0 citiri în 7 zile” deasupra unei liste de citiri parea o contradictie: lista arata
+    // ULTIMELE citiri, oricat de vechi — o spunem explicit (audit UX-D)
+    const vechi = !(st.total7 > 0) && (d.reads || []).length;
+    $('#lp-reads-nota') && $('#lp-reads-nota').remove();
+    if (vechi) $('#lp-reads').insertAdjacentHTML('beforebegin', String(html`<p id="lp-reads-nota" class="hint">${t('Nicio citire în ultimele 7 zile; mai jos sunt ultimele citiri, mai vechi.')}</p>`));
     $('#lp-reads').innerHTML = lista(d.reads, (r) => html`
       <div class="lp-read">
         ${r.url ? html`<img src="${r.url}" alt="" loading="lazy">` : ''}
         <div><b>${r.numar}</b>${r.nume ? html` <span class="u-role">${r.nume}</span>` : ''}
-        <div class="hint">${t('cam {id}', { id: r.cam })} — ${r.t} — ${Math.round(r.incredere * 100)}%</div>
+        <div class="hint">${numeCam(r.cam)} — ${r.t} — ${Math.round(r.incredere * 100)}%</div>
         <button class="clip-btn link-btn" data-cam="${r.cam}" data-t="${r.t}"
           data-cap="${r.numar}${r.nume ? ' (' + r.nume + ')' : ''} — ${r.t}">${t('▶ clip')}</button>
         ${r.nume ? '' : html`<button class="lp-name-btn link-btn" data-plate="${r.numar}">
           ${t('da-i un nume')}</button>`}</div>
-      </div>`, html`<p class="hint">${t('Nicio citire inca.')}</p>`);
+      </div>`, html`<p class="hint">${t('Nicio citire încă.')}</p>`);
     wireClips($('#lp-reads'));
     for (const b of document.querySelectorAll('#lp-reads .lp-name-btn')) {
       b.onclick = async () => {
@@ -284,7 +289,7 @@ async function loadTrack() {
       const azi = Object.entries(s.azi || {})
         .map(([l, n]) => `${t(DET_RO[l] || l)}: ${n}`).join(', ') || t('nimic încă azi');
       return `${names[cid] || t('cam {id}', { id: cid })}: ${s.activ ? '🟢' : '🔴'} ` +
-        `${azi}${s.in_cadru ? ' · ' + t('{n} in cadru acum', { n: s.in_cadru }) : ''}`;
+        `${azi}${s.in_cadru ? ' · ' + t('{n} în cadru acum', { n: s.in_cadru }) : ''}`;
     });
     $('#tk-state').innerHTML = lista(rows, (r, i) => html`${i ? raw('<br>') : ''}${r}`,
       html`${t('Nicio camera urmărită — bifează mai sus și salvează.')}`);
@@ -355,7 +360,10 @@ const aiCfgSnap = () => JSON.stringify(aiConfigBody());
 function semText(s) {
   const b = s.backfill || {};
   const txt = t('{n} poze indexate din {zile} zile', { n: s.indexed || 0, zile: s.days || 0 });
-  return b.running ? `${txt} — ${t('indexez istoricul: {done}/{total}', { done: b.done, total: b.total })}` : txt;
+  let message = b.running ? `${txt} — ${t('indexez istoricul: {done}/{total}', { done: b.done, total: b.total })}` : txt;
+  if (b.failed) message += ' · ' + t('{n} imagini nu au putut fi indexate.', { n: b.failed });
+  if (b.error) message += ' · ' + t('Indexarea s-a oprit; reîncearcă completarea istoricului.');
+  return message;
 }
 
 async function refreshSemStatus() {
@@ -510,12 +518,12 @@ async function loadRules() {
         <b>${r.nume}</b>
         <span class="hint">${d.triggers[r.declansator.tip] || r.declansator.tip}${
           r.declansator.valoare ? ` „${r.declansator.valoare}”` : ''} · ${unde}${cand} → ${ce}</span>
-        <button class="ru-toggle link-btn">${r.activ ? t('opreste') : t('porneste')}</button>
+        <button class="ru-toggle link-btn">${r.activ ? t('oprește') : t('pornește')}</button>
         <button class="ru-test link-btn" title="${t('Rulează acțiunile acum')}">${t('testează')}</button>
         <button class="ru-edit link-btn">${t('modifică')}</button>
         <button class="ru-del link-btn">${t('șterge')}</button>
       </div>`;
-    }, html`<p class="hint">${t('Nicio regula inca. Fa una mai jos — dureaza 30 de secunde.')}</p>`);
+    }, html`<p class="hint">${t('Nicio regulă încă. Fă una mai jos — durează 30 de secunde.')}</p>`);
     for (const row of document.querySelectorAll('#ru-list .u-row')) {
       const rule = d.rules.find((r) => r.id === row.dataset.id);
       row.querySelector('.ru-del').onclick = async () => {
@@ -633,7 +641,7 @@ function fillRuleForm(r) {
 function clearRuleForm() {
   ruActiv = true;
   $('#ru-id').value = '';
-  $('#ru-form-title').textContent = t('Adaugă o regula');
+  $('#ru-form-title').textContent = t('Adaugă o regulă');
   $('#ru-cancel').classList.add('hidden');
   $('#ru-name').value = ''; $('#ru-value').value = '';
   for (const o of $('#ru-cams').options) o.selected = false;

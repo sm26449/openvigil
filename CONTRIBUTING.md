@@ -26,10 +26,14 @@ cp .env.example .env            # ajustează porturile dacă e nevoie
 docker compose up -d --build    # sau cu -f docker-compose.gpu.yml pentru NVIDIA
 docker compose run --rm --no-deps web test                    # pytest
 # dezvoltare pe interfata: codul din repo montat in containerul web (schimbarile din app/static
-# se vad la reincarcarea paginii; cele din Python dupa `docker compose restart web`)
+# se vad la reincarcarea paginii; cele din Python dupa `restart web`). Suprapunerea se aplica
+# doar cu `up -d` (un simplu `restart` pastreaza montarile vechi ale containerului).
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d web
-cd tests && npm install && NVR_TEST_USER=admin NVR_TEST_PASS=... node ui-test.js   # browser
+cd tests && npm ci && npm run test:ui                # regresia de interfata, izolata (ca in CI)
+# Playwright cere Node >= 20; pe o gazda mai veche, si pentru suita pe instanta vie
+# (ui-test.js), vezi tests/README.md
 python3 scripts/module_check.py                     # modulele ES ale interfeței
+python3 scripts/module_index.py                     # harta modulelor (docs/module.md) la zi
 ```
 
 Fără Docker (lock-ul trage PyTorch pentru CUDA 13 și onnxruntime-gpu, deci are sens doar pe o
@@ -40,16 +44,19 @@ go2rtc) cu variabilele din `.env` exportate.
 ## Reguli de cod
 
 - Python 3.12, fără framework-uri noi fără motiv; `requirements.lock` e sursa adevărului.
-- O schimbare de tabelă SQLite nu se face în `CREATE TABLE IF NOT EXISTS`, ci ca migrare
-  numerotată în `MIGRARI` din modulul respectiv (`app/schema.py` le aplică o singură dată,
-  în ordine); schema inițială rămâne cea completă, pentru bazele noi.
+- O schimbare de tabelă nu se face în `CREATE TABLE IF NOT EXISTS`, ci ca migrare
+  numerotată în `MIGRARI` din modulul respectiv (`aplica()` din `app/db.py` le aplică o singură
+  dată, în ordine); schema inițială rămâne cea completă, pentru bazele noi.
+- Harta codului: [`docs/module.md`](docs/module.md), generată de `scripts/module_index.py` din
+  docstring-uri. Un modul nou primește un domeniu în `DOMENII` din script (CI pică altfel), iar
+  prima linie a docstring-ului lui spune ce face.
 - Interfața e în module ES simple (`app/static/js/*.js`), fără pas de build. Orice
   `innerHTML` nou trece prin `html\`\`` (escapare + CSP strict). `scripts/module_check.py`
   trebuie să afișeze `ok`.
 - Rutele lungi sunt joburi (`app/jobs.py`), nu cereri care țin conexiunea.
 - Niciun secret în cod, în teste sau în capturi: parolele camerelor stau în `data/`, contul
   de test vine din variabile de mediu.
-- Testele însoțesc schimbarea: `tests/test_*.py` pentru backend, `tests/ui-test.js` pentru
+- Testele însoțesc schimbarea: `tests/test_*.py` pentru backend, `tests/ui-regresie.js` pentru
   ce vede utilizatorul.
 
 ## Commit-uri

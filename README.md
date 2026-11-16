@@ -28,7 +28,22 @@ Taken on the built-in demo mode (synthetic cameras), so no real footage.
 |---|---|
 | ![HD](docs/img/hd-1366.png) | ![Status](docs/img/stare-1366.png) |
 
+| Triage (grouped incidents) | Property map with the heat map |
+|---|---|
+| ![Triage](docs/img/2.2.0/en/triaj-1366.png) | ![Map](docs/img/2.2.0/en/harta-caldura-1366.png) |
+
 <p align="center"><img src="docs/img/live-telefon.png" width="200" alt="Live on a phone"> <img src="docs/img/inregistrari-telefon.png" width="200" alt="Playback on a phone"> <img src="docs/img/meniu-telefon.png" width="200" alt="More menu on a phone"></p>
+
+## What's new in 2.2.0
+
+Faster triage (grouped incidents with thumbnails, swipe on phones, a "While you were away"
+summary), a property map that knows where things happen (camera picture on the plan, mounting
+height and tilt, plan scale and real ground coverage, per-camera calibration with live dots and
+a heat map of the whole property), stream choice in HD, an accessible interface on every screen,
+Telegram set up in three steps, system alerts that are not forgotten and an optional persistent
+semantic search index. **Where to find each feature and how to use it:
+[docs/en/whats-new-2.2.0.md](docs/en/whats-new-2.2.0.md)**; the full list is in
+[CHANGELOG.md](CHANGELOG.md).
 
 ## What it does
 
@@ -37,7 +52,8 @@ Taken on the built-in demo mode (synthetic cameras), so no real footage.
   chain of custody (SHA-256 per segment) for evidence.
 - **Streams live** in the browser through go2rtc (MSE/WebRTC, two-way audio where the
   camera has a speaker), with an authenticated relay in front: go2rtc itself never
-  listens on the LAN.
+  listens on the LAN. Full screen lets you pick the stream: Auto, the camera's small stream,
+  or HD only.
 - **Playback** with a zoomable timeline, event markers, 0.5–8× speed (GPU), exports with
   burned-in boxes, time-lapse, heatmaps, region search.
 - **Local AI**: YOLO11 detection (people, animals, vehicles, with fine-tuning on your own
@@ -45,6 +61,8 @@ Taken on the built-in demo mode (synthetic cameras), so no real footage.
   descriptions (Qwen2.5-VL) and semantic search (SigLIP). All on the host GPU; CPU-only
   mode keeps detection and drops the heavy models.
 - **Operations**: home/away/night modes with rules, Telegram alerts and a daily digest,
+  optional routing of system alerts through an external alert service (SMS, acknowledgement,
+  rate limits; the built-in bot stays as fallback), reminders until a dead camera comes back,
   Web Push, MQTT bridge (Home Assistant, Node-RED), webhooks, map view, siren/strobe/talk
   on supported cameras, camera health and tamper checks.
 - **Accounts**: admin and per-camera viewers, 2FA (TOTP), revocable sessions, CSRF, strict
@@ -58,12 +76,17 @@ Taken on the built-in demo mode (synthetic cameras), so no real footage.
 ### Also in the box
 
 - **Ask in plain words**: the search box answers questions like "when did the garbage truck
-  come?" from the semantic index and the event log.
+  come?" from the semantic index (kept in PostgreSQL/pgvector) and the event log; marking
+  results right or wrong teaches the search.
+- **Accessible**: keyboard navigation, screen-reader labels and WCAG AA contrast, on desktop,
+  tablet and phone (portrait and landscape).
 - **Audio**: continuous noise measurement on cameras with a microphone, hourly noise profiles
   to calibrate thresholds, noise alarms, and text-to-speech announcements through the
   camera's speaker.
 - **Incidents and cases**: a triage panel (open / acknowledged / false alarm) with sound and
-  pop-up on critical, and case files that bundle clips, snapshots and a signed manifest.
+  pop-up on critical, thumbnails, repeated incidents grouped into one card, swipe to handle on
+  a phone, a "While you were away" summary, and case files that bundle clips, snapshots and a
+  signed manifest.
 - **Playback extras**: bookmarks on recordings, several cameras played from the same moment, saved
   views and a wall mode for the live grid, an I/O panel for relays.
 - **Smarter events**: presence episodes (one story instead of fifty frames), parked-vehicle
@@ -268,6 +291,8 @@ Day-to-day operations (logs, updates, backups, ports, uninstall): [docs/operare.
 
 ## Documentation
 
+- [docs/en/whats-new-2.2.0.md](docs/en/whats-new-2.2.0.md): what 2.2.0 brings, where to find
+  each feature and how to use it, with screenshots.
 - [docs/en/manual.md](docs/en/manual.md): the full manual in English — every feature, how it
   works and why. (The original is the Romanian decision log below; the English manual is a
   translation of it.)

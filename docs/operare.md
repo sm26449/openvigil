@@ -12,7 +12,7 @@ alias dc='docker compose'                                                    # f
 ## Stare, jurnale, repornire
 
 ```bash
-dc ps                          # cele patru servicii și starea lor (healthy / starting)
+dc ps                          # cele cinci servicii (web, record, ai, go2rtc, db) și starea lor
 dc logs -f web                 # interfața + API; la fel: record, ai, go2rtc
 dc logs --since 1h record      # ce a făcut înregistrarea în ultima oră
 dc restart ai                  # repornește doar inferența (modelele se reîncarcă, ~1 min)

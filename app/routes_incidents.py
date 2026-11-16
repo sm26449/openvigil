@@ -33,11 +33,46 @@ def api_incidents():
     """Coada de incidente (sev>=atentie), prioritizate, cu starea de tratare.
     ?noi=1 doar cele netratate. Filtrata pe camerele vizibile (operator/viewer)."""
     vis = _visible_ids()
+    # un singur calcul al cozii (jurnal + severitate + stare) pentru lista SI numaratoare
+    toate = incidents_mod.feed(limit=None, visible=vis)
+    lista = [e for e in toate if e["stare"] == "nou"] if request.args.get("noi") else toate
+    pagina = lista[:min(480, max(1, request.args.get("limit", 60, type=int)))]
     return jsonify({
-        "incidente": incidents_mod.feed(
-            limit=min(120, max(1, request.args.get("limit", 60, type=int))),
-            doar_noi=bool(request.args.get("noi")), visible=vis),
-        "counts": incidents_mod.counts(visible=vis)})
+        "incidente": incidents_mod.adauga_poze(pagina),
+        "counts": incidents_mod.counts(visible=vis, toate=toate)})
+
+
+@bp.route("/api/rezumat/absenta")
+def api_rezumat_absenta():
+    """?de_la=<epoch> — „Cât ai lipsit”: incidentele grupate, cine a venit, camerele cazute
+    de la ultima vizita pe dispozitivul respectiv (cel mult 7 zile). Filtrat pe camerele contului."""
+    import absenta
+    de_la = request.args.get("de_la", type=float)
+    if not de_la:
+        return jsonify({"error": t("lipsește momentul ultimei vizite")}), 400
+    return jsonify(absenta.rezumat(de_la, visible=_visible_ids()))
+
+
+@bp.route("/api/incidents/stare-bloc", methods=["POST"])
+def api_incident_state_bloc():
+    """Body: {ids: [...], stare: confirmat|fals|nou}. Triajul pe grupuri: zeci de episoade
+    aproape identice de pe aceeasi camera se trateaza dintr-un clic. Doar incidentele pe care
+    contul le vede (aceeasi regula ca la unul singur, SEC-06)."""
+    body = request.get_json(silent=True) or {}
+    ids, stare = body.get("ids") or [], body.get("stare")
+    if not isinstance(ids, list) or not ids or len(ids) > 500:
+        return jsonify({"error": t("lista de incidente lipsește sau e prea lungă")}), 400
+    vis = _visible_ids()
+    cunoscute = {e["id"]: e.get("cam") for e in incidents_mod.feed(limit=None, visible=vis)}
+    permise = [i for i in ids if isinstance(i, str) and i in cunoscute]
+    if not permise:
+        return jsonify({"error": t("nu există")}), 404
+    try:
+        n = incidents_mod.set_state_bloc(permise, stare, who=(current_user() or {}).get("user"))
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    audit.log("incidente " + str(stare), t("{n} incidente", n=n))
+    return jsonify({"ok": True, "n": n, "ignorate": len(ids) - len(permise)})
 
 
 @bp.route("/api/incidents/<eid>/stare", methods=["POST"])
@@ -221,7 +256,7 @@ def _job_dosar(job):
                 "fisier": fn, "cam": ch, "camera": cam.get("name"),
                 "start": p["start"], "end": p["end"], "nota": p.get("nota"),
                 "sha256": sha, "octeti": os.path.getsize(out)})
-            fisiere.append((out, fn))
+            fisiere.append((out, fn, ch))
         # Integritatea dosarului: nu livram un ZIP „gata" fara niciun clip. Daca omul avea
         # probe de redat (nu doar sarite din lipsa de acces) dar niciuna n-a iesit, esuam explicit
         # in loc sa dam un ZIP numai cu manifestul (audit #7). Daca unele au iesit si altele nu,
@@ -238,15 +273,17 @@ def _job_dosar(job):
         zpath = job.cale("zip")
         with zipfile.ZipFile(zpath, "w", zipfile.ZIP_STORED) as z:
             z.write(man_path, "manifest.json")
-            for out, fn in fisiere:
+            for out, fn, _ch in fisiere:
                 z.write(out, fn)
     finally:
         shutil.rmtree(tmpdir, ignore_errors=True)
     audit.log("caz exportat", c["titlu"], who=job.creat_de)
     slug = re.sub(r"[^\w-]", "_", c["titlu"])[:40]
     job.fisier(zpath, f"caz_{slug}.zip", "application/zip")
+    # camerele care chiar sunt in ZIP: descarcarea le reverifica pe toate (audit S5) — lista
+    # descrie artefactul produs, nu dosarul, care se poate schimba intre timp
     return {"probe": reusite, "din": incercate, "partial": reusite < incercate,
-            "octeti": os.path.getsize(zpath)}
+            "octeti": os.path.getsize(zpath), "camere": sorted({ch for _o, _f, ch in fisiere})}
 
 
 jobs.register("dosar", _job_dosar)

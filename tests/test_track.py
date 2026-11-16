@@ -59,16 +59,12 @@ def test_doua_masini_consecutive_sunt_doua_obiecte():
 def test_ask_prefera_numararea_din_urmarire(monkeypatch):
     import time as _time
     import ask
-    import rules
+    import jurnal
     acum = _time.strftime("%Y-%m-%d %H:%M:%S")
-    def jurnal_fals(limit=200, tip=None, cam=None, day=None):
-        if tip == "obiect":
-            return [{"t": acum, "tip": "obiect", "cam": 14, "eticheta": "car",
-                     "directie": "stanga→dreapta", "durata": 3.2, "cadre": 12}] * 5
-        return []
-    monkeypatch.setattr(rules, "journal", jurnal_fals)
-    monkeypatch.setattr(rules, "episodes",
-                        lambda **kw: pytest.fail("trebuia numarat din urmarire"))
+    for i in range(5):
+        jurnal.insert({'id':f'car-{i}', 't':acum, 'tip':'obiect', 'cam':14, 'eticheta':'car',
+                       'directie':'stanga→dreapta', 'durata':3.2, 'cadre':12})
     r = ask.answer("cate masini au trecut azi?", cam_names={14: "Strada"})
-    assert "exact 5" in r["raspuns"] and "bucata cu bucata" in r["raspuns"]
+    assert r['counts']['tracked'] == 5 and r['counts']['complete'] is False
+    assert 'numărătoare completă' in r['raspuns'] and 'exact 5' not in r['raspuns']
     assert "stanga→dreapta" in r["raspuns"]

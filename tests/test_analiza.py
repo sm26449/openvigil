@@ -54,6 +54,28 @@ def test_harta_de_caldura():
     assert h7["episoade"] == 2 and h7["grid"][0][0] == 3
 
 
+def test_harta_de_caldura_pe_plan(tmp_path, monkeypatch):
+    import harta
+    monkeypatch.setattr(harta, "FILE", str(tmp_path / "harta.json"))
+    monkeypatch.setattr(harta, "DIR", str(tmp_path / "harta"))
+    p = harta.plan_nou("Curtea")
+    harta.aseaza(p["id"], {"5": {"x": 0.5, "y": 0.5}, "6": {"x": 0.1, "y": 0.1}})
+    # camera 5: cadrul = planul (identitate); camera 6 necalibrata
+    harta.seteaza_calibrare(p["id"], 5, [[x, y, x, y] for x, y in ((0.1, 0.1), (0.9, 0.1), (0.9, 0.9), (0.1, 0.9))])
+    zi = time.strftime("%Y-%m-%d")
+    t0 = time.mktime(time.strptime(zi + " 13:00:00", "%Y-%m-%d %H:%M:%S"))
+    _ev("episod", 5, t0, traseu=[[0.5, 0.4, 0.1], [0.5, 0.4, 0.1], [0.2, 0.2]])   # 2 cu sol, 1 vechi
+    _ev("episod", 6, t0, traseu=[[0.5, 0.4, 0.1]])                                 # necalibrata
+    h = analiza.heatmap_plan(p["id"], zi, 1)
+    g = analiza.PLAN_GRID
+    assert h["camere"] == [5] and h["episoade"] == 1 and h["fara_sol"] == 1
+    # picioarele = (0.5, 0.4 + 0.1) -> celula (64, 64)
+    assert h["celule"] == [[int(0.5 * g), int(0.5 * g), 2]] and h["max"] == 2
+    assert analiza.heatmap_plan(p["id"], zi, 1, visible={6})["camere"] == []    # contul nu vede 5
+    with pytest.raises(ValueError):
+        analiza.heatmap_plan("nuexista", zi, 1)
+
+
 def test_cadre_si_comenzi_timelapse():
     zi = "2026-10-20"
     t = time.mktime(time.strptime(zi + " 08:00:10", "%Y-%m-%d %H:%M:%S"))
@@ -99,3 +121,16 @@ def test_job_timelapse(tmp_path, monkeypatch):
     with pytest.raises(RuntimeError):
         Job.parametri = {"channel": 5, "day": "2026-01-01"}
         analiza.job_timelapse(Job(), ffmpeg_fals, hw=False, run=run_fals)
+
+
+def test_harta_de_caldura_spune_cand_e_partiala(monkeypatch):
+    """audit F7: peste MAX_EPISOADE pe o camera, rezultatul e marcat partial (nu pretinde ca
+    acopera toata perioada)."""
+    monkeypatch.setattr(analiza, "MAX_EPISOADE", 3)
+    zi = time.strftime("%Y-%m-%d")
+    t0 = time.mktime(time.strptime(zi + " 09:00:00", "%Y-%m-%d %H:%M:%S"))
+    for i in range(3):
+        _ev("episod", 11, t0 + i, traseu=[[0.5, 0.5]])
+    assert analiza.heatmap(11, zi, 1)["partial"] is True
+    _ev("episod", 12, t0, traseu=[[0.5, 0.5]])
+    assert analiza.heatmap(12, zi, 1)["partial"] is False

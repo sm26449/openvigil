@@ -1,5 +1,8 @@
 # Interfata OpenVigil — un singur sistem pentru toate camerele
 
+**Ce e nou în 2.2.0, unde găsești fiecare lucru și cum îl folosești, cu capturi:
+[noutati-2.2.0.md](noutati-2.2.0.md).**
+
 > **Document istoric.** Scris pe parcurs, in timp ce sistemul a fost construit pentru instalatia
 > de origine (18 camere Hikvision, un NVR Hikvision, servicii systemd, criptare fscrypt pe
 > gazda). Varianta publica ruleaza in Docker: vezi [README](../../README.ro.md) si
@@ -138,8 +141,8 @@ cu filtru pe camera si **filtre pill pe tip** (cu contor); click pe poza = viewe
 (lightbox) cu navigare stanga/dreapta (sageti/swipe/Escape). Butonul **▶ Clip** din viewer
 reda 20s de video in jurul evenimentului (`/api/clip`, -5s..+15s): instant din inregistrarile
 locale (H.264 copiat / HEVC transcodat), mai lent la camerele NVR (pull RTSP + transcodare).
-Clipurile se tin in cache in `data/tmp/`. Orele sunt ora Romaniei
-(`Environment=TZ=Europe/Bucharest` in nvr-web.service).
+Clipurile se tin in cache in `data/tmp/`. Orele sunt in fusul orar al instalarii
+(`TZ` din `.env`, de exemplu `TZ=Europe/Bucharest`; implicit UTC).
 
 ## Identificare utila in practica: LPR cu alerta la masini straine, fete grupate pe persoana
 (2026-10-23 seara; pornit de la constatarea ca Face ID avea 29 de recunoasteri in doua luni,
@@ -277,10 +280,49 @@ valoarea si camera). Orice element cu `data-fisa='{json}'` o deschide (delegare 
 toate sectiunile, doar cardurile al caror titlu sau text contine cuvintele, fara diacritice)
 si bifa „avansate" (implicit oprita, tinuta in browser) care ascunde cardurile rar atinse:
 MQTT, ora camerelor, fluiditatea grilei, automatizarile si jetonul, detectia pe regiuni,
-legaturile rapide (`data-avansat` pe card). Butonul „Stare" din antet e scurtatura catre
-Setari -> Stare. Tabul AI: fiecare sectiune are intrebarea sub nume („cine intra?", „ce
+legaturile rapide (`data-avansat` pe card); un panou care are doar optiuni avansate (Sistem)
+explica ce e ascuns si are un buton care le arata. Butonul „Sănătate" din antet deschide
+Centrul de sanatate (serverul, canalele, AI-ul si fiecare camera); panoul „Audit" din Setari
+este jurnalul modificarilor (cine si cand a schimbat ceva). Tabul AI: fiecare sectiune are intrebarea sub nume („cine intra?", „ce
 masini vin?") si o fraza de stare din date (persoane, recunoasteri in 30 de zile, citiri
 LPR, reguli active, cadre etichetate), ca sa vezi dintr-o privire ce produce fiecare.
+
+## Triaj, „Cât ai lipsit” si conectarea Telegram (2026-11-14)
+- **De tratat** grupeaza incidentele repetate: 3+ de pe aceeasi camera, de acelasi tip, la cel
+  mult 30 de minute unul de altul, devin un card cu miniatura, „✓ confirmă toate”, „✕ fals
+  toate” si „Arată toate”. Fiecare incident are cadrul salvat cel mai apropiat; un clic pe el
+  deschide fisa. „Încarcă mai multe incidente” cere pana la 480 de la server.
+- **Pe telefon**, un card (sau un grup) se trateaza glisand: spre dreapta = confirmat, spre
+  stanga = alarma falsa; 6 secunde ramane butonul „Anulează”. Butoanele merg in continuare.
+- **„Cât ai lipsit”**: cand revii dupa mai mult de 2 ore (pagina deschisa sau adusa in fata),
+  sus pe Live apare rezumatul de la ultima privire pe acel dispozitiv — incidentele grupate cu
+  poza, cine a venit (fete si numere cunoscute), camerele cazute. „Am văzut” il inchide.
+  Reperul e tinut in browser, pe dispozitiv si cont (pe telefon si pe PC separat).
+- **Setari → Notificari → „Conectează Telegram (pas cu pas)”**: lipesti jetonul de la
+  @BotFather, ii scrii botului orice mesaj, iar chat-ul apare singur; un clic salveaza si
+  trimite o proba. Campurile de mana (jeton, chat ID) raman pentru cazurile avansate.
+
+## Serviciul de alerte extern și mementourile pentru camere căzute (2026-11-15)
+
+- **Setări → Notificări → „Serviciul de alerte”** (opțional): adresa (`…/v1/fire`) și o cheie
+  API cu dreptul `fire`. Cu cheia goală totul merge ca înainte, doar pe botul propriu.
+  „Testează serviciul de alerte” trimite o alertă de test și arată ce a răspuns serviciul.
+- Cu serviciul configurat, **alertele de sistem** pleacă acolo ca tipuri `nvr_*`: cameră sau NVR
+  căzut/revenit, disc plin, înregistrare oprită/reluată, probleme de continuitate, curățare și
+  copie de siguranță eșuate, fluxuri lipsă, zgomot, acțiunea „notificare” a regulilor, rezumatul
+  zilei. Serviciul decide canalele (SMS, Telegram, email), pauzele și confirmarea.
+- **Detecțiile cu poză** (YOLO, Face ID, numere, „Învață scena”) rămân pe botul propriu, cu
+  butoanele ✓/✕. Intrușii confirmați (om) și persoanele necunoscute primesc o copie în serviciu:
+  `nvr_intrus` cu modul plecat/noapte (de obicei cu SMS), `nvr_intrus_acasa` noaptea, acasă.
+- **Rezerva**: dacă serviciul nu răspunde, dă eroare, nu cunoaște tipul sau toate canalele lui
+  au eșuat, mesajul pleacă pe botul propriu. O suprimare voită (pauză, ore de liniște) nu.
+- **Camera căzută nu e uitată**: prima alertă la cădere, apoi mementouri la 4, 8, 16, 32 de
+  minute, 1, 2, 4, 8, 16 ore, 1 zi și apoi zilnic, până revine; la revenire mesajul spune după
+  cât timp. Programul ține peste reporniri, iar o cameră deja căzută la pornire e anunțată.
+  Merge și fără serviciul extern, pe botul propriu.
+- **Problemele de înregistrare** se anunță o singură dată, când apar, și se închid când dispar
+  („scrie din nou”); golurile unei camere care nu mai scrie deloc nu se mai anunță separat.
+- Tipurile, contractul și un exemplu de șabloane: `docs/alerte.md`.
 
 ## Recunoastere persoane (Face ID)
 Cand detectia YOLO confirma un om, `app/faces.py` cere camerei un cadru la rezolutie
@@ -325,8 +367,11 @@ butonul din Setari → Detectie. Merge si pentru vieweri (rezultatele se filtrea
 camerele lor). Din 2026-10-27 intra in index si decupajele „Invata scena" (marcate 🧩),
 cu vectorul SigLIP deja calculat la clasificare — vezi sectiunea „Invata scena".
 
-## Tabul AI: persoane, masini, reguli, evenimente
-Tab dedicat cu patru sectiuni (sidebar, ca la Setari):
+## Tabul AI: persoane, masini, reguli, adnotare, configurare
+Tab dedicat cu cinci sectiuni (sidebar, ca la Setari): Persoane, Masini, Reguli, **Adnotare**
+(editorul de etichete pentru antrenarea modelului) si **Configurare** (ce porneste si cat de
+strict: Face ID, LPR, praguri, camere de alerta). Jurnalul de evenimente descris mai jos s-a
+mutat in tabul **Evenimente**.
 - **Persoane** — biblioteca Face ID, etichetarea fetelor necunoscute, si „istoric” per
   persoana: toate aparitiile ei recunoscute (`data/faces/log.jsonl`) — raspunsul la
   „cand a mai venit X pe la noi?".
@@ -513,20 +558,32 @@ Browser  ──:8079── backend Flask (cautare ISAPI + inregistrare streamuri
 - go2rtc e chiar motorul de streaming din **Frigate** — daca vrei vreodata detectie AI,
   piesa centrala e deja aici (zero munca aruncata).
 
-## Servicii (systemd, pornesc la boot)
+## Servicii (Docker Compose, pornesc la boot)
+OpenVigil ruleaza ca cinci containere dintr-o singura imagine, pornite din directorul instalarii
+(unde e `docker-compose.yml`; pe GPU adauga `-f docker-compose.gpu.yml`):
 ```
-systemctl status nvr-go2rtc      # motor streaming  (127.0.0.1:1984, 127.0.0.1:8554, :8555)
-systemctl status nvr-web         # interfata web    (:8079) + releul spre go2rtc (:8076)
-systemctl status nvr-record      # inregistrare continua camere standalone (separat,
-                                 #   ca restarturile interfetei sa nu taie inregistrarea)
-journalctl -u nvr-web -f         # log live backend
+docker compose ps                # cele cinci servicii si starea lor (healthy / starting)
+docker compose logs -f web       # jurnalul live al interfetei; la fel: record, ai, go2rtc, db
+docker compose restart ai        # reporneste doar inferenta (modelele se reincarca, ~1 min)
+curl -s http://127.0.0.1:8079/healthz   # {"ok": true, ...} cand totul e in ordine
 ```
-Toate au `ExecStopPost=scripts/notify-fail.sh` -> alerta Telegram la orice cadere
-(crash, OOM, semnal; nu la stop/restart manual), cel mult una la 10 min per serviciu.
-Unitatile din `deploy/systemd/` sunt copiile celor din `/etc/systemd/system/`.
-Watchdog-ul din nvr-web anunta si: camera standalone cazuta/revenita, NVR cazut/revenit,
-disc aproape plin. Proiectul e in **git** (fara parole: config.py, cameras.json,
-settings.json, go2rtc.yaml sunt in .gitignore; vezi config.example.py).
+| Serviciu | Ce face | Verificarea de sanatate |
+|---|---|---|
+| `go2rtc` | motorul de streaming (doar pe 127.0.0.1: 1984, 8554) | API-ul go2rtc raspunde |
+| `web` | interfata + API (:8079) si releul autentificat spre go2rtc (:8076) | `/healthz` |
+| `record` | inregistrarea continua, separata ca restarturile interfetei sa n-o taie | a scris in ultimele 2 min |
+| `ai` | detectia si modelele pe GPU (:8077, doar local) | `/health` |
+| `db` | PostgreSQL cu pgvector (jurnal, amprente, vectori; doar pe 127.0.0.1) | `pg_isready` |
+
+Toate sunt `restart: unless-stopped`, deci pornesc singure dupa un reboot; `web` si `record`
+asteapta ca `go2rtc` si `db` sa fie sanatoase. Jurnalele fiecarui container se rotesc singure
+(5 fisiere x 10 MB). Docker nu reporneste un container doar pentru ca a ramas „unhealthy” si nu
+anunta caderea lui: daca vrei asta, pune pe gazda un supraveghetor (de exemplu `autoheal` sau un
+timer systemd care urmareste `docker compose ps`). Din aplicatie, watchdog-ul din `web` anunta pe
+Telegram/email camera cazuta sau revenita, NVR-ul cazut (daca e folosit) si discul aproape plin.
+Configurarea instalarii sta in `.env` (pornit din `.env.example`, nu intra in git), iar camerele,
+setarile si conturile in `data/`. Operarea de zi cu zi (actualizare, copii, mutare, porturi):
+`docs/operare.md`.
 
 ## Navigare (tranzitie live <-> inregistrari)
 **In overlay-ul HD** (click pe orice camera): sub player e bara de **time-shift** —
@@ -534,6 +591,11 @@ settings.json, go2rtc.yaml sunt in .gitignore; vezi config.example.py).
 readuce, iar **mini-timeline-ul zilei** (segmente verzi + puncte de evenimente + marcaj
 "acum" rosu) permite click oriunde = redare din acel moment. `↗ Deschide in Inregistrari`
 duce camera in tabul mare.
+**Calitatea in HD** (selectorul din bara de jos, tinut minte pe dispozitiv) alege si fluxul, ca la
+un NVR comercial: **Auto** porneste pe fluxul mic al camerei si trece pe HD cand acesta ruleaza
+fluid (fluxul mic se opreste atunci); **Flux mic (camera)** = doar fluxul 2 al camerei, rapid si cu
+putine date (bun pe date mobile); **HD 720p** / **HD nativ** = doar fluxul mare. Pe ecran e mereu un
+singur flux. In Inregistrari exista doar fluxul mare, deci acolo „Flux mic” inseamna 720p.
 **In tabul Inregistrari** (Etapa 2 din audit, 2026-10-23): timeline-ul se incarca singur la
 schimbarea camerei sau a zilei; **zoom** 24h / 6h / 1h / 15 min (butoane, `+`/`−`, rotita pe
 bara; Shift+rotita deruleaza; fereastra urmareste cursorul); **pauza** (Space/K), **cadru cu
@@ -545,7 +607,7 @@ doar cu GPU, 8x masurat 0.995x realtime pe HEVC 2688x1520), **Link** copiaza adr
 *De tratat* (triajul de incidente, cu badge pe tab), *Jurnal* (istoricul permanent, episoade,
 CSV, clip/MP4/raport) si *Poze* (snapshot-urile cu filtre, cautarea semantica si intrebarile);
 adresele `#ev/inc`, `#ev/jurnal`, `#ev/poze` (`#inc` si `#al` raman ca aliasuri). Setari →
-Jurnal ramane separat: e istoricul modificarilor de configurare, nu evenimente.
+Audit ramane separat: e istoricul modificarilor de configurare, nu evenimente.
 Adresa paginii spune mereu unde esti (`#live`, `#ev/...`, `#pb/...`, `#hd/<cam>`): un link
 primit pe Telegram deschide direct momentul (cu `web_url` din Setari → Notificari,
 notificarile primesc legatura), iar Inapoi pe telefon inchide overlay-ul HD.
@@ -638,9 +700,43 @@ Telegram ramane canalul de rezerva, nu depinde de niciun telefon.
   planul proprietatii (schita, captura din satelit; PNG/JPEG/WebP ≤ 8 MB) cu camerele
   asezate si conurile lor de vedere. Marcajele arata starea (verde = inregistreaza, gri =
   nu scrie, albastru = detectie, rosu pulsand = alarma; un incident critic face marcajul
-  sa pulseze), click deschide HD-ul. Admin → „Editeaza": plan nou, incarca imaginea,
-  click pe o camera neasezata o pune in mijloc, trage-o la loc, directia si deschiderea
-  conului din panoul lateral. Mai multe planuri (curte, parter, etaj) — selectorul apare
+  sa pulseze). Click pe o camera deschide un card langa ea, cu imaginea ei (improspatata la
+  5 s), montajul si butoanele „Deschide HD” / „Inregistrari” — ca sa vezi daca ce filmeaza
+  se potriveste cu locul si conul de pe plan; Esc sau click in afara il inchide. Admin →
+  „Editeaza": plan nou, incarca imaginea, click pe o camera neasezata o pune in mijloc,
+  trage-o la loc; in panoul lateral: imaginea camerei selectate, directia si deschiderea
+  conului si, optional, inaltimea montajului (m) si inclinarea (grade sub orizontala; 0 =
+  priveste drept inainte, 90 = drept in jos). Din ele panoul estimeaza ce portiune de sol
+  vede camera (unghiul vertical e dedus din cel orizontal pentru un cadru 16:9 — o
+  aproximare pentru verificarea montajului). Camp gol = necunoscut. **Scara planului**
+  („Scara" in bara de editare): clic pe doua puncte ale unei distante cunoscute (gard,
+  latura casei), apoi spui cati metri sunt; apare o bara de scara in colt. Cu scara pusa,
+  camerele cu inaltime si inclinare nu mai au conul simbolic, ci zona de sol pe care o vad
+  efectiv (conturul cadrului proiectat pe sol, cu pata oarba de sub camera, taiat la 60 m
+  sau la orizont). O imagine noua de plan sterge scara; „Sterge scara" revine la conuri.
+  **Limita proprietatii** („Limita"): colturile proprietatii, in ordine, si lungimile reale ale
+  laturilor cunoscute (`limita` pe plan in `data/harta.json`). `app/plan_metrica.py` calculeaza
+  din ele masura planului (`metrica` in `GET /api/harta`, derivata, nu stocata): intre doua
+  puncte la (dx, dy) pixeli, d² = a·dx² + 2b·dx·dy + c·dy². Din 1–2 laturi rezulta o scara unica
+  (izotrop); cu 3+ laturi pe directii diferite si abateri care nu sunt zgomot de masurare (RMS
+  peste 3%, sau 5% cu exact 3 laturi, iar modelul pe directii le explica), scara se corecteaza pe
+  directii (anizotrop; peste 3:1 se considera o lungime gresita). Unghiurile, perimetrul si
+  suprafata se calculeaza in metri, deci sunt corecte si pe o schita deformata. Limita are
+  prioritate fata de scara din doua clicuri; zona de sol, bara de scara si eroarea calibrarii
+  folosesc aceeasi masura. `POST /api/harta {id, limita: {puncte, laturi} | null}`.
+  **Calibrarea pe plan** („Calibreaza pe plan" in panoul camerei selectate): cadrul camerei
+  si planul, alaturi; clic pe un punct de pe SOL in cadru (coltul aleii, baza stalpului de
+  la poarta), apoi pe acelasi loc pe plan — 4..12 perechi, rasfirate, nu pe o linie.
+  Punctele se pot trage; de la 4 perechi serverul calculeaza omografia (`app/omografie.py`,
+  DLT normalizat, cele mai mici patrate peste 4 perechi), iar planul arata grila solului
+  din cadru proiectata si eroarea fiecarei perechi (in metri cu scara; perechile proaste
+  ies in rosu). Dupa salvare, harta arata **detectiile live ca puncte** (om = portocaliu,
+  vehicul = albastru, estompat cand chenarul e mai vechi de 4 s), proiectate prin mijlocul
+  laturii de jos a chenarului — locul unde obiectul atinge solul. Mutarea marcajului
+  pastreaza calibrarea; o imagine noua de plan o sterge. API: `POST /api/harta {id, cam,
+  calibrare: {perechi} | null}`, proba fara salvare `POST /api/harta/omografie`, punctele
+  `GET /api/harta/<plan>/live` (filtrate pe camerele permise contului).
+  Mai multe planuri (curte, parter, etaj) — selectorul apare
   cand sunt cel putin doua. Un cont restrans vede pe harta doar camerele lui.
 - **Pop-up la critic** (bara Live): la un incident critic nou, dala camerei se mareste
   8 secunde si se aduce in ecran (ca „layout switch on event").
@@ -656,7 +752,13 @@ Toate din tabul Inregistrari (`app/analiza.py`, `app/routes_analiza.py`), pe cam
   (substream si regiune HD), `intrus` si `obiect` (ultimul chenar al track-ului) — deci
   cautarea acopera evenimentele de dupa 2026-10-23, nu si istoricul vechi.
 - **Harta de caldura**: traseele oamenilor (`traseu` din episoade) adunate pe o grila 64x36
-  peste cadru, pe ziua aleasa, 7 sau 30 de zile.
+  peste cadru, pe ziua aleasa, 7 sau 30 de zile. **Pe planul hartii** (selectorul „Fara
+  caldura / Azi / 7 zile / 30 zile" din bara hartii, cand planul are camere calibrate):
+  picioarele oamenilor din episoadele camerelor calibrate, proiectate pe plan si adunate
+  intr-o singura harta pentru toata proprietatea (`GET /api/harta/<plan>/heatmap?zile=`).
+  Fiecare punct de traseu are, pe langa centrul chenarului, jumatatea inaltimii lui
+  (`[x, y, jumatate]`); traseele mai vechi n-o au, deci nu au punct de sol si sunt doar
+  numarate („puncte vechi fara punct de sol"), nu ghicite.
 - **Time-lapse**: ziua intreaga intr-un minut (un cadru pe minut, 720p, MP4 descarcat), ca
   job in coada (o zi intreaga dureaza cateva minute: ~0,5 s per cadru, 4 in paralel).
   Cadrele se extrag prin seek din fiecare segment, in paralel — NU prin
@@ -729,10 +831,10 @@ Toate din tabul Inregistrari (`app/analiza.py`, `app/routes_analiza.py`), pe cam
 
 ## Ce a mai ramas deschis dupa audit: loguri, mesaje, accesibilitate, criptare
 - **Loguri cu niveluri** (`app/logare.py`): nvr-web, nvr-ai si nvr-record nu mai scriu cu
-  `print`, ci prin `logging` (logger „nvr", pe stderr, preluat de journald). Textul
-  mesajelor e neschimbat (eticheta `[record] ...` ramane), deci `journalctl -u nvr-web`
-  se citeste la fel; in plus fiecare mesaj are nivel. `Environment=NVR_LOG_LEVEL=WARNING`
-  in unitatea systemd (`systemctl edit nvr-web`) arata doar problemele; `DEBUG` arata tot.
+  `print`, ci prin `logging` (logger „nvr", pe stderr, preluat de jurnalul Docker). Textul
+  mesajelor e neschimbat (eticheta `[record] ...` ramane), deci `docker compose logs web`
+  se citeste la fel; in plus fiecare mesaj are nivel. `NVR_LOG_LEVEL=WARNING` in `.env`
+  (aplicat cu `docker compose up -d`) arata doar problemele; `DEBUG` arata tot.
 - **Mesajele serverului au diacritice**: erorile JSON (`error`, `mesaj`, `hint`, `motiv`),
   textele joburilor, notificarile si intrarile de audit sunt in romana corecta, ca
   interfata. Cheile JSON si valorile „de cod" (stari, tipuri) raman ASCII.
@@ -741,7 +843,7 @@ Toate din tabul Inregistrari (`app/analiza.py`, `app/routes_analiza.py`), pe cam
   (ora curenta) si se pot focaliza din tastatura; punctele de pe bara (evenimente/detectii/
   reguli) au contrast suficient pe fundalul inchis.
 - **Criptare la rest** (doar instalarea clasica; in varianta Docker criptarea se face la nivelul gazdei,
-  cu LUKS sau fscrypt pe directorul `data/`, iar cardul din Setari si scripturile de mai jos nu exista)
+  cu LUKS sau fscrypt pe directorul `data/`, iar cardul din Setari si scripturile de mai jos — `scripts/criptare.sh`, `scripts/fscrypt_*.sh` — nu fac parte din acest repo)
   **: fscrypt pe tot `data/`, cu cheie-master si pornire automata**
   (2026-10-23, cu pasul intermediar „parola dupa reboot" inlocuit in aceeasi seara, dupa
   decizia: dupa o pana de curent totul trebuie sa revina singur). Nu in aplicatie: ffmpeg are
@@ -859,7 +961,7 @@ verificat e ca GetStreamUri intoarce un RTSP accesibil de pe server.
     ultima folosire. Pe HTTPS cookie-ul primeste `Secure` (per cerere, LAN-ul pe HTTP merge
     in continuare).
   - **Push**: vezi „Notificari push" mai jos.
-- **Jurnalul de modificari** (Setari -> Jurnal) retine utilizatorul (nu IP-ul; IP-ul apare
+- **Jurnalul de modificari** (Setari -> Audit) retine utilizatorul (nu IP-ul; IP-ul apare
   la hover) si, ca plasa de siguranta, orice POST/PUT/PATCH/DELETE reusit pe care ruta nu
   l-a auditat explicit („cerere POST /api/..." cu corpul, fara secrete). 20.000 de intrari.
 - **Zone de detectie**: butonul ▣ (in bara HD a camerei) deschide editorul — desenezi
@@ -868,10 +970,11 @@ verificat e ca GetStreamUri intoarce un RTSP accesibil de pe server.
 - **Statistici**: mini-histograma pe ore in tabul Alarme (respecta filtrele active).
 - **⛏ Extrage cadre din inregistrari** (Setari): 1 cadru/min din toate inregistrarile
   locale -> data/dataset, pentru antrenament.
-Config NVR (IP/user/parola, port web, inaltime playback): `config.py` (chmod 600).
-Dupa ce schimbi `config.py`: `systemctl restart nvr-go2rtc nvr-web`.
+Configurarea instalarii (NVR: IP/utilizator/parola, port web, inaltimea redarii etc.) sta in
+`.env` (chmod 600, vezi `.env.example`). Dupa ce il schimbi: `docker compose up -d` — un simplu
+`restart` nu citeste din nou `.env`.
 
 ## GPU (accelerare transcodare)
 **Activ**: tot lantul video ruleaza pe GPU (RTX 2000 Ada: decode NVDEC + encode
-h264_nvenc) — vezi `journalctl -u nvr-web | grep hwaccel` ("DA"). Fara placa,
+h264_nvenc) — vezi `docker compose logs web | grep hwaccel` ("DA"). Fara placa,
 sistemul cade automat pe CPU (libx264, redare accelerata limitata la 2x).

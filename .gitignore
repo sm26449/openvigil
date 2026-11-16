@@ -24,3 +24,15 @@ go2rtc/
 # Cheia serviciului de alerte (alertd) — secret, nu se comite
 alertd.env
 alertd*.env
+
+# Fișierele locale ale agenților de cod: ghidul unei mașini, setările, scripturile, rapoartele.
+# AGENTS.md din rădăcină e public (ghidul comun); cele din subdirectoare sunt locale.
+CLAUDE.md
+CLAUDE.local.md
+.claude/
+claude-scripts/
+*/AGENTS.md
+.cursorrules
+.cursor/
+docs/audits/
+tests/_*

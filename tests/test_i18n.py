@@ -1,6 +1,7 @@
 """Interfata multilingva (app/i18n.py): t() cu parametri si plural, traducerea paginii HTML
 pe server, alegerea limbii si completitudinea dictionarelor fata de textele din cod."""
 import json
+import re
 import os
 import sys
 
@@ -116,3 +117,12 @@ def test_dictionarele_acopera_textele_din_cod():
             dic = json.load(f)
         erori, _ = i18n_check.verifica(dic, chei, fn)
         assert not erori, "\n".join(erori[:40]) + (f"\n... {len(erori)} în total" if len(erori) > 40 else "")
+
+
+def test_textele_romanesti_au_diacritice():
+    """Cheia de traducere e textul romanesc afisat: o cheie scrisa fara diacritice („sterge",
+    „Notificari", „dupa") ajunge asa pe ecran (audit UX 2026-11-14, UX-D)."""
+    import diacritice_check
+    rx = diacritice_check.RX
+    rau = [k for k in diacritice_check.chei() if rx.search(re.sub(r"\{[^}]*\}", " ", k))]
+    assert not rau, "texte fara diacritice:\n" + "\n".join(rau[:30])

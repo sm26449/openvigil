@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""Backend interfata NVR Hikvision.
-- /api/cameras            -> lista camerelor (din ISAPI, cache)
-- /api/recordings         -> cauta inregistrarile (ISAPI ContentMgmt/search)
-- /api/play               -> inregistreaza un stream de playback/HD in go2rtc, intoarce numele
-Streaming-ul efectiv (MSE/WebRTC) e servit de go2rtc; frontend-ul vorbeste direct cu el.
+"""Aplicatia Flask nvr-web: garda de acces, registrul de camere, fluxurile go2rtc, clipurile.
+
+- garda `guard()` (sesiune, roluri, CSRF): `VIEWER_GET`, `OPERATOR_ACTIONS`, `_visible_ids()`
+- registrul de camere (`get_cameras`, `resolve_camera`, data/cameras.json) si fluxurile
+  go2rtc (`reload_streams`, `register_stream`, `go2rtc_src`)
+- clipuri si exporturi cu ffmpeg (`render_clip`), /healthz, pagina si fisierele statice
+- rutele propriu-zise stau in blueprint-urile `routes_*.py` (`_register_blueprints()`)
+Browserul nu vorbeste direct cu go2rtc: fluxul trece prin releul autentificat (stream_proxy.py).
 """
 import hashlib, hmac, ipaddress, json, os, re, secrets, subprocess, sys, threading, time, urllib.parse
 from flask import (Flask, Response, g, redirect, request, jsonify,
@@ -155,7 +158,8 @@ VIEWER_GET = ("/api/me", "/api/cameras", "/api/events", "/api/pulse", "/api/reco
               "/api/incidents", "/api/cases", "/api/digest", "/api/speedtest", "/snapshots/",
               "/api/marcaje", "/api/probe", "/api/jobs", "/api/push", "/api/mod", "/api/harta",
               "/api/regiune", "/api/heatmap", "/api/timelapse", "/api/segmente",
-              "/api/flux", "/api/journal", "/api/plates", "/api/faces/history", "/api/reid/")
+              "/api/flux", "/api/journal", "/api/plates", "/api/faces/history", "/api/reid/",
+              "/api/rezumat/absenta")   # „Cât ai lipsit”: ruta filtreaza pe camerele contului
 # Actiunile live permise OPERATORULUI (paznicului): POST pe camera lui, fara nimic
 # de configurare (config/stream/zone/reboot/detect raman doar pentru admin).
 OPERATOR_ACTIONS = ("siren", "strobe", "output", "say", "volume", "ptz", "presets",
@@ -219,7 +223,8 @@ def guard():
                     return None
                 return jsonify({"error": t("nu ai acces la această camera")}), 403
             # triajul incidentelor e treaba paznicului: confirma / marcheaza fals
-            if re.match(r"^/api/incidents/[a-z0-9]+/stare$", p):
+            # (si pe grupuri: ruta filtreaza singura incidentele dupa camerele contului)
+            if re.match(r"^/api/incidents/[a-z0-9]+/stare$", p) or p == "/api/incidents/stare-bloc":
                 return None
         # dosarele de caz le construieste paznicul: creare/adaugare/stergere proba
         if u["role"] == "operator" and re.match(
@@ -291,7 +296,9 @@ def security_headers(resp):
         "script-src 'self'",
         "style-src 'self' 'unsafe-inline'",
         f"img-src 'self' data: blob: http://{releu} https://{releu}",
-        f"media-src 'self' blob: http://{releu} https://{releu}",
+        # data: — calea HLS din video-rtc.js (Safari/iOS fara MSE) da lista de redare ca
+        # data:application/vnd.apple.mpegurl; fara el rezerva Apple era blocata de CSP
+        f"media-src 'self' data: blob: http://{releu} https://{releu}",
         f"connect-src 'self' ws://{releu} wss://{releu} http://{releu} https://{releu} "
         f"wss://{host} ws://{host}",
         "object-src 'none'", "base-uri 'self'", "form-action 'self'",
@@ -484,7 +491,9 @@ def reload_streams():
             logare.warning(f"[server] ATENTIE: camerele {lipsa} lipsesc din configuratia de streaming "
                   f"— regenerez")
             gen_go2rtc.generate()
-            notify.send(f"⚠️ Configurația de streaming a fost regenerata: lipseau camerele {lipsa}")
+            import escaladare
+            escaladare.alerta("nvr_flux_regenerat",
+                              f"⚠️ Configurația de streaming a fost regenerată: lipseau camerele {lipsa}")
     except OSError as e:
         logare.info(f"[server] verificare configuratie: {e}")
     if written == inainte and _go2rtc_are(f"cam{load_ext()[0]['id']}_main" if load_ext() else None):
@@ -679,7 +688,8 @@ def _noise_event(cam_id, motiv, db):
     logare.info(f"[audio] {nume}: {motiv}")
     snaps.capture(cam_id, "zgomot")
     audit.log("alarma de zgomot", nume, {"nivel_db": db, "motiv": motiv})
-    notify.send(f"🔊 {nume}: {motiv}", key=(cam_id, "zgomot"))
+    import escaladare
+    escaladare.alerta("nvr_zgomot", f"🔊 {nume}: {motiv}", key=(cam_id, "zgomot"), cam=nume)
     try:
         hooks.emit("zgomot", cam_id, motiv=motiv, nivel_db=db)
     except Exception:
@@ -1191,7 +1201,7 @@ def main():
     _register_blueprints()
     ai_token()                # creeaza jetonul partajat cu nvr-ai daca lipseste
     init_ext()
-    jurnal.deschide()         # jurnalul SQLite (prima data: migrarea events.jsonl, ~10 s)
+    jurnal.deschide()         # jurnalul de evenimente: asigura schema PostgreSQL (tabelul `events`)
     jobs.start()              # lucratorii cozii de joburi (export, clip, dosar, camera noua)
     push.camere_fn = get_cameras   # notificarile push respecta restrictia pe camere a contului
     detect.sync()             # porneste workerii YOLO pentru camerele cu detectia activata
@@ -1252,7 +1262,11 @@ def main():
     # go2rtc asculta doar pe localhost; browserul ajunge la el prin releul autentificat
     g = urllib.parse.urlsplit(C.GO2RTC_API)
     stream_proxy.start(app, current_user, _visible_ids, (g.hostname, g.port or 1984),
-                       C.WEB_HOST, getattr(C, "STREAM_PORT", 8076))
+                       C.WEB_HOST, getattr(C, "STREAM_PORT", 8076),
+                       # copia fara canal de vorbire exista doar dupa ce go2rtc si-a regenerat
+                       # configuratia; pana atunci viewerul primeste fluxul normal (nu ecran negru)
+                       are_vorbire=lambda cid: bool(((_cam_entry(cid) or {}).get("features") or {}).get("talk"))
+                       and _go2rtc_are(f"cam{cid}_v"))
     # waitress sterge implicit antetele X-Forwarded-* de la surse „neincredere" (toate);
     # le lasam sa treaca: _DinSpateleProxyului le crede doar de la proxy-ul de incredere
     # systemd: READY cand pornim sa servim; WATCHDOG=1 la 30 s cat timp go2rtc si jurnalul

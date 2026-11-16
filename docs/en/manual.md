@@ -1,5 +1,8 @@
 # OpenVigil interface — one system for all your cameras
 
+**What's new in 2.2.0, where to find each feature and how to use it, with screenshots:
+[whats-new-2.2.0.md](whats-new-2.2.0.md).**
+
 > **Historic document.** Written along the way, while the system was being built for the
 > original installation (18 Hikvision cameras, a Hikvision NVR, systemd services, fscrypt
 > encryption on the host). The public version runs in Docker: see [README](../../README.md) and
@@ -139,8 +142,8 @@ with a camera filter and **pill filters by type** (with a counter); click a phot
 (lightbox) with left/right navigation (arrows/swipe/Escape). The **▶ Clip** button in the viewer
 plays 20 s of video around the event (`/api/clip`, -5s..+15s): instant from the local
 recordings (H.264 copied / HEVC transcoded), slower for the NVR cameras (RTSP pull + transcoding).
-Clips are cached in `data/tmp/`. Times are Romanian time
-(`Environment=TZ=Europe/Bucharest` in nvr-web.service).
+Clips are cached in `data/tmp/`. Times are in the installation's time zone
+(`TZ` in `.env`, for example `TZ=Europe/Bucharest`; UTC by default).
 
 ## Identification that is useful in practice: LPR with an alert for unfamiliar cars, faces grouped by person
 (2026-10-23 evening; started from the finding that Face ID had 29 recognitions in two months,
@@ -277,10 +280,52 @@ the value and the camera). Any element with `data-fisa='{json}'` opens it (deleg
 all sections, only the cards whose title or text contains the words, ignoring diacritics)
 and an "advanced" tick box (off by default, kept in the browser) that hides the rarely touched cards:
 MQTT, camera time, grid fluidity, automations and the token, region detection,
-quick links (`data-avansat` on the card). The "Status" button in the header is a shortcut to
-Settings -> Status. The AI tab: each section has its question under the name ("who is coming in?", "which
+quick links (`data-avansat` on the card); a pane that only has advanced options (System)
+explains what is hidden and has a button that shows them. The "Health" button in the header opens
+the health centre (server, channels, AI and every camera); the "Audit" pane in Settings is the
+change log (who changed what, and when). The AI tab: each section has its question under the name ("who is coming in?", "which
 vehicles come?") and a status sentence built from the data (people, recognitions in 30 days, LPR
 readings, active rules, labelled frames), so you can see at a glance what each one produces.
+
+## Triage, "While you were away" and connecting Telegram (2026-11-14)
+- **To handle** groups repeated incidents: 3+ from the same camera, of the same type, at most
+  30 minutes apart, become one card with a thumbnail, "✓ confirm all", "✕ all false" and
+  "Show all". Each incident shows the closest saved frame; clicking it opens the record.
+  "Load more incidents" fetches up to 480 from the server.
+- **On a phone**, a card (or a group) is handled by swiping: right = confirmed, left = false
+  alarm; an "Undo" button stays for 6 seconds. The buttons keep working.
+- **"While you were away"**: when you come back after more than 2 hours (page opened or brought
+  to the front), the top of Live summarises what happened since you last looked on that device —
+  grouped incidents with a picture, who came (known faces and plates), cameras that went down.
+  "Got it" closes it. The marker is kept in the browser, per device and account.
+- **Settings → Notifications → "Connect Telegram (step by step)"**: paste the token from
+  @BotFather, send the bot any message, and the chat appears by itself; one click saves it and
+  sends a test. The manual fields (token, chat ID) remain for advanced cases.
+
+## External alert service and reminders for cameras that are down (2026-11-15)
+
+- **Settings → Notifications → "Alert service"** (optional): the address (`…/v1/fire`) and an
+  API key with the `fire` right. With an empty key everything works as before, on the built-in
+  bot only. "Test the alert service" sends a test alert and shows what the service answered.
+- With the service configured, **system alerts** go there as `nvr_*` types: camera or NVR
+  down/back, disk full, recording stopped/resumed, continuity problems, failed cleanup and
+  backup, missing streams, noise, the "notification" action of rules, the daily summary. The
+  service decides the channels (SMS, Telegram, email), pauses and acknowledgement.
+- **Detections with a photo** (YOLO, Face ID, plates, "Learn the scene") stay on the built-in
+  bot, with the ✓/✕ buttons. Confirmed intruders (people) and unknown persons get a copy in the
+  service: `nvr_intrus` in away/night mode (usually with SMS), `nvr_intrus_acasa` at night, at home.
+- **Fallback**: if the service does not answer, returns an error, does not know the type or all
+  its channels failed, the message goes out on the built-in bot. A deliberate suppression
+  (pause, quiet hours) does not.
+- **A camera that is down is not forgotten**: the first alert when it drops, then reminders at
+  4, 8, 16, 32 minutes, 1, 2, 4, 8, 16 hours, 1 day and then daily, until it comes back; the
+  recovery message says how long it was down. The schedule survives restarts, and a camera
+  already down at startup is announced. It also works without the external service, on the
+  built-in bot.
+- **Recording problems** are announced once, when they appear, and closed when they go away
+  ("writing again"); the gaps of a camera that writes nothing at all are no longer announced
+  separately.
+- Types, contract and a template example: `docs/alerte.md`.
 
 ## Person recognition (Face ID)
 When YOLO detection confirms a person, `app/faces.py` asks the camera for a high-resolution
@@ -325,8 +370,11 @@ the button in Settings → Detection. It also works for viewers (results are fil
 their cameras). Since 2026-10-27 the "Learn the scene" crops also go into the index (marked 🧩),
 with the SigLIP vector already computed at classification — see the "Learn the scene" section.
 
-## The AI tab: people, vehicles, rules, events
-A dedicated tab with four sections (sidebar, like Settings):
+## The AI tab: people, vehicles, rules, annotation, configuration
+A dedicated tab with five sections (sidebar, like Settings): People, Vehicles, Rules, **Annotation**
+(the label editor used for training the model) and **Configuration** (what is on and how
+strict: Face ID, LPR, thresholds, alert cameras). The event log described below has
+moved to the **Events** tab.
 - **People** — the Face ID library, labelling of unknown faces, and a per-person
   "history": all of their recognised appearances (`data/faces/log.jsonl`) — the answer to
   "when did X last come by?".
@@ -513,20 +561,33 @@ Browser  ──:8079── backend Flask (cautare ISAPI + inregistrare streamuri
 - go2rtc is the very streaming engine of **Frigate** — if you ever want AI detection,
   the central piece is already here (zero work thrown away).
 
-## Services (systemd, start at boot)
+## Services (Docker Compose, start at boot)
+OpenVigil runs as five containers from a single image, started from the installation directory
+(where `docker-compose.yml` is; on a GPU host add `-f docker-compose.gpu.yml`):
 ```
-systemctl status nvr-go2rtc      # motor streaming  (127.0.0.1:1984, 127.0.0.1:8554, :8555)
-systemctl status nvr-web         # interfata web    (:8079) + releul spre go2rtc (:8076)
-systemctl status nvr-record      # inregistrare continua camere standalone (separat,
-                                 #   ca restarturile interfetei sa nu taie inregistrarea)
-journalctl -u nvr-web -f         # log live backend
+docker compose ps                # the five services and their state (healthy / starting)
+docker compose logs -f web       # live log of the interface; same for record, ai, go2rtc, db
+docker compose restart ai        # restart only inference (models reload, ~1 min)
+curl -s http://127.0.0.1:8079/healthz   # {"ok": true, ...} when everything is fine
 ```
-All of them have `ExecStopPost=scripts/notify-fail.sh` -> a Telegram alert on any failure
-(crash, OOM, signal; not on a manual stop/restart), at most one per 10 min per service.
-The units in `deploy/systemd/` are copies of the ones in `/etc/systemd/system/`.
-The watchdog in nvr-web also reports: standalone camera down/back, NVR down/back,
-disk almost full. The project is in **git** (without passwords: config.py, cameras.json,
-settings.json, go2rtc.yaml are in .gitignore; see config.example.py).
+| Service | What it does | Health check |
+|---|---|---|
+| `go2rtc` | streaming engine (127.0.0.1 only: 1984, 8554) | go2rtc API responds |
+| `web` | interface + API (:8079) and the authenticated relay to go2rtc (:8076) | `/healthz` |
+| `record` | continuous recording, separate so interface restarts never interrupt it | wrote in the last 2 min |
+| `ai` | detection and GPU models (:8077, local only) | `/health` |
+| `db` | PostgreSQL with pgvector (journal, hashes, vectors; 127.0.0.1 only) | `pg_isready` |
+
+All are `restart: unless-stopped`, so they come back by themselves after a reboot; `web` and
+`record` wait for `go2rtc` and `db` to be healthy. Each container's logs are rotated (5 files x
+10 MB). Docker does not restart a container just because it stays "unhealthy", nor does it report
+a crash: if you want that, add a watcher on the host (for example `autoheal`, or a systemd timer
+that checks `docker compose ps`). Inside the application, the watchdog in `web` sends a
+Telegram/email alert when a camera goes down or comes back, when the NVR is down (if one is used)
+and when the disk is nearly full.
+The installation's configuration lives in `.env` (created from `.env.example`, never in git);
+cameras, settings and accounts live in `data/`. Day-to-day operation (updates, backups, moving,
+ports): `docs/operare.md`.
 
 ## Navigation (live <-> recordings transition)
 **In the HD overlay** (click any camera): under the player is the **time-shift** bar —
@@ -534,6 +595,12 @@ settings.json, go2rtc.yaml are in .gitignore; see config.example.py).
 back, and the **day's mini-timeline** (green segments + event dots + red "now"
 marker) lets you click anywhere = play from that moment. `↗ Open in Recordings`
 takes the camera to the big tab.
+**Quality in HD** (the selector in the bottom bar, remembered per device) also picks the stream, as
+on a commercial NVR: **Auto** starts on the camera's small stream and switches to HD once it plays
+smoothly (the small stream then stops); **Small stream (camera)** = only the camera's second
+stream, fast and light on data (good on mobile data); **HD 720p** / **HD native** = only the main
+stream. There is always a single stream on screen. Recordings only have the main stream, so there
+"Small stream" means 720p.
 **In the Recordings tab** (stage 2 of the audit, 2026-10-23): the timeline loads by itself when
 the camera or the day changes; **zoom** 24h / 6h / 1h / 15 min (buttons, `+`/`−`, wheel on the
 bar; Shift+wheel scrolls; the window follows the cursor); **pause** (Space/K), **frame by
@@ -545,7 +612,7 @@ only with a GPU, 8x measured 0.995x realtime on HEVC 2688x1520), **Link** copies
 *Open* (incident triage, with a badge on the tab), *Log* (the permanent history, episodes,
 CSV, clip/MP4/report) and *Snapshots* (snapshots with filters, semantic search and questions);
 addresses `#ev/inc`, `#ev/jurnal`, `#ev/poze` (`#inc` and `#al` remain as aliases). Settings →
-Log stays separate: it is the history of configuration changes, not events.
+Audit stays separate: it is the history of configuration changes, not events.
 The page address always says where you are (`#live`, `#ev/...`, `#pb/...`, `#hd/<cam>`): a link
 received on Telegram opens the moment directly (with `web_url` from Settings → Notifications,
 notifications get the link), and Back on a phone closes the HD overlay.
@@ -636,9 +703,44 @@ Telegram remains the fallback channel, it does not depend on any phone.
   the property plan (sketch, satellite screenshot; PNG/JPEG/WebP ≤ 8 MB) with the cameras
   placed on it and their view cones. Markers show the state (green = recording, grey =
   not writing, blue = detection, pulsing red = alarm; a critical incident makes the marker
-  pulse), click opens the HD view. Admin → "Edit": new plan, upload the image,
-  click an unplaced camera to put it in the middle, drag it into place, the direction and aperture of
-  the cone from the side panel. Multiple plans (yard, ground floor, upper floor) — the selector appears
+  pulse). Clicking a camera opens a card next to it with its image (refreshed every 5 s),
+  the mounting details and "Open HD" / "Recordings" buttons — so you can check that what it
+  films matches its place and cone on the plan; Esc or a click outside closes it. Admin →
+  "Edit": new plan, upload the image, click an unplaced camera to put it in the middle, drag
+  it into place; the side panel shows the selected camera's image, the direction and aperture
+  of the cone and, optionally, the mounting height (m) and tilt (degrees below horizontal;
+  0 = looking straight ahead, 90 = straight down). From these the panel estimates which
+  stretch of ground the camera sees (the vertical angle is derived from the horizontal one
+  for a 16:9 frame — an approximation for checking the mount). An empty field = unknown.
+  **Plan scale** ("Scale" in the edit bar): click two points of a known distance (a fence,
+  a side of the house), then say how many metres it is; a scale bar appears in the corner.
+  With a scale set, cameras with a height and tilt no longer get the symbolic cone but the
+  ground area they actually see (the frame outline projected onto the ground, with the
+  blind spot under the camera, cut at 60 m or at the horizon). A new plan image clears the
+  scale; "Delete scale" goes back to the cones.
+  **Property boundary** ("Boundary"): the property corners in order and the real lengths of the
+  sides you know (`limita` on the plan in `data/harta.json`). `app/plan_metrica.py` derives the
+  plan's measure from them (`metrica` in `GET /api/harta`, computed, never stored): between two
+  points (dx, dy) pixels apart, d² = a·dx² + 2b·dx·dy + c·dy². One or two sides give a single
+  scale (isotropic); with 3+ sides in different directions and deviations that are not
+  measurement noise (RMS above 3%, or 5% with exactly 3 sides, and the per-direction model
+  explains them), the scale is corrected per direction (anisotropic; above 3:1 a length is
+  assumed wrong). Angles, perimeter and area are computed in metres, so they are right even on a
+  distorted sketch. The boundary takes precedence over the two-click scale; the ground area, the
+  scale bar and the calibration error all use the same measure.
+  `POST /api/harta {id, limita: {puncte, laturi} | null}`.
+  **Calibration on the plan** ("Calibrate on the plan" in the selected camera's panel): the
+  camera frame and the plan side by side; click a point on the GROUND in the frame (a path
+  corner, the base of a gate post), then the same spot on the plan — 4..12 pairs, spread
+  out, not along a line. Points can be dragged; from 4 pairs the server computes the
+  homography (`app/omografie.py`, normalised DLT, least squares above 4 pairs) and the plan
+  shows the frame's ground grid projected plus each pair's error (in metres with a scale;
+  bad pairs turn red). Once saved, the map shows **live detections as points** (person =
+  orange, vehicle = blue, faded when the box is older than 4 s), projected through the
+  middle of the box's bottom edge — where the object touches the ground. Moving the marker
+  keeps the calibration; a new plan image clears it. API: `POST /api/harta {id, cam,
+  calibrare: {perechi} | null}`, dry run `POST /api/harta/omografie`, the points
+  `GET /api/harta/<plan>/live` (filtered to the account's cameras). Multiple plans (yard, ground floor, upper floor) — the selector appears
   when there are at least two. A restricted account sees only its own cameras on the map.
 - **Critical pop-up** (Live bar): on a new critical incident, the camera's tile enlarges for
   8 seconds and is brought into view (like "layout switch on event").
@@ -654,7 +756,13 @@ All from the Recordings tab (`app/analiza.py`, `app/routes_analiza.py`), on the 
   (substream and HD region), `intrus` and `obiect` (the track's last box) — so the
   search covers events after 2026-10-23, not the old history.
 - **Heat map**: people's paths (`traseu` from episodes) accumulated on a 64x36 grid
-  over the frame, for the chosen day, 7 or 30 days.
+  over the frame, for the chosen day, 7 or 30 days. **On the map's plan** (the "No heat /
+  Today / 7 days / 30 days" selector in the map bar, when the plan has calibrated cameras):
+  people's feet from the calibrated cameras' episodes, projected onto the plan and combined
+  into a single map of the whole property (`GET /api/harta/<plan>/heatmap?zile=`). Each path
+  point now carries, besides the box centre, half the box height (`[x, y, half]`); older
+  paths lack it, so they have no ground point and are only counted ("old points without a
+  ground point"), not guessed.
 - **Time-lapse**: the whole day in a minute (one frame per minute, 720p, downloaded MP4), as a
   job in the queue (a whole day takes a few minutes: ~0.5 s per frame, 4 in parallel).
   Frames are extracted by seeking in each segment, in parallel — NOT by
@@ -727,10 +835,10 @@ All from the Recordings tab (`app/analiza.py`, `app/routes_analiza.py`), on the 
 
 ## What remained open after the audit: logs, messages, accessibility, encryption
 - **Logs with levels** (`app/logare.py`): nvr-web, nvr-ai and nvr-record no longer write with
-  `print`, but through `logging` (logger "nvr", on stderr, picked up by journald). The message
-  text is unchanged (the `[record] ...` label stays), so `journalctl -u nvr-web`
-  reads the same; in addition each message has a level. `Environment=NVR_LOG_LEVEL=WARNING`
-  in the systemd unit (`systemctl edit nvr-web`) shows only problems; `DEBUG` shows everything.
+  `print`, but through `logging` (logger "nvr", on stderr, picked up by the Docker log). The message
+  text is unchanged (the `[record] ...` label stays), so `docker compose logs web`
+  reads the same; in addition each message has a level. `NVR_LOG_LEVEL=WARNING` in `.env`
+  (applied with `docker compose up -d`) shows only problems; `DEBUG` shows everything.
 - **Server messages have diacritics**: the JSON errors (`error`, `mesaj`, `hint`, `motiv`),
   job texts, notifications and audit entries are in correct Romanian, like the
   interface. JSON keys and "code" values (states, types) stay ASCII.
@@ -739,7 +847,7 @@ All from the Recordings tab (`app/analiza.py`, `app/routes_analiza.py`), on the 
   (current time) and can be focused from the keyboard; the dots on the bar (events/detections/
   rules) have sufficient contrast on the dark background.
 - **Encryption at rest** (classic installation only; in the Docker variant encryption is done at the host level,
-  with LUKS or fscrypt on the `data/` directory, and the Settings card and the scripts below do not exist)
+  with LUKS or fscrypt on the `data/` directory, and the Settings card and the scripts below — `scripts/criptare.sh`, `scripts/fscrypt_*.sh` — are not part of this repository)
   **: fscrypt on all of `data/`, with a master key and automatic start**
   (2026-10-23, with the intermediate step "password after reboot" replaced the same evening, after
   the decision: after a power outage everything must come back by itself). Not in the application: ffmpeg
@@ -857,7 +965,7 @@ check is that GetStreamUri returns an RTSP reachable from the server.
     last use. On HTTPS the cookie gets `Secure` (per request, LAN over HTTP keeps
     working).
   - **Push**: see "Push notifications" below.
-- **The change log** (Settings -> Log) records the user (not the IP; the IP appears
+- **The change log** (Settings -> Audit) records the user (not the IP; the IP appears
   on hover) and, as a safety net, any successful POST/PUT/PATCH/DELETE that the route did not
   audit explicitly ("POST request /api/..." with the body, no secrets). 20,000 entries.
 - **Detection zones**: the ▣ button (in the camera's HD bar) opens the editor — you draw the
@@ -866,10 +974,11 @@ check is that GetStreamUri returns an RTSP reachable from the server.
 - **Statistics**: a mini-histogram by hour in the Alarms tab (respects the active filters).
 - **⛏ Extract frames from recordings** (Settings): 1 frame/min from all local
   recordings -> data/dataset, for training.
-NVR config (IP/user/password, web port, playback height): `config.py` (chmod 600).
-After you change `config.py`: `systemctl restart nvr-go2rtc nvr-web`.
+The installation's configuration (NVR IP/user/password, web port, playback height, etc.) lives in
+`.env` (chmod 600, see `.env.example`). After changing it: `docker compose up -d` — a plain
+`restart` does not re-read `.env`.
 
 ## GPU (transcoding acceleration)
 **Active**: the whole video chain runs on the GPU (RTX 2000 Ada: NVDEC decode +
-h264_nvenc encode) — see `journalctl -u nvr-web | grep hwaccel` ("DA"). Without the card,
+h264_nvenc encode) — see `docker compose logs web | grep hwaccel` ("DA"). Without the card,
 the system falls back automatically to the CPU (libx264, accelerated playback limited to 2x).

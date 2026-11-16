@@ -129,8 +129,8 @@ window.addEventListener('resize', drawZone);
    [0,1], mai multe per camera, salvate in settings.count_lines / count_zones. */
 let countCam = null, countLines = [], countZones = [], countMode = 'linie',
   countDraft = [], countImg = null;
-const COUNT_HELP = { linie: 'Click = capat · o linie are 2 capete, apoi „Adauga"',
-  zona: 'Click = colt · minim 3 colturi, apoi „Adauga"' };
+const COUNT_HELP = { linie: 'Clic = capăt · o linie are 2 capete, apoi „Adaugă”',
+  zona: 'Clic = colț · minimum 3 colțuri, apoi „Adaugă”' };
 
 async function openCountEditor(c) {
   countCam = c;
@@ -207,7 +207,7 @@ function renderCountList() {
       <span>${it.name}</span>
       <button class="count-regula link-btn" data-t="${it.t}" data-name="${it.name}" title="${it.t === 'linie' ? t('Regulă la trecerea acestei linii (alege sensul în formular)') : t('Regulă la intrarea în această zonă')}">${t('⚙ regulă')}</button>
       <button class="count-del link-btn" data-t="${it.t}" data-i="${it.i}">✕</button>
-    </div>`, '<p class="hint">' + t('Nimic inca. Deseneaza pe imagine.') + '</p>')}`;
+    </div>`, '<p class="hint">' + t('Nimic încă. Desenează pe imagine.') + '</p>')}`;
   for (const b of $('#count-list').querySelectorAll('.count-del'))
     b.onclick = () => {
       (b.dataset.t === 'linie' ? countLines : countZones).splice(+b.dataset.i, 1);
@@ -249,7 +249,7 @@ $('#count-add') && ($('#count-add').onclick = () => {
     if (!nume) return;
     countLines.push({ name: nume.trim(), p1: countDraft[0], p2: countDraft[1] });
   } else {
-    if (countDraft.length < 3) { toast(t('O zona are nevoie de minim 3 colțuri'), true); return; }
+    if (countDraft.length < 3) { toast(t('O zonă are nevoie de minimum 3 colțuri'), true); return; }
     const nume = prompt(t('Numele zonei (ex. „Curte"):'), t('zona {n}', { n: countZones.length + 1 }));
     if (!nume) return;
     countZones.push({ name: nume.trim(), poly: countDraft.slice() });
@@ -341,7 +341,7 @@ const SMART_RO = { motion: 'Mișcare', line: 'Trecere linie', field: 'Intruziune
 // Cele 12 sunete din firmware, traduse. Sunt rostite in engleza de catre camera;
 // eticheta spune ce se aude, ca sa stii ce alegi.
 const SOUND_RO = {
-  1: 'Sirena', 2: 'Avertisment: zona cu acces interzis',
+  1: 'Sirenă', 2: 'Avertisment: zona cu acces interzis',
   3: 'Avertisment: zona interzisă, păstrați distanța',
   4: 'Avertisment: parcarea interzisă', 5: 'Avertisment: parcare interzisă, indepartati-va',
   6: 'Atenție: zona este supravegheată', 7: 'Bun venit; zona este supravegheată',
@@ -430,6 +430,7 @@ function buildCamsTable() {
     pick.className = 'cam-pick';
     pick.checked = selected.has(c.id);
     pick.title = t('Selectează pentru operatii în masa');
+    pick.setAttribute('aria-label', t('Selectează camera {name}', { name: c.name }));   // doar title nu e eticheta (audit UX A7)
     pick.onclick = (e) => e.stopPropagation();
     pick.onchange = () => {
       pick.checked ? selected.add(c.id) : selected.delete(c.id);
@@ -491,6 +492,7 @@ function buildCamsTable() {
     go.textContent = '›';
 
     row.append(pick, th, nm, grp, caps, st, rec, ai, gb, go);
+    row.dataset.cam = c.id;
     if (openCam === c.id) row.classList.add('open');
     row.onclick = () => openCamPanel(c);
     box.appendChild(row);
@@ -625,7 +627,7 @@ function openCamPanel(c) {
   user.autocomplete = 'off';
   const pass = document.createElement('input');
   pass.type = 'password';
-  pass.placeholder = t('necompletat = ramane parola actuala');
+  pass.placeholder = t('necompletat = rămâne parola actuală');
   pass.autocomplete = 'new-password';
   const connBtn = document.createElement('button');
   connBtn.className = 'panel-action';
@@ -681,9 +683,9 @@ function openCamPanel(c) {
   };
   rd.onchange = saveRet; re.onchange = saveRet;
   body.appendChild(section(t('Înregistrare'),
-    field(t('Mod'), sel, t('La miscare = se pastreaza doar segmentele cu evenimente (±30s)')),
-    field(t('Păstrează înregistrarea obișnuită (zile)'), rd, t('gol = foloseste setarea generala')),
-    field(t('Păstrează segmentele cu evenimente (zile)'), re, t('gol = foloseste setarea generala'))));
+    field(t('Mod'), sel, t('La mișcare = se păstrează doar segmentele cu evenimente (±30 s)')),
+    field(t('Păstrează înregistrarea obișnuită (zile)'), rd, t('gol = folosește setarea generală')),
+    field(t('Păstrează segmentele cu evenimente (zile)'), re, t('gol = folosește setarea generală'))));
 
   // Calitate
   const qbox = document.createElement('div');
@@ -882,12 +884,22 @@ function openCamPanel(c) {
   body.appendChild(msg);
   p.classList.remove('hidden');
   buildCamsTable();   // evidentiaza randul deschis
+  // focusul intra in panou (inainte ramanea pe body: tastatura/cititorul nu aflau ca s-a deschis)
+  try { $('#cam-panel-title').focus({ preventScroll: true }); } catch (_) {}
 }
 function closeCamPanel() {
+  const fost = openCam;
+  const eraDeschis = !$('#cam-panel').classList.contains('hidden');
   openCam = null;
   document.body.classList.remove('panel-open');
   $('#cam-panel').classList.add('hidden');
   buildCamsTable();
+  // focusul revine pe randul camerei (randurile se reconstruiesc, deci il cautam dupa id)
+  if (eraDeschis && fost !== null && !$('#cams').classList.contains('hidden')) {
+    const r = document.querySelector(`#cams-table .cam-row[data-cam="${fost}"]`);
+    const tinta = r && (r.querySelector('.cam-pick') || r);
+    if (tinta) { if (tinta === r) r.tabIndex = -1; try { tinta.focus({ preventScroll: true }); } catch (_) {} }
+  }
 }
 
 /* scanner de retea */
@@ -1169,7 +1181,10 @@ function hcAi(ai) {
   if (!ai) return '';
   const bits = [
     hcRand(t('Serviciu'), ai.serviciu === 'nvr-ai' ? 'nvr-ai (GPU)' : t('local')),
-    ai.gpu ? hcRand('GPU', ai.gpu) : '',
+    // ai.gpu e {folosit_mb, total_mb, procent}; afisat direct ar iesi „[object Object]"
+    ai.gpu ? hcRand(t('Memorie GPU'), typeof ai.gpu === 'object'
+      ? t('{folosit} din {total} GB ({p}%)', { folosit: (ai.gpu.folosit_mb / 1024).toFixed(1).replace('.', ','), total: (ai.gpu.total_mb / 1024).toFixed(1).replace('.', ','), p: ai.gpu.procent })
+      : ai.gpu, typeof ai.gpu === 'object' && ai.gpu.procent >= 90) : '',
     hcSubsistem(t('Fețe'), ai.face),
     hcSubsistem(t('Numere (LPR)'), ai.lpr),
     hcSubsistem(t('Descriere'), ai.descriere),

@@ -10,8 +10,8 @@ import push  # noqa: E402
 import users  # noqa: E402
 import db  # noqa: E402
 
-SUB = {"endpoint": "https://push.example/abc", "keys": {"p256dh": "P", "auth": "A"}}
-SUB2 = {"endpoint": "https://push.example/def", "keys": {"p256dh": "P", "auth": "A"}}
+SUB = {"endpoint": "https://fcm.googleapis.com/fcm/send/abc", "keys": {"p256dh": "P", "auth": "A"}}
+SUB2 = {"endpoint": "https://updates.push.services.mozilla.com/wpush/v2/def", "keys": {"p256dh": "P", "auth": "A"}}
 
 
 @pytest.fixture(autouse=True)
@@ -113,3 +113,24 @@ def test_abonamentul_mort_se_sterge_si_erorile_se_numara(monkeypatch):
     rest = push.lista("admin")
     assert [x["endpoint"] for x in rest] == [SUB2["endpoint"]]
     assert rest[0]["erori"] == 1
+
+
+
+@pytest.mark.parametrize("ep", [
+    "https://127.0.0.1/x", "https://10.0.0.5/push", "https://localhost/x", "https://[::1]/x",
+    "https://intern.local/x", "https://fcm.googleapis.com.rau.example/x", "https://rau-fcm.googleapis.com.example/x",
+    "https://fcm.googleapis.com:8443/x", "https://u:p@fcm.googleapis.com/x", "http://fcm.googleapis.com/x",
+    "https://evilgoogleapis.com/x",
+])
+def test_abonarea_refuza_adresele_care_nu_sunt_servicii_de_push(ep):
+    """audit S6: abonarea nu poate face serverul sa trimita cereri spre o tinta oarecare."""
+    with pytest.raises(ValueError):
+        push.aboneaza("admin", {"endpoint": ep, "keys": {"p256dh": "P", "auth": "A"}})
+
+
+@pytest.mark.parametrize("ep", [
+    "https://fcm.googleapis.com/fcm/send/x", "https://updates.push.services.mozilla.com/wpush/v2/x",
+    "https://web.push.apple.com/QG", "https://wns2-db5p.notify.windows.com/w/?token=x",
+])
+def test_serviciile_de_push_ale_browserelor_sunt_acceptate(ep):
+    assert push.endpoint_permis(ep)

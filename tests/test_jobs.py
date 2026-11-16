@@ -192,3 +192,26 @@ def test_plafon_joburi_grele_per_utilizator():
         assert jobs.submit("clip", {"channel": 1, "time": 1000}, who="ana")["parametri"]["time"] == 1000
     finally:
         poarta.set()
+
+
+def test_descarcarea_dosarului_reverifica_toate_camerele(tmp_path, monkeypatch):
+    """audit S5: ZIP-ul unui dosar (fara `cam`, cu clipuri din mai multe camere) nu se mai
+    serveste dupa ce contului i s-a retras una dintre camerele din el."""
+    from flask import Flask
+    import routes_jobs
+    f = tmp_path / "caz.zip"
+    f.write_bytes(b"ZIP")
+    job = {"id": "j1", "tip": "dosar", "creat_de": "op", "cam": None, "rezultat": {"camere": [1, 2]}}
+    vis = {"v": {1, 2}}
+    monkeypatch.setattr(routes_jobs.jobs, "get", lambda jid: job if jid == "j1" else None)
+    monkeypatch.setattr(routes_jobs.jobs, "cale_fisier", lambda jid: (str(f), "caz.zip", "application/zip"))
+    monkeypatch.setattr(routes_jobs, "current_user", lambda: {"user": "op", "role": "operator"})
+    monkeypatch.setattr(routes_jobs, "_visible_ids", lambda: vis["v"])
+    app = Flask(__name__)
+    app.register_blueprint(routes_jobs.bp)
+    c = app.test_client()
+    assert c.get("/api/jobs/j1/fisier").status_code == 200
+    vis["v"] = {1}                                   # adminul ii retrage camera 2
+    assert c.get("/api/jobs/j1/fisier").status_code == 404
+    vis["v"] = None                                  # (adminul vede tot)
+    assert c.get("/api/jobs/j1/fisier").status_code == 200

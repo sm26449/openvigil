@@ -120,7 +120,7 @@ if (!ADMIN) document.body.classList.add('no-admin');
 if (!CAN_ACT) document.body.classList.add('viewer');
 if (ME.user) {
   const rol = ADMIN ? '' : ` (${ME.role === 'operator' ? t('operator') : t('vizualizare')})`;
-  $('#user-chip').innerHTML = html`<button type="button" class="me-open" title="${t('Contul meu: 2FA, notificari push, dispozitive')}">${ME.user}${rol}${ME.totp ? ' 🔐' : ''}</button> · <a href="/logout">${t('ieși')}</a>`;
+  $('#user-chip').innerHTML = html`<button type="button" class="me-open" aria-label="${t('Contul meu ({user})', { user: ME.user })}" title="${t('Contul meu: 2FA, notificări push, dispozitive')}">${ME.user}${rol}${ME.totp ? ' 🔐' : ''}</button> · <a href="/logout">${t('ieși')}</a>`;
 }
 // Versiunea care ruleaza, mereu vizibila langa titlu — ca sa stii pe ce build esti (mai ales in
 // dev, cu build-uri locale ne-publicate). Vine din /api/me (ME.versiune); „dev" daca lipseste.
@@ -202,6 +202,9 @@ function jobsTray() {
 }
 function renderJobs() {
   const tray = jobsTray();
+  // tava se redeseneaza la fiecare tic: focusul de pe un buton (✕, ⬇) se pierdea (audit #12)
+  const fa = document.activeElement && tray.contains(document.activeElement)
+    ? [document.activeElement.closest('.job')?.dataset.id, document.activeElement.className.split(' ')[0]] : null;
   const jobs = [...jobsSeen.values()].slice(-6).reverse();
   tray.innerHTML = lista(jobs, (j) => {
     const activ = j.stare === 'asteapta' || j.stare === 'ruleaza';
@@ -210,8 +213,8 @@ function renderJobs() {
         <span class="job-t">${t(JOB_RO[j.tip] || j.tip)}</span>
         <span class="job-m">${j.mesaj || t(JOB_STARE_RO[j.stare] || j.stare)}${activ && j.progres ? ' · ' + j.progres + '%' : ''}</span>
         ${activ ? html`<button class="job-x link-btn" title="${t('Anuleaza')}">✕</button>`
-          : j.stare === 'gata' && j.are_fisier ? html`<button class="job-dl link-btn" title="${t('Descarca din nou')}">⬇</button>`
-          : html`<button class="job-hide link-btn" title="${t('Inchide')}">✕</button>`}
+          : j.stare === 'gata' && j.are_fisier ? html`<button class="job-dl link-btn" title="${t('Descarcă din nou')}">⬇</button>`
+          : html`<button class="job-hide link-btn" title="${t('Închide')}">✕</button>`}
       </div>
       ${activ ? html`<div class="job-bar"><i style="width:${j.progres || 0}%"></i></div>` : ''}
     </div>`;
@@ -223,6 +226,7 @@ function renderJobs() {
     if (dl) dl.onclick = () => descarcaJob(jobsSeen.get(id));
     if (h) h.onclick = () => { jobsSeen.delete(id); renderJobs(); };
   }
+  if (fa && fa[0]) tray.querySelector(`.job[data-id="${fa[0]}"] .${fa[1]}`)?.focus();
 }
 function descarcaJob(j) {
   const a = document.createElement('a');
@@ -231,13 +235,22 @@ function descarcaJob(j) {
   document.body.appendChild(a); a.click(); a.remove();
 }
 async function jobWait(job, { onProgress, download = true } = {}) {
+  let pauza = 800;
   for (;;) {
     jobsSeen.set(job.id, job);
     renderJobs();
     if (onProgress) onProgress(job);
     if (['gata', 'eroare', 'anulat'].includes(job.stare)) break;
-    await new Promise((r) => setTimeout(r, 800));
-    try { job = await (await fetch(`/api/jobs/${job.id}`)).json(); } catch {}
+    await new Promise((r) => setTimeout(r, pauza));
+    try {
+      job = await (await fetch(`/api/jobs/${job.id}`)).json();
+      pauza = 800;
+    } catch {
+      // fara legatura: spunem asta in tava si rarim incercarile (pana la 10 s), in loc sa
+      // batem serverul la 800 ms in tacere (audit #12)
+      pauza = Math.min(10000, pauza * 2);
+      job = { ...job, mesaj: t('fără legătură cu serverul — reîncerc…') };
+    }
     if (job.error) { job = { ...jobsSeen.get(job.id || ''), stare: 'eroare', mesaj: job.error }; }
   }
   if (job.stare === 'eroare') toast(`${t(JOB_RO[job.tip] || job.tip)}: ${job.mesaj}`, true);
@@ -299,7 +312,7 @@ async function renderExports() {
   box.innerHTML = lista(joburi, (j) => {
     const iv = _ivJob(j.parametri);
     const camId = j.cam || (j.parametri && j.parametri.channel);
-    const cam = camId ? t('cam {id}', { id: camId }) : '';
+    const cam = camId ? numeCam(camId) : '';
     const r = j.rezultat || {};
     const partial = r.partial ? ' · ' + t('parțial {r}/{n}', { r: r.probe, n: r.din }) : '';
     const detaliu = j.stare === 'eroare' ? (j.mesaj || t('eroare'))
@@ -366,4 +379,55 @@ const EV_RO = {
 // text fara diacritice si cu litere mici, pentru cautari („Masina” gaseste „mașină”)
 const fdia = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
-export { $, ADMIN, CAN_ACT, DET_RO, EV_RO, GO2RTC, HD_MODE, HLS_SUFFIX, JOB_STARE_RO, LIMBA, ME, bindMore, clipReady, esc, fdia, gridFrame, html, icon, lista, raw, runJob, streamEl, t, talkStart, talkStop, toast };
+/* ---------- selectiile multiple devin bife (audit UX-E) ----------
+   <select multiple> cerea Ctrl+clic — imposibil pe telefon si greu de descoperit pe desktop.
+   Select-ul ramane sursa adevarului (ascuns): codul care il umple (innerHTML) sau il seteaza
+   (option.selected = …) si cel care citeste selectedOptions merg neschimbate; bifele il urmeaza. */
+function bifeMultiple(sel) {
+  if (!sel || sel._bife) return;
+  const box = document.createElement('div');
+  box.className = 'bife';
+  box.setAttribute('role', 'group');
+  const nume = sel.getAttribute('aria-label') || (sel.labels && sel.labels[0] ? sel.labels[0].textContent.replace(/\s+/g, ' ').trim() : '');
+  if (nume) box.setAttribute('aria-label', nume);
+  sel.classList.add('bife-sursa');
+  sel.after(box);
+  sel._bife = box;
+  const deseneaza = () => {
+    box.textContent = '';
+    for (const o of sel.options) {
+      const l = document.createElement('label');
+      l.className = 'bifa' + (o.selected ? ' on' : '');
+      const c = document.createElement('input');
+      c.type = 'checkbox'; c.checked = o.selected; c.disabled = o.disabled || sel.disabled;
+      c.onchange = () => {
+        o.selected = c.checked;
+        sel.dispatchEvent(new Event('input', { bubbles: true }));
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+      };
+      l.append(c, document.createTextNode(' ' + o.textContent));
+      box.appendChild(l);
+    }
+  };
+  sel._bifeSync = () => {
+    const cs = box.querySelectorAll('input');
+    [...sel.options].forEach((o, i) => { if (cs[i]) { cs[i].checked = o.selected; cs[i].parentElement.classList.toggle('on', o.selected); } });
+  };
+  new MutationObserver(deseneaza).observe(sel, { childList: true, subtree: true, characterData: true });
+  deseneaza();
+}
+// option.selected = … din cod (editarea unei reguli, golirea formularului) actualizeaza si bifele
+(() => {
+  const sync = (sel) => { if (sel && sel._bifeSync && !sel._bifeProgramat) { sel._bifeProgramat = true; queueMicrotask(() => { sel._bifeProgramat = false; sel._bifeSync(); }); } };
+  const d = Object.getOwnPropertyDescriptor(HTMLOptionElement.prototype, 'selected');
+  if (d && d.set) Object.defineProperty(HTMLOptionElement.prototype, 'selected', { ...d, set(v) { d.set.call(this, v); sync(this.closest('select')); } });
+  for (const prop of ['selectedIndex', 'value']) {
+    const ds = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, prop);
+    if (ds && ds.set) Object.defineProperty(HTMLSelectElement.prototype, prop, { ...ds, set(v) { ds.set.call(this, v); sync(this); } });
+  }
+})();
+for (const sel of document.querySelectorAll('select[multiple]')) bifeMultiple(sel);
+
+// numele camerei pentru afisare; „cam N” doar daca a disparut din configurare (audit UX-D)
+const numeCam = (id) => (S.cameras.find((c) => c.id === +id) || {}).name || t('cam {id}', { id });
+export { $, ADMIN, CAN_ACT, DET_RO, EV_RO, GO2RTC, HD_MODE, HLS_SUFFIX, JOB_STARE_RO, LIMBA, ME, bindMore, clipReady, esc, fdia, gridFrame, html, icon, lista, numeCam, raw, runJob, streamEl, t, talkStart, talkStop, toast };

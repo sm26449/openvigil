@@ -34,8 +34,8 @@ ADOPT_IOU = 0.30       # suprapunere peste care un track nou E aceeasi parcare
 RO = {"car": "masina", "truck": "camion", "bus": "autobuz", "motorcycle": "motocicleta"}
 # acordul in texte: (articol+nume, participiu) — primul camion parcat a iesit
 # "o camion a parcat" (2026-09-10 19:38, cam14)
-FORME = {"car": ("o masina", "plecata"), "truck": ("un camion", "plecat"),
-         "bus": ("un autobuz", "plecat"), "motorcycle": ("o motocicleta", "plecata")}
+FORME = {"car": ("o mașină", "plecata"), "truck": ("un camion", "plecat"),
+         "bus": ("un autobuz", "plecat"), "motorcycle": ("o motocicletă", "plecata")}
 
 
 def _forma(lbl):
@@ -142,7 +142,7 @@ def plecare(cam, track_id, now=None):
         durata = round((now - e["t0"]) / 60, 1)
         _emit("parcare_sfarsit", cam, eticheta=e["lbl"],
               eticheta_ro=RO.get(e["lbl"], e["lbl"]), durata_min=durata,
-              text=t("{vehicul} {plecat} dupa {durata}", vehicul=t(_forma(e['lbl'])[0]),
+              text=t("{vehicul} {plecat} după {durata}", vehicul=t(_forma(e['lbl'])[0]),
                      plecat=t(_forma(e['lbl'])[1]),
                      durata=(t("{n} min", n=durata) if durata < 90 else t("{n} ore", n=round(durata / 60, 1)))))
     return e
@@ -176,7 +176,7 @@ def tick(now=None):
               nota=t("pierdut din vedere"),
               # clipul tinteste ULTIMA vedere, nu inchiderea (+10 min de gratie)
               vazut_ultima=time.strftime("%H:%M:%S", time.localtime(e["last"])),
-              text=t("{vehicul} {plecat} dupa ~{n} min (pierdut din vedere)", vehicul=t(_forma(e['lbl'])[0]),
+              text=t("{vehicul} {plecat} după ~{n} min (pierdut din vedere)", vehicul=t(_forma(e['lbl'])[0]),
                      plecat=t(_forma(e['lbl'])[1]), n=durata))
 
 

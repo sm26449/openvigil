@@ -23,7 +23,7 @@
 | Reguli, jurnal (PostgreSQL, tabelul `events`), MQTT, webhook | **nvr-web** | stare in-memory (cooldown-uri) care nu poate exista în două procese |
 | Notificări Telegram pentru față/număr (`notify.face/plate`) | **nvr-ai** | singurul apelant după pas 1; cooldown-urile au un singur stăpân |
 | Modelele: YOLO partajat, verify, InsightFace + anti-spoof, ALPR, Qwen VLM, SigLIP | **nvr-ai** | VRAM: o instanță de fiecare |
-| Indexul semantic (`data/semantic/`) | **nvr-ai scrie** (worker + backfill + prune); web trimite doar (zi, nume) la `/semantic/index` | modelul e acolo (#9 pas 3) |
+| Indexul semantic | **nvr-ai calculează vectorii**; implicit scrie `data/semantic/`; opțional vectori și joburi în PostgreSQL | cu `semantic_persistent`, web poate înscrie direct jobul durabil; modelul rămâne în AI |
 | Biblioteca de fețe (`data/faces/*`): embeddings, crop-uri, log | **nvr-ai scrie** (enroll/delete/proces); web doar **citește** (liste, poze, istoric) | scrierea cere modelul |
 | `data/settings.json`, `cameras.json`, `rules.json` | **nvr-web scrie**, nvr-ai citește (mtime) | UI-ul e în web |
 | Snapshot-uri (`data/snapshots/`) | ambele scriu fișiere JPG (FS comun); indexarea o face web | fișiere independente, fără conflict |
@@ -64,9 +64,39 @@ indexarea curge invers, web → nvr-ai `/semantic/index`.)
 | `POST /semantic/index` | JSON `{token, day, fn}` | `{ok}` | un snapshot nou (FS comun) intră în index |
 | `POST /semantic/prune` | JSON `{token}` | `{ok}` | curăță shard-urile zilelor șterse de retenție |
 | `POST /semantic/search` | JSON `{token, q, days, limit, visible}` | `{results}` | `visible` = camerele permise sesiunii, calculate de web |
-| `POST /ask` | JSON `{token, q, visible, cam_names, cam}` | răspunsul `ask.answer` | citește și jurnalul de evenimente (FS, read-only) |
+| `POST /ask` | JSON `{token, q, visible, cam_names, cam, days?}` | răspunsul `ask.answer`, inclusiv `period`, `coverage`, `cover_cam`, `cover_t`, `weak` | citește jurnalul PostgreSQL; `days` implicit 30, perioada explicită din întrebare are prioritate |
 | `GET /semantic/status` | – | `{enabled, indexed, days, backfill}` | |
 | `POST /semantic/backfill` | JSON `{token}` | `{ok, started, ...}` | |
+
+Web: `/api/search` interpretează întrebările prin același traseu ca `/api/ask`.
+Răspunsurile păstrează `results` și adaugă `kind: images|question`; pentru întrebări,
+`raspuns` și `aparitii` conțin răspunsul și dovezile. Filtrul opțional `cam` se intersectează
+cu drepturile înainte de top-k. Intervalele sunt calendaristice locale, cu sfârșit exclusiv;
+orele cerute se aplică separat în fiecare zi. `coverage.scope=snapshots` se referă la
+pozele salvate, nu la întreaga înregistrare sau la toate decupajele scenei.
+
+Backendul `files` folosește `<zi>.npz`, cu vectori și metadate în același commit atomic.
+Fișierele vechi NPY/JSON rămân citibile și sunt păstrate pentru revenirea la imaginea
+anterioară. Reconcilierea la 5 minute recuperează snapshot-uri și candidați ai scenei
+din jurnal; `backfill` separă reușitele, erorile de imagine și o eroare de procesare.
+Prototipul `semantic_pg` este disponibil numai pentru baza de test și nu comută indexul live.
+
+Backendul opțional de producție este `semantic_store`, separat de prototip. Activarea
+explicită, importul integral verificat și revenirea sunt descrise în
+[semantic-search.md](semantic-search.md). `semantic_persistent` activează joburile durabile;
+`semantic_control.backend` selectează `files` sau `postgres`. În modul PostgreSQL,
+`semantic/status` adaugă starea backendului și a joburilor; câmpurile existente pentru
+rezultate și autorizarea camerelor rămân valabile. Workerul persistent pornește după
+încălzirea secvențială a modelelor, pentru a evita încărcarea concurentă la pornire.
+
+`POST /semantic/search` acceptă și `review: true` pe canalul autentificat web–AI: întoarce
+candidații modelului înaintea memoriei explicite. Web folosește această opțiune numai în
+interfața administrativă `/api/semantic/review`; căutarea obișnuită nu expune observațiile
+private. Rezultatele normale și grupurile pot avea `confirmed: true` pentru exemplele
+confirmate uman. Ele respectă în continuare camerele, perioada și orele cerute.
+Verdictele sunt comune serviciilor prin PostgreSQL; nu necesită apel AI pentru salvare,
+reluarea modelului sau reindexare. Contractul și limitele memoriei sunt în
+[semantic-feedback.md](semantic-feedback.md).
 
 ## Degradare & fallback
 

@@ -187,6 +187,7 @@ def _shim_output_plane():
     detect.IS_HOST = True     # bucla de detectie traieste in procesul asta (#9 pas 2)
     import semantic
     semantic.IS_HOST = True   # indexul SigLIP traieste tot aici (#9 pas 3)
+    semantic.WORKER_READY = False
 
 
 def _cam_entry(cam_id):
@@ -584,7 +585,7 @@ def model_verifica():
         m = YOLO(path)
         clase = set(m.names.values()) & detect.INTERESTING
         if "person" not in clase or not (clase & {"car", "truck", "bus"}):
-            return jsonify({"error": t("modelul nu acopera clasele contractului (are doar: {clase})",
+            return jsonify({"error": t("modelul nu acoperă clasele contractului (are doar: {clase})",
                                        clase=sorted(clase))}), 422
         m.to("cpu")
         m.predict(np.zeros((320, 320, 3), "uint8"), imgsz=320,
@@ -650,7 +651,7 @@ def _reid_query_emb(b):
     if b.get("crop_zi") and b.get("crop_fn"):
         e = reid_arhiva.embedding_din(b["crop_zi"], b["crop_fn"])
         if e is None:
-            raise ValueError(t("esantionul nu mai e in arhivă"))
+            raise ValueError(t("eșantionul nu mai e în arhivă"))
         return e, None
     poza = b.get("poza") or ""
     m = re.match(r"^(\d{4}-\d{2}-\d{2})/(\d{6}_cam\d+_[A-Za-z0-9_.-]+\.jpg)$", poza)
@@ -880,7 +881,7 @@ def semantic_search():
         rez = semantic.search((b.get("q") or "").strip(),
                               days=int(b.get("days") or 14),
                               limit=int(b.get("limit") or 40),
-                              visible=None if vis is None else {int(c) for c in vis})
+                              visible=None if vis is None else {int(c) for c in vis},review=b.get('review') is True)
         return jsonify({"results": rez})
     except Exception as e:
         return jsonify({"error": str(e)[:120]}), 500
@@ -900,7 +901,7 @@ def ask_question():
     try:
         return jsonify(ask.answer((b.get("q") or "").strip(),
                                   visible=None if vis is None else {int(c) for c in vis},
-                                  cam_names=nume, cam=b.get("cam")))
+                                  cam_names=nume, cam=b.get("cam"), days=min(90, max(1, int(b.get('days') or 30)))))
     except Exception as e:
         return jsonify({"error": str(e)[:120]}), 500
 
@@ -1072,7 +1073,7 @@ def capabilities():
             "lpr": {"activ": bool(s["lpr_enabled"]), "incarcat": plates._alpr is not None},
             "describe": {"activ": bool(s["person_describe"]),
                          "incarcat": describe._model is not None,
-                         "nota": t("lazy; se descarca dupa inactivitate")},
+                         "nota": t("la cerere; se descarcă după inactivitate")},
             "semantic": {"activ": bool(s["semantic_enabled"]),
                          "incarcat": semantic._model is not None,
                          "backfill": dict(semantic.backfill_state)},
@@ -1122,6 +1123,9 @@ def main():
             if semantic.enabled():
                 import scena_fundal           # exemplele invatate din verdicte, aliniate la feedback.jsonl
                 threading.Thread(target=scena_fundal.reconstruieste, daemon=True, name="scena-fundal").start()
+        semantic.WORKER_READY = True
+        if semantic.enabled():
+            semantic._ensure_worker()        # reia si lease-urile persistente dupa restart
         ai_track.sync(emit)                   # urmaritorii dupa track_cams
         import detect
         detect.sync()                         # bucla de detectie (#9 pas 2) — AICI

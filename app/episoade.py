@@ -14,6 +14,7 @@ Hranit din bucla de urmarire (un singur fir per proces — fara lock):
                    abia acum se string numele/semnalmentele din jurnale (FS) si
                    pleaca UN eveniment "episod" cu rezumatul in romana.
 """
+import re
 import time
 
 import ai_analytics
@@ -53,9 +54,9 @@ def comportament(durata, trail, dwell):
     # "invartit" = drum LUNG cu deplasare neta mica; fara pragul de drum, tremuratul
     # pe loc (jitter de biti pe un om static) ar parea plimbare
     if durata >= 60 and drum >= 0.5 and drum / max(net, 1e-6) >= 3:
-        return "s-a invartit prin cadru"
+        return "s-a învârtit prin cadru"
     if durata >= 30 and net < 0.15:
-        return "a zabovit pe loc"
+        return "a zăbovit pe loc"
     return "a trecut prin cadru"
 
 
@@ -65,7 +66,8 @@ def _subesantion(trail, n=TRASEU_PUNCTE):
     if len(trail) > n:
         pas = (len(trail) - 1) / (n - 1)
         trail = [trail[round(i * pas)] for i in range(n)]
-    return [[round(p[0], 2), round(p[1], 2)] for p in trail]
+    # al treilea numar (jumatatea inaltimii chenarului, cand exista) da punctul de pe sol
+    return [[round(p[0], 2), round(p[1], 2)] + ([round(p[2], 3)] if len(p) > 2 else []) for p in trail]
 
 
 def cadru(cam, centre, now):
@@ -109,7 +111,7 @@ def track_inchis(cam, directie, now, trail=None, durata=0.0, cine=None):
         poly = [p for p in z.get("poly", []) if len(p) == 2]
         if len(poly) < 3:
             continue
-        inauntru = sum(1 for p in trail if ai_analytics._point_in_poly(p, poly))
+        inauntru = sum(1 for p in trail if ai_analytics._point_in_poly(p[:2], poly))
         if inauntru:
             nume_z = z.get("name", "zona")
             e.setdefault("dwell", {})
@@ -152,12 +154,14 @@ def _text(e, nume, semnalmente, fapta=None):
     """Rezumatul in romana — UI-ul il afiseaza ca atare pe cardul de incident."""
     n = e["max_simultan"]
     cine = ", ".join(nume) if nume else \
-        (t("o persoana necunoscuta") if n <= 1 else t("{n} persoane simultan", n=n))
+        (t("o persoană necunoscută") if n <= 1 else t("{n} persoane simultan", n=n))
     sec = int(e["last"] - e["t0"])
     durata = f"{sec}s" if sec < 90 else t("{n} min", n=round(sec / 60))
     parti = [f"{cine} · {durata}"]
     if fapta:
-        parti.append(t(fapta))
+        # „a stat 45s la Poarta” e compus cu valori: il traducem ca sablon, nu ca text intreg
+        m = re.match(r"^a stat (.+) la (.+)$", fapta)
+        parti.append(t("a stat {cat} la {zona}", cat=m.group(1), zona=m.group(2)) if m else t(fapta))
     if e["zone"]:
         parti.append(t("zone: {lista}", lista=", ".join(sorted(e["zone"]))))
     if e["directii"]:
@@ -165,6 +169,36 @@ def _text(e, nume, semnalmente, fapta=None):
     if semnalmente:
         parti.append(semnalmente.rstrip("."))
     return " · ".join(parti)
+
+
+# comportamentele salvate inainte de diacritice (2026-11-14) -> forma curenta, ca sa se traduca
+COMPORTAMENT_VECHI = {"a zabovit pe loc": "a zăbovit pe loc", "s-a invartit prin cadru": "s-a învârtit prin cadru"}
+
+
+def text_local(d):
+    """Rezumatul-sablon al episodului, refacut in limba cererii din campurile salvate.
+
+    Textul din jurnal e compus la creare, in romana; in interfata engleza ramanea romanesc
+    („o persoana necunoscuta · a zabovit pe loc”, audit UX-D). Descrierea scrisa de modelul de
+    limbaj (`text_sablon` prezent) ramane cum e — e deja in limba de atunci. Semnalmentele VLM
+    sunt continut, nu sablon: se pastreaza (episoadele vechi le au doar la coada textului)."""
+    if d.get("text_sablon") is not None or "persoane_max" not in d or "durata_sec" not in d:
+        return d.get("text")
+    fapta = d.get("comportament")
+    fapta = COMPORTAMENT_VECHI.get(fapta, fapta)
+    zone, directii = d.get("zone") or [], d.get("directii") or []
+    semn = d.get("semnalmente")
+    if semn is None:
+        # episod vechi: „cine · durata[ · fapta][ · zone: …][ · directie: …][ · semnalmente]”
+        parti = (d.get("text") or "").split(" · ")
+        asteptat = 2 + bool(fapta) + bool(zone) + bool(directii)
+        semn = " · ".join(parti[asteptat:]) or None
+    e = {"max_simultan": d.get("persoane_max") or 1, "t0": 0, "last": d.get("durata_sec") or 0,
+         "zone": zone, "directii": directii}
+    try:
+        return _text(e, d.get("nume") or [], semn, fapta)
+    except Exception:
+        return d.get("text")
 
 
 def tick(cam, now):
@@ -186,6 +220,7 @@ def tick(cam, now):
                 directii=sorted(e["directii"]),
                 nume=nume,
                 comportament=fapta,
+                semnalmente=semnalmente or "",
                 traseu=_subesantion(e["traseu"]) if e.get("traseu") else None)
     if _llm_pornit():
         # modelul de limbaj dureaza secunde: nu in firul de urmarire; emitem din firul lui
@@ -248,7 +283,8 @@ def prompt_descriere(cam_nume, date, limba, vazute=()):
     if date.get("directii"):
         fapte.append(et("directii", "directions") + ": " + ", ".join(date["directii"]))
     if date.get("comportament"):
-        fapte.append(et("comportament", "behaviour") + ": " + t(str(date["comportament"]), limba))
+        c = COMPORTAMENT_VECHI.get(date["comportament"], date["comportament"])
+        fapte.append(et("comportament", "behaviour") + ": " + t(str(c), limba))
     if vazute:
         fapte.append(et("vazute si", "also seen") + ": " + ", ".join(t(v, limba) for v in vazute))
     fapte.append(et("rezumat-sablon", "template summary") + ": " + str(date.get("text") or ""))

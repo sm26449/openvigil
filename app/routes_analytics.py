@@ -51,6 +51,11 @@ def api_relabel():
         return jsonify({"error": t("nume de fișier necunoscut")}), 400
     new = os.path.join(d, f"{m[1]}{label}.jpg")
     os.rename(p, new)
+    old_meta=semantic._parse_fn(fn)
+    if old_meta:
+        semantic.remove_asset(os.path.basename(d),old_meta)
+    with open(new,'rb') as f:
+        semantic.enqueue(os.path.basename(d),os.path.basename(new),f.read())
     return jsonify({"ok": True, "url": f"/snapshots/{os.path.basename(d)}/{os.path.basename(new)}"})
 
 
@@ -60,7 +65,11 @@ def api_alarm_delete():
     p = _snap_path((request.get_json(silent=True) or {}).get("url"))
     if not p:
         return jsonify({"error": t("cerere invalida")}), 400
+    day,fn=os.path.basename(os.path.dirname(p)),os.path.basename(p)
     os.remove(p)
+    meta=semantic._parse_fn(fn)
+    if meta:
+        semantic.remove_asset(day,meta)
     return jsonify({"ok": True})
 
 
@@ -140,14 +149,16 @@ def api_ask():
     nume = {c["id"]: c["name"] for c in get_cameras()}
     vis = _visible_ids()
     cam = request.args.get("cam", type=int)
+    days = min(90, max(1, request.args.get('days', 30, type=int)))
     # indexul + modelele stau in nvr-ai (#9 pas 3); la esec, local (SigLIP lazy in web)
     if ai_client.remote():
-        d = ai_client.ask(q, vis, nume, cam)
+        d = ai_client.ask(q, vis, nume, cam, days=days)
         if d is not None:
-            return jsonify(d)
+            return jsonify(d), 400 if d.get('error') else 200
     import ask
     try:
-        return jsonify(ask.answer(q, visible=vis, cam_names=nume, cam=cam))
+        d = ask.answer(q, visible=vis, cam_names=nume, cam=cam, days=days)
+        return jsonify(d), 400 if d.get('error') else 200
     except Exception as e:
         return jsonify({"error": t("întrebare eșuată: {e}", e=str(e)[:100])}), 500
 
@@ -158,19 +169,28 @@ def api_search():
     Merge si pentru vieweri (rezultatele se filtreaza pe camerele lor)."""
     q = (request.args.get("q") or "").strip()
     if not q:
-        return jsonify({"error": t("scrie ce cauti")}), 400
+        return jsonify({"error": t("scrie ce cauți")}), 400
     if not semantic.enabled():
         return jsonify({"error": t("căutarea semantică nu e pornită (Setări → Detecție)")}), 409
+    import ask
+    if ask.is_question(q):
+        response, status = api_ask()
+        payload = response.get_json()
+        payload.update(kind='question', results=[])
+        return jsonify(payload), status
     days = min(90, max(1, request.args.get("days", 14, type=int)))
     limit = min(100, max(1, request.args.get("limit", 40, type=int)))
     vis = _visible_ids()
+    cam = request.args.get('cam', type=int)
+    if cam is not None:
+        vis = {cam} if vis is None else vis & {cam}
     rez = ai_client.semantic_search(q, days, limit, vis) if ai_client.remote() else None
     if rez is None:
         try:
             rez = semantic.search(q, days=days, limit=limit, visible=vis)
         except Exception as e:
             return jsonify({"error": t("căutare eșuată: {e}", e=str(e)[:100])}), 500
-    return jsonify({"q": q, "results": rez})
+    return jsonify({"q": q, "results": rez, 'kind': 'images'})
 
 
 @bp.route("/api/semantic/status")
@@ -180,6 +200,86 @@ def api_semantic_status():
         if d is not None:
             return jsonify(d)
     return jsonify(semantic.status())
+
+
+# Administrarea exemplelor ramane sub garda admin + CSRF a serverului.
+def _review_ready():
+    return semantic.persistent() and semantic.pg_backend()
+
+
+def _review_concept(q):
+    import ask
+    import semantic_feedback
+    if not isinstance(q,str):raise ValueError('concept invalid')
+    text=q.strip()
+    if ask.is_question(text):
+        text=ask.parse(ask._plat(text),90)['concept']
+    semantic_feedback.canonical(text)
+    return text
+
+
+@bp.route('/api/semantic/review')
+def api_semantic_review():
+    import semantic_feedback as feedback
+    if not _review_ready():
+        return jsonify({'error':t('Învățarea căutării necesită indexul PostgreSQL activ.')}),409
+    try:
+        concept=_review_concept(request.args.get('q'))
+        mode=request.args.get('mode','candidates')
+        cam=request.args.get('cam',type=int)
+        if cam is not None and cam not in {c['id'] for c in get_cameras()}:
+            return jsonify({'error':t('camera nu există')}),404
+        days=min(90,max(1,request.args.get('days',90,type=int)))
+        offset=min(100000,max(0,request.args.get('offset',0,type=int)))
+        more=False
+        if mode=='candidates':
+            if not semantic.enabled():
+                return jsonify({'error':t('căutarea semantică nu e pornită (Setări → Detecție)')}),409
+            vis=None if cam is None else {cam}
+            rows=ai_client.semantic_search(concept,days,100,vis,review=True) if ai_client.remote() else None
+            if rows is None:rows=semantic.search(concept,days=days,limit=100,visible=vis,review=True)
+        else:
+            rows,more=feedback.browse(concept,mode,request.args.get('day'),cam,offset)
+            for row in rows:
+                if not row.get('url'):row['url']=semantic.url_poza(row['day'],row)
+        return jsonify({'concept':concept,'key':feedback.canonical(concept),'results':rows,'mode':mode,
+                        'offset':offset,'more':more,'stats':feedback.stats(concept),'concepts':feedback.concepts()})
+    except (ValueError,TypeError) as e:
+        return jsonify({'error':t('cerere invalida')+': '+str(e)}),400
+
+
+@bp.route('/api/semantic/review/feedback',methods=['POST','DELETE'])
+def api_semantic_review_feedback():
+    import semantic_feedback as feedback
+    from server import current_user
+    if not _review_ready():
+        return jsonify({'error':t('Învățarea căutării necesită indexul PostgreSQL activ.')}),409
+    body=request.get_json(silent=True) or {}
+    if not isinstance(body,dict):return jsonify({'error':t('cerere invalida')}),400
+    try:
+        concept=_review_concept(body.get('concept'))
+        asset=body.get('asset')
+        _,cam,_,_=feedback.validate_asset(asset)
+        if request.method=='DELETE':
+            feedback.forget(concept,asset);record=None
+        else:
+            record=feedback.save(concept,asset,body.get('verdict'),body.get('note',''),(current_user() or {})['user'])
+        audit.log('verdict căutare semantică',detail={'concept':feedback.canonical(concept),'cam':cam,
+                                                    'verdict':body.get('verdict') if record else 'removed'})
+        return jsonify({'ok':True,'feedback':record,'stats':feedback.stats(concept)})
+    except FileNotFoundError:
+        return jsonify({'error':t('Imaginea nu mai este disponibilă pentru evaluare.')}),404
+    except (ValueError,TypeError) as e:
+        return jsonify({'error':t('cerere invalida')+': '+str(e)}),400
+
+
+@bp.route('/api/semantic/review/image/<image_id>')
+def api_semantic_review_image(image_id):
+    import semantic_feedback
+    try:
+        return send_file(semantic_feedback.image_path(image_id),mimetype='image/jpeg',max_age=0)
+    except FileNotFoundError:
+        return jsonify({'error':t('Imaginea nu mai este disponibilă pentru evaluare.')}),404
 
 
 @bp.route("/api/tile", methods=["GET", "POST"])
@@ -214,6 +314,9 @@ def api_semantic_config():
 
 @bp.route("/api/semantic/backfill", methods=["POST"])
 def api_semantic_backfill():
+    if semantic.persistent():
+        import semantic_store
+        semantic_store.retry_failed()
     if ai_client.remote():
         d = ai_client.semantic_backfill()
         if d is not None:

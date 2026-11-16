@@ -1,5 +1,8 @@
 # Migrarea pe PostgreSQL + pgvector (2.0.0)
 
+> **Document istoric**: planul migrării, livrată în 2.0.0. Starea de acum e în cod: stratul
+> PostgreSQL în `app/db.py`, harta modulelor în [`docs/module.md`](../module.md).
+
 > Stare: **cod-complet pe ramura `feat/postgres` (PR #13).** Fazele 0–5 făcute (SQLite scos din
 > codul aplicației); 4c (fețe/re-ID/scenă în pgvector) rămâne opțională. Instalarea live rămâne pe
 > `1.1.0` (SQLite), neatinsă, până când 2.0.0 e probat. Țintă de deploy: **EliteDesk**, curat, în
@@ -85,7 +88,7 @@ db.aplica("jurnal", SCHEMA_SQL, MIGRARI)   # oglindește schema.aplica, dar PG
 
 - pool per proces (`psycopg_pool.ConnectionPool`, min 1 / max 4) — cele 4 servicii au fiecare
   pool-ul lor mic;
-- `db.aplica(nume, schema, migrari)` păstrează **exact** tiparul vostru din `app/schema.py`
+- `db.aplica(nume, schema, migrari)` păstrează **exact** tiparul migratorului SQLite de atunci (`app/schema.py`, între timp șters)
   (versiuni per-modul în `schema_versiuni`, migrări numerotate, fiecare într-o tranzacție);
 - înregistrăm tipul `vector` o singură dată, la deschiderea pool-ului.
 

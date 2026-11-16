@@ -4,7 +4,8 @@
    pe toate; importurile/exporturile sunt verificate de scripts/module_check.py (si in pytest).
    ==================================================================== */
 import { S } from './state.js';
-import { $, CAN_ACT, DET_RO, EV_RO, bindMore, clipReady, esc, html, icon, lista, raw, runJob, t, toast } from './00-core.js';
+import { openSemanticReview } from './49-semantic-review.js';
+import { $, CAN_ACT, DET_RO, EV_RO, ME, bindMore, clipReady, esc, html, icon, lista, raw, runJob, t, toast } from './00-core.js';
 import { evPane, show, showEv } from './05-navigare.js';
 import { popupTile, post } from './10-live.js';
 import { closeHD } from './20-hd.js';
@@ -19,6 +20,8 @@ let incFilter = 'noi';
    insemnau 16 ecrane de derulat pe telefon). Ordinea ramane cea de prioritate (critic sus). */
 const INC_PAS = 30;
 let incToate = [], incArat = 0, incRand = null, incObs = null, incSig = '';
+let incLimit = 60, incTotal = 0;
+const INC_LIMIT_MAX = 480;
 function cand(ts) {
   // „18:57:16” azi, „ieri 18:57”, altfel „23.10 18:57” — ca sa stii dintr-o privire cat de vechi e
   const zi = ts.slice(0, 10), ora = ts.slice(11, 19);
@@ -34,11 +37,19 @@ function arataInc() {
   const felie = incToate.slice(incArat, incArat + INC_PAS);
   const frag = document.createElement('div');
   frag.className = 'inc-felie';
-  frag.innerHTML = html`${felie.map(incRand)}`;
+  frag.innerHTML = html`${felie.map((u) => (u.grup ? incGrupRand(u) : incRand(u)))}`;
   list.appendChild(frag);
   leagaInc(frag);
   incArat += felie.length;
   const ramase = incToate.length - incArat;
+  if (ramase <= 0 && incTotal > incToate.reduce((a, u) => a + (u.grup ? u.grup.length : 1), 0) && incLimit < INC_LIMIT_MAX) {
+    const srv = document.createElement('button');
+    srv.className = 'inc-mai';
+    srv.type = 'button';
+    srv.textContent = t('Încarcă mai multe incidente');
+    srv.onclick = () => { incLimit = Math.min(INC_LIMIT_MAX, incLimit + 120); incSig = ''; loadIncidents(); };
+    list.appendChild(srv);
+  }
   if (ramase > 0) {
     const mai = document.createElement('button');
     mai.className = 'inc-mai';
@@ -53,9 +64,54 @@ function arataInc() {
     }
   }
 }
+/* Grupuri in triaj: 3+ incidente de pe aceeasi camera, de acelasi tip/severitate/stare, la
+   cel mult 30 min unul de altul, devin un singur card cu actiuni pe toate (233 de „Episod de
+   prezență” identice de pe o camera se tratau unul cate unul — audit UX-F). */
+const GRUP_MIN = 3, GRUP_GOL = 1800;
+function grupeazaInc(lista) {
+  const sec = (e) => Date.parse(e.t.replace(' ', 'T')) / 1000;
+  const deschis = new Map(), grupuri = [];
+  for (const e of lista) {
+    const k = [e.cam, e.tip, e.sev, e.stare].join('|');
+    const g = deschis.get(k);
+    if (g && Math.abs(sec(g[g.length - 1]) - sec(e)) <= GRUP_GOL) g.push(e);
+    else { const nou = [e]; deschis.set(k, nou); grupuri.push(nou); }
+  }
+  return grupuri.flatMap((g) => (g.length >= GRUP_MIN ? [{ grup: g }] : g));
+}
+let incGrupRand = null;
 function leagaInc(container) {
   wireClips(container);
   wireDosar(container);
+  leagaGlisare(container);
+  // poza deschide fisa incidentului
+  for (const img of container.querySelectorAll('.inc-poza')) {
+    img.onclick = () => img.closest('.inc-card')?.querySelector('.fisa-btn')?.click();
+  }
+  for (const b of container.querySelectorAll('.inc-grup-ok, .inc-grup-no')) {
+    b.onclick = async () => {
+      const ids = (b.closest('.inc-grup').dataset.ids || '').split(',').filter(Boolean);
+      const stare = b.classList.contains('inc-grup-ok') ? 'confirmat' : 'fals';
+      if (stare === 'fals' && !confirm(t('Marchezi toate cele {n} incidente ca alarmă falsă?', { n: ids.length }))) return;
+      b.disabled = true;
+      const d = await post('/api/incidents/stare-bloc', { ids, stare });
+      if (d && !d.error) toast(t('{n} incidente marcate', { n: d.n }));
+      loadIncidents(); refreshIncBadge();
+    };
+  }
+  for (const b of container.querySelectorAll('.inc-grup-arata')) {
+    b.onclick = () => {
+      const card = b.closest('.inc-grup');
+      const ids = new Set((card.dataset.ids || '').split(','));
+      const toate = incToate.flatMap((u) => (u.grup ? u.grup : [u])).filter((e) => ids.has(e.id));
+      const box = document.createElement('div');
+      box.className = 'inc-grup-desfasurat';
+      box.innerHTML = html`${toate.map(incRand)}`;
+      card.replaceWith(box);
+      leagaInc(box);
+      box.querySelector('button')?.focus();
+    };
+  }
   for (const b of container.querySelectorAll('.inc-ok, .inc-no, .inc-reopen')) {
     const stare = b.classList.contains('inc-ok') ? 'confirmat'
       : b.classList.contains('inc-no') ? 'fals' : 'nou';
@@ -74,8 +130,9 @@ const EV_ICO = { persoana_necunoscuta: '👤', persoana: '👤', fata_falsa: '�
 // #13); cand chiar s-a schimbat, pastram cate erau afisate si pozitia de scroll.
 async function loadIncidents(auto = false) {
   try {
-    const qs = incFilter === 'noi' ? 'noi=1'
-      : incFilter === 'critic' ? 'limit=120' : 'limit=120';
+    // cu gruparea, primele 60 de incidente puteau fi 3 carduri: „încarcă mai multe” cere
+    // pagini mai mari de la server (incLimit), pana la 480
+    const qs = (incFilter === 'noi' ? 'noi=1&' : '') + `limit=${incFilter === 'noi' ? incLimit : Math.max(120, incLimit)}`;
     const d = await (await fetch(`/api/incidents?${qs}`)).json();
     const names = Object.fromEntries(S.cameras.map((c) => [c.id, c.name]));
     let inc = d.incidente || [];
@@ -89,8 +146,12 @@ async function loadIncidents(auto = false) {
     const list0 = $('#inc-list');
     const prevArat = auto ? incArat : 0;       // cate carduri erau desfasurate (le re-desfasuram)
     const scrollTop = list0.scrollTop, docTop = (document.scrollingElement || {}).scrollTop || 0;
+    // numarul real de netratate (acelasi ca pe insigna), nu cate carduri s-au incarcat
+    const deTratat = d.counts ? d.counts.noi : inc.length;
+    incTotal = incFilter === 'noi' ? deTratat : inc.length;
     $('#inc-info').textContent = incFilter === 'noi'
-      ? t('{n} de tratat', { n: inc.length }) : t('{n} incidente', { n: inc.length });
+      ? (deTratat > inc.length ? t('{n} de tratat (sunt afișate primele {k})', { n: deTratat, k: inc.length }) : t('{n} de tratat', { n: deTratat }))
+      : t('{n} incidente', { n: inc.length });
     incRand = (e) => {
       const det = e.text || e.nume || e.numar || (e.eticheta && t(DET_RO[e.eticheta] || e.eticheta))
         || (e.subtip && t(EV_RO[(e.subtip || '').toLowerCase()] || e.subtip)) || '';
@@ -103,7 +164,11 @@ async function loadIncidents(auto = false) {
         <button class="inc-reopen" data-id="${e.id}" title="${t('Redeschide')}">↺</button>`;
       // mini-harta traiectoriei (episoade E3): pe unde s-a miscat omul in cadru —
       // punct verde = intrare, rosu = iesire; forma spune singura "a trecut/s-a invartit"
-      const traseu = (e.traseu && e.traseu.length > 1) ? html`
+      // fara miscare (toate punctele in acelasi loc) mini-harta era o caseta goala cu un punct rosu
+      const ext = (e.traseu || []).reduce((a, p) => [Math.min(a[0], p[0]), Math.max(a[1], p[0]), Math.min(a[2], p[1]), Math.max(a[3], p[1])], [1, 0, 1, 0]);
+      const seMisca = e.traseu && e.traseu.length > 1 && (ext[1] - ext[0] > 0.04 || ext[3] - ext[2] > 0.04);
+      const poza = e.poza ? html`<img class="inc-poza" src="${e.poza}" alt="${t('Cadrul incidentului')}" loading="lazy" title="${t('Deschide fișa')}">` : '';
+      const traseu = seMisca ? html`
         <svg class="inc-traseu" viewBox="0 0 64 36" title="${t('traseul prin cadru')}">
           <polyline points="${e.traseu.map((p) =>
             `${(2 + p[0] * 60).toFixed(1)},${(2 + p[1] * 32).toFixed(1)}`).join(' ')}"/>
@@ -115,6 +180,7 @@ async function loadIncidents(auto = false) {
       return html`<div class="inc-card sev-${e.sev}" data-id="${e.id}">
         <span class="sev-dot"></span>
         <span class="inc-ico">${EV_ICO[e.tip] || '•'}</span>
+        ${poza}
         <div class="inc-main">
           <div class="inc-top"><b>${t(EV_TIP_RO[e.tip] || e.tip)}</b>${det ? ' · ' + det : ''}
             <span class="inc-when">${cand(e.t)} · ${cam}</span></div>
@@ -127,11 +193,30 @@ async function loadIncidents(auto = false) {
           title="${t('Fișa evenimentului: poză, clip, acțiuni')}">${t('fișă')}</button>` : ''}
         ${e.cam ? html`<button class="dosar-btn link-btn" data-cam="${e.cam}" data-t="${evClipT(e)}"
           data-id="${e.id}" data-lbl="${t(EV_TIP_RO[e.tip] || e.tip)}${det ? ': ' + det : ''}"
-          title="${t('Adauga la un dosar de caz')}">${t('🗂 la dosar')}</button>` : ''}
+          title="${t('Adaugă la un dosar de caz')}">${t('🗂 la dosar')}</button>` : ''}
         <div class="inc-acts">${act}</div>
       </div>`;
     };
-    incToate = inc; incArat = 0;
+    incGrupRand = (u) => {
+      const g = u.grup, e = g[0], ultim = g[g.length - 1];
+      const det = e.text || e.nume || e.numar || (e.eticheta && t(DET_RO[e.eticheta] || e.eticheta)) || '';
+      const cam = e.cam ? (names[e.cam] || 'cam ' + e.cam) : '—';
+      const cuPoza = g.find((x) => x.poza);
+      return html`<div class="inc-card inc-grup sev-${e.sev}" data-ids="${g.map((x) => x.id).join(',')}">
+        <span class="sev-dot"></span>
+        <span class="inc-ico">${EV_ICO[e.tip] || '•'}</span>
+        ${cuPoza ? html`<img class="inc-poza" src="${cuPoza.poza}" alt="${t('Cadrul incidentului')}" loading="lazy">` : ''}
+        <div class="inc-main">
+          <div class="inc-top"><b>${t('{n} × {tip}', { n: g.length, tip: t(EV_TIP_RO[e.tip] || e.tip) })}</b>${det ? ' · ' + t('ultimul: {det}', { det }) : ''}
+            <span class="inc-when">${cand(ultim.t)} – ${cand(e.t)} · ${cam}</span></div>
+        </div>
+        <button class="inc-grup-arata link-btn" aria-label="${t('Arată toate cele {n} incidente din grup', { n: g.length })}">${t('Arată toate ({n})', { n: g.length })}</button>
+        ${e.stare === 'nou' ? html`<div class="inc-acts">
+          <button class="inc-grup-ok" title="${t('Am tratat tot grupul')}">${t('✓ confirmă toate')}</button>
+          <button class="inc-grup-no" title="${t('Tot grupul e alarmă falsă')}">${t('✕ fals toate')}</button></div>` : ''}
+      </div>`;
+    };
+    incToate = grupeazaInc(inc); incArat = 0;
     const list = $('#inc-list');
     list.innerHTML = inc.length ? '' : html`<p class="hint">${t('Niciun incident de tratat. Liniște.')}</p>`;
     if (inc.length) {
@@ -192,15 +277,15 @@ async function renderCases() {
           <b>${c.titlu}</b>
           <span class="hint">${t('{n} probe', { n: c.nr_probe })} · ${c.creat.slice(0, 16)}</span>
           <span class="caz-acts">
-            ${pick ? html`<button class="caz-add link-btn" data-id="${c.id}">${t('+ adauga aici')}</button>` : ''}
+            ${pick ? html`<button class="caz-add link-btn" data-id="${c.id}">${t('+ adaugă aici')}</button>` : ''}
             <button class="caz-view link-btn" data-id="${c.id}">${t('vezi')}</button>
-            ${c.nr_probe ? html`<a class="link-btn job-link" href="/api/cases/${c.id}/export" title="${t('Descarca dosarul ZIP (clipuri cu filigran + manifest SHA-256)')}">⬇ ZIP</a>` : ''}
+            ${c.nr_probe ? html`<a class="link-btn job-link" href="/api/cases/${c.id}/export" title="${t('Descarcă dosarul ZIP (clipuri cu filigran + manifest SHA-256)')}">⬇ ZIP</a>` : ''}
             <button class="caz-del link-btn" data-id="${c.id}" title="${t('Șterge dosarul')}">🗑</button>
           </span>
         </div>
         <div class="caz-probe hidden" data-for="${c.id}"></div>
       </div>`,
-      `<p class="hint">${esc(t('Niciun dosar. Apasa „+ Caz nou" ca sa deschizi unul.'))}</p>`);
+      `<p class="hint">${esc(t('Niciun dosar. Apasă „+ Caz nou” ca să deschizi unul.'))}</p>`);
     for (const b of $('#cases-body').querySelectorAll('.caz-add'))
       b.onclick = () => addPending(b.dataset.id);
     for (const b of $('#cases-body').querySelectorAll('.caz-view'))
@@ -211,7 +296,7 @@ async function renderCases() {
         await fetch(`/api/cases/${b.dataset.id}`, { method: 'DELETE' });
         renderCases();
       };
-  } catch { $('#cases-body').innerHTML = `<p class="hint">${esc(t('Eroare la incarcarea dosarelor.'))}</p>`; }
+  } catch { $('#cases-body').innerHTML = `<p class="hint">${esc(t('Eroare la încărcarea dosarelor.'))}</p>`; }
 }
 async function toggleProbe(cid) {
   const wrap = $(`.caz-probe[data-for="${cid}"]`);
@@ -224,7 +309,7 @@ async function toggleProbe(cid) {
       <span class="hint">${p.start.slice(9, 15).replace(/(..)(..)(..)/, '$1:$2:$3')} · ${names[p.cam] || 'cam ' + p.cam}</span>
       <span>${p.nota || ''}</span>
       <button class="proba-del link-btn" data-c="${cid}" data-p="${p.id}">✕</button>
-    </div>`, `<p class="hint">${esc(t('Fara probe.'))}</p>`);
+    </div>`, `<p class="hint">${esc(t('Fără probe.'))}</p>`);
   wrap.classList.remove('hidden');
   for (const b of wrap.querySelectorAll('.proba-del'))
     b.onclick = async () => {
@@ -295,9 +380,9 @@ async function loadDigest() {
         <div><h3>${t('Cele mai active camere')}</h3>${topCam}</div>
         <div><h3>${t('Activitate')}</h3>
           <p class="dig-when">${d.prima_activitate && d.ultima_activitate
-            ? raw(t('Intre {de_la} si {pana_la}', { de_la: `<b>${esc(d.prima_activitate)}</b>`, pana_la: `<b>${esc(d.ultima_activitate)}</b>` }))
-            : t('Fara activitate')}
-          ${d.ora_varf ? html`<br>${t('Ora de varf:')} <b>${d.ora_varf[0]}</b> (${t('{n} evenimente', { n: d.ora_varf[1] })})` : ''}</p>
+            ? raw(t('Între {de_la} și {pana_la}', { de_la: `<b>${esc(d.prima_activitate)}</b>`, pana_la: `<b>${esc(d.ultima_activitate)}</b>` }))
+            : t('Fără activitate')}
+          ${d.ora_varf ? html`<br>${t('Ora de vârf:')} <b>${d.ora_varf[0]}</b> (${t('{n} evenimente', { n: d.ora_varf[1] })})` : ''}</p>
         </div>
       </div>`;
   } catch { $('#digest-body').innerHTML = `<p class="hint">${esc(t('Eroare la calcularea rezumatului.'))}</p>`; }
@@ -335,7 +420,8 @@ async function refreshIncBadge() {
     const d = await (await fetch('/api/incidents?noi=1&limit=120')).json();
     const n = d.counts ? d.counts.noi : 0, crit = d.counts ? d.counts.critic_noi : 0;
     const badge = $('#inc-badge');
-    badge.textContent = n; badge.classList.toggle('hidden', !n);
+    badge.textContent = n > 99 ? '99+' : n; badge.classList.toggle('hidden', !n);
+    badge.title = t('{n} incidente de tratat', { n });
     badge.classList.toggle('crit', crit > 0);
     // alarma la un incident CRITIC nou (id nevazut)
     const ids = new Set((d.incidente || []).filter((e) => e.sev === 'critic').map((e) => e.id));
@@ -394,7 +480,7 @@ $('#hd-close').onclick = () => closeHD();
 const AL_RO = {
   attendedBaggage: 'Obiect luat', unattendedBaggage: 'Obiect abandonat',
   parkingdetection: 'Parcare interzisă', loitering: 'Zăbovire', running: 'Alergare',
-  peopleDetection: 'Persoana', vehicledetection: 'Vehicul', faceDetection: 'Față',
+  peopleDetection: 'Persoană', vehicledetection: 'Vehicul', faceDetection: 'Față',
   audioexception: 'Zgomot', zgomot: 'Zgomot', diskfull: 'Disc plin',
   diskerror: 'Eroare disc', nicbroken: 'Rețea întreruptă', ipconflict: 'Conflict IP',
   illaccess: 'Acces respins', videomismatch: 'Semnal video pierdut', ...EV_RO, ...DET_RO };
@@ -451,6 +537,8 @@ async function vezFilmarea(cam, date, sec) {
   await searchRecordings();
   playFrom(date, Math.max(0, sec - 10));   // 10s inainte, ca sa prinzi si intrarea in cadru
 }
+const AL_PAS = 60;
+let alObs = null;
 function renderAlarms() {
   const camF = $('#al-cam').value;
   const byCam = alIncidents.filter((g) => !camF || g.cam === +camF);
@@ -490,7 +578,9 @@ function renderAlarms() {
 
   const grid = $('#al-grid');
   grid.innerHTML = '';
-  for (const g of list) {
+  // pagini de AL_PAS carduri: o zi aglomerata avea 883 de carduri intr-o pagina de 52.000 px,
+  // cu sute de miniaturi incarcate pe telefon (audit UX-F)
+  const cardPentru = (g) => {
     const card = document.createElement('div');
     card.className = 'al-card inc';
     const et = Object.entries(g.etichete).sort((a, b) => b[1] - a[1]);
@@ -511,8 +601,27 @@ function renderAlarms() {
       e.stopPropagation();
       vezFilmarea(g.cam, g.date, g.sec);
     };
-    grid.appendChild(card);
-  }
+    return card;
+  };
+  let aratate = 0;
+  if (alObs) alObs.disconnect();
+  const maiMult = () => {
+    grid.querySelector('.al-mai')?.remove();
+    for (const g of list.slice(aratate, aratate + AL_PAS)) grid.appendChild(cardPentru(g));
+    aratate = Math.min(list.length, aratate + AL_PAS);
+    const ramase = list.length - aratate;
+    if (ramase <= 0) return;
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'al-mai inc-mai';
+    b.textContent = t('Încă {n} din {ramase} rămase', { n: Math.min(AL_PAS, ramase), ramase });
+    b.onclick = maiMult;
+    grid.appendChild(b);
+    if ('IntersectionObserver' in window) {
+      alObs = new IntersectionObserver((en) => { if (en.some((x) => x.isIntersecting)) { alObs.disconnect(); maiMult(); } }, { rootMargin: '400px' });
+      alObs.observe(b);
+    }
+  };
+  maiMult();
 }
 // mini-histograma: evenimentele filtrate, pe ore (o singura serie, direct din date)
 function renderAlarmChart(list) {
@@ -551,29 +660,19 @@ $('#al-search').onclick = loadAlarms;
 $('#al-cam').onchange = renderAlarms;
 
 /* ---------- cautare semantica: descriere libera peste pozele indexate ---------- */
-// arata textul a intrebare? (oglinda parserului din app/ask.py)
-function esteIntrebare(q) {
-  const p = q.toLowerCase();
-  return q.endsWith('?') || /^(cand|când|cine|cate|câte|de cate|de câte|when|who|how many|how often|what time|did|has|have|was|were)\b/.test(p)
-    || p.includes('ultima data') || p.includes('ultima dată') || p.includes('de câte ori')
-    || p.includes('last time') || p.includes('last seen');
-}
-async function askQuestion(q) {
-  $('#al-info').textContent = t('Mă uit în poze...');
-  const camF = $('#al-cam').value;   // filtrul de camera se respecta si la intrebari
-  const r = await fetch(`/api/ask?q=${encodeURIComponent(q)}`
-                        + (camF ? `&cam=${camF}` : ''));
-  const d = await r.json();
+let semanticConcept = '', semanticSourceQ = '';
+function renderQuestion(d) {
+  semanticConcept = d.concept || $('#sem-q').value.trim();
   if (d.error) { $('#al-info').textContent = d.error; return; }
   const names = Object.fromEntries(S.cameras.map((c) => [c.id, c.name]));
   $('#al-pills').innerHTML = '';
   $('#al-chart').innerHTML = '';
-  $('#al-info').textContent = t('{n} apariții', { n: (d.aparitii || []).length });
+  $('#al-info').textContent = d.period || t('{n} apariții', { n: (d.aparitii || []).length });
   // in lightbox intra doar aparitiile cu poza (cele din jurnal n-au coperta)
   const cuPoza = (d.aparitii || []).filter((g) => g.coperta);
   alList = cuPoza.map((g) => ({
-    url: g.coperta, time: g.inceput.slice(11), date: g.inceput.slice(0, 10),
-    cam: g.camere[0], label: d.concept,
+    url: g.coperta, time: (g.cover_t || g.inceput).slice(11), date: (g.cover_t || g.inceput).slice(0, 10),
+    cam: g.cover_cam || g.camere[0], label: d.concept,
     cap: `${g.inceput} — ${g.camere.map((c) => names[c] || 'cam ' + c).join(', ')}`,
   }));
   const grid = $('#al-grid');
@@ -583,11 +682,13 @@ async function askQuestion(q) {
     card.className = 'al-card';
     const durata = g.inceput === g.sfarsit ? '' : `–${g.sfarsit.slice(11, 16)}`;
     card.innerHTML = html`
-      ${g.coperta ? html`<img loading="lazy" src="${g.coperta}" alt="">`
-                  : html`<button class="ask-clip clip-btn" data-cam="${g.camere[0]}" data-t="${g.inceput}"
-                           data-cap="${g.inceput} — ${g.camere.map((c) => names[c] || 'cam ' + c).join(', ')}">${t('▶ clip')}</button>`}
+      ${g.coperta ? html`<img loading="lazy" src="${g.coperta}" alt="">` : ''}
+      <button class="ask-clip clip-btn" data-cam="${g.cover_cam || g.camere[0]}" data-t="${g.cover_t || g.inceput}"
+              data-cap="${g.inceput} — ${g.camere.map((c) => names[c] || 'cam ' + c).join(', ')}">${t('▶ clip')}</button>
       <div class="al-cap">
         <div class="inc-cand">${g.inceput.slice(0, 16)}${durata}</div>
+        ${g.confirmed ? html`<div class="hint">${t('Confirmat pentru această descriere')}</div>` : ''}
+        ${g.weak ? html`<div class="hint">${t('Potrivire slabă — verifică imaginile.')}</div>` : ''}
         <div class="inc-cam">${g.camere.map((c) => names[c] || 'cam ' + c).join(', ')}${
           g.poze > 1 ? ` · ${t('{n} cadre', { n: g.poze })}` : ''}</div>
       </div>`;
@@ -599,20 +700,28 @@ async function askQuestion(q) {
     grid.appendChild(card);
   });
 }
+let semGen = 0;
 async function semanticSearch() {
+  const gen = ++semGen;
   const q = $('#sem-q').value.trim();
+  semanticSourceQ = q;
+  semanticConcept = q;
   if (!q) { loadAlarms(); return; }   // camp gol = inapoi la vederea pe zi
-  if (esteIntrebare(q)) { askQuestion(q); return; }
   $('#al-info').textContent = t('Caut...');
   let d;
   try {
-    const r = await fetch(`/api/search?q=${encodeURIComponent(q)}&days=30&limit=40`);
+    const cam = $('#al-cam').value;
+    const r = await fetch(`/api/search?q=${encodeURIComponent(q)}&days=30&limit=40${cam ? `&cam=${encodeURIComponent(cam)}` : ''}`);
     d = await r.json();
   } catch (e) {
+    if (gen !== semGen) return;
     $('#al-info').textContent = t('Căutarea nu a mers ({motiv}) — reîncearcă', { motiv: e.message || t('rețea') });
     return;
   }
+  if (gen !== semGen) return;
   if (d.error) { $('#al-info').textContent = d.error; return; }
+  if (d.raspuns !== undefined) { renderQuestion(d); return; }
+  semanticConcept = d.q || q;
   const names = Object.fromEntries(S.cameras.map((c) => [c.id, c.name]));
   // Cautarea semantica merge pe TOATE camerele vizibile, ultimele 30 de zile — alt domeniu decat
   // ziua/camera din galerie. Aplicam filtrul de camera al galeriei pe rezultate si spunem EXPLICIT
@@ -621,7 +730,7 @@ async function semanticSearch() {
   let rez = d.results;
   if (camF) rez = rez.filter((p) => String(p.cam) === String(camF));
   alList = rez.map((p) => ({
-    url: p.url, time: p.time, label: p.label, cam: p.cam, date: p.day, sursa: p.sursa,
+    url: p.url, time: p.time, label: p.label, cam: p.cam, date: p.day, sursa: p.sursa, weak: p.weak, confirmed: p.confirmed,
     cap: `${p.day} ${p.time} — ${names[p.cam] || 'cam ' + p.cam} — ${p.sursa === 'scena' ? t(p.label) + ' · ' + t('scenă') : alNume(p.label)}`,
   }));
   $('#al-pills').innerHTML = '';
@@ -638,6 +747,8 @@ async function semanticSearch() {
     card.innerHTML = html`
       <img loading="lazy" src="${p.url}" alt="">
       <div class="al-cap">
+        ${p.confirmed ? html`<div class="hint">${t('Confirmat pentru această descriere')}</div>` : ''}
+        ${p.weak ? html`<div class="hint">${t('Potrivire slabă — verifică imaginile.')}</div>` : ''}
         <div class="inc-cand">${p.date} ${p.time.slice(0, 5)}${p.sursa === 'scena' ? html` <span class="al-scena" title="${t('văzut de „Învață scena”, nu de YOLO')}">🧩 ${t(p.label)}</span>` : ''}</div>
         <div class="inc-cam">${names[p.cam] || 'cam ' + p.cam}</div>
       </div>`;
@@ -646,6 +757,7 @@ async function semanticSearch() {
   });
 }
 $('#sem-go').onclick = semanticSearch;
+$('#sem-learn').onclick = () => openSemanticReview($('#sem-q').value.trim() === semanticSourceQ ? semanticConcept : $('#sem-q').value.trim(), { days: 30, cam: $('#al-cam').value });
 $('#sem-q').addEventListener('keydown', (e) => { if (e.key === 'Enter') semanticSearch(); });
 
 /* ---------- viewer poze (lightbox cu navigare) ---------- */
@@ -729,7 +841,7 @@ $('#ph-context').onclick = () => {
 /* ---------- recatalogare din lightbox ---------- */
 function buildFixBar() {
   const bar = $('#ph-fix');
-  bar.innerHTML = `<span class="fix-lbl">${esc(t('Corecteaza:'))}</span>`;
+  bar.innerHTML = `<span class="fix-lbl">${esc(t('Corectează:'))}</span>`;
   for (const [en, ro] of Object.entries(DET_RO)) {
     const b = document.createElement('button');
     b.textContent = `${AL_ICO[en] || ''} ${t(ro)}`;
@@ -743,6 +855,12 @@ function buildFixBar() {
   del.innerHTML = icon('trash', 14) + ' ' + esc(t('Șterge poza'));
   del.title = t('Scoate doar acest snapshot (nu schimbă triajul incidentelor). Ca să corectezi AI-ul, folosește recatalogarea de mai sus.');
   del.onclick = deleteAlarm;
+  // pe randul ei, departe de cele 15 butoane de recatalogare: o atingere gresita pe telefon
+  // nu mai poate sterge o proba (audit UX 2026-11-14, D3)
+  const sep = document.createElement('span');
+  sep.className = 'fix-sep';
+  sep.setAttribute('aria-hidden', 'true');
+  bar.appendChild(sep);
   bar.appendChild(del);
 }
 async function relabel(label) {
@@ -760,6 +878,7 @@ async function relabel(label) {
 async function deleteAlarm() {
   if (phIdx < 0) return;
   const it = alList[phIdx];
+  if (!confirm(t('Ștergi definitiv această poză? Nu se poate anula.'))) return;
   const d = await post('/api/alarms/delete', { url: it.url });
   if (!d || d.error) return;
   alDayItems = alDayItems.filter((x) => x.url !== it.url);
@@ -883,9 +1002,9 @@ function wireClips(container) {
 
 /* ---------- jurnalul de evenimente ---------- */
 const SEV_RO = { info: 'Informativ', atentie: 'Atenție', critic: 'Critic' };
-const EV_TIP_RO = { detectie: 'Detecție', persoana: 'Persoana', persoana_necunoscuta: 'Față necunoscută',
+const EV_TIP_RO = { detectie: 'Detecție', persoana: 'Persoană', persoana_necunoscuta: 'Față necunoscută',
   fata_falsa: 'Față FALSĂ (spoofing)', descriere: 'Semnalmente', obiect: 'Obiect urmărit',
-  numar: 'Număr', alarma_camera: 'Alarma camera', zgomot: 'Zgomot', sirena: 'Sirena',
+  numar: 'Număr', alarma_camera: 'Alarmă de la cameră', zgomot: 'Zgomot', sirena: 'Sirenă',
   regula: 'Regula', camera_offline: 'Camera căzută', camera_online: 'Camera revenita',
   gol_inregistrare: 'Gol înregistrare', intrus: 'INTRUS confirmat',
   trecere: 'Trecere linie', intrare_zona: 'Intrare în zona',
@@ -965,7 +1084,7 @@ async function loadJournal() {
           <span class="ev-det">${det}${e.evenimente > 1 ? ` · ×${e.evenimente}` : ''}</span>
           ${e.cam ? html`<button class="fisa-btn link-btn" title="${t('Fișa evenimentului: poză, clip, acțiuni')}"
             data-fisa="${JSON.stringify({ cam: e.cam, t: e.inceput, tip: e.tip, sev: e.sev, id: e.id, det: e.detaliu || '', cine: e.nume || '' })}">${t('fișă')}</button>` : ''}${acts}</div>`;
-      }, `<p class="hint">${esc(t('Niciun episod (inca).'))}</p>`);
+      }, `<p class="hint">${esc(t('Niciun episod (încă).'))}</p>`);
       wireClips($('#ev-list'));
       return;
     }
@@ -986,7 +1105,7 @@ async function loadJournal() {
         <span class="ev-det">${detalii}${e.context ? ' · ' + e.context : ''}${
           e.actiuni ? ' · ' + e.actiuni.join(', ') : ''}</span>
         ${clip}</div>`;
-    }, `<p class="hint">${esc(t('Niciun eveniment (inca).'))}</p>`);
+    }, `<p class="hint">${esc(t('Niciun eveniment (încă).'))}</p>`);
     wireClips($('#ev-list'));
   } catch {}
 }
@@ -996,5 +1115,126 @@ $('#ev-grup') && ($('#ev-grup').onchange = loadJournal);
 // scrisa doar de ecranul Evenimente
 let storageData = {};
 
-export { AL_ICO, AL_RO, EV_TIP_RO, alNume, evCompact, initView, loadAlarms, loadIncidents, loadJournal, openCases, openClip, refreshIncBadge, storageData, wireClips };
+/* ---------- „Cât ai lipsit” (audit UX-G) ----------
+   La intoarcere (pagina deschisa sau revenita in fata) dupa mai mult de 2 ore, un card sus pe Live
+   rezuma ce s-a intamplat de la ultima privire pe acest dispozitiv: incidentele grupate cu poza,
+   cine a venit, camerele cazute. „Am văzut” il inchide si muta reperul la acum. */
+const ABS_PRAG = 2 * 3600;
+const absCheie = () => 'ov.vazutLa.' + (ME.user || '');
+const absCiteste = () => { try { return +localStorage.getItem(absCheie()) || 0; } catch { return 0; } };
+const absPune = (sec = Date.now() / 1000) => { try { localStorage.setItem(absCheie(), String(Math.round(sec))); } catch {} };
+const absDeschis = () => !$('#absenta').classList.contains('hidden');
+async function verificaAbsenta() {
+  if (!CAN_ACT || absDeschis()) return;
+  const v = absCiteste(), acum = Date.now() / 1000;
+  if (!v) { absPune(acum); return; }
+  if (acum - v < ABS_PRAG) return;
+  let d;
+  try { d = await (await fetch('/api/rezumat/absenta?de_la=' + Math.round(v))).json(); } catch { return; }
+  if (!d || d.error) return;
+  if (!d.incidente && !d.persoane.length && !d.vehicule.length && !d.camere_cazute.length) { absPune(acum); return; }
+  const names = Object.fromEntries(S.cameras.map((c) => [c.id, c.name]));
+  const cam = (id) => names[id] || t('cam {id}', { id });
+  const bucati = [
+    d.incidente ? t('{n} incidente', { n: d.incidente }) + (d.critice ? ' · ' + t('{n} critice', { n: d.critice }) : '') + (d.netratate ? ' · ' + t('{n} netratate', { n: d.netratate }) : '') : t('niciun incident'),
+    ...d.persoane.map((p) => (p.n > 1 ? t('{nume} de {n} ori', { nume: p.nume, n: p.n }) : p.nume)),
+    ...d.vehicule.map((p) => (p.n > 1 ? t('{nume} de {n} ori', { nume: p.nume, n: p.n }) : p.nume)),
+    ...(d.camere_cazute.length ? [t('nu răspund: {lista}', { lista: d.camere_cazute.map(cam).join(', ') })] : []),
+  ];
+  const box = $('#absenta');
+  box.innerHTML = html`
+    <div class="abs-cap"><h2 id="absenta-titlu">${t('Cât ai lipsit')}</h2>
+      <span class="hint">${t('de la {cand} · {ore} h', { cand: cand(d.de_la), ore: String(d.ore).replace('.', ',') })}</span></div>
+    <p class="abs-rez">${bucati.join(' · ')}</p>
+    ${d.grupuri.length ? html`<ul class="abs-lista">${d.grupuri.map((g) => html`<li class="abs-item sev-${g.sev}">
+      ${g.poza ? html`<img src="${g.poza}" alt="" loading="lazy">` : html`<span class="abs-ico" aria-hidden="true">${EV_ICO[g.tip] || '•'}</span>`}
+      <span class="abs-txt"><b>${g.n > 1 ? t('{n} × {tip}', { n: g.n, tip: t(EV_TIP_RO[g.tip] || g.tip) }) : t(EV_TIP_RO[g.tip] || g.tip)}</b>${g.text ? ' · ' + g.text : ''}
+        <span class="hint">${cam(g.cam)} · ${g.n > 1 ? cand(g.de_la) + ' – ' + cand(g.pana_la) : cand(g.pana_la)}${g.netratate ? ' · ' + t('{n} netratate', { n: g.netratate }) : ''}</span></span>
+      <button type="button" class="link-btn" data-fisa="${JSON.stringify({ cam: g.cam, t: g.pana_la, tip: g.tip, sev: g.sev, id: g.id, det: '' })}">${t('Vezi')}</button>
+    </li>`)}</ul>` : ''}
+    ${d.grupuri_total > d.grupuri.length ? html`<p class="hint">${t('și încă {n} grupuri', { n: d.grupuri_total - d.grupuri.length })}</p>` : ''}
+    <div class="abs-acts"><button type="button" class="abs-tot">${t('Toate incidentele')}</button>
+      <button type="button" class="abs-ok">${t('Am văzut')}</button></div>`;
+  box.classList.remove('hidden');
+  box.querySelector('.abs-ok').onclick = () => { box.classList.add('hidden'); absPune(); };
+  box.querySelector('.abs-tot').onclick = () => { box.classList.add('hidden'); absPune(); showEv('inc'); };
+}
+// reperul „ultima privire": cand pagina iese din vedere (daca rezumatul nu asteapta sa fie citit)
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { if (!absDeschis()) absPune(); } else verificaAbsenta();
+});
+addEventListener('pagehide', () => { if (!absDeschis()) absPune(); });
+
+/* ---------- glisare in triaj pe ecrane tactile (audit UX-G) ----------
+   → confirma, ← alarma falsa, pe un incident sau pe tot grupul; 6 s pentru „Anulează”.
+   Butoanele raman: glisarea e o scurtatura, nu singura cale. */
+const TACTIL = matchMedia('(pointer: coarse)');
+let anulareTimer = null;
+function arataAnulare(text, laAnulare) {
+  let bar = $('#inc-anulare');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'inc-anulare';
+    bar.setAttribute('role', 'status');
+    document.body.appendChild(bar);
+  }
+  bar.innerHTML = html`<span>${text}</span><button type="button">${t('Anulează')}</button>`;
+  bar.classList.add('show');
+  clearTimeout(anulareTimer);
+  const ascunde = () => bar.classList.remove('show');
+  bar.querySelector('button').onclick = async () => { clearTimeout(anulareTimer); ascunde(); await laAnulare(); };
+  anulareTimer = setTimeout(ascunde, 6000);
+}
+async function glisatTratat(card, stare) {
+  const ids = (card.dataset.ids || card.dataset.id || '').split(',').filter(Boolean);
+  if (!ids.length) return;
+  card.style.transition = 'transform .18s ease-out, opacity .18s';
+  card.style.transform = `translateX(${stare === 'confirmat' ? 110 : -110}%)`;
+  card.style.opacity = '0';
+  const d = await post('/api/incidents/stare-bloc', { ids, stare });
+  if (!d || d.error) { card.style.transform = ''; card.style.opacity = ''; return; }
+  setTimeout(() => card.remove(), 200);
+  refreshIncBadge();
+  arataAnulare(stare === 'confirmat' ? t('{n} confirmate', { n: ids.length }) : t('{n} marcate ca alarmă falsă', { n: ids.length }), async () => {
+    await post('/api/incidents/stare-bloc', { ids, stare: 'nou' });
+    incSig = ''; loadIncidents(); refreshIncBadge();
+  });
+}
+function leagaGlisare(container) {
+  if (!TACTIL.matches) return;
+  for (const card of container.querySelectorAll('.inc-card')) {
+    if (card._glisare || !card.querySelector('.inc-ok, .inc-grup-ok')) continue;   // doar cele netratate
+    card._glisare = true;
+    // clicul care urmeaza imediat unei glisari (pe poza) nu deschide fisa
+    card.addEventListener('click', (ev) => {
+      if (Date.now() - (card._glisatLa || 0) < 400) { ev.stopPropagation(); ev.preventDefault(); }
+    }, true);
+    let x0 = null, y0 = 0, dx = 0, axa = null;
+    card.addEventListener('pointerdown', (e) => {
+      if (e.pointerType !== 'touch' || e.target.closest('button, a')) return;
+      x0 = e.clientX; y0 = e.clientY; dx = 0; axa = null;
+    });
+    card.addEventListener('pointermove', (e) => {
+      if (x0 === null) return;
+      const ddx = e.clientX - x0, ddy = e.clientY - y0;
+      if (axa === null && (Math.abs(ddx) > 12 || Math.abs(ddy) > 12)) axa = Math.abs(ddx) > Math.abs(ddy) ? 'x' : 'y';
+      if (axa !== 'x') return;
+      dx = ddx;
+      card.style.transform = `translateX(${dx}px)`;
+      card.dataset.glisare = dx > 0 ? 'ok' : 'fals';
+    });
+    const gata = () => {
+      if (x0 === null) return;
+      const prag = card.offsetWidth * 0.35, d = dx;
+      x0 = null; delete card.dataset.glisare;
+      if (axa === 'x') card._glisatLa = Date.now();
+      if (axa === 'x' && Math.abs(d) > prag) glisatTratat(card, d > 0 ? 'confirmat' : 'fals');
+      else card.style.transform = '';
+    };
+    card.addEventListener('pointerup', gata);
+    card.addEventListener('pointercancel', () => { x0 = null; card.style.transform = ''; delete card.dataset.glisare; });
+  }
+}
+
+export { AL_ICO, AL_RO, EV_TIP_RO, alNume, evCompact, initView, verificaAbsenta, loadAlarms, loadIncidents, loadJournal, openCases, openClip, refreshIncBadge, storageData, wireClips };
 document.addEventListener('incident-schimbat', () => { loadIncidents(); refreshIncBadge(); });

@@ -83,20 +83,23 @@ class Tracker(threading.Thread):
                     centru = (nbox[0] + nbox[2] / 2, nbox[1] + nbox[3] / 2)
                     if t["n"] >= MIN_FRAMES:
                         persoane.append(centru)
-                    self._traseu(t, centru, now)
+                    self._traseu(t, centru, now, nbox[3] / 2)
         if persoane:
             import episoade
             episoade.cadru(self.cam_id, persoane, now)
 
-    def _traseu(self, t, centru, now):
+    def _traseu(self, t, centru, now, jumatate=None):
         """Traiectoria esantionata a unui om (episoade E3: "ce a facut" + mini-harta).
         Un punct la ~TRAIL_PAS secunde; cand se umple, injumatatim rezolutia —
-        FORMA drumului conteaza, nu fiecare pas."""
+        FORMA drumului conteaza, nu fiecare pas. Punctul e centrul chenarului (x, y) plus,
+        al treilea, jumatatea inaltimii lui: y + jumatate = picioarele, punctul de pe sol
+        pe care harta il proiecteaza pe plan (cine citeste doar p[0], p[1] nu simte)."""
         if now - t.get("trail_t", 0.0) < TRAIL_PAS:
             return
         t["trail_t"] = now
         tr = t.setdefault("trail", [])
-        tr.append((round(centru[0], 3), round(centru[1], 3)))
+        pct = (round(centru[0], 3), round(centru[1], 3))
+        tr.append(pct + ((round(jumatate, 3),) if jumatate is not None else ()))
         if len(tr) > TRAIL_MAX:
             t["trail"] = tr[::2]
 

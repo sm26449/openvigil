@@ -5,7 +5,8 @@
     normalizat, atasat de detectie/urmarire la emitere) ating un dreptunghi desenat pe
     cadru — „cine a trecut pe la poarta mica?" fara sa derulezi ziua;
   - HARTA DE CALDURA: traseele oamenilor (`traseu` din episoade) adunate pe o grila
-    64x36 per camera si interval — pe unde se umbla cu adevarat;
+    64x36 per camera si interval — pe unde se umbla cu adevarat; pe PLANUL hartii (picioarele,
+    proiectate prin calibrarea fiecarei camere) cu heatmap_plan;
   - TIME-LAPSE: ziua unei camere din cate un cadru pe minut, extras prin seek din fiecare
     segment (nu se citeste tot materialul), 24 h -> ~1 minut de video, ca job in coada.
 """
@@ -18,6 +19,7 @@ import logare
 from i18n import t
 
 GRID_W, GRID_H = 64, 36
+MAX_EPISOADE = 20000   # pe camera si cerere; peste, rezultatul e marcat `partial` (audit F7)
 TIPURI_CHENAR = ("detectie", "intrus", "obiect")
 
 
@@ -54,16 +56,21 @@ def regiune(cam, day, rect, limit=300):
     return out
 
 
-def heatmap(cam, day_end=None, zile=1):
-    """Grila GRID_W x GRID_H cu numarul de puncte de traseu (oameni) pe celula, pentru
-    camera `cam` in ultimele `zile` zile pana la `day_end` (implicit azi)."""
+def _interval(day_end, zile):
     zile = max(1, min(90, int(zile)))
     end_day = day_end or time.strftime("%Y-%m-%d")
     t_end = time.mktime(time.strptime(end_day, "%Y-%m-%d")) + 86400
-    t_start = t_end - zile * 86400
+    return zile, end_day, t_end - zile * 86400, t_end
+
+
+def heatmap(cam, day_end=None, zile=1):
+    """Grila GRID_W x GRID_H cu numarul de puncte de traseu (oameni) pe celula, pentru
+    camera `cam` in ultimele `zile` zile pana la `day_end` (implicit azi)."""
+    zile, end_day, t_start, t_end = _interval(day_end, zile)
     grid = [[0] * GRID_W for _ in range(GRID_H)]
     episoade = 0
-    for e in jurnal.query(limit=20000, cam=cam, tip="episod", since=t_start, until=t_end):
+    evs = jurnal.query(limit=MAX_EPISOADE, cam=cam, tip="episod", since=t_start, until=t_end)
+    for e in evs:
         tr = e.get("traseu")
         if not isinstance(tr, list):
             continue
@@ -76,7 +83,53 @@ def heatmap(cam, day_end=None, zile=1):
                 continue
             grid[gy][gx] += 1
     return {"w": GRID_W, "h": GRID_H, "grid": grid, "max": max(max(r) for r in grid),
-            "episoade": episoade, "zile": zile, "pana_la": end_day}
+            "episoade": episoade, "zile": zile, "pana_la": end_day,
+            "partial": len(evs) >= MAX_EPISOADE}
+
+
+PLAN_GRID = 128   # celule pe latura planului (fractii), pentru harta de caldura pe plan
+
+
+def heatmap_plan(pid, day_end=None, zile=1, visible=None):
+    """Harta de caldura pe PLAN: picioarele oamenilor (traseele episoadelor) ale camerelor
+    calibrate, proiectate prin omografia fiecareia si adunate pe o grila PLAN_GRID^2 din
+    fractiile planului. Punctele vechi, fara jumatatea inaltimii chenarului (dinainte ca
+    traseul s-o retina), nu au punct de sol: le numaram separat, nu le ghicim."""
+    import harta
+    import omografie
+    zile, end_day, t_start, t_end = _interval(day_end, zile)
+    plan = next((p for p in harta.lista(visible) if p["id"] == pid), None)
+    if plan is None:
+        raise ValueError(t("planul nu există"))
+    celule, episoade, fara_sol, camere, partial = {}, 0, 0, [], False
+    for cid, poz in plan["camere"].items():
+        cal = poz.get("calibrare")
+        if not cal:
+            continue
+        camere.append(int(cid))
+        evs = jurnal.query(limit=MAX_EPISOADE, cam=int(cid), tip="episod", since=t_start, until=t_end)
+        partial = partial or len(evs) >= MAX_EPISOADE   # cele mai vechi episoade au ramas pe dinafara
+        for e in evs:
+            tr = e.get("traseu")
+            if not isinstance(tr, list):
+                continue
+            episoade += 1
+            for p in tr:
+                try:
+                    if len(p) < 3:
+                        fara_sol += 1
+                        continue
+                    r = omografie.proiecteaza(cal["h"], float(p[0]), float(p[1]) + float(p[2]))
+                except (TypeError, ValueError, IndexError):
+                    continue
+                if r is None or not (0 <= r[0] < 1 and 0 <= r[1] < 1):
+                    continue
+                k = (int(r[0] * PLAN_GRID), int(r[1] * PLAN_GRID))
+                celule[k] = celule.get(k, 0) + 1
+    return {"grid": PLAN_GRID, "celule": [[x, y, n] for (x, y), n in celule.items()],
+            "max": max(celule.values(), default=0), "puncte": sum(celule.values()),
+            "episoade": episoade, "fara_sol": fara_sol, "camere": sorted(camere),
+            "zile": zile, "pana_la": end_day, "partial": partial}
 
 
 # ---- time-lapse ----

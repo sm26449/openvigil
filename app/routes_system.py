@@ -9,10 +9,12 @@ si _noise_event RAMAN in server — le porneste main(), nu sunt rute.
 """
 import json
 import os
+import re
 import shutil
 import subprocess
 import time
 
+import requests
 from flask import Blueprint, Response, jsonify, request, send_file
 
 import ai_client
@@ -88,7 +90,8 @@ def api_links():
     """Legaturi rapide pentru UI: unelte locale + interfetele echipamentelor."""
     host = request.host.split(":")[0]
     return jsonify({
-        "go2rtc": f"http://{host}:{getattr(C, 'STREAM_PORT', 8076)}",   # prin releu
+        # fara legatura spre interfata go2rtc: releul nu mai publica API-ul de administrare
+        # (configuratia cu parolele camerelor, repornirea) nici adminului — audit S2
         "nvr": None if settings.nvr_retras() else f"http://{C.NVR_IP}",
         "cameras": [{"id": c["id"], "name": c.get("name"), "url": f"http://{c['ip']}"}
                     for c in load_ext()],
@@ -152,7 +155,7 @@ def api_tts():
                         "-ar", "8000", "-ac", "1", "-acodec", "pcm_s16le", out],
                        capture_output=True, timeout=30, check=True)
     except FileNotFoundError:
-        return jsonify({"error": t("sinteza vocala nu e instalata pe server")}), 500
+        return jsonify({"error": t("sinteza vocală nu e instalată pe server")}), 500
     except subprocess.CalledProcessError as e:
         return jsonify({"error": e.stderr.decode(errors="ignore")[-160:]}), 500
     return send_file(out, mimetype="audio/wav", as_attachment=bool(b.get("download")),
@@ -223,6 +226,15 @@ def api_continuity():
                     "probleme": continuity.problems()})
 
 
+def _marime(p):
+    """Marimea unui segment; 0 daca retentia l-a sters intre listare si masurare (cursa
+    reala: /api/retention si /api/storage dadeau 500 in minutul curatarii)."""
+    try:
+        return os.path.getsize(p)
+    except OSError:
+        return 0
+
+
 _spatiu_memo = {"t": 0, "v": {}}
 
 
@@ -242,7 +254,7 @@ def spatiu_per_camera(ttl=60):
         files = record._files(cid)
         if not files:
             continue
-        out[cid] = {"octeti": sum(os.path.getsize(p) for _, p, _ in files),
+        out[cid] = {"octeti": sum(_marime(p) for _, p, _ in files),
                     "zile": round((time.time() - files[0][0]) / 86400, 1),
                     "segmente": len(files)}
     _spatiu_memo.update(t=time.time(), v=out)
@@ -274,7 +286,7 @@ def api_retention():
                 if n.startswith("cam") and n[3:].isdigit():
                     for t, p, fn in record._listeaza(ad, int(n[3:])):
                         arhiva["segmente"] += 1
-                        arhiva["gb"] += os.path.getsize(p) / 2**30
+                        arhiva["gb"] += _marime(p) / 2**30
             arhiva["gb"] = round(arhiva["gb"], 1)
             arhiva["liber_gb"] = round(shutil.disk_usage(ad).free / 2**30, 1)
         except OSError:
@@ -573,11 +585,99 @@ def api_settings_test(channel):
     b = request.get_json(silent=True) or {}
     if b:
         settings.update(b)
+    if channel == "alerte":
+        return _test_alerte()
     try:
         notify.test_channel(channel)
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 502
+
+
+def _test_alerte():
+    """O alerta de test (test=true: trece de pauze si ore de liniste) prin serviciul extern,
+    fara rezerva — vrem sa vedem serviciul, nu botul. Raspunsul spune ce a facut cu ea."""
+    import escaladare
+    if not escaladare.activ():
+        return jsonify({"error": t("completează adresa și cheia serviciului de alerte")}), 400
+    r = escaladare.alerta("nvr_rezumat", t("✅ Test OpenVigil → serviciul de alerte ({ora})",
+                                           ora=time.strftime("%H:%M:%S")),
+                          test=True, rezerva=False, sync=True)
+    if r is None:
+        return jsonify({"error": t("serviciul nu răspunde sau a refuzat cheia (vezi jurnalul)")}), 502
+    if escaladare.are_nevoie_de_rezerva(r) or r.get("status") == "suppressed":
+        return jsonify({"error": t("serviciul a răspuns {stare} ({motiv})", stare=r.get("status"),
+                                   motiv=r.get("suppressed_reason") or "-")}), 502
+    return jsonify({"ok": True, "stare": r.get("status"), "canale": r.get("channels") or []})
+
+
+# ---- asistentul „Conectează Telegram” (audit UX-G): jeton -> chat gasit singur -> salvat ----
+# Inainte: Chat ID si URL-ul api.telegram.org/bot<TOKEN>/getUpdates, de cautat de mana.
+_TG_JETON = re.compile(r"^\d{5,12}:[A-Za-z0-9_-]{30,50}$")
+
+
+def _tg(jeton, metoda, **params):
+    r = requests.get(f"https://api.telegram.org/bot{jeton}/{metoda}", params=params, timeout=15)
+    return r.json()
+
+
+@bp.route("/api/telegram/asistent/verifica", methods=["POST"])
+def api_tg_verifica():
+    """Body {jeton}: botul exista? -> numele si @utilizatorul lui."""
+    jeton = ((request.get_json(silent=True) or {}).get("jeton") or "").strip()
+    if not _TG_JETON.match(jeton):
+        return jsonify({"error": t("Jetonul nu arată ca unul de la @BotFather (cifre:litere).")}), 400
+    try:
+        d = _tg(jeton, "getMe")
+    except requests.RequestException:
+        return jsonify({"error": t("Telegram nu răspunde — verifică internetul serverului.")}), 502
+    if not d.get("ok"):
+        return jsonify({"error": t("Telegram nu recunoaște jetonul. Copiază-l din nou de la @BotFather.")}), 400
+    b = d.get("result") or {}
+    return jsonify({"ok": True, "nume": b.get("first_name"), "utilizator": b.get("username")})
+
+
+@bp.route("/api/telegram/asistent/chat", methods=["POST"])
+def api_tg_chat():
+    """Body {jeton}: chat-urile care i-au scris botului, cele mai noi primele."""
+    jeton = ((request.get_json(silent=True) or {}).get("jeton") or "").strip()
+    if not _TG_JETON.match(jeton):
+        return jsonify({"error": t("Jetonul nu arată ca unul de la @BotFather (cifre:litere).")}), 400
+    import telegram_bot
+    # bucla botului asculta deja cu acelasi jeton: ea primeste mesajele, nu noi
+    if telegram_bot.activ() and jeton == settings.get("telegram_token"):
+        chats = sorted(telegram_bot.vazute.values(), key=lambda c: -c["t"])
+        return jsonify({"chats": chats})
+    try:
+        d = _tg(jeton, "getUpdates", timeout=0, allowed_updates='["message"]')
+    except requests.RequestException:
+        return jsonify({"error": t("Telegram nu răspunde — verifică internetul serverului.")}), 502
+    if not d.get("ok"):
+        return jsonify({"error": str(d.get("description") or t("eroare Telegram"))[:160]}), 502
+    vazute = {}
+    for u in d.get("result") or []:
+        m = u.get("message") or {}
+        ch = m.get("chat") or {}
+        if ch.get("id"):
+            vazute[str(ch["id"])] = {"id": str(ch["id"]), "tip": ch.get("type"), "t": int(m.get("date") or 0),
+                                     "nume": ch.get("title") or " ".join(x for x in (ch.get("first_name"), ch.get("last_name")) if x) or ch.get("username") or ""}
+    return jsonify({"chats": sorted(vazute.values(), key=lambda c: -c["t"])})
+
+
+@bp.route("/api/telegram/asistent/salveaza", methods=["POST"])
+def api_tg_salveaza():
+    """Body {jeton, chat}: salveaza si trimite un mesaj de proba pe chat-ul ales."""
+    b = request.get_json(silent=True) or {}
+    jeton, chat = (b.get("jeton") or "").strip(), str(b.get("chat") or "").strip()
+    if not _TG_JETON.match(jeton) or not re.match(r"^-?\d{3,20}$", chat):
+        return jsonify({"error": t("Jeton sau chat invalid.")}), 400
+    settings.update({"telegram_token": jeton, "telegram_chat": chat})
+    audit.log("telegram conectat (asistent)", chat)
+    try:
+        notify.test_channel("telegram")
+    except Exception as e:
+        return jsonify({"ok": True, "proba": False, "error": str(e)[:160]})
+    return jsonify({"ok": True, "proba": True})
 
 
 # ---- vremea (vreme.py): starea curenta si geocodarea localitatii ----

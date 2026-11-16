@@ -28,7 +28,7 @@ function renderViews() {
   const box = $('#views');
   box.innerHTML = '';
   if (!views.length) {
-    box.innerHTML = html`<span class="hint">${t('Filtreaza si apasa "Salveaza vizualizarea"')}</span>`;
+    box.innerHTML = html`<span class="hint">${t('Filtrează și apasă „Salvează vizualizarea”')}</span>`;
     return;
   }
   for (const v of views) {
@@ -38,7 +38,7 @@ function renderViews() {
     b.className = 'view-go';
     b.textContent = v.name + (v.name === defaultView ? ' •' : '');
     const desc = [v.group || t('toate grupurile')];
-    if (v.q) desc.push(t('cauta "{q}"', { q: v.q }));
+    if (v.q) desc.push(t('caută „{q}”', { q: v.q }));
     desc.push(v.cols === 'auto' ? 'auto' : t('{n} coloane', { n: v.cols }));
     if (v.preview) desc.push(t('previzualizare'));
     b.title = desc.join(', ') + (v.name === defaultView ? ` — ${t('se încarcă la pornire')}` : '');
@@ -166,18 +166,16 @@ function buildLive() {
     const lbl = document.createElement('div');
     lbl.className = 'label';
     lbl.innerHTML = html`<span class="nm">${c.id}. ${c.name}</span>`;
-    if (c.ip && c.vendor !== 'demo') {   // camerele demo n-au adresa, doar un tipar
-      const ip = document.createElement('span');
-      ip.className = 'ip';
-      ip.textContent = c.ip;
-      lbl.appendChild(ip);
-    }
+    // IP-ul nu mai sta pe imagine: se suprapunea peste textul OSD al camerei si il vedeau si
+    // conturile viewer. Adminul il are la hover (titlul dalei) si in Camere (audit UX-D).
     tile.appendChild(lbl);
     // punct de stare in coltul de sus (verde = live, rosu pulsand = alarma)
     const dot = document.createElement('div');
     dot.className = 'dot';
+    dot.setAttribute('role', 'img');   // are aria-label (Live / Se conectează): fara rol, eticheta nu are voie (audit UX A4)
+    dot.setAttribute('aria-label', t('Se conectează'));   // numele exista de la inceput, nu doar dupa primul cadru
     tile.appendChild(dot);
-    tile.title = t('Click pentru HD');
+    tile.title = t('Clic pentru HD') + (ADMIN && c.ip && c.vendor !== 'demo' ? ' · ' + c.ip : '');
     tile.tabIndex = 0;
     tile.onclick = () => openHD(c);
     // Doar cand DALA insasi are focus: Enter/Space pe un control copil (ascultat, sirena…) nu mai
@@ -278,7 +276,8 @@ function buildCtrls(c, container, full) {
     const b = mkBtn(icon('listen'), t('Ascultă microfonul camerei'));
     b.onclick = (e) => {
       e.stopPropagation();
-      const v = container.querySelector('video');
+      // in HD sunt doua video (substream dedesubt, HD deasupra): sunetul pe cel care chiar ruleaza (audit #2)
+      const v = activeVideo(container);
       if (!v) return;
       v.muted = !v.muted;
       b.classList.toggle('on', !v.muted);
@@ -294,7 +293,7 @@ function buildCtrls(c, container, full) {
     bar.appendChild(b);
   }
   if (f.siren) {
-    const b = mkBtn(icon('siren'), t('Redă sunetul de alarma (o data)'));
+    const b = mkBtn(icon('siren'), t('Redă sunetul de alarmă (o dată)'));
     b.onclick = async (e) => {
       e.stopPropagation();
       b.disabled = true;
@@ -337,7 +336,7 @@ function buildCtrls(c, container, full) {
     bar.appendChild(b);
   }
   if (f.strobe) {
-    const b = mkBtn(icon('strobe'), t('Stroboscop pornit/oprit (se stinge singur dupa 60s)'));
+    const b = mkBtn(icon('strobe'), t('Stroboscop pornit/oprit (se stinge singur după 60 s)'));
     b.classList.add('alarma');
     b.classList.toggle('on', !!strobeState[c.id]);
     b.onclick = async (e) => {
@@ -355,7 +354,7 @@ function buildCtrls(c, container, full) {
     bar.appendChild(b);
   }
   if (full && f.io_out) {
-    const b = mkBtn(icon('relay'), t('Releu (iesirea de alarma) pornit/oprit'));
+    const b = mkBtn(icon('relay'), t('Releu (ieșirea de alarmă) pornit/oprit'));
     b.classList.toggle('on', !!outState[c.id]);
     b.onclick = async (e) => {
       e.stopPropagation();
@@ -375,7 +374,7 @@ function buildCtrls(c, container, full) {
     bz.classList.toggle('on', !!(c.zone && c.zone.length));
     bz.onclick = (e) => { e.stopPropagation(); openZoneEditor(c); };
     bar.appendChild(bz);
-    const bl = mkBtn('⳹', t('Linii de numarare / zone de intrare (numara treceri, viteza)'));
+    const bl = mkBtn('⳹', t('Linii de numărare / zone de intrare (numără treceri, viteză)'));
     bl.onclick = (e) => { e.stopPropagation(); openCountEditor(c); };
     bar.appendChild(bl);
     const bm = mkBtn(icon('lock'), t('Masca de confidențialitate (zone înnegrite pe live, redare și exporturi)'));
@@ -402,7 +401,7 @@ function buildCtrls(c, container, full) {
   }
   // detectie animale/persoane (YOLO pe server) — disponibila pe orice camera
   if (ADMIN) {
-    const bd = mkBtn(icon('paw'), t('Detectie animale/persoane pornita/oprita'));
+    const bd = mkBtn(icon('paw'), t('Detecție animale/persoane pornită/oprită'));
     bd.classList.toggle('on', !!c.detect);
     bd.onclick = async (e) => {
       e.stopPropagation();
@@ -430,6 +429,12 @@ async function post(url, body) {
   } catch (e) { alert(t('Eroare rețea: {e}', { e })); }
 }
 
+// comutatoarele din bara Live isi spun starea si cititorului de ecran (aria-pressed urmeaza clasa .on)
+for (const id of ['preview', 'io-toggle', 'popup-toggle', 'flux-toggle']) {
+  const b = $('#' + id); if (!b) continue;
+  const pune = () => b.setAttribute('aria-pressed', b.classList.contains('on') ? 'true' : 'false');
+  pune(); new MutationObserver(pune).observe(b, { attributes: true, attributeFilter: ['class'] });
+}
 /* ---------- evenimente de alarma + detectii (badge-uri pe tile) ---------- */
 const alertEls = {}, detectEls = {};
 async function pollEvents() {
@@ -442,10 +447,15 @@ async function pollEvents() {
       if (st.active.length) {
         el.innerHTML = html`${icon('warn', 12)} ${st.active.map((x) => t(EV_RO[x] || x)).join(', ')}`;
         el.classList.remove('hidden');
-        el.parentElement.classList.add('alerting');
+        // doar miscare simpla (VMD) = portocaliu, fara chenar rosu; rosu ramane pentru intruziune,
+        // linie trecuta, sabotaj… — altfel jumatate din grila era rosie toata ziua (audit UX-F)
+        const doarMiscare = st.active.every((x) => x === 'VMD');
+        el.classList.toggle('miscare', doarMiscare);
+        el.parentElement.classList.toggle('alerting', !doarMiscare);
+        el.parentElement.classList.toggle('miscare', doarMiscare);
       } else {
         el.classList.add('hidden');
-        el.parentElement.classList.remove('alerting');
+        el.parentElement.classList.remove('alerting', 'miscare');
       }
     }
     hartaEvents(d);
@@ -522,12 +532,12 @@ function buildIoPanel() {
   box.innerHTML = lista(cams, (c) => {
     const f = c.features || {};
     return html`<div class="io-row" data-id="${c.id}"><span class="nm" title="${c.name}">${c.id}. ${c.name}</span>
-      ${f.siren ? html`<button data-io="siren" title="${t('Sirena (o data)')}">${icon('siren', 14)}</button>` : ''}
+      ${f.siren ? html`<button data-io="siren" title="${t('Sirena (o dată)')}">${icon('siren', 14)}</button>` : ''}
       ${f.strobe ? html`<button data-io="strobe" class="${strobeState[c.id] ? 'on' : ''}" title="${t('Stroboscop pornit/oprit')}">${icon('strobe', 14)}</button>` : ''}
       ${f.io_out ? html`<button data-io="output" class="${outState[c.id] ? 'on' : ''}" title="${t('Releu pornit/oprit')}">${icon('relay', 14)}</button>` : ''}
-      ${f.talk ? html`<button data-io="say" title="${t('Rosteste textul de sus in difuzor')}">${icon('talk', 14)}</button>` : ''}
+      ${f.talk ? html`<button data-io="say" title="${t('Rostește textul de sus în difuzor')}">${icon('talk', 14)}</button>` : ''}
     </div>`;
-  }, html`<p class="hint">${t('Nicio camera cu sirena, stroboscop, releu sau difuzor (sau nu ai drept de actiune).')}</p>`);
+  }, html`<p class="hint">${t('Nicio cameră cu sirenă, stroboscop, releu sau difuzor (sau nu ai drept de acțiune).')}</p>`);
 }
 $('#io-toggle').onclick = () => {
   const p = $('#io-panel');

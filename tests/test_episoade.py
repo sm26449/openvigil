@@ -31,7 +31,7 @@ def test_episodul_se_inchide_dupa_gap(emise):
     assert (tip, cam) == ("episod", 7)
     assert d["durata_sec"] == 10
     assert d["persoane_max"] == 1
-    assert "o persoana necunoscuta" in d["text"]
+    assert "o persoană necunoscută" in d["text"]
 
 
 def test_mai_multe_persoane_simultan(emise):
@@ -83,12 +83,12 @@ def test_comportament_a_trecut():
 def test_comportament_s_a_invartit():
     # drum lung, deplasare neta mica: du-te-vino
     trail = [(0.2, 0.5), (0.8, 0.5), (0.2, 0.5), (0.8, 0.5), (0.25, 0.5)]
-    assert episoade.comportament(120, trail, {}) == "s-a invartit prin cadru"
+    assert episoade.comportament(120, trail, {}) == "s-a învârtit prin cadru"
 
 
 def test_comportament_a_zabovit():
     trail = [(0.5, 0.5), (0.52, 0.5), (0.5, 0.52), (0.51, 0.5)]
-    assert episoade.comportament(90, trail, {}) == "a zabovit pe loc"
+    assert episoade.comportament(90, trail, {}) == "a zăbovit pe loc"
 
 
 def test_comportament_zona_bate_restul():
@@ -110,6 +110,27 @@ def test_traseul_si_dwell_intra_in_eveniment(emise, monkeypatch):
     assert d["comportament"].startswith("a stat") and "usa" in d["comportament"]
     assert d["traseu"][0] == [0.1, 0.5] and d["traseu"][-1] == [0.5, 0.5]
     assert d["comportament"] in d["text"]
+
+
+def test_traseul_cu_punct_de_sol(emise, monkeypatch):
+    # punctele noi au si jumatatea inaltimii chenarului; dwell-ul (pe centru) merge mai departe
+    monkeypatch.setattr(episoade.ai_analytics, "zones",
+                        lambda cid: [{"name": "usa",
+                                      "poly": [[0.4, 0.4], [0.6, 0.4], [0.6, 0.6], [0.4, 0.6]]}])
+    episoade.cadru(8, [(0.5, 0.5)], 1000.0)
+    episoade.track_inchis(8, "stationar", 1040.0, trail=[(0.5, 0.5, 0.123)] * 5, durata=40.0)
+    episoade.tick(8, 1040.0 + episoade.GAP + 1)
+    d = emise[0][2]
+    assert d["traseu"][0] == [0.5, 0.5, 0.123] and "usa" in d["comportament"]
+
+
+def test_track_retine_jumatatea_chenarului():
+    import track
+    tr, t = track.Tracker(3), {}
+    tr._traseu(t, (0.5, 0.4), 100.0, 0.1)
+    tr._traseu(t, (0.6, 0.4), 100.5)              # prea devreme: ignorat
+    tr._traseu(t, (0.6, 0.4), 103.0)              # fara chenar: doar centrul
+    assert t["trail"] == [(0.5, 0.4, 0.1), (0.6, 0.4)]
 
 
 def test_subesantionarea_pastreaza_capetele():
@@ -135,3 +156,23 @@ def test_severitatea_episodului():
     # dar zabovirea ramane grava noaptea, oricat de... zabovita
     lung = {"nume": [], "durata_sec": 120, "comportament": "a zabovit pe loc"}
     assert rules.severity("episod", lung, True) == "critic"
+
+
+def test_text_local_reface_episodul_vechi_cu_diacritice():
+    """Episoadele salvate inainte de diacritice (2026-11-14) se afiseaza refacute: forma corecta,
+    comportamentul vechi recunoscut, semnalmentele VLM pastrate de la coada textului."""
+    vechi = {"tip": "episod", "persoane_max": 1, "durata_sec": 45, "comportament": "a zabovit pe loc",
+             "zone": [], "directii": [], "nume": [],
+             "text": "o persoana necunoscuta · 45s · a zabovit pe loc · barbat cu geaca neagra"}
+    assert episoade.text_local(vechi) == "o persoană necunoscută · 45s · a zăbovit pe loc · barbat cu geaca neagra"
+    # descrierea scrisa de modelul de limbaj nu se atinge
+    llm = {**vechi, "text_sablon": "x", "text": "Un om a stat la poartă."}
+    assert episoade.text_local(llm) == "Un om a stat la poartă."
+    # fara campurile structurate (eveniment ciudat) -> textul ramane
+    assert episoade.text_local({"tip": "episod", "text": "ceva"}) == "ceva"
+
+
+def test_text_local_stat_in_zona_e_sablon():
+    d = {"tip": "episod", "persoane_max": 2, "durata_sec": 120, "comportament": "a stat 45s la Poarta",
+         "zone": ["Poarta"], "directii": [], "nume": [], "semnalmente": ""}
+    assert episoade.text_local(d) == "2 persoane simultan · 2 min · a stat 45s la Poarta · zone: Poarta"

@@ -235,6 +235,16 @@ def query(limit=200, tip=None, cam=None, day=None, min_sev=None, since=None, unt
     return out
 
 
+def camera_evenimentului(eid):
+    """(gasit, camera) pentru evenimentul cu id-ul dat — cautare directa dupa id, nu intr-o
+    fereastra de evenimente recente (autorizarea unui incident nu depinde de cate evenimente
+    informative au venit intre timp, audit F2)."""
+    _init()
+    with db.conn() as c:
+        r = c.execute("SELECT cam FROM events WHERE id = %s LIMIT 1", (str(eid),)).fetchone()
+    return (r is not None), (r[0] if r else None)
+
+
 def stats():
     """{evenimente, cel_mai_vechi, cel_mai_nou, mb} — pentru pagina Stare."""
     _init()

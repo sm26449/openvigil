@@ -235,7 +235,7 @@ Detecțiile-cadre → **episoade** (viața unui obiect): cine, cât a stat, pe u
 - `app/ai_client.py` — helper subțire pe care web-ul îl folosește să întrebe starea.
 - `nvr-web`: endpoint intern `/api/internal/emit`; `/api/track` → proxy la nvr-ai;
   lucrătorii `track.py` locali se opresc când `nvr-ai` e activ.
-- `deploy/systemd/nvr-ai.service`.
+- serviciul `ai` din `docker-compose.yml` (în instalarea clasică era o unitate systemd, care nu mai există).
 
 **Verificare:** aceleași contoare ca tracking-ul local (aceeași acuratețe), VRAM cu
 un singur model de tracking, evenimentele „obiect" ajung în jurnal prin web,

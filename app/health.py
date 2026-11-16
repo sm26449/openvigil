@@ -44,7 +44,7 @@ def check_stream(cam, channel=102, timeout=12):
         return {"ok": True, "secunde": dt, "codec": st.get("codec_name"),
                 "latime": st.get("width"), "inaltime": st.get("height"), "fps": fps}
     except subprocess.TimeoutExpired:
-        return {"ok": False, "eroare": t("camera nu a trimis imagine in timpul alocat")}
+        return {"ok": False, "eroare": t("camera nu a trimis imagine în timpul alocat")}
     except Exception as e:
         return {"ok": False, "eroare": logare.fara_parole(str(e))[:120]}
 

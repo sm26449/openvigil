@@ -28,6 +28,10 @@ from i18n import t
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 STATE_FILE = os.path.join(ROOT, "data", "continuity.json")
+# problemele deja anuntate ({cheie: {cam_id, text, de_la}}): o problema se anunta o data, cand
+# apare, si se inchide cand dispare — nu la fiecare tura de 2 minute (o camera moarta: peste
+# 18 000 de evenimente „gol” in trei saptamani). Pe disc, ca o repornire sa nu le reanunte.
+ANUNTATE_FILE = os.path.join(ROOT, "data", "continuity_anuntate.json")
 EXT_FILE = os.path.join(ROOT, "data", "cameras.json")
 
 MUT_SEC = record.STALL_SEC * 2   # peste atat fara scriere = raportam, nu doar repornim
@@ -314,11 +318,11 @@ def _propunere(disponibil, gb_zi, frac):
     med = (sum(frac.values()) / len(frac)) if frac else 0
     if med > 0.5:
         return {"zile": max(1, zile), "zile_evenimente": max(1, zile),
-                "motiv": t("{procent}% din segmente contin evenimente, deci treapta lunga s-ar aplica oricum la aproape tot. Doua numere diferite ar fi o promisiune fara acoperire.",
+                "motiv": t("{procent}% din segmente conțin evenimente, deci treapta lungă s-ar aplica oricum la aproape tot. Două numere diferite ar fi o promisiune fără acoperire.",
                            procent=round(med * 100))}
     lung = int(disponibil / (gb_zi * (med + (1 - med) * 0.35)) * 0.85)
     return {"zile": max(1, zile), "zile_evenimente": max(1, min(lung, zile * 4)),
-            "motiv": t("Segmentele fara evenimente pot fi sterse mai devreme, deci treapta lunga incape.")}
+            "motiv": t("Segmentele fără evenimente pot fi șterse mai devreme, deci treapta lungă încape.")}
 
 
 def problems():
@@ -340,25 +344,54 @@ def problems():
             ora = time.strftime("%H:%M", time.localtime(g["start"]))
             out.append({"cheie": f"gol-{cam['id']}-{int(g['start'] // 600)}",
                         "cam_id": cam["id"], "grav": True,
-                        "text": t("{cam}: gol de {n} min in inregistrare, incepand {ora}",
+                        "text": t("{cam}: gol de {n} min în înregistrare, începând {ora}",
                                   cam=cam['name'], n=g['sec'] // 60, ora=ora)})
     f = forecast()
     if not f["incape"]:
         out.append({"cheie": "retentie", "grav": True,
-                    "text": t("Retentia configurata cere {necesar} GB, dar avem loc de {disponibil} GB. Inregistrarile vor fi sterse mai devreme decat scrie in setari.",
+                    "text": t("Retenția configurată cere {necesar} GB, dar avem loc de {disponibil} GB. Înregistrările vor fi șterse mai devreme decât scrie în setări.",
                               necesar=f['necesar_gb'], disponibil=f['disponibil_gb'])})
     return out
 
 
-def start(on_problem=None, interval=120):
-    """Bucla de supraveghere: reimprospateaza jurnalul si raporteaza problemele."""
+def de_anuntat(probs):
+    """Pur si testabil: o camera care nu mai scrie deloc („mut”) isi are deja alerta; golurile ei
+    de azi sunt aceeasi intamplare, deci nu le mai anuntam separat."""
+    mute = {p.get("cam_id") for p in probs if p["cheie"].startswith("mut-")}
+    return [p for p in probs if not (p["cheie"].startswith("gol-") and p.get("cam_id") in mute)]
+
+
+def schimbari(anuntate, probs, acum=None):
+    """Pur si testabil: (noi, rezolvate, anuntate_noi). noi = problemele care n-au mai fost
+    anuntate; rezolvate = cele anuntate care au disparut."""
+    acum = acum or time.time()
+    curente = {p["cheie"]: p for p in probs}
+    noi = [p for k, p in curente.items() if k not in anuntate]
+    rezolvate = [{"cheie": k, **v} for k, v in anuntate.items() if k not in curente]
+    stare = {k: anuntate.get(k) or {"cam_id": p.get("cam_id"), "text": p["text"], "de_la": acum}
+             for k, p in curente.items()}
+    return noi, rezolvate, stare
+
+
+def start(on_problem=None, interval=120, on_rezolvat=None):
+    """Bucla de supraveghere: reimprospateaza jurnalul si raporteaza problemele — fiecare o data,
+    cand apare (on_problem), si o data cand dispare (on_rezolvat)."""
+    import store
+
     def work():
         while True:
             try:
                 refresh()
                 if on_problem:
-                    for p in problems():
+                    anuntate = store.load_json(ANUNTATE_FILE, None) or {}
+                    noi, rezolvate, stare = schimbari(anuntate, de_anuntat(problems()))
+                    for p in noi:
                         on_problem(p)
+                    for p in rezolvate:
+                        if on_rezolvat:
+                            on_rezolvat(p)
+                    if noi or rezolvate:
+                        store.atomic_write_json(ANUNTATE_FILE, stare)
             except Exception as e:
                 logare.info(f"[continuitate] {e}")
             time.sleep(interval)

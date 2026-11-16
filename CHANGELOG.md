@@ -3,6 +3,217 @@
 Formatul urmează [Keep a Changelog](https://keepachangelog.com/) și
 [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [Unreleased]
+
+## [2.2.0] — în pregătire (candidat: 2.2.0-rc7)
+
+**Highlights (English)** — Faster triage, a calmer and more accessible interface, a persistent
+semantic search index, system alerts that are not forgotten, and a property map that shows
+where things happen. **Where to find each feature and how to use it, with screenshots:**
+[What's new in 2.2.0](https://github.com/sm26449/openvigil/blob/main/docs/en/whats-new-2.2.0.md)
+· [Ce e nou în 2.2.0](https://github.com/sm26449/openvigil/blob/main/docs/ro/noutati-2.2.0.md).
+- **Triage that scales.** Repeated incidents from the same camera are grouped into one card with
+  "confirm all / all false"; every incident shows the nearest saved frame; on a phone you swipe
+  right to confirm or left for a false alarm, with Undo. A "While you were away" card on Live
+  summarises what happened since you last looked.
+- **Choose the stream in HD**, like a commercial NVR: Auto, the camera's small stream (fast, little
+  data), or HD 720p / native — only one stream on screen at a time.
+- **Accessible and usable on every screen.** WCAG AA contrast, real tabs and landmarks, keyboard
+  focus that never gets lost, 24 px minimum targets; the bottom navigation now also covers tablets
+  and phones in landscape; multi-selects became checkboxes that work on touch screens.
+- **Connect Telegram in three steps** — paste the bot token, send the bot a message, done; the chat
+  ID is found automatically.
+- **Semantic search in PostgreSQL (optional).** The index can move from per-day files to pgvector,
+  with a persistent indexing queue, a "teach the search" workflow and binary backup of vectors.
+- **System alerts through an external alert service (optional).** Camera/NVR down, disk full,
+  recording stopped, failed backups and the daily summary can go to a service speaking
+  `POST /v1/fire`, which owns SMS, rate limits and acknowledgement; the built-in bot stays as the
+  fallback. A camera that is down now gets reminders (4, 8, 16, 32 min, 1–16 h, then daily) until
+  it comes back, and recording problems are announced once instead of every two minutes.
+- **A property map that knows where things are.** Click a camera on the plan to see its live
+  image next to its view cone; set the mounting height and tilt, measure the plan's scale with
+  two clicks or trace the property boundary with the side lengths you know (the scale is checked,
+  and corrected per direction for a stretched sketch; angles and area come with it), and each
+  camera draws the ground area it really sees. Calibrate a camera with 4+
+  matching ground points and its detections appear live as dots on the plan, plus a heat map of
+  where people walk across the whole property.
+
+### Notă de actualizare (instalări existente)
+- Nu e nevoie de schimbări în Compose: baza folosește deja imaginea `pgvector/pgvector:pg16`, iar
+  extensia `vector` se creează singură la pornire.
+- Căutarea semantică rămâne pe fișierele pe zile (`data/semantic/*.npz`) până o muți explicit:
+  `scripts/semantic_migrate.py` (prepare → import → verify → activate). Importul se reia la
+  întrerupere, verifică fiecare vector, iar `export`/`rollback` te întorc la fișiere fără
+  recalculare pe GPU. Detalii: `docs/semantic-search.md`.
+- Dacă interfața e instalată ca aplicație pe telefon, închide-o complet o dată după actualizare.
+- Harta de căldură pe plan folosește doar episoadele de după actualizare (traseele vechi nu au
+  punctul de sol) și doar camerele calibrate pe plan: la început e goală, se umple în câteva zile.
+
+### Adăugat
+- **Harta: imaginea camerei pe plan.** Clic pe o cameră deschide un card lângă ea (sub hartă
+  pe telefon), cu imaginea ei reîmprospătată la 5 s, montajul și butoanele „Deschide HD” /
+  „Înregistrări”; cardul se așază în partea opusă conului, ca să compari imaginea cu locul de
+  pe plan. Esc sau clic în afară îl închide.
+- **Harta, editare: miniatura și geometria montajului.** Panoul lateral arată imaginea camerei
+  selectate, valorile glisoarelor și două câmpuri opționale: înălțimea (m) și înclinarea
+  (° sub orizontală), salvate în `data/harta.json` (`inaltime`, `inclinare`; validate 0–50 m,
+  0–90°). Din ele panoul estimează porțiunea de sol văzută.
+- **Harta: scara planului și zona de sol văzută.** „Scara” din editare: două clicuri pe o
+  distanță cunoscută + metrii reali (`scara` pe plan în `data/harta.json`, validată; o imagine
+  nouă o șterge). Cu scara pusă, apare o bară de scară, iar camerele cu înălțime și înclinare
+  își desenează zona de sol reală (conturul cadrului proiectat pe sol, cu pata oarbă de sub
+  cameră, tăiat la 60 m / orizont) în locul conului simbolic. Cardul camerei ocolește desenul.
+- **Harta: calibrarea camerelor pe plan (omografie) și detecțiile live ca puncte.** „Calibrează
+  pe plan”: perechi de puncte de pe sol în cadru și pe plan (4–12), cu grila solului proiectată
+  și eroarea fiecărei perechi în previzualizare; omografia o calculează serverul
+  (`app/omografie.py`, DLT normalizat, validare: puncte răsfirate, niciun trio coliniar). Harta
+  arată apoi omul / vehiculul în locul unde atinge solul (`GET /api/harta/<plan>/live`, la 2 s,
+  doar cât e deschisă). Calibrarea rămâne la mutarea marcajului și se șterge la o imagine nouă.
+- **Harta: limita proprietății și scara din laturile cunoscute.** „Limita” din editare: colțurile
+  proprietății, în ordine, și lungimea reală a laturilor pe care le știi. `app/plan_metrica.py`
+  calculează din ele măsura planului: o scară unică din 1–2 laturi, iar cu 3+ laturi pe direcții
+  diferite, corectată pe direcții când planul e o schiță întinsă (doar când abaterile nu sunt
+  zgomot de măsurare). Panoul arată fiecare latură pe plan, cu abaterea, unghiurile colțurilor,
+  perimetrul, suprafața și avertismente. Zona de sol, bara de scară și eroarea calibrării folosesc
+  aceeași măsură. Colțurile se trag; limita stă deasupra camerelor, ca să rămână apucabilă.
+- **Harta: zona de sol a unei camere calibrate vine din calibrare** (conturul imaginii proiectat
+  pe plan, tăiat la orizont / 60 m), nu din înălțimea și înclinarea estimate din ochi; panoul spune
+  ce înclinare reiese din calibrare la înălțimea introdusă. În ecranul de calibrare, poziția
+  camerei și zona estimată din montaj apar pe plan ca reper când alegi punctele.
+- **Harta: harta de căldură pe plan.** Selectorul „Fără căldură / Azi / 7 zile / 30 zile” din bara
+  hărții adună picioarele oamenilor din episoadele tuturor camerelor calibrate într-o singură
+  hartă a proprietății (`GET /api/harta/<plan>/heatmap`). Punctele de traseu ale episoadelor
+  noi rețin și jumătatea înălțimii chenarului (`[x, y, jumătate]`, compatibil cu cititorii
+  vechi), de unde se calculează punctul de sol; traseele vechi doar se numără.
+- **Alertele de sistem prin serviciul extern de alerte** (opțional, contractul `POST /v1/fire`): cameră sau
+  NVR căzut/revenit, disc plin, înregistrare oprită/reluată, goluri și bucle de înregistrare,
+  curățare și copie de siguranță eșuate, fluxuri lipsă, zgomot, acțiunea „notificare” a regulilor
+  și rezumatul zilei pleacă ca tipuri `nvr_*`, cu episoade (`idempotency_key` + `resolved`) pentru
+  stările care se închid singure. Serviciul decide canalele (SMS, Telegram, email), pauzele și
+  confirmarea; botul propriu rămâne rezervă când serviciul nu răspunde sau nu cunoaște tipul.
+  Intrușii confirmați (om) și persoanele necunoscute primesc o copie (`nvr_intrus` cu modul
+  plecat/noapte, `nvr_intrus_acasa` altfel). Card nou în Setări → Notificări, cu test. Vezi
+  `docs/alerte.md`.
+- **Camera căzută nu mai e uitată:** prima alertă la cădere, apoi mementouri la 4, 8, 16, 32 de
+  minute, 1, 2, 4, 8, 16 ore, 1 zi și apoi zilnic, până revine; la revenire „după cât timp”.
+  Programul ține peste reporniri (`data/camere_cazute.json`), iar o cameră deja căzută la
+  pornirea serverului e anunțată (înainte era trecută tăcut în starea offline).
+- **Triaj pe grupuri:** 3+ incidente de pe aceeași cameră, de același tip, la cel mult 30 de
+  minute unul de altul, devin un card cu „✓ confirmă toate”, „✕ fals toate” și „Arată toate”
+  (`POST /api/incidents/stare-bloc`, aceeași regulă de vizibilitate pe camere ca la un incident;
+  permis și paznicului). „Încarcă mai multe incidente” aduce până la 480.
+- **Miniatură pe fiecare incident:** cadrul salvat cel mai apropiat de moment (la episod, din
+  intervalul în care a stat omul); un clic deschide fișa.
+- **Glisare în triaj pe telefon:** dreapta confirmă, stânga marchează alarmă falsă, cu „Anulează”.
+- **„Cât ai lipsit”:** la întoarcere după peste 2 ore, un card pe Live cu incidentele grupate și
+  poze, cine a venit (fețe și numere cunoscute) și camerele căzute (`GET /api/rezumat/absenta`).
+- **Alegerea fluxului în HD:** Auto / Flux mic (camera) / HD 720p / HD nativ, cu un singur flux pe
+  ecran; în Înregistrări, „Flux mic” înseamnă 720p.
+- **„Conectează Telegram (pas cu pas)”:** jetonul se verifică, chat-ul se găsește singur după un
+  mesaj trimis botului, salvarea trimite o probă (merge și când botul ascultă deja).
+- **Căutare semantică în PostgreSQL (opțional):** vectori pgvector, coadă persistentă cu lease și
+  reîncercări, import reluabil cu verificare integrală, export și revenire la fișiere fără GPU,
+  backup binar al vectorilor cu restaurare tranzacțională.
+- **„Învață căutarea”** din interfață: verdicte pe concept și imagine, exemple păstrate în
+  PostgreSQL și în backup, navigare prin arhivă, recuperarea exemplelor confirmate sub prag.
+
+### Securitate
+Din auditul de cod și securitate al candidatului 2.2.0, pentru expunerea publică:
+- **Releul de flux** dă browserului doar fluxurile publicate (live, HD, redare), după numele
+  întreg: fluxul intern `cam<id>_main` (mainstream-ul brut, fără mască) nu mai e accesibil.
+  Cine nu are voie să vorbească prin cameră (vizualizare) primește live-ul fără canal de vorbire.
+- **Prin releu, nici administratorul nu mai ajunge la API-ul de administrare go2rtc**
+  (configurația cu parolele camerelor, rescrierea ei, repornirea, lista surselor): doar fluxuri și
+  cadre. Legătura „go2rtc” a dispărut din interfață; starea fluxurilor e în Sănătate.
+- **Fluxurile deschise se închid** la revocarea sesiunii, ștergerea contului sau retragerea camerei
+  (reverificare la 20 s), nu mai curg până le închide browserul.
+- **2FA:** activarea cere parola contului, nu înlocuiește un factor deja activ și deconectează
+  celelalte sesiuni; biletul dintre parolă și cod nu supraviețuiește unei revocări.
+- **Jurnalul de audit** nu mai păstrează jetoane și chei (Telegram, serviciul de alerte, modelul de
+  limbaj — orice câmp care arată a secret, la orice nivel) și e citibil doar de proprietar (0600).
+- **Dosarele exportate** se descarcă doar dacă toate camerele din ZIP sunt încă permise contului.
+- **Notificările push** pleacă doar spre serviciile de push ale browserelor (Google, Mozilla, Apple,
+  Microsoft), nu spre o adresă oarecare (SSRF).
+- **Instalarea nouă** generează o parolă aleatorie pentru PostgreSQL; `changeme` e semnalat la
+  instalare și la pornire.
+- **Imaginea planului** se deschide doar ca PNG/JPEG/WebP și se decodează integral înainte de
+  salvare; un test se asigură că modulul FlashPix al Pillow rămâne inaccesibil (aviz
+  GHSA-5x8w-8jj5-q52h, care cere `olefile`, absent din imagine).
+- Acțiunile GitHub din CI și release sunt fixate pe SHA.
+
+### Schimbat
+- **Navigare:** pe tabletă (≤ 1100 px) și pe telefonul culcat (≤ 500 px înălțime) navigarea e în
+  bara de jos cu „Mai mult”; un ecran nou se deschide de sus; nimic nu mai lărgește pagina pe
+  telefon; telefonul culcat pliază uneltele ca videoul să aibă loc.
+- **Controale unificate:** select-urile, câmpurile, butoanele și „Alege fișierul” au stilul temei;
+  selecțiile multiple (Ctrl+clic) sunt bife; câmpurile numerice nu se mai întind pe toată lățimea;
+  bara Live are un singur stil de comutator; modul activ își arată numele („🏠 Acasă”); taburile
+  din Setări și AI stau pe un rând derulabil pe telefon.
+- **Mai puțin zgomot vizual:** mișcarea simplă e portocalie (roșul rămâne pentru alarme reale);
+  IP-ul a ieșit de pe dalele Live (adminul îl vede la trecerea cu mouse-ul și în Camere); numele
+  camerei înlocuiește „cam N”; Poze se încarcă pe pagini de câte 60.
+- **Termeni unici:** butonul din antet e „Sănătate” (Centrul de sănătate), jurnalul modificărilor
+  din Setări e „Audit”.
+- **Numere care se potrivesc:** insigna și „de tratat” arată același număr (cu „99+”); Redarea
+  arată durata înregistrată și întreruperile; Mașini explică citirile mai vechi de 7 zile.
+- `/api/incidents` calculează coada o singură dată pentru listă și numărătoare.
+
+### Accesibilitate
+- Contrast WCAG AA peste tot (`--link`, `--alarm-text`, insigna de incidente, nicio legătură pe
+  albastrul implicit).
+- Reper `<main>`, „Sari la conținut”, titlul ferestrei spune ecranul curent.
+- Titlurile de pe carduri, bare și ferestre (HD, Setări, overlay-uri, contul meu, adăugarea unei
+  camere) folosesc culoarea textului din temă, nu alb fix (UX-01).
+- Roluri ARIA corecte: tab-uri reale cu săgeți și Home/End; linia de timp nu mai e un „slider” cu
+  butoane în el; etichete pe zonele derulabile, căutare și bifele de cameră.
+- Panoul camerei primește focusul, se închide cu Esc și întoarce focusul pe rând.
+- Ținte de minimum 24 px (32 px pe ecrane tactile), text de minimum 12 px, `color-scheme` închis
+  pentru controalele native și contur de focus în modul „contrast ridicat” din Windows.
+
+### Reparat
+- **Triaj:** incidentele camerelor unui operator nu mai sunt ascunse de traficul altor camere
+  (restricția se aplică înainte de limită), iar un incident afișat rămâne tratabil oricâte
+  evenimente informative vin după el; „Cât ai lipsit” merge și pentru operator și arată și camerele
+  căzute înainte de ultima vizită; miniatura unui episod de peste miezul nopții se găsește.
+- **Serviciul de alerte:** un răspuns care nu e al contractului (listă, `null`, stare necunoscută)
+  trimite alerta pe botul propriu, în loc să o piardă.
+- **Harta:** o imagine de plan stricată sau o încărcare eșuată nu mai șterge planul existent;
+  harta de căldură spune când rezultatul e parțial.
+- **Harta:** rezumatul și uneltele de editare se rup pe rânduri în loc să iasă din ecran (pe
+  telefon), iar rezumatul stă pe rândul lui la orice lățime, ca planul să nu sară când textul se
+  schimbă (de exemplu în timp ce trasezi limita).
+- Problemele de continuitate a înregistrării se anunță o singură dată, când apar (jurnal +
+  alertă), și se închid când dispar; înainte, o cameră moartă scria un „gol de înregistrare” la
+  fiecare 2 minute (peste 18 000 de evenimente în trei săptămâni). Golurile unei camere care nu
+  mai scrie deloc nu se mai anunță separat.
+- **Căutarea semantică:** intervalele și camerele se aplică înainte de limitarea rezultatelor;
+  întrebările merg și din bara globală (prima apariție, ore exacte, numele camerei); indexarea
+  nu mai pierde zile și nu mai face dubluri (fișiere atomice, reconciliere periodică); eticheta
+  unui cadru întreg nu mai ascunde alte obiecte; răspunsurile arată acoperirea și perioada.
+- **HD pe telefon:** data și numele camerei nu se mai văd de două ori (posterul și substream-ul
+  rămâneau sub fluxul HD cu alte proporții); sunetul pornește pe fluxul care rulează.
+- **Setări:** spațiul și retenția nu mai dau eroare când curățarea șterge un segment în timpul
+  măsurării; Sistem nu mai apare gol când opțiunile avansate sunt ascunse; memoria GPU apare ca
+  text, nu „[object Object]”.
+- **Poze:** „Șterge poza” cere confirmare și stă separat de recatalogare.
+- **Safari/iOS:** redarea HLS de rezervă nu mai e blocată de politica de securitate a conținutului.
+- **Limbaj:** ~230 de texte primesc diacritice; rezumatul episoadelor apare în limba interfeței
+  (și cu diacritice pentru cele vechi); „O cameră nu scrie pe disc”; indiciul comenzilor
+  Telegram arată `/acasa`.
+- **Tava de joburi:** fără legătură cu serverul spune „reîncerc…” și rărește încercările; focusul
+  nu se mai pierde la reîmprospătare.
+- **Prima pornire pe o bază nouă:** conexiunile deschise înainte de crearea extensiei `vector`
+  își înregistrează tipul la următoarea folosire (vectorii nu mai vin ca octeți bruți).
+
+### Intern
+- **Release candidați publici:** un tag `vX.Y.Z-rcN` construiește și publică imaginea
+  `:X.Y.Z-rcN` (fără să mute `:latest`) și un pre-release pe GitHub, cu notele secțiunii `[X.Y.Z]`.
+- Teste noi: accesibilitate automată cu axe-core pe desktop, telefon și telefon culcat (inclusiv
+  controale strivite), triaj și glisare, rezumatul de absență, asistentul Telegram, alegerea
+  fluxului HD, bifele, contractul stării partajate (`state.js`), diacriticele
+  (`scripts/diacritice_check.py`).
+- Capturile auditurilor locale (`tests/_audit`) nu mai intră în imaginea Docker.
+
 ## [2.1.2] — 2026-11-12
 
 **Highlights (English)** — Security and stability fixes on top of 2.1.1.

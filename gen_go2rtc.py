@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Genereaza go2rtc/go2rtc.yaml:
-- 16 stream-uri LIVE pe substream NVR (H.264, copy), cam1..cam16
-- cate un stream LIVE pe substream pentru fiecare camera standalone din data/cameras.json
-  (camN, unde N >= 101), adaugata manual prin UI
+"""Genereaza configurarea go2rtc (data/go2rtc.yaml) din camere; ruleaza la pornirea serviciului go2rtc.
+
+- camN: live pe substream (camerele NVR 1..16, cele standalone din data/cameras.json au N >= 101)
+- camN_main: mainstream-ul, citit de inregistrare; camN_v: copie fara canal de vorbire (viewer)
+- mN, mNs<viteza>: sabloanele ffmpeg care aplica masca de confidentialitate (masca.py)
 Playback-ul si live-HD se inregistreaza dinamic prin API (vezi app/server.py)."""
 import urllib.parse, os, sys, json
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -58,6 +59,10 @@ def _asculta(url, port_implicit):
         raise SystemExit(f"GO2RTC_API/GO2RTC_RTSP trebuie sa fie pe 127.0.0.1, nu pe {gazda}: "
                          "go2rtc nu are autentificare si ar fi expus direct in retea")
     return f"{gazda}:{u.port or port_implicit}"
+
+
+# RTSP-ul local al go2rtc (pentru fluxurile-copie, ex. cam<id>_v fara canal de vorbire)
+RTSP_LOCAL = "rtsp://" + _asculta(C.GO2RTC_RTSP, 8554)
 
 
 def generate():
@@ -193,6 +198,11 @@ def generate():
         # HD-ul live, ca sa fie o singura conexiune main per camera.
         lines.append(f'  cam{cam["id"]}_main: "{ext_mainstream_url(cam)}'
                      f'{"#backchannel=0" if talk else ""}"')
+        # copia live FARA canal de vorbire, pentru cine n-are voie sa vorbeasca prin camera
+        # (viewer): releul (stream_proxy.py) ii da cam<id>_v in loc de cam<id>. Consuma fluxul
+        # cam<id> prin RTSP-ul local al go2rtc (deci si masca), cu backchannel oprit.
+        if talk:
+            lines.append(f'  cam{cam["id"]}_v: "{RTSP_LOCAL}/cam{cam["id"]}#backchannel=0"')
 
     # in data/: fisierul are parolele camerelor in URL-uri (0600); go2rtc il citeste de acolo
     out = OUT

@@ -58,13 +58,13 @@ def set_state(event_id, stare, who=None):
 
 
 def cam_incident(event_id):
-    """Camera unui incident (din jurnal, dupa id), sau None daca nu se gaseste in cele recente.
-    Pentru autorizarea per-cont: un operator restrans nu trateaza incidente de pe camere interzise."""
-    import rules
-    for e in rules.journal(limit=400):
-        if e.get("id") == event_id:
-            return e.get("cam")
-    return None
+    """Camera unui incident (din jurnal, dupa id), sau None daca nu se gaseste.
+    Pentru autorizarea per-cont: un operator restrans nu trateaza incidente de pe camere interzise.
+    Cautare directa dupa id: inainte se cauta in ultimele 400 de evenimente brute, iar un
+    incident inca afisat iesea din fereastra dupa o rafala de evenimente informative (audit F2)."""
+    import jurnal
+    gasit, cam = jurnal.camera_evenimentului(event_id)
+    return cam if gasit else None
 
 
 def resolve_recent(cam_id, tip, who="auto"):
@@ -101,7 +101,10 @@ def feed(limit=60, min_sev="atentie", doar_noi=False, visible=None):
     # filtram fluxul de info (VMD ~15k/zi) DIN START prin min_sev, altfel cele 600
     # evenimente brute sunt inecate de VMD si incidentele reale ies din fereastra.
     # Apoi recalculam severitatea (retroactiv) si re-verificam pragul.
-    for e in rules.journal(limit=800, min_sev=min_sev):
+    # restrictia pe camere IN interogare, inainte de limita: altfel camerele altora umpleau
+    # fereastra si incidentele camerelor operatorului nu mai apareau (audit F2)
+    cams = sorted(visible) if visible is not None else None
+    for e in rules.journal(limit=800, min_sev=min_sev, cams=cams):
         e["sev"] = rules.event_severity(e)   # recalcul retroactiv (rafinarea logicii)
         if rules.SEV_RANK.get(e["sev"], 0) < prag:
             continue
@@ -115,11 +118,73 @@ def feed(limit=60, min_sev="atentie", doar_noi=False, visible=None):
     # descrescator -> critic sus, iar in cadrul aceleiasi severitati cele mai noi primele
     evs.sort(key=lambda e: e.get("t", ""), reverse=True)
     evs.sort(key=lambda e: rules.SEV_RANK.get(e.get("sev", "info"), 0), reverse=True)
-    return evs[:limit]
+    return evs if limit is None else evs[:limit]
 
 
-def counts(visible=None):
-    """{noi, critic_noi} — pentru badge-ul de pe tab si alarma."""
-    fresh = feed(limit=200, doar_noi=True, visible=visible)
+def adauga_poze(evs):
+    """Miniatura fiecarui incident: cadrul salvat al camerei cel mai apropiat de momentul lui
+    (pentru episod, de mijlocul intervalului in care a stat omul). Fara poza, triajul se facea
+    orbeste — cardul avea doar text (audit UX-F)."""
+    import snaps
+    for e in evs:
+        if not e.get("cam") or not e.get("t"):
+            continue
+        day, ora = e["t"][:10], e["t"][11:19]
+        try:
+            h, m, sec = (int(x) for x in ora.split(":"))
+        except ValueError:
+            continue
+        t = h * 3600 + m * 60 + sec
+        cautari = []              # (zi, de_la, pana_la) in ordinea preferintei
+        if e.get("tip") == "episod" and e.get("inceput"):
+            try:
+                h0, m0, s0 = (int(x) for x in str(e["inceput"]).split(":"))
+                t0 = h0 * 3600 + m0 * 60 + s0
+                if t0 > t:
+                    # inceput ieri, inchis azi (peste miezul noptii): intervalul real e impartit
+                    # intre cele doua zile; `inceput` e doar ora, ziua lui e cea dinainte (audit F6)
+                    ieri = time.strftime("%Y-%m-%d", time.localtime(
+                        time.mktime(time.strptime(day, "%Y-%m-%d")) - 43200))
+                    cautari = [(ieri, t0 - 5, 86400), (day, 0, t + 5)]
+                else:
+                    cautari = [(day, t0 - 5, t0 + int(e.get("durata_sec") or 0) + 5)]
+            except ValueError:
+                cautari = [(day, t - 300, t)]
+        else:
+            cautari = [(day, t - 30, t + 30)]
+        fn = None
+        for zi, de_la, pana_la in cautari:
+            fn = snaps.cel_mai_apropiat(e["cam"], zi, max(0, de_la), pana_la)
+            if fn:
+                day = zi
+                break
+        if fn:
+            e["poza"] = f"/api/flux/thumb/{day}/{fn}"
+    return evs
+
+
+def set_state_bloc(ids, stare, who=None):
+    """Aceeasi stare pe mai multe incidente, intr-o singura scriere (grupurile din triaj)."""
+    if stare not in STARI:
+        raise ValueError(t("stare necunoscută: {stare}", stare=stare))
+    acum = time.strftime("%Y-%m-%d %H:%M:%S")
+    with _lock:
+        data = _load()
+        for eid in ids:
+            if stare == "nou":
+                data.pop(eid, None)
+            else:
+                data[eid] = {"stare": stare, "cine": who, "cand": acum}
+        _write(data)
+    return len(ids)
+
+
+def counts(visible=None, toate=None):
+    """{noi, critic_noi} — pentru badge-ul de pe tab si alarma. `toate` = feed-ul deja calculat
+    (fara limita), ca /api/incidents sa nu-l refaca a doua oara; inainte numaratoarea se oprea
+    la 200, iar lista arata cate carduri incarcase (60) — doua numere pentru acelasi lucru."""
+    if toate is None:
+        toate = feed(limit=None, visible=visible)
+    fresh = [e for e in toate if e.get("stare") == "nou"]
     return {"noi": len(fresh),
             "critic_noi": sum(1 for e in fresh if e.get("sev") == "critic")}

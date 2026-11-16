@@ -88,7 +88,7 @@ def api_backup_cheie():
     """Cheia de criptare — fara ea copiile sunt inutile; se arata o data, de notat separat."""
     audit.log("cheia de backup afisata")
     return jsonify({"cheie": backup_nocturn.cheie(), "amprenta": backup_nocturn.amprenta_cheie(),
-                    "nota": t("Pastreaz-o in alta parte decat serverul (manager de parole). Refacere: {cmd}",
+                    "nota": t("Păstreaz-o în altă parte decât serverul (manager de parole). Refacere: {cmd}",
                               cmd="scripts/restaureaza-backup.py <fisier.enc> <destinatie>")})
 
 

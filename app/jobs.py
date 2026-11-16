@@ -338,7 +338,7 @@ def start(workers=WORKERS):
     with db.conn() as c:
         c.execute("UPDATE jobs SET stare = 'eroare', terminat = %s, mesaj = %s "
                   "WHERE stare IN ('asteapta', 'ruleaza')",
-                  (int(time.time()), t("serviciul a repornit inainte sa termine")))
+                  (int(time.time()), t("serviciul a repornit înainte să termine")))
     os.makedirs(DIR, exist_ok=True)
     for i in range(max(1, workers)):
         th = threading.Thread(target=_lucrator, name=f"job-{i}", daemon=True)

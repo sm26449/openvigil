@@ -20,13 +20,28 @@ Făcute în modul demo (camere sintetice), deci fără imagini reale.
 
 | Live | Înregistrări cu timeline |
 |---|---|
-| ![Live](docs/img/live-1366.png) | ![Înregistrări](docs/img/inregistrari-1366.png) |
+| ![Live](docs/img/ro/live-1366.png) | ![Înregistrări](docs/img/ro/inregistrari-1366.png) |
 
 | HD | Setări → Stare |
 |---|---|
-| ![HD](docs/img/hd-1366.png) | ![Stare](docs/img/stare-1366.png) |
+| ![HD](docs/img/ro/hd-1366.png) | ![Stare](docs/img/ro/stare-1366.png) |
 
-<p align="center"><img src="docs/img/live-telefon.png" width="200" alt="Live pe telefon"> <img src="docs/img/inregistrari-telefon.png" width="200" alt="Înregistrări pe telefon"> <img src="docs/img/meniu-telefon.png" width="200" alt="Meniul pe telefon"></p>
+| Triaj (incidente grupate) | Harta proprietății cu harta de căldură |
+|---|---|
+| ![Triaj](docs/img/2.2.0/ro/triaj-1366.png) | ![Harta](docs/img/2.2.0/ro/harta-caldura-1366.png) |
+
+<p align="center"><img src="docs/img/ro/live-telefon.png" width="200" alt="Live pe telefon"> <img src="docs/img/ro/inregistrari-telefon.png" width="200" alt="Înregistrări pe telefon"> <img src="docs/img/ro/meniu-telefon.png" width="200" alt="Meniul pe telefon"></p>
+
+## Ce e nou în 2.2.0
+
+Triaj mai rapid (incidente grupate, cu poze, glisare pe telefon, rezumatul „Cât ai lipsit”), o
+hartă a proprietății care știe unde se întâmplă lucrurile (imaginea camerei pe plan, înălțimea și
+înclinarea montajului, scara planului și zona de sol văzută, calibrarea fiecărei camere cu puncte
+live și harta de căldură a întregii proprietăți), alegerea fluxului în HD, o interfață accesibilă
+pe orice ecran, Telegram configurat în trei pași, alerte de sistem care nu se uită și, opțional,
+căutare semantică persistentă. **Unde găsești fiecare lucru și cum îl folosești:
+[docs/ro/noutati-2.2.0.md](docs/ro/noutati-2.2.0.md)**; lista completă e în
+[CHANGELOG.md](CHANGELOG.md).
 
 ## Ce face
 
@@ -35,13 +50,16 @@ Făcute în modul demo (camere sintetice), deci fără imagini reale.
   (SHA-256 pe segment) pentru probe.
 - **Live** în browser prin go2rtc (MSE/WebRTC, audio bidirecțional unde camera are difuzor),
   cu un releu autentificat în față: go2rtc nu ascultă niciodată pe LAN.
+  Pe tot ecranul alegi fluxul: Auto, fluxul mic al camerei sau doar HD.
 - **Redare** cu timeline cu zoom, marcaje de evenimente, viteze 0,5–8× (pe GPU), exporturi cu
   chenare, time-lapse, heatmap, căutare pe regiune.
 - **AI local**: detecție YOLO11 (persoane, animale, vehicule, cu fine-tuning pe cadrele tale),
   recunoaștere de fețe, re-identificare după corp, numere de înmatriculare, descrieri în
   limbaj natural (Qwen2.5-VL) și căutare semantică (SigLIP). Fără GPU (driver ≥ 580) rămâne
   detecția; restul merge pe CPU, dar mult prea încet ca să fie util.
-- **Operare**: moduri acasă/plecat/noapte cu reguli, alerte Telegram și rezumat zilnic, Web
+- **Operare**: moduri acasă/plecat/noapte cu reguli, alerte Telegram și rezumat zilnic,
+  alertele de sistem trimise opțional printr-un serviciu extern de alerte (SMS, confirmare,
+  limite de repetare; botul propriu rămâne rezervă), mementouri până revine o cameră căzută, Web
   Push, punte MQTT (Home Assistant, Node-RED), webhook-uri, hartă, sirenă/strobo/difuzor pe
   camerele care le au, verificarea sănătății camerelor.
 - **Conturi**: admin și vizitatori restrânși pe camere, 2FA, sesiuni revocabile, CSRF, CSP
@@ -50,11 +68,16 @@ Făcute în modul demo (camere sintetice), deci fără imagini reale.
 ### Și încă
 
 - **Întrebi în cuvinte**: căsuța de căutare răspunde la întrebări ca „când a venit mașina
-  de gunoi?” din indexul semantic și din jurnal.
+  de gunoi?” din indexul semantic (ținut în PostgreSQL/pgvector) și din jurnal; rezultatele
+  marcate corect sau greșit învață căutarea.
+- **Accesibil**: navigare din tastatură, etichete pentru cititorul de ecran și contrast WCAG AA,
+  pe desktop, tabletă și telefon (în picioare și culcat).
 - **Audio**: măsurarea continuă a zgomotului pe camerele cu microfon, profiluri orare pentru
   calibrarea pragurilor, alarme de zgomot și anunțuri vocale (TTS) prin difuzorul camerei.
 - **Incidente și dosare**: panou de triaj (netratate / confirmate / false) cu sunet și pop-up
-  la critic, dosare de caz care adună clipuri, poze și un manifest semnat.
+  la critic, miniaturi, incidentele repetate grupate într-un card, tratare prin glisare pe
+  telefon, rezumatul „Cât ai lipsit” și dosare de caz care adună clipuri, poze și un manifest
+  semnat.
 - **La redare**: marcaje pe înregistrări, mai multe camere redate din același moment,
   vizualizări salvate și mod perete pentru grila live, panou I/O pentru relee.
 - **Evenimente mai deștepte**: episoade de prezență (o poveste în loc de cincizeci de cadre),
@@ -188,6 +211,9 @@ nivelul de arhivă și copiile pot sta fiecare pe alt disc (`RECORDINGS_DIR`, `A
 Operarea de zi cu zi (jurnale, actualizare, copii, porturi, dezinstalare): [docs/operare.md](docs/operare.md).
 
 ## Documentație
+
+[docs/ro/noutati-2.2.0.md](docs/ro/noutati-2.2.0.md): ce aduce 2.2.0, unde găsești fiecare lucru
+și cum îl folosești, cu capturi.
 
 [docs/ro/manual.md](docs/ro/manual.md) este jurnalul deciziilor, scris pe măsură ce sistemul a
 fost construit pentru instalația de origine; unele secțiuni descriu varianta de dinainte de

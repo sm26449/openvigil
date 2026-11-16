@@ -6,12 +6,16 @@ import './js/05-navigare.js';
 import './js/10-live.js';
 import './js/15-flux.js';
 import './js/20-hd.js';
+import './js/24-harta-metrica.js';
 import './js/25-harta.js';
+import './js/26-harta-calibrare.js';
+import './js/27-harta-limita.js';
 import './js/30-redare.js';
 import './js/40-evenimente.js';
 import './js/45-fisa.js';
 import './js/46-reid.js';
 import './js/48-cauta.js';
+import './js/49-semantic-review.js';
 import './js/50-camere.js';
 import './js/60-setari.js';
 import './js/65-program.js';
@@ -19,8 +23,10 @@ import './js/70-ai.js';
 import './js/75-adnotare.js';
 import { loadCameras } from './js/10-live.js';
 import { routeHash } from './js/05-navigare.js';
+import { verificaAbsenta } from './js/40-evenimente.js';
 
 // toate modulele si-au pus handlerele cand ajungem aici: marcam documentul ca „gata” (testele
 // si orice script extern asteapta atributul in loc sa ghiceasca dupa timp)
 document.documentElement.dataset.gata = '1';
-loadCameras().then(routeHash).finally(() => { document.documentElement.dataset.gata = '2'; });
+// „Cât ai lipsit” dupa camere: rezumatul are nevoie de numele lor
+loadCameras().then(routeHash).then(verificaAbsenta).finally(() => { document.documentElement.dataset.gata = '2'; });

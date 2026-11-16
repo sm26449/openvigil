@@ -126,10 +126,18 @@ if [ ! -f .env ]; then
   # limba implicita (notificari + interfata cand browserul nu alege): din LANG-ul gazdei
   LIMBA_GAZDA="en"; case "${LANG:-}" in ro*) LIMBA_GAZDA="ro";; esac
   sed -i "s#^TZ=.*#TZ=${TZ_GAZDA}#; s#^PUID=.*#PUID=${PUID_IMPLICIT}#; s#^PGID=.*#PGID=${PGID_IMPLICIT}#; s#^NVR_LANG=.*#NVR_LANG=${LIMBA_GAZDA}#" .env
-  gata ".env creat din .env.example (TZ=${TZ_GAZDA}, NVR_LANG=${LIMBA_GAZDA}, PUID=${PUID_IMPLICIT}, PGID=${PGID_IMPLICIT})"
+  # parola bazei de date: aleatorie, niciodata cea din exemplu (publica in depozit)
+  PG_PASS_NOU="$(head -c 48 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 32)"
+  sed -i "s#^PG_PASS=.*#PG_PASS=${PG_PASS_NOU}#" .env
+  gata ".env creat din .env.example (TZ=${TZ_GAZDA}, NVR_LANG=${LIMBA_GAZDA}, PUID=${PUID_IMPLICIT}, PGID=${PGID_IMPLICIT}, parola bazei de date generata)"
   avert "Deschide .env daca vrei alt port, alt nume sau alt director de date, apoi ruleaza din nou."
 else
   gata ".env exista, il pastrez"
+  if grep -q '^PG_PASS=changeme$' .env; then
+    avert "PG_PASS din .env e inca parola din exemplu (changeme), publica in depozit. Schimb-o:"
+    avert "  docker compose exec db psql -U openvigil -d openvigil -c \"ALTER USER openvigil PASSWORD '<parola noua>'\""
+    avert "  apoi pune aceeasi parola in .env (PG_PASS=...) si: docker compose up -d"
+  fi
 fi
 # citim doar cheile de care avem nevoie (valorile pot avea spatii, nu „sourcing")
 env_val() { sed -n "s/^$1=//p" .env | tail -1 | tr -d '\r'; }

@@ -7,7 +7,16 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "app"))
 import harta  # noqa: E402
 
-PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
+def _img(fmt="PNG", w=64, h=48):
+    import io
+    from PIL import Image
+    b = io.BytesIO()
+    Image.new("RGB", (w, h), (40, 90, 40)).save(b, fmt)
+    return b.getvalue()
+
+
+PNG = _img()
+JPG = _img("JPEG")
 
 
 @pytest.fixture(autouse=True)
@@ -38,6 +47,18 @@ def test_planuri_si_pozitii():
     assert harta.lista()[0]["nume"] == "Casa"
 
 
+def test_geometria_montajului():
+    p = harta.plan_nou("A")
+    harta.aseaza(p["id"], {"5": {"x": 0.5, "y": 0.5, "inaltime": "3.25", "inclinare": 30},
+                           "6": {"x": 0.5, "y": 0.5, "inaltime": "", "inclinare": None}})
+    cams = harta.lista()[0]["camere"]
+    assert cams["5"]["inaltime"] == 3.2 and cams["5"]["inclinare"] == 30.0
+    assert "inaltime" not in cams["6"] and "inclinare" not in cams["6"]   # necunoscute
+    for rau in ({"inaltime": -1}, {"inaltime": 51}, {"inclinare": 91}, {"inclinare": "abc"}):
+        with pytest.raises(ValueError):
+            harta.aseaza(p["id"], {"5": {"x": 0.5, "y": 0.5, **rau}})
+
+
 def test_o_camera_pe_un_singur_plan():
     a = harta.plan_nou("A")
     b = harta.plan_nou("B")
@@ -59,9 +80,75 @@ def test_imagine_validare_si_stergere(tmp_path):
     assert cale.endswith(".png") and harta.lista()[0]["imagine"] is True
     assert oct(os.stat(cale).st_mode)[-3:] == "600"
     # jpeg peste png: ramane un singur fisier
-    harta.salveaza_imagine(p["id"], b"\xff\xd8\xff" + b"\x00" * 10, "image/jpeg")
+    harta.salveaza_imagine(p["id"], JPG, "image/jpeg")
     assert harta.imagine(p["id"]).endswith(".jpg") and not os.path.exists(cale)
     harta.sterge(p["id"])
     assert harta.lista() == [] and harta.imagine(p["id"]) is None
     with pytest.raises(ValueError):
         harta.sterge(p["id"])
+
+
+def test_scara_planului():
+    p = harta.plan_nou("A")
+    assert harta.lista()[0]["scara"] is None
+    harta.seteaza_scara(p["id"], {"x1": 0.1, "y1": 0.5, "x2": "0.6", "y2": 0.5, "m": "20"})
+    assert harta.lista()[0]["scara"] == {"x1": 0.1, "y1": 0.5, "x2": 0.6, "y2": 0.5, "m": 20.0}
+    for rau in ({"x1": 0.1, "y1": 0.5, "x2": 0.6, "y2": 0.5, "m": 0},            # fara distanta
+                {"x1": 0.1, "y1": 0.5, "x2": 0.1, "y2": 0.5, "m": 5},            # acelasi punct
+                {"x1": -1, "y1": 0.5, "x2": 0.6, "y2": 0.5, "m": 5},             # in afara
+                {"x1": 0.1, "y1": 0.5, "x2": 0.6, "m": 5}):                      # lipseste y2
+        with pytest.raises(ValueError):
+            harta.seteaza_scara(p["id"], rau)
+    with pytest.raises(ValueError):
+        harta.seteaza_scara("nuexista", None)
+    # o imagine noua sterge scara (alt plan, alta scara)
+    harta.salveaza_imagine(p["id"], PNG, "image/png")
+    assert harta.lista()[0]["scara"] is None
+    harta.seteaza_scara(p["id"], {"x1": 0, "y1": 0, "x2": 1, "y2": 1, "m": 30})
+    harta.seteaza_scara(p["id"], None)
+    assert harta.lista()[0]["scara"] is None
+
+
+def test_limita_si_masura_planului():
+    import io
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.new("RGB", (1000, 500)).save(buf, "PNG")
+    p = harta.plan_nou("A")
+    assert harta.lista()[0]["metrica"] is None                      # fara imagine, fara masura
+    harta.salveaza_imagine(p["id"], buf.getvalue(), "image/png")
+    assert harta.lista()[0]["metrica"] is None                      # imagine, dar nicio lungime
+    harta.seteaza_scara(p["id"], {"x1": 0.1, "y1": 0.5, "x2": 0.6, "y2": 0.5, "m": 25})
+    assert harta.lista()[0]["metrica"]["sursa"] == "scara"
+    # limita: dreptunghi 600x300 px; latura de sus = 60 m -> 0,1 m/px, deci 60 x 30 m
+    harta.seteaza_limita(p["id"], {"puncte": [[0.1, 0.1], [0.7, 0.1], [0.7, 0.7], [0.1, 0.7]],
+                                   "laturi": {"0": 60}})
+    m = harta.lista()[0]["metrica"]
+    assert m["sursa"] == "limita" and m["w"] == 1000 and m["h"] == 500
+    assert [x["m_plan"] for x in m["laturi"]] == [60, 30, 60, 30] and m["suprafata"] == pytest.approx(1800)
+    with pytest.raises(ValueError):
+        harta.seteaza_limita(p["id"], {"puncte": [[0.1, 0.1], [0.9, 0.9], [0.1, 0.9], [0.9, 0.1]]})
+    # o imagine noua sterge si limita (alt plan, alte masuri)
+    harta.salveaza_imagine(p["id"], buf.getvalue(), "image/png")
+    assert harta.lista()[0]["limita"] is None and harta.lista()[0]["metrica"] is None
+    harta.seteaza_limita(p["id"], {"puncte": [[0.1, 0.1], [0.7, 0.1], [0.4, 0.7]], "laturi": {}})
+    harta.seteaza_limita(p["id"], None)
+    assert harta.lista()[0]["limita"] is None
+
+
+
+def test_o_imagine_stricata_nu_strica_planul_existent():
+    """audit F3: un PNG trunchiat (semnatura buna, continut incomplet), un fisier imens in
+    pixeli sau un alt format deghizat sunt refuzate, iar imaginea veche ramane intacta."""
+    p = harta.plan_nou("A")
+    cale = harta.salveaza_imagine(p["id"], PNG, "image/png")
+    inainte = open(cale, "rb").read()
+    for rau in (PNG[:len(PNG) // 2],                          # trunchiat
+                b"\x89PNG\r\n\x1a\n" + b"\x00" * 64,          # doar semnatura
+                _img("PNG", 8, 8)):                           # prea mica pentru un plan
+        with pytest.raises(ValueError):
+            harta.salveaza_imagine(p["id"], rau, "image/png")
+    with pytest.raises(ValueError):                           # JPEG declarat PNG
+        harta.salveaza_imagine(p["id"], JPG, "image/png")
+    assert open(harta.imagine(p["id"]), "rb").read() == inainte
+    assert not [f for f in os.listdir(harta.DIR) if f.endswith(".tmp")]

@@ -56,7 +56,13 @@ async function searchRecordings() {
   if (gen !== pbCtxGen) return;   // alta camera/zi aleasa cat am asteptat
   if (d.error) { $('#pb-info').textContent = t('Eroare: {err}', { err: d.error }); return; }
   curSegments = d.segments || [];
-  $('#pb-info').textContent = t('{n} segmente înregistrate', { n: d.count });
+  // serverul uneste fisierele consecutive in intervale continue: „1 segment” insemna de fapt
+  // „inregistrat continuu toata ziua” — aratam durata si intreruperile (audit UX-D)
+  const sec = curSegments.reduce((a, g) => a + Math.max(0, (Date.parse(g.end) - Date.parse(g.start)) / 1000), 0);
+  const durata = sec >= 3600 ? t('{h} h {m} min', { h: Math.floor(sec / 3600), m: Math.round((sec % 3600) / 60) }) : t('{m} min', { m: Math.round(sec / 60) });
+  $('#pb-info').textContent = !curSegments.length ? t('Nicio înregistrare în ziua asta.')
+    : curSegments.length === 1 ? t('Înregistrat {durata}, fără întreruperi', { durata })
+      : t('Înregistrat {durata}, în {n} intervale', { durata, n: curSegments.length });
   renderTimeline(date);
   drawEventDots(ch, date, gen);
   drawPbMarks(ch, date, gen);
@@ -99,7 +105,7 @@ async function drawEventDots(ch, date, gen) {
       ev.row = row;
       list.appendChild(row);
     }
-    if (!pbEvents.length) list.innerHTML = html`<p class="hint">${t('Niciun eveniment in ziua asta.')}</p>`;
+    if (!pbEvents.length) list.innerHTML = html`<p class="hint">${t('Niciun eveniment în ziua asta.')}</p>`;
   } catch {}
   relayoutTimeline();
 }
@@ -522,8 +528,12 @@ function grupeazaPuncte(tl) {
   const dots = [...tl.querySelectorAll('.evdot')].filter((d) => d.style.display !== 'none')
     .map((d) => ({ el: d, sec: +d.dataset.sec })).sort((a, b) => a.sec - b.sec);
   let grup = [];
-  const inchide = () => {
-    if (grup.length < 2) { grup = []; return; }
+  const grupuri = [];
+  // intai strangem grupurile, apoi le unim pe cele ale caror pastile s-ar suprapune: o pastila are
+  // 24-30 px, deci centre mai apropiate de ~30 px dadeau „1115 5 1111113” pe telefon (audit UX C)
+  const inchide = () => { if (grup.length) grupuri.push(grup); grup = []; };
+  const deseneaza = (grup) => {
+    if (grup.length < 2) return;
     const a = grup[0].sec, b = grup[grup.length - 1].sec, mid = (a + b) / 2;
     for (const d of grup) d.el.style.display = 'none';
     const g = document.createElement('span');
@@ -539,7 +549,6 @@ function grupeazaPuncte(tl) {
     g.onclick = apropie;
     g.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); apropie(e); } };
     tl.appendChild(g);
-    grup = [];
   };
   for (const d of dots) {
     // grup nou la o pauza de >7 px sau cand grupul ar depasi ~24 px (o zona densa devine un sir de pastile, nu o pastila de 3 ore)
@@ -547,9 +556,18 @@ function grupeazaPuncte(tl) {
     grup.push(d);
   }
   inchide();
+  const centru = (gr) => (gr[0].sec + gr[gr.length - 1].sec) / 2;
+  const unite = [];
+  for (const gr of grupuri) {
+    const prev = unite[unite.length - 1];
+    if (prev && prev.length >= 2 && gr.length >= 2 && (centru(gr) - centru(prev)) * pxSec < 30) prev.push(...gr);
+    else unite.push(gr);
+  }
+  for (const gr of unite) deseneaza(gr);
 }
 function placeCursor(sec) {
-  const tlA11y = $('#timeline'); if (tlA11y) { tlA11y.setAttribute('aria-valuenow', Math.round(sec)); tlA11y.setAttribute('aria-valuetext', hms(Math.round(sec))); }
+  // bara e un grup (contine butoane: grupurile de evenimente), nu un slider cu valoare;
+  // momentul curent il anunta #pb-pos (audit UX A4, nested-interactive)
   const tl = $('#timeline'), c = tl._cursor;
   if (!c) return;
   tl._cursorSec = sec;
@@ -811,7 +829,7 @@ $('#exp-btn').onclick = () => {
   const ch = +$('#pb-cam').value;
   const date = $('#pb-date').value;
   const a = $('#exp-a').value, b = $('#exp-b').value;
-  if (!date || !a || !b) { alert(t('Alege data si intervalul (de la / pana la).')); return; }
+  if (!date || !a || !b) { alert(t('Alege data și intervalul (de la / până la).')); return; }
   const c = (t) => date.replace(/-/g, '') + 'T' + t.replace(/:/g, '').padEnd(6, '0') + 'Z';
   const secs = (t) => t.split(':').reduce((x, y) => x * 60 + +y, 0);
   const dur = secs(b) - secs(a);
@@ -918,7 +936,8 @@ async function loadHeat() {
     heatData = await (await fetch(`/api/heatmap?channel=${heatCh}&day=${$('#pb-date').value || localDay()}&zile=${heatZile}`)).json();
     const perioada = heatZile === 1 ? t('ziua aleasă') : t('ultimele {n} zile', { n: heatZile });
     $('#heat-info').textContent = heatData.error ? t('Eroare: {err}', { err: heatData.error })
-      : t('{n} episoade de prezență umană în {perioada}', { n: heatData.episoade, perioada }) + (heatData.max ? '' : ' ' + t('— nimic de desenat'));
+      : t('{n} episoade de prezență umană în {perioada}', { n: heatData.episoade, perioada }) + (heatData.max ? '' : ' ' + t('— nimic de desenat'))
+        + (heatData.partial ? ' · ' + t('rezultat parțial: prea multe episoade, cele mai vechi lipsesc — alege o perioadă mai scurtă') : '');
   } catch (e) { $('#heat-info').textContent = t('Eroare: {err}', { err: e }); }
   drawHeat();
 }

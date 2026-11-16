@@ -11,6 +11,12 @@
 //   T1  „Contul meu" e buton real, focusabil de la tastatura
 //   P0  PWA instalabil cu push: meta iOS, manifest (standalone/maskable/scurtaturi), icon-uri
 //   M0  mobil (390px): fara debordare pe 6 ecrane; Inregistrari cu unelte export/analiza pliate
+//   BF  selectiile multiple (Ctrl+clic) sunt bife, sincronizate in ambele sensuri cu select-ul
+//   UG  „Cât ai lipsit” la intoarcere + glisarea in triaj pe telefon, cu „Anulează”
+//   FL  HD: „Flux mic” = doar substream-ul, „HD 720p” = doar fluxul HD (un singur strat)
+//   GR  triaj: incidentele repetate de pe aceeasi camera devin un grup cu actiuni pe toate
+//   AX  accesibilitate (axe-core, WCAG 2.1 AA): zero incalcari critice/serioase pe ecranele
+//       principale + reper <main>, titlu de pagina pe ecran, tinte >= 24 px (audit UX 2026-11-14)
 // Ruleaza: node tests/ui-regresie.js   (are nevoie de Chromium — npx playwright install chromium)
 const { chromium } = require('playwright');
 const { startStatic, installApi, err500 } = require('./ui-fixtures');
@@ -25,7 +31,7 @@ const eStream = (t) => /:8076|go2rtc|videortc|video-stream|ws(e)?\b|websocket/i.
 
 // deschide aplicatia cu un set de raspunsuri /api si asteapta boot-ul complet (app.js pune
 // data-gata='2' dupa loadCameras().then(routeHash)). Intoarce { page, calls, errors, close }.
-async function openApp(browser, { api = {}, viewport, mobile = false } = {}) {
+async function openApp(browser, { api = {}, viewport, mobile = false, init = null } = {}) {
   const dev = mobile ? { isMobile: true, hasTouch: true, deviceScaleFactor: 3 } : {};   // declanseaza pointer:coarse
   const ctx = await browser.newContext({ locale: 'ro-RO', viewport: viewport || { width: 1280, height: 900 }, bypassCSP: true, ...dev });
   const page = await ctx.newPage();
@@ -33,6 +39,7 @@ async function openApp(browser, { api = {}, viewport, mobile = false } = {}) {
   page.on('console', (m) => { if (m.type() === 'error' && !eStream(m.text())) errors.push(m.text().slice(0, 160)); });
   page.on('pageerror', (e) => { if (!eStream(String(e))) errors.push('EXCEPTIE: ' + String(e).slice(0, 160)); });
   const calls = await installApi(page, api);
+  if (init) await page.addInitScript(init);
   const origin = globalThis.__ORIGIN;
   await page.goto(origin, { waitUntil: 'domcontentloaded', timeout: 20000 });
   await page.waitForSelector('html[data-gata="2"]', { timeout: 15000 });
@@ -298,14 +305,20 @@ async function scenM0(browser) {
     const liveSecVizibil = await page.evaluate(() => getComputedStyle(document.querySelector('#preview')).display !== 'none');
     liveSecVizibil ? ok('butonul „⋯" (Live) desface actiunile secundare') : bad('M0', '⋯ Live nu desface .live-sec');
 
-    // 6) Setari: toate sub-taburile se vad (se rup pe randuri, niciunul taiat la dreapta)
+    // 6) Setari: sub-taburile stau pe un rand derulabil (UX-E); fiecare poate fi adus in ecran,
+    //    iar pagina nu se largeste
     await page.evaluate(() => document.querySelector('#tab-set')?.click());
     await page.waitForTimeout(250);
-    const taiate = await page.evaluate(() => {
-      const w = document.documentElement.clientWidth;
-      return [...document.querySelectorAll('#set-nav .snav-item')].filter((e) => e.getBoundingClientRect().right > w + 1).length;
+    const tab = await page.evaluate(() => {
+      const w = document.documentElement.clientWidth, rand = document.querySelector('#set-nav .snav-tabs');
+      const ultim = [...document.querySelectorAll('#set-nav .snav-item')].at(-1);
+      ultim.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+      const q = ultim.getBoundingClientRect();
+      return { derulabil: ['auto', 'scroll'].includes(getComputedStyle(rand).overflowX), ultimInEcran: q.right <= w + 1 && q.left >= 0,
+        lata: document.documentElement.scrollWidth > w + 1 };
     });
-    taiate === 0 ? ok('Setari: toate sub-taburile vizibile (niciunul taiat la dreapta)') : bad('M0', `${taiate} sub-taburi taiate la dreapta`);
+    (tab.derulabil && tab.ultimInEcran && !tab.lata) ? ok('Setari: sub-taburile pe un rand derulabil, ultimul se poate aduce in ecran, pagina nu se largeste')
+      : bad('M0', 'sub-taburi: ' + JSON.stringify(tab));
 
     // 7) campuri text >= 16px pe mobil (altfel iOS da zoom la focus)
     const inputMic = await page.evaluate(() => {
@@ -405,12 +418,182 @@ async function scenOV(browser) {
   } finally { await app.close(); }
 }
 
+// ---- BF: <select multiple> -> bife (audit UX-E) ----
+async function scenBF(browser) {
+  console.log('\n== BF. Selectiile multiple sunt bife, pe telefon ==');
+  const app = await openApp(browser, { viewport: { width: 390, height: 844 }, mobile: true,
+    api: { '/api/rules': { rules: [], triggers: { persoana_necunoscuta: 'Persoană necunoscută' }, zile: ['Lu', 'Ma', 'Mi', 'Jo', 'Vi', 'Sa', 'Du'], groups: ['Curte', 'Strada'] } } });
+  const { page } = app;
+  try {
+    await page.evaluate(() => { location.hash = '#ai/reguli'; });
+    await page.waitForFunction(() => document.querySelectorAll('#ru-cams + .bife .bifa').length >= 2, null, { timeout: 6000 });
+    const a = await page.evaluate(() => ({ selVizibil: getComputedStyle(document.querySelector('#ru-cams')).display !== 'none',
+      bife: document.querySelectorAll('#ru-cams + .bife .bifa').length, grupuri: document.querySelectorAll('#ru-groups + .bife .bifa').length }));
+    (!a.selVizibil && a.bife === 2 && a.grupuri === 2) ? ok('lista Ctrl+clic e inlocuita de bife (2 camere, 2 zone)') : bad('BF', JSON.stringify(a));
+    await page.locator('#ru-cams + .bife .bifa').nth(1).click();
+    const sel = await page.evaluate(() => [...document.querySelector('#ru-cams').selectedOptions].map((o) => o.value));
+    sel.length === 1 && sel[0] === '2' ? ok('o atingere pe bifa selecteaza optiunea din select') : bad('BF', 'selectate: ' + sel);
+    const sync = await page.evaluate(async () => {
+      for (const o of document.querySelector('#ru-cams').options) o.selected = o.value === '1';   // ca la editarea unei reguli
+      await new Promise((r) => setTimeout(r, 0));
+      return [...document.querySelectorAll('#ru-cams + .bife input')].map((c) => c.checked);
+    });
+    JSON.stringify(sync) === '[true,false]' ? ok('setarea din cod (editare regula) se vede in bife') : bad('BF', 'bife: ' + JSON.stringify(sync));
+  } finally { await app.close(); }
+}
+
+// ---- UG: „Cât ai lipsit” + glisare (audit UX-G) ----
+async function scenUG(browser) {
+  console.log('\n== UG. Rezumatul de la intoarcere si glisarea in triaj ==');
+  const rez = { de_la: '2026-11-14 01:00:00', ore: 7.5, incidente: 4, critice: 3, netratate: 4, grupuri_total: 1,
+    grupuri: [{ tip: 'episod', cam: 1, n: 3, netratate: 3, sev: 'critic', de_la: '2026-11-14 01:00:00', pana_la: '2026-11-14 01:30:00',
+      id: 'ep0', text: 'o persoană necunoscută', poza: '/api/flux/thumb/2026-11-14/013000_cam1_person.jpg' }],
+    persoane: [{ nume: 'ana', n: 2 }], vehicule: [], camere_cazute: [2] };
+  const ep = (i, ora) => ({ id: 'ep' + i, tip: 'episod', cam: 1, sev: 'critic', stare: 'nou', t: `2026-11-14 ${ora}`, text: 'x' });
+  const app = await openApp(browser, { viewport: { width: 390, height: 844 }, mobile: true,
+    init: () => { try { localStorage.setItem('ov.vazutLa.admin', String(Math.round(Date.now() / 1000) - 5 * 3600)); } catch (e) {} },
+    api: { '/api/rezumat/absenta': rez,
+      '/api/incidents': { incidente: [ep(0, '23:45:00'), { id: 'x', tip: 'intrus', cam: 2, sev: 'critic', stare: 'nou', t: '2026-11-14 22:00:00', eticheta: 'person' }], counts: { noi: 2, critic_noi: 2 } },
+      '/api/incidents/stare-bloc': ({ body }) => ({ ok: true, n: (body && body.ids || []).length }) } });
+  const { page, calls } = app;
+  try {
+    await page.waitForSelector('#absenta:not(.hidden)', { timeout: 6000 });
+    const a = await page.evaluate(() => ({ titlu: document.querySelector('#absenta h2')?.textContent, n: document.querySelectorAll('#absenta .abs-item').length,
+      rez: document.querySelector('#absenta .abs-rez')?.textContent || '', fisa: !!document.querySelector('#absenta [data-fisa]') }));
+    (a.titlu === 'Cât ai lipsit' && a.n === 1 && /ana de 2 ori/.test(a.rez) && /nu răspund: Terasă/.test(a.rez) && a.fisa)
+      ? ok('dupa 5 ore, „Cât ai lipsit” arata grupul, pe ana si camera cazuta (cu nume), cu fisa') : bad('UG', JSON.stringify(a));
+    await page.click('#absenta .abs-ok');
+    const dupa = await page.evaluate(() => ({ ascuns: document.querySelector('#absenta').classList.contains('hidden'),
+      vazut: +localStorage.getItem('ov.vazutLa.admin') }));
+    (dupa.ascuns && Date.now() / 1000 - dupa.vazut < 60) ? ok('„Am văzut” il inchide si muta reperul la acum') : bad('UG', JSON.stringify(dupa));
+    // glisare spre dreapta pe primul incident = confirmat, cu „Anulează”
+    await page.evaluate(() => { location.hash = '#ev/inc'; });
+    await page.waitForSelector('#inc-list .inc-card', { timeout: 6000 });
+    await page.evaluate(() => {
+      const c = document.querySelector('#inc-list .inc-card'); const r = c.getBoundingClientRect(), y = r.top + r.height / 2;
+      const ev = (tip, x) => c.dispatchEvent(new PointerEvent(tip, { pointerType: 'touch', clientX: x, clientY: y, bubbles: true, isPrimary: true }));
+      ev('pointerdown', r.left + 20); for (const x of [40, 80, 160, 260, 340]) ev('pointermove', r.left + x); ev('pointerup', r.left + 340);
+    });
+    const c1 = await waitForCall(calls, '/api/incidents/stare-bloc', 'POST');
+    (c1 && c1.body.stare === 'confirmat' && c1.body.ids[0] === 'ep0') ? ok('glisarea spre dreapta confirma incidentul') : bad('UG', 'cerere: ' + JSON.stringify(c1 && c1.body));
+    await page.waitForSelector('#inc-anulare.show', { timeout: 3000 });
+    calls.length = 0;
+    await page.click('#inc-anulare button');
+    const c2 = await waitForCall(calls, '/api/incidents/stare-bloc', 'POST');
+    (c2 && c2.body.stare === 'nou' && c2.body.ids[0] === 'ep0') ? ok('„Anulează” il readuce la netratat') : bad('UG', 'anulare: ' + JSON.stringify(c2 && c2.body));
+  } finally { await app.close(); }
+}
+
+// ---- FL: un singur flux vizibil in HD, ales din „Calitate” ----
+async function scenFL(browser) {
+  console.log('\n== FL. HD cu un singur strat: Flux mic / HD 720p ==');
+  for (const [mod, asteptat] of [['mic', 'cam1'], ['eco', 'hd1_h720']]) {
+    const app = await openApp(browser, { viewport: { width: 390, height: 844 }, mobile: true,
+      init: (m) => { try { localStorage.setItem('hd_quality', m); } catch (e) {} },
+      api: { '/api/play': { stream: 'hd1_h720' } } });
+    const { page, calls } = app;
+    try {
+      await page.evaluate((m) => { localStorage.setItem('hd_quality', m); location.hash = '#hd/1'; }, mod);
+      await page.waitForSelector('#hd-overlay:not(.hidden) #hd-player video-stream', { timeout: 6000 });
+      await page.waitForTimeout(600);
+      const r = await page.evaluate(() => ({ n: document.querySelectorAll('#hd-player video-stream').length,
+        src: [...document.querySelectorAll('#hd-player video-stream')].map((e) => String(e.wsURL || e.getAttribute('src') || '')) }));
+      const play = calls.some((c) => c.path === '/api/play');
+      const ok1 = r.n === 1 && r.src[0].includes(asteptat) && (mod === 'mic' ? !play : play);
+      ok1 ? ok(`„${mod}”: un singur flux in HD (${asteptat})${mod === 'mic' ? ', fara cerere de transcodare' : ''}`) : bad('FL', mod + ' ' + JSON.stringify({ ...r, play }));
+    } finally { await app.close(); }
+  }
+}
+
+// ---- GR: triaj pe grupuri (audit UX-F) ----
+async function scenGR(browser) {
+  console.log('\n== GR. Incidentele repetate devin un grup, tratat dintr-un clic ==');
+  const ep = (i, ora) => ({ id: 'ep' + i, tip: 'episod', cam: 1, sev: 'critic', stare: 'nou', t: `2026-11-14 ${ora}`,
+    text: 'o persoană necunoscută · 45s · a zăbovit pe loc', poza: i === 0 ? '/api/flux/thumb/2026-11-14/120000_cam1_person.jpg' : undefined });
+  const inc = [ep(0, '23:45:00'), ep(1, '23:30:00'), ep(2, '23:10:00'), ep(3, '22:55:00'),
+    { id: 'x', tip: 'intrus', cam: 2, sev: 'critic', stare: 'nou', t: '2026-11-14 23:40:00', eticheta: 'person' }];
+  const app = await openApp(browser, { api: {
+    '/api/incidents': { incidente: inc, counts: { noi: 5, critic_noi: 5 } },
+    '/api/incidents/stare-bloc': ({ body }) => ({ ok: true, n: (body && body.ids || []).length, ignorate: 0 }),
+  } });
+  const { page, calls } = app;
+  try {
+    await page.evaluate(() => { location.hash = '#ev/inc'; });
+    await page.waitForSelector('#inc-list .inc-grup', { timeout: 6000 });
+    const m = await page.evaluate(() => ({ grupuri: document.querySelectorAll('#inc-list .inc-grup').length,
+      carduri: document.querySelectorAll('#inc-list .inc-card:not(.inc-grup)').length,
+      ids: document.querySelector('#inc-list .inc-grup').dataset.ids,
+      poza: !!document.querySelector('#inc-list .inc-grup img.inc-poza'),
+      info: document.querySelector('#inc-info').textContent }));
+    (m.grupuri === 1 && m.carduri === 1) ? ok('4 episoade de pe aceeasi camera = 1 grup; intrusul ramane separat') : bad('GR', JSON.stringify(m));
+    m.ids === 'ep0,ep1,ep2,ep3' ? ok('grupul are toate cele 4 id-uri') : bad('GR', 'ids=' + m.ids);
+    m.poza ? ok('grupul arata miniatura cadrului') : bad('GR', 'fara miniatura');
+    /5 de tratat/.test(m.info) ? ok(`numarul de tratat vine din counts: „${m.info}”`) : bad('GR', 'info=' + m.info);
+    await page.click('#inc-list .inc-grup .inc-grup-ok');
+    const c = await waitForCall(calls, '/api/incidents/stare-bloc', 'POST');
+    (c && c.body && c.body.stare === 'confirmat' && c.body.ids.length === 4) ? ok('„confirmă toate” trimite cele 4 id-uri intr-o cerere') : bad('GR', 'cerere: ' + JSON.stringify(c && c.body));
+    await page.waitForSelector('#inc-list .inc-grup', { timeout: 6000 });
+    await page.click('#inc-list .inc-grup .inc-grup-arata');
+    const n = await page.evaluate(() => document.querySelectorAll('#inc-list .inc-grup-desfasurat .inc-card').length);
+    n === 4 ? ok('„Arată toate” desface grupul in 4 carduri') : bad('GR', `desfasurat: ${n}`);
+  } finally { await app.close(); }
+}
+
+// ---- AX: accesibilitate automata (axe-core) pe ecranele principale, desktop si telefon ----
+const AXE_SRC = require('fs').readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
+const AX_ECRANE = ['#live', '#ev/inc', '#ev/jurnal', '#ev/poze', '#pb', '#ai/pers', '#ai/reguli', '#cams', '#set/stare', '#set/notif', '#set/sistem', '#set/utilizatori'];
+async function scenAX(browser) {
+  console.log('\n== AX. Accesibilitate (axe-core, WCAG 2.1 AA) pe ecranele principale ==');
+  for (const [nume, opt] of [['desktop', {}], ['telefon', { viewport: { width: 390, height: 844 }, mobile: true }], ['culcat', { viewport: { width: 844, height: 390 }, mobile: true }]]) {
+    // fluxul de langa Live cu 30 de cadre: prinde randurile strivite (regresia din UX-B)
+    const cadre = Array.from({ length: 30 }, (_, i) => ({ cat: 'om', cam: 1, cam_nume: 'Poartă', zi: '2026-01-01',
+      time: `12:${String(59 - i).padStart(2, '0')}:00`, url: `/snapshots/2026-01-01/12${String(59 - i).padStart(2, '0')}00_cam1_person.jpg`,
+      thumb: `/api/flux/thumb/2026-01-01/12${String(59 - i).padStart(2, '0')}00_cam1_person.jpg`, label: 'person' }));
+    const app = await openApp(browser, { ...opt, api: { '/api/flux': { zi: '2026-01-01', cadre } } });
+    const { page } = app;
+    try {
+      await page.evaluate(() => { if (document.querySelector('#flux')?.classList.contains('hidden')) document.querySelector('#flux-toggle')?.click(); });
+      await page.waitForTimeout(300);
+      await page.addScriptTag({ content: AXE_SRC });
+      const grave = new Map(); const titluri = new Set(); const mici = new Set(); const strivite = new Set();
+      for (const h of AX_ECRANE) {
+        await page.evaluate((x) => { location.hash = x; }, h);
+        await page.waitForTimeout(400);
+        titluri.add(await page.title());
+        const r = await page.evaluate(async () => {
+          const v = (await window.axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'best-practice'] }, resultTypes: ['violations'] })).violations;
+          const vis = (e) => { const b = e.getBoundingClientRect(); return b.width > 0 && b.height > 0 && getComputedStyle(e).visibility !== 'hidden' && !e.closest('[inert]'); };
+          const tinte = [...document.querySelectorAll('button, a[href], select, input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=range])')]
+            .filter(vis).filter((e) => { const b = e.getBoundingClientRect(); return b.height < 23.5 && !e.closest('p, li, td, .hint'); })
+            .slice(0, 5).map((e) => (e.id ? '#' + e.id : e.tagName.toLowerCase() + '.' + (e.className || '').toString().split(' ')[0]) + ' ' + Math.round(e.getBoundingClientRect().height) + 'px');
+          // controale strivite sub continutul lor (ex. randurile din fluxul Live, 24 px peste o poza de 54)
+          const strivite = [...document.querySelectorAll('button, .link-btn')].filter(vis)
+            .filter((e) => e.scrollHeight > e.clientHeight + 2 && getComputedStyle(e).overflowY === 'visible')
+            .slice(0, 3).map((e) => (e.id ? '#' + e.id : e.tagName.toLowerCase() + '.' + String(e.className).split(' ')[0]) + ` ${e.clientHeight}<${e.scrollHeight}`);
+          return { v: v.filter((x) => x.impact === 'critical' || x.impact === 'serious')
+            .map((x) => `${x.id} (${x.impact}): ${x.nodes.slice(0, 2).map((n) => n.target.join(' ')).join(', ')}`), tinte, strivite };
+        });
+        for (const x of r.v) if (!grave.has(x.split(':')[0])) grave.set(x.split(':')[0], `${h} ${x}`);
+        for (const x of r.tinte) mici.add(`${h} ${x}`);
+        for (const x of r.strivite) strivite.add(`${h} ${x}`);
+      }
+      grave.size ? bad(`AX ${nume}`, `${grave.size} incalcari critice/serioase: ` + [...grave.values()].slice(0, 6).join(' | '))
+        : ok(`AX ${nume}: zero incalcari critice/serioase pe ${AX_ECRANE.length} ecrane`);
+      const m = await page.evaluate(() => ({ main: document.querySelectorAll('main').length, sari: !!document.querySelector('.sari-continut') }));
+      (m.main === 1 && m.sari) ? ok(`AX ${nume}: un singur <main> + „Sari la conținut”`) : bad(`AX ${nume}`, `main=${m.main} sari=${m.sari}`);
+      titluri.size >= 5 ? ok(`AX ${nume}: titlul paginii se schimba pe ecran (${titluri.size} titluri distincte)`) : bad(`AX ${nume}`, `titlul nu se schimba: ${[...titluri].join(' | ')}`);
+      mici.size ? bad(`AX ${nume}`, `tinte sub 24 px: ${[...mici].slice(0, 6).join(' | ')}`) : ok(`AX ${nume}: nicio tinta de control sub 24 px`);
+      strivite.size ? bad(`AX ${nume}`, `controale strivite sub continut: ${[...strivite].slice(0, 6).join(' | ')}`) : ok(`AX ${nume}: niciun control strivit sub continutul lui`);
+    } finally { await app.close(); }
+  }
+}
+
 (async () => {
   const srv = await startStatic();
   globalThis.__ORIGIN = srv.origin;
   const browser = await chromium.launch();
   try {
-    for (const scen of [scenBoot, scenA1, scenA2, scenS1, scenS2, scenC2, scenL2, scenT1, scenC4, scenP0, scenM0, scenHD, scenOV]) {
+    for (const scen of [scenBoot, scenA1, scenA2, scenS1, scenS2, scenC2, scenL2, scenT1, scenC4, scenP0, scenM0, scenHD, scenOV, scenBF, scenFL, scenGR, scenUG, scenAX]) {
       try { await scen(browser); }
       catch (e) { bad(scen.name, 'exceptie in scenariu: ' + String(e).slice(0, 160)); }
     }

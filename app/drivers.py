@@ -101,7 +101,7 @@ def rtsp(cam, canal):
 # ---- identificare / sanatate ----
 def _onvif(cam):
     if este_demo(cam):
-        raise Nesuportat(t("camera demo nu are actiuni (flux sintetic)"))
+        raise Nesuportat(t("camera demo nu are acțiuni (flux sintetic)"))
     import onvif
     return onvif.Camera(cam["ip"], cam.get("user") or "", cam.get("pass") or "",
                         (cam.get("onvif") or {}).get("port") or cam.get("http_port") or 80)
@@ -119,7 +119,7 @@ def device_info(cam):
         s.auth = HTTPDigestAuth(cam["user"], cam["pass"])
         r = s.get(f"http://{cam['ip']}/ISAPI/System/deviceInfo", timeout=12)
         if r.status_code == 401:
-            raise RuntimeError(t("autentificare esuata (user/parola)"))
+            raise RuntimeError(t("autentificare eșuată (utilizator/parolă)"))
         r.raise_for_status()
         root = ET.fromstring(r.text)
         g = lambda tag: next((e.text for e in root.iter() if e.tag.endswith(tag)), None)
@@ -293,7 +293,7 @@ def get_stream(cam, ch=101):
 
 def set_stream(cam, ch=101, **kw):
     if not este_hik(cam):
-        raise Nesuportat(t("calitatea fluxului se seteaza doar pe camerele Hikvision (ISAPI)"))
+        raise Nesuportat(t("calitatea fluxului se setează doar pe camerele Hikvision (ISAPI)"))
     import camctl
     return camctl.set_stream(cam, ch, **kw)
 

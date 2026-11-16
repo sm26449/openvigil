@@ -86,3 +86,24 @@ def test_filtru_pe_camere_vizibile():
     f = incidents.feed(visible={5})
     assert all(e.get("cam") == 5 for e in f)
     assert incidents.counts(visible={5})["critic_noi"] == 0
+
+
+def test_ferestrele_triajului_nu_ascund_incidentele_operatorului():
+    """audit F2: (1) camerele altora nu umplu fereastra de 800 a triajului; (2) un incident
+    ramane tratabil si dupa sute de evenimente informative venite dupa el."""
+    import time
+    import jurnal
+    t0 = time.time() - 3600
+    jurnal.insert({"id": "al-meu", "t": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(t0)),
+                   "tip": "persoana_necunoscuta", "sev": "critic", "cam": 5}, ts=t0)
+    for i in range(810):                              # rafala de incidente pe camera altcuiva
+        ts = t0 + 1 + i
+        jurnal.insert({"id": f"altul{i}", "t": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(ts)),
+                       "tip": "persoana_necunoscuta", "sev": "critic", "cam": 9}, ts=ts)
+    for i in range(410):                              # si evenimente informative dupa
+        ts = t0 + 1000 + i
+        jurnal.insert({"id": f"info{i}", "t": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(ts)),
+                       "tip": "detectie", "sev": "info", "cam": 5, "eticheta": "cat"}, ts=ts)
+    assert "al-meu" in [e["id"] for e in incidents.feed(limit=None, visible={5})]
+    assert incidents.cam_incident("al-meu") == 5
+    assert incidents.cam_incident("nu-exista") is None

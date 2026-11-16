@@ -16,6 +16,7 @@ inregistreaza pe fiecare conexiune noua; extensia se creeaza in `aplica()`.
     db.aplica("jurnal", SCHEMA_SQL, MIGRARI)  # migrari numerotate, ca in schema.py
 """
 import os
+import weakref
 import threading
 from contextlib import contextmanager
 
@@ -35,14 +36,32 @@ def _conninfo():
     )
 
 
-def _configure(c):
-    """Rulat la fiecare conexiune noua din pool: inregistreaza tipul `vector`.
-    Daca extensia nu exista inca (inainte de prima `aplica`), mergem fara ea."""
+# conexiunile deschise INAINTE de `CREATE EXTENSION vector` (prima pornire pe o baza goala) n-au
+# tipul inregistrat: vectorii cititi prin ele veneau ca octeti bruti. Le tinem minte si reincercam
+# la urmatoarea folosire (prins de CI-ul rulat pe o baza noua, 2026-11-15).
+_fara_vector = weakref.WeakSet()
+
+
+def _inregistreaza_vector(c):
     try:
         from pgvector.psycopg import register_vector
         register_vector(c)
+        _fara_vector.discard(c)
+        return True
     except Exception:
-        pass
+        _fara_vector.add(c)
+        return False
+
+
+def _configure(c):
+    """Rulat la fiecare conexiune noua din pool: inregistreaza tipul `vector`.
+    Daca extensia nu exista inca (inainte de prima `aplica`), conexiunea se reincearca la folosire."""
+    _inregistreaza_vector(c)
+
+
+def _asigura_vector(c):
+    if c in _fara_vector:
+        _inregistreaza_vector(c)
 
 
 def pool():
@@ -61,6 +80,10 @@ def pool():
                     open=True,
                 )
                 logare.info("[db] pool PostgreSQL deschis")
+                if os.environ.get("PG_PASS") in ("", "changeme"):
+                    # parola din .env.example e publica in depozit (audit S8)
+                    logare.error("[db] PG_PASS e goala sau cea din exemplu (changeme): schimb-o "
+                                 "in PostgreSQL (ALTER USER) si in .env — vezi install.sh")
     return _POOL
 
 
@@ -68,6 +91,7 @@ def pool():
 def conn():
     """Conexiune din pool, autocommit. Se intoarce in pool la iesire."""
     with pool().connection() as c:
+        _asigura_vector(c)
         yield c
 
 
@@ -75,6 +99,7 @@ def conn():
 def tx():
     """Tranzactie: commit la iesire normala, rollback la exceptie."""
     with pool().connection() as c:
+        _asigura_vector(c)
         with c.transaction():
             yield c
 
@@ -120,6 +145,7 @@ def aplica(nume, schema_sql, migrari=None):
         c.execute("SELECT pg_advisory_lock(%s)", (key,))
         try:
             c.execute("CREATE EXTENSION IF NOT EXISTS vector")
+            _asigura_vector(c)
             if schema_sql and schema_sql.strip():
                 c.execute(schema_sql)                  # fara parametri: psycopg accepta mai multe instructiuni
             actuala = _versiune(c, nume)

@@ -398,21 +398,21 @@ def _job_raport(job):
     exp_job, livrat = _export_livrat(ch, start, end)
     if livrat:
         job.progres(50, t("hash pe fișierul exportat"))
-        sha, octeti, sursa = _sha256(livrat), os.path.getsize(livrat), t("exportul {id} (fisierul livrat)", id=exp_job["id"])
+        sha, octeti, sursa = _sha256(livrat), os.path.getsize(livrat), t("exportul {id} (fișierul livrat)", id=exp_job["id"])
     else:
         tmp = job.cale("mp4")
         ok, err = render_clip(ch, start, end, tmp, wm=False, job=job)
         if not ok:
             raise jobs.JobError(err)
         job.progres(95, t("calculez SHA-256"))
-        sha, octeti, sursa = _sha256(tmp), os.path.getsize(tmp), t("regenerare identica (exportul nu mai era pe disc)")
+        sha, octeti, sursa = _sha256(tmp), os.path.getsize(tmp), t("regenerare identică (exportul nu mai era pe disc)")
         os.remove(tmp)                  # fisa e rezultatul; MP4-ul se descarca separat
     h = type("H", (), {"hexdigest": staticmethod(lambda: sha)})()
     lt = lambda x: time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(x))
     goluri = [{"de_la": lt(a), "pana_la": lt(b), "secunde": int(b - a)} for a, b in record.goluri(ch, t0, t1)]
     cam = next((c for c in get_cameras() if c["id"] == ch), {})
     # lantul de custodie: segmentele-sursa cu amprentele lor de la INCHIDERE (nvr-record,
-    # data/segmente.db) si verificarea lor acum — dovedeste ca materialul brut e neatins
+    # tabelul `segmente` din PostgreSQL) si verificarea lor acum — dovedeste ca materialul brut e neatins
     import lant
     surse = []
     for sg in lant.lista(ch, since=t0, until=t1):
@@ -432,7 +432,7 @@ def _job_raport(job):
         "segmente_sursa": surse,
         "generat": time.strftime("%Y-%m-%d %H:%M:%S"),
         "generat_de": job.creat_de,
-        "nota": t("Hash-ul SHA-256 dovedeste ca fisierul MP4 nu a fost modificat dupa export. Verificare: sha256sum <fisier>. `segmente_sursa` sunt fisierele brute din care s-a taiat clipul, cu amprenta calculata de serviciul de inregistrare la inchiderea fiecaruia si re-verificata la generarea fisei. `goluri_inregistrare` sunt intervalele fara material: clipul le sare (timpul din clip NU e continuu acolo)."),
+        "nota": t("Hash-ul SHA-256 dovedește că fișierul MP4 nu a fost modificat după export. Verificare: sha256sum <fișier>. `segmente_sursa` sunt fișierele brute din care s-a tăiat clipul, cu amprenta calculată de serviciul de înregistrare la închiderea fiecăruia și re-verificată la generarea fișei. `goluri_inregistrare` sunt intervalele fără material: clipul le sare (timpul din clip NU e continuu acolo)."),
     }
     audit.log("raport probatoriu", f"cam{ch} {start}-{end}",
               {"sha256": h.hexdigest()[:16]}, job.creat_de)
