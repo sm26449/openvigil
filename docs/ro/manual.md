@@ -843,7 +843,7 @@ Toate din tabul Inregistrari (`app/analiza.py`, `app/routes_analiza.py`), pe cam
   (ora curenta) si se pot focaliza din tastatura; punctele de pe bara (evenimente/detectii/
   reguli) au contrast suficient pe fundalul inchis.
 - **Criptare la rest** (doar instalarea clasica; in varianta Docker criptarea se face la nivelul gazdei,
-  cu LUKS sau fscrypt pe directorul `data/`, iar cardul din Setari si scripturile de mai jos nu exista)
+  cu LUKS sau fscrypt pe directorul `data/`, iar cardul din Setari si scripturile de mai jos — `scripts/criptare.sh`, `scripts/fscrypt_*.sh` — nu fac parte din acest repo)
   **: fscrypt pe tot `data/`, cu cheie-master si pornire automata**
   (2026-10-23, cu pasul intermediar „parola dupa reboot" inlocuit in aceeasi seara, dupa
   decizia: dupa o pana de curent totul trebuie sa revina singur). Nu in aplicatie: ffmpeg are

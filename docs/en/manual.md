@@ -847,7 +847,7 @@ All from the Recordings tab (`app/analiza.py`, `app/routes_analiza.py`), on the 
   (current time) and can be focused from the keyboard; the dots on the bar (events/detections/
   rules) have sufficient contrast on the dark background.
 - **Encryption at rest** (classic installation only; in the Docker variant encryption is done at the host level,
-  with LUKS or fscrypt on the `data/` directory, and the Settings card and the scripts below do not exist)
+  with LUKS or fscrypt on the `data/` directory, and the Settings card and the scripts below — `scripts/criptare.sh`, `scripts/fscrypt_*.sh` — are not part of this repository)
   **: fscrypt on all of `data/`, with a master key and automatic start**
   (2026-10-23, with the intermediate step "password after reboot" replaced the same evening, after
   the decision: after a power outage everything must come back by itself). Not in the application: ffmpeg
