@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Genereaza go2rtc/go2rtc.yaml:
-- 16 stream-uri LIVE pe substream NVR (H.264, copy), cam1..cam16
-- cate un stream LIVE pe substream pentru fiecare camera standalone din data/cameras.json
-  (camN, unde N >= 101), adaugata manual prin UI
+"""Genereaza configurarea go2rtc (data/go2rtc.yaml) din camere; ruleaza la pornirea serviciului go2rtc.
+
+- camN: live pe substream (camerele NVR 1..16, cele standalone din data/cameras.json au N >= 101)
+- camN_main: mainstream-ul, citit de inregistrare; camN_v: copie fara canal de vorbire (viewer)
+- mN, mNs<viteza>: sabloanele ffmpeg care aplica masca de confidentialitate (masca.py)
 Playback-ul si live-HD se inregistreaza dinamic prin API (vezi app/server.py)."""
 import urllib.parse, os, sys, json
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

@@ -65,6 +65,9 @@ jobs:
       - name: Modulele ES ale interfetei
         run: python scripts/module_check.py
 
+      - name: Harta modulelor (docs/module.md la zi, fiecare modul cu domeniu)
+        run: python scripts/module_index.py
+
       - name: Regresie interfata (Playwright izolat)
         # Suita IZOLATA (tests/ui-regresie.js): serveste app/static si intercepteaza /api/*
         # cu date sintetice — fara instanta live, DB, GPU sau camere. Prinde regresiile de

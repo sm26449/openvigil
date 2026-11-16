@@ -33,6 +33,7 @@ cd tests && npm ci && npm run test:ui                # regresia de interfata, iz
 # Playwright cere Node >= 20; pe o gazda mai veche, si pentru suita pe instanta vie
 # (ui-test.js), vezi tests/README.md
 python3 scripts/module_check.py                     # modulele ES ale interfeței
+python3 scripts/module_index.py                     # harta modulelor (docs/module.md) la zi
 ```
 
 Fără Docker (lock-ul trage PyTorch pentru CUDA 13 și onnxruntime-gpu, deci are sens doar pe o
@@ -43,9 +44,12 @@ go2rtc) cu variabilele din `.env` exportate.
 ## Reguli de cod
 
 - Python 3.12, fără framework-uri noi fără motiv; `requirements.lock` e sursa adevărului.
-- O schimbare de tabelă SQLite nu se face în `CREATE TABLE IF NOT EXISTS`, ci ca migrare
-  numerotată în `MIGRARI` din modulul respectiv (`app/schema.py` le aplică o singură dată,
-  în ordine); schema inițială rămâne cea completă, pentru bazele noi.
+- O schimbare de tabelă nu se face în `CREATE TABLE IF NOT EXISTS`, ci ca migrare
+  numerotată în `MIGRARI` din modulul respectiv (`aplica()` din `app/db.py` le aplică o singură
+  dată, în ordine); schema inițială rămâne cea completă, pentru bazele noi.
+- Harta codului: [`docs/module.md`](docs/module.md), generată de `scripts/module_index.py` din
+  docstring-uri. Un modul nou primește un domeniu în `DOMENII` din script (CI pică altfel), iar
+  prima linie a docstring-ului lui spune ce face.
 - Interfața e în module ES simple (`app/static/js/*.js`), fără pas de build. Orice
   `innerHTML` nou trece prin `html\`\`` (escapare + CSP strict). `scripts/module_check.py`
   trebuie să afișeze `ok`.

@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""Backend interfata NVR Hikvision.
-- /api/cameras            -> lista camerelor (din ISAPI, cache)
-- /api/recordings         -> cauta inregistrarile (ISAPI ContentMgmt/search)
-- /api/play               -> inregistreaza un stream de playback/HD in go2rtc, intoarce numele
-Streaming-ul efectiv (MSE/WebRTC) e servit de go2rtc; frontend-ul vorbeste direct cu el.
+"""Aplicatia Flask nvr-web: garda de acces, registrul de camere, fluxurile go2rtc, clipurile.
+
+- garda `guard()` (sesiune, roluri, CSRF): `VIEWER_GET`, `OPERATOR_ACTIONS`, `_visible_ids()`
+- registrul de camere (`get_cameras`, `resolve_camera`, data/cameras.json) si fluxurile
+  go2rtc (`reload_streams`, `register_stream`, `go2rtc_src`)
+- clipuri si exporturi cu ffmpeg (`render_clip`), /healthz, pagina si fisierele statice
+- rutele propriu-zise stau in blueprint-urile `routes_*.py` (`_register_blueprints()`)
+Browserul nu vorbeste direct cu go2rtc: fluxul trece prin releul autentificat (stream_proxy.py).
 """
 import hashlib, hmac, ipaddress, json, os, re, secrets, subprocess, sys, threading, time, urllib.parse
 from flask import (Flask, Response, g, redirect, request, jsonify,
